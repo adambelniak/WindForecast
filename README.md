@@ -9,4 +9,4 @@ Seed for the analysis consists of:
  * Satelite images (pl.sat24.com, probably some more sources in the future)
 
 # Knowledge base
- * How to install pygrib: https://uoa-eresearch.github.io/eresearch-cookbook/recipe/2014/11/26/python-virtual-env/ 
+ * How to install pygrib: https://gist.github.com/emmanuelnk/406eee50c388f4f73dcdff521f2aa7b2?fbclid=IwAR3E3ErfD8WohQthZ2T4f95UkHb9-6v61w_l6Q5A5GC8u7nnQMeV90d8sNQ 
