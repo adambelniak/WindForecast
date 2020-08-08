@@ -11,3 +11,8 @@ def get_nearest_coords(latitude, longitude):
     if long2 >= 360:
         long2 = 0
     return [[lat1, lat2], [long1, long2]]
+
+
+def prep_zeros_if_needed(value, number_of_zeros):
+    for i in range(number_of_zeros - len(value)):
+        value = '0' + value

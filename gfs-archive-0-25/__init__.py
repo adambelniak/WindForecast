@@ -10,6 +10,7 @@ import requests
 
 from past.builtins import raw_input
 import utils
+from utils import prep_zeros_if_needed
 from scipy import interpolate
 
 dspath = 'https://rda.ucar.edu/data/ds084.1/'
@@ -54,11 +55,6 @@ def authenticate_to_rda():
     return ret
 
 
-def prep_zeros_if_needed(value, number_of_zeros):
-    for i in range(number_of_zeros - len(value)):
-        value = '0' + value
-
-
 def download_file(file, cookies):
     filename = dspath + file
     file_base = os.path.basename(file)
@@ -77,8 +73,12 @@ def download_file(file, cookies):
 
 def save_GFS_archive_data(grib_file, latitude=0., longitude=0.):
     gr = pygrib.open(grib_file.split('/')[-1])
-    u_component_of_wind_msgs = gr.select(shortName='u', typeOfLevel='unknown')[0]
-    v_component_of_wind_msgs = gr.select(shortName='v', typeOfLevel='unknown')[0]
+    u_component_of_wind_msgs = gr.select(shortName='10u')[0]
+    v_component_of_wind_msgs = gr.select(shortName='10v')[0]
+
+    # for g in gr:
+    #     print(g.typeOfLevel, g.level, g.name, g.shortName, g.validDate, g.analDate, g.forecastTime)
+
     coords = utils.get_nearest_coords(latitude, longitude)
     print("Getting grid data for coords: " + str(coords))
     data_u = u_component_of_wind_msgs.data(lat1=coords[0][0],
