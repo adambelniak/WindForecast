@@ -75,12 +75,13 @@ def save_GFS_archive_data(grib_file, latitude=0., longitude=0.):
     gr = pygrib.open(grib_file.split('/')[-1])
     u_component_of_wind_msgs = gr.select(shortName='10u')[0]
     v_component_of_wind_msgs = gr.select(shortName='10v')[0]
+    gust_msgs = gr.select(shortName='gust')[0]
 
     # for g in gr:
     #     print(g.typeOfLevel, g.level, g.name, g.shortName, g.validDate, g.analDate, g.forecastTime)
 
     coords = utils.get_nearest_coords(latitude, longitude)
-    print("Getting grid data for coords: " + str(coords))
+    print("Getting grid data for coords: " + str(coords) + " from file " + grib_file)
     data_u = u_component_of_wind_msgs.data(lat1=coords[0][0],
                                            lat2=coords[0][1],
                                            lon1=coords[1][0],
@@ -91,16 +92,25 @@ def save_GFS_archive_data(grib_file, latitude=0., longitude=0.):
                                            lon1=coords[1][0],
                                            lon2=coords[1][1])
 
+    data_gust = gust_msgs.data(lat1=coords[0][0],
+                                lat2=coords[0][1],
+                                lon1=coords[1][0],
+                                lon2=coords[1][1])
+
     # pygrib needs to have latitude from smaller to larger, but returns the values north-south,
     # so from larger lat to smaller lat :( Thus, reversing 'data' array
     interpolated_function_u = interpolate.interp2d(coords[0], coords[1], data_u[0][::-1])
     interpolated_function_v = interpolate.interp2d(coords[0], coords[1], data_v[0][::-1])
-    print("Value of u-wind component at 20m for point (" + str(latitude) + ", " + str(longitude) + "): " +
+    interpolated_function_gust = interpolate.interp2d(coords[0], coords[1], data_gust[0][::-1])
+
+    print("Value of u-wind component at 10m above ground for point (" + str(latitude) + ", " + str(longitude) + "): " +
           str(interpolated_function_u(latitude, longitude)))
 
-    print("Value of v-wind component at 20m for point (" + str(latitude) + ", " + str(longitude) + "): " +
+    print("Value of v-wind component at 10m above ground for point (" + str(latitude) + ", " + str(longitude) + "): " +
           str(interpolated_function_v(latitude, longitude)))
 
+    print("Value of gusts at 10m above ground for point (" + str(latitude) + ", " + str(longitude) + "): " +
+          str(interpolated_function_gust(latitude, longitude)))
 
 if __name__ == '__main__':
     # parser = argparse.ArgumentParser(description='Fetch gsf 0.25° archive forecasts and save to CSV.')
