@@ -1,3 +1,5 @@
+import glob
+
 from bs4 import BeautifulSoup
 import requests
 import re
@@ -5,6 +7,32 @@ from pathlib import Path
 import os
 from zipfile import ZipFile
 import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+"""This code obtains SYNOP data from 'https://danepubliczne.imgw.pl/'.
+    
+    SYNOP file contains meteorological data for single localisation and year. 
+    
+    https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/dane_meteorologiczne/terminowe/synop/s_t_format.txt 
+    - under this url, is available descriptions of file format. For project purpose it's required to process at least three columns, 
+    which contains wind direction, wind velocity and gust of wind which are available at column:
+     - direction - 23
+     - velocity - 25
+     - gust - 27 
+    and date columns:
+     - year - 2
+     - month - 3
+     - day - 4
+     - hour - 5
+"""
+YEAR = 2
+MONTH = 3
+DAY = 4
+HOUR = 5
+DIRECTION_COLUMN = 23
+VELOCITY_COLUMN = 25
+GUST_COLUMN = 27
 
 
 def download_list_of_station(dir: str):
@@ -17,7 +45,8 @@ def download_list_of_station(dir: str):
 
 
 def get_localisation_id(localisation_name: str, dir='synop_data'):
-    loc_data = pd.read_csv(os.path.join(dir, 'wykaz_stacji.csv'), encoding = "ISO-8859-1", names=['unknown', 'city_name', 'meteo_code'])
+    loc_data = pd.read_csv(os.path.join(dir, 'wykaz_stacji.csv'), encoding="ISO-8859-1",
+                           names=['unknown', 'city_name', 'meteo_code'])
     row = loc_data.loc[loc_data['city_name'] == localisation_name]
 
     if row.shape[0] == 0:
@@ -29,7 +58,7 @@ def get_synop_data(localisation_code, year: str, dir: str):
     dir_per_year = os.path.join(dir, year, 'download')
     Path(dir_per_year).mkdir(parents=True, exist_ok=True)
 
-    url ="https://dane.imgw.pl/data/dane_pomiarowo_obserwacyjne/dane_meteorologiczne/terminowe/synop/" + year
+    url = "https://dane.imgw.pl/data/dane_pomiarowo_obserwacyjne/dane_meteorologiczne/terminowe/synop/" + year
 
     page = requests.get(url)
 
@@ -41,7 +70,7 @@ def get_synop_data(localisation_code, year: str, dir: str):
         if td_link:
             contains_zip_file = re.match(rf'^(.+?){localisation_code}(.+?).zip$', td_link['href'])
             if contains_zip_file:
-                file = requests.get(url + '/' + td_link['href'],stream=True)
+                file = requests.get(url + '/' + td_link['href'], stream=True)
                 opened_file = open(os.path.join(dir_per_year, td_link['href']), 'wb')
                 opened_file.write(file.content)
                 opened_file.close()
@@ -56,9 +85,42 @@ def extract_zip_files(year: str, dir: str):
             zip.extractall(path=data_directory)
 
 
+def read_data(localisation_code, dir='synop_data'):
+    columns = ['year', 'month', 'day', 'hour', 'direction', 'velocity', 'gust']
+    station_data = pd.DataFrame(columns=columns)
+
+    for filepath in glob.iglob(rf'{dir}/*/*{localisation_code}*.csv', recursive=True):
+        synop_data = pd.read_csv(filepath, encoding="ISO-8859-1", header=None)
+        required_data = synop_data[[YEAR, MONTH, DAY, HOUR, DIRECTION_COLUMN, VELOCITY_COLUMN, GUST_COLUMN]]
+        station_data[columns] = required_data
+    station_data.to_csv(os.path.join(dir, localisation_code + '_data.csv'), index=False)
+
+
+def plot_scatter_data_for_year(localisation_code: str, year: int, dir='synop_data'):
+    station_data = pd.read_csv(os.path.join(dir, localisation_code + '_data.csv'))
+    one_year_data = station_data.loc[station_data['year'] == year]
+    one_year_data['date_time'] = pd.to_datetime(one_year_data[['year', 'month', 'day', 'hour']])
+
+    one_year_data.plot(kind='scatter', x='date_time', y='velocity', color='red')
+    plt.show()
+
+
+def plot_each_month_in_year(localisation_code: str, year: int, dir='synop_data'):
+    station_data = pd.read_csv(os.path.join(dir, localisation_code + '_data.csv'))
+    one_year_data = station_data.loc[station_data['year'] == year]
+    one_year_data['date_time'] = pd.to_datetime(one_year_data[['year', 'month', 'day', 'hour']])
+
+    sns.boxplot(x='month', y="velocity",
+                     data=one_year_data, palette="Set3")
+
+    plt.show()
+
+
 if __name__ == "__main__":
     dir = './synop_data'
     # extract_zip_files('2019', dir)
     # download_list_of_station(dir)
-    localisation_code = get_localisation_id("HEL")
-    get_synop_data(str(localisation_code), '2018', dir)
+    # localisation_code = get_localisation_id("HEL")
+    # get_synop_data(str(localisation_code), '2018', dir)
+    read_data('135')
+    plot_each_month_in_year('135', 2018)
