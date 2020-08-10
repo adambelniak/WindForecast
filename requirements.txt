@@ -1,5 +1,4 @@
 absl-py==0.9.0
-apturl==0.5.2
 astroid==2.4.2
 astunparse==1.6.3
 basemap @ https://github.com/matplotlib/basemap/archive/master.zip

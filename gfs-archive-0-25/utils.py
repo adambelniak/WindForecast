@@ -14,5 +14,6 @@ def get_nearest_coords(latitude, longitude):
 
 
 def prep_zeros_if_needed(value, number_of_zeros):
-    for i in range(number_of_zeros - len(value)):
+    for i in range(number_of_zeros - len(value) + 1):
         value = '0' + value
+    return value

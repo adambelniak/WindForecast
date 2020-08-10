@@ -140,3 +140,4 @@ cython_debug/
 
 *.grib2
 .idea
+synop_data

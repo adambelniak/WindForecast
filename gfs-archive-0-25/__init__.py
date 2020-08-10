@@ -4,17 +4,70 @@
 import calendar
 import os
 import sys
-
+import csv
 import pygrib
 import requests
 
 from past.builtins import raw_input
-import utils
+from utils import get_nearest_coords
 from utils import prep_zeros_if_needed
 from scipy import interpolate
 
+variables_names = [
+    {"shortName": "refc",
+     "fullName": "Maximum/Composite radar reflectivity"},
+    {"shortName": "gust",
+     "fullName": "Wind speed (gust)"},
+    {"shortName": "tcc",
+     "fullName": "400 Total Cloud Cover",
+     "typeOfLevel": "isobaricInhPa",
+     "level": 400},
+    {"shortName": "tcc",
+     "fullName": "600 Total Cloud Cover",
+     "typeOfLevel": "isobaricInhPa",
+     "level": 600},
+    {"shortName": "tcc",
+     "fullName": "800 Total Cloud Cover",
+     "typeOfLevel": "isobaricInhPa",
+     "level": 800},
+    {"shortName": "tcc",
+     "fullName": "950 Total Cloud Cover",
+     "typeOfLevel": "isobaricInhPa",
+     "level": 950},
+    {"shortName": "tcc",
+     "fullName": "1000 Total Cloud Cover",
+     "typeOfLevel": "isobaricInhPa",
+     "level": 1000},
+    {"shortName": "t",
+     "fullName": "Surface temperature",
+     "typeOfLevel": "surface",
+     "level": 0},
+    {"shortName": "2t",
+     "fullName": "2m temperature",
+     "typeOfLevel": "heightAboveGround",
+     "level": 2},
+    {"shortName": "2r",
+     "fullName": "2m humidity",
+     "typeOfLevel": "heightAboveGround",
+     "level": 2},
+    {"shortName": "10u",
+     "fullName": "10 metre U wind component"},
+    {"shortName": "10v",
+     "fullName": "10 metre V wind component"},
+    {"shortName": "cprat",
+     "fullName": "Convective precipitation rate",
+     "typeOfLevel": "surface",
+     "level": 0},
+    {"shortName": "prate",
+     "fullName": "Precipitation rate",
+     "typeOfLevel": "surface",
+     "level": 0},
+    {"shortName": "prmsl",
+     "fullName": "Pressure reduced to MSL"}
+]
 dspath = 'https://rda.ucar.edu/data/ds084.1/'
-filename_template = '{0}/{0}{1}{2}/gfs.0p25.{0}{1}{2}{3}.f{4}.grib2'
+grib_filename_template = '{0}/{0}{1}{2}/gfs.0p25.{0}{1}{2}{3}.f{4}.grib2'
+csv_filename_template = '{0}-{1}-{2}-{3}Z.csv'
 
 
 def check_file_status(filepath, filesize):
@@ -28,7 +81,7 @@ def check_file_status(filepath, filesize):
 
 def authenticate_to_rda():
     # Try to get password
-    if len(sys.argv) < 2 and not 'RDAPSWD' in os.environ:
+    if len(sys.argv) < 3 and not 'RDAPSWD' in os.environ:
         try:
             import getpass
             input = getpass.getpass
@@ -71,73 +124,84 @@ def download_file(file, cookies):
     print()
 
 
-def save_GFS_archive_data(grib_file, latitude=0., longitude=0.):
-    gr = pygrib.open(grib_file.split('/')[-1])
-    u_component_of_wind_msgs = gr.select(shortName='10u')[0]
-    v_component_of_wind_msgs = gr.select(shortName='10v')[0]
-    gust_msgs = gr.select(shortName='gust')[0]
+def fetch_gfs_archive_data(grib_file, latitude=0., longitude=0.):
+    print("Fetching gfs data from file " + grib_file)
+    gr = pygrib.open(grib_file)
+    data = []
 
-    # for g in gr:
-    #     print(g.typeOfLevel, g.level, g.name, g.shortName, g.validDate, g.analDate, g.forecastTime)
+    for variable in variables_names:
+        if 'typeOfLevel' in variable:
+            message = gr.select(shortName=variable['shortName'], typeOfLevel=variable['typeOfLevel'], level=variable['level'])[0]
+        else:
+            message = gr.select(shortName=variable['shortName'])[0]
 
-    coords = utils.get_nearest_coords(latitude, longitude)
-    print("Getting grid data for coords: " + str(coords) + " from file " + grib_file)
-    data_u = u_component_of_wind_msgs.data(lat1=coords[0][0],
-                                           lat2=coords[0][1],
-                                           lon1=coords[1][0],
-                                           lon2=coords[1][1])
+        coords = get_nearest_coords(latitude, longitude)
+        values = message.data(lat1=coords[0][0],
+                            lat2=coords[0][1],
+                            lon1=coords[1][0],
+                            lon2=coords[1][1])
 
-    data_v = v_component_of_wind_msgs.data(lat1=coords[0][0],
-                                           lat2=coords[0][1],
-                                           lon1=coords[1][0],
-                                           lon2=coords[1][1])
+        # pygrib needs to have latitude from smaller to larger, but returns the values north-south,
+        # so from larger lat to smaller lat :( Thus, reversing 'data' array
+        interpolated_function_for_values = interpolate.interp2d(coords[0], coords[1], values[0][::-1])
+        data.append(interpolated_function_for_values(latitude, longitude).item())
 
-    data_gust = gust_msgs.data(lat1=coords[0][0],
-                                lat2=coords[0][1],
-                                lon1=coords[1][0],
-                                lon2=coords[1][1])
-
-    # pygrib needs to have latitude from smaller to larger, but returns the values north-south,
-    # so from larger lat to smaller lat :( Thus, reversing 'data' array
-    interpolated_function_u = interpolate.interp2d(coords[0], coords[1], data_u[0][::-1])
-    interpolated_function_v = interpolate.interp2d(coords[0], coords[1], data_v[0][::-1])
-    interpolated_function_gust = interpolate.interp2d(coords[0], coords[1], data_gust[0][::-1])
-
-    print("Value of u-wind component at 10m above ground for point (" + str(latitude) + ", " + str(longitude) + "): " +
-          str(interpolated_function_u(latitude, longitude)))
-
-    print("Value of v-wind component at 10m above ground for point (" + str(latitude) + ", " + str(longitude) + "): " +
-          str(interpolated_function_v(latitude, longitude)))
-
-    print("Value of gusts at 10m above ground for point (" + str(latitude) + ", " + str(longitude) + "): " +
-          str(interpolated_function_gust(latitude, longitude)))
+    return data
 
 if __name__ == '__main__':
     # parser = argparse.ArgumentParser(description='Fetch gsf 0.25° archive forecasts and save to CSV.')
     # TODO argument parsing - from year to year, which run (00, 06, 12 or 18UTC) itp...
 
-    filename = filename_template.format(
-        '2020',
-        '07',
-        '30',
-        '00',
-        '015'
-    )
+    if len(sys.argv) > 1 and sys.argv[1] == 'prod':
+        year = 2020
+        gfs_runs = ['00', '06', '12', '18']
+        cookie_with_auth = authenticate_to_rda().cookies
+        for month in range(12):
+            for day in range(calendar.monthrange(year, month + 1)[1]):  # January is '1'
+                for run in gfs_runs:
+                    out_filename = csv_filename_template.format(str(year),
+                                                                prep_zeros_if_needed(str(month + 1), 1),
+                                                                prep_zeros_if_needed(str(day + 1), 1),
+                                                                run)
+                    try:
+                        os.remove(out_filename)
+                    except OSError:
+                        pass
+                    out_file = open(out_filename, 'a')
+                    with out_file:
+                        writer = csv.writer(out_file)
+                        fullNames = []
+                        for variable in variables_names:
+                            fullNames.append(variable['fullName'])
+                        writer.writerow(fullNames)
 
-    # cookie_with_auth = authenticate_to_rda().cookies
-    # year = '2020'
-    # gfs_runs = ['00', '06', '12', '18']
-    # for month in range(12):  # January is '1'
-    #     for day in range(calendar.monthrange(year, month + 1)):
-    #         for run in gfs_runs:
-    #             for hour in range(0, 240, 3):
-    #                 download_file(filename_template.format(
-    #                     year,
-    #                     prep_zeros_if_needed(str(month), 1),
-    #                     prep_zeros_if_needed(str(day), 1),
-    #                     run,
-    #                     prep_zeros_if_needed(str(hour), 2)
-    #                 ), cookie_with_auth)
+                        for hour in range(0, 240, 3):
+                            filename = grib_filename_template.format(year,
+                                                                     prep_zeros_if_needed(str(month + 1), 1),
+                                                                     prep_zeros_if_needed(str(day + 1), 1),
+                                                                     run,
+                                                                     prep_zeros_if_needed(str(hour), 2))
+                            download_file(filename, cookie_with_auth)
+                            data = fetch_gfs_archive_data(filename.split('/')[-1], 54.6, 18.8)
+                            print("Saving data from file: " + filename + " to file " + out_filename)
+                            data.insert(0, prep_zeros_if_needed(str(hour), 2))
+                            writer.writerow(data)  # coords for Hel
+    else:
+        year = '2020'
+        month = '07'
+        day = '30'
+        run = '00'
+        hour = '015'
+        filename = grib_filename_template.format(year, month, day, run, hour)
+        out_filename = csv_filename_template.format(year, month, day, run)
+        out_file = open(out_filename, 'w')
+        with out_file:
+            writer = csv.writer(out_file)
+            fullNames = []
+            for variable in variables_names:
+                fullNames.append(variable['fullName'])
+            writer.writerow(fullNames)
 
-    # download_file(filename, cookie_with_auth)
-    save_GFS_archive_data(filename, 54.6, 18.8) # coords for Hel
+            data = fetch_gfs_archive_data(filename.split('/')[-1], 54.6, 18.8)
+            print("Saving data from file " + filename + " to file " + out_filename)
+            writer.writerow(data)  # coords for Hel

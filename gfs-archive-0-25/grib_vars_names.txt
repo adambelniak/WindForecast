@@ -1,0 +1,17 @@
+atmosphere 0 Maximum/Composite radar reflectivity refc 2020-07-30 15:00:00 2020-07-30 00:00:00 15
+surface 0 Wind speed (gust) gust 2020-07-30 15:00:00 2020-07-30 00:00:00 15
+isobaricInhPa 400 Total Cloud Cover tcc 2020-07-30 15:00:00 2020-07-30 00:00:00 15
+isobaricInhPa 600 Total Cloud Cover tcc 2020-07-30 15:00:00 2020-07-30 00:00:00 15
+isobaricInhPa 800 Total Cloud Cover tcc 2020-07-30 15:00:00 2020-07-30 00:00:00 15
+isobaricInhPa 950 Total Cloud Cover tcc 2020-07-30 15:00:00 2020-07-30 00:00:00 15
+isobaricInhPa 1000 Total Cloud Cover tcc 2020-07-30 15:00:00 2020-07-30 00:00:00 15
+isobaricInhPa 1000 U component of wind u 2020-07-30 15:00:00 2020-07-30 00:00:00 15
+isobaricInhPa 1000 V component of wind v 2020-07-30 15:00:00 2020-07-30 00:00:00 15
+surface 0 Temperature t 2020-07-30 15:00:00 2020-07-30 00:00:00 15
+heightAboveGround 2 2 metre 2t temperature 2020-07-30 15:00:00 2020-07-30 00:00:00 15
+heightAboveGround 2 2 metre relative humidity 2r 2020-07-30 15:00:00 2020-07-30 00:00:00 15
+heightAboveGround 10 10 metre U wind component 10u 2020-07-30 15:00:00 2020-07-30 00:00:00 15
+heightAboveGround 10 10 metre V wind component 10v 2020-07-30 15:00:00 2020-07-30 00:00:00 15
+surface 0 Convective precipitation rate cprat 2020-07-30 15:00:00 2020-07-30 00:00:00 15
+surface 0 Precipitation rate prate 2020-07-30 15:00:00 2020-07-30 00:00:00 15
+meanSea 0 Pressure reduced to MSL prmsl 2020-07-30 15:00:00 2020-07-30 00:00:00 15
