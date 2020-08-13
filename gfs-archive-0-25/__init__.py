@@ -5,13 +5,16 @@ import sys
 import csv
 import pygrib
 import requests
+import math
 import time
 
 from past.builtins import raw_input
 from scipy import interpolate
-from utils import get_nearest_coords
-from utils import prep_zeros_if_needed
+from google.colab import drive
 
+drive.mount('/content/drive', force_remount=True)
+gfs_data_directory = '/content/drive/My Drive/GFS-0-25-archive-forecast-data/'
+os.makedirs(gfs_data_directory, exist_ok=True)
 gfs_variables = [
     {"shortName": "refc",
      "fullName": "Maximum/Composite radar reflectivity, dBz"},
@@ -119,6 +122,24 @@ def download_file(file, cookies):
     print()
 
 
+def get_nearest_coords(latitude, longitude):
+    lat1 = math.floor(latitude * 4) / 4
+    lat2 = math.floor((latitude + 0.25) * 4) / 4
+    if lat2 > 90:
+        lat2 = 90
+    long1 = math.floor(longitude * 4) / 4
+    long2 = math.floor((longitude + 0.25) * 4) / 4
+    if long2 >= 360:
+        long2 = 0
+    return [[lat1, lat2], [long1, long2]]
+
+
+def prep_zeros_if_needed(value, number_of_zeros):
+    for i in range(number_of_zeros - len(value) + 1):
+        value = '0' + value
+    return value
+
+
 def fetch_gfs_archive_data(grib_file, latitude=0., longitude=0.):
     print("Fetching gfs data from file " + grib_file)
     gr = pygrib.open(grib_file)
@@ -154,7 +175,7 @@ def save_test_data():
     if os.path.exists(filename.split('/')[-1]) is False:
         cookie_with_auth = authenticate_to_rda().cookies
         download_file(filename, cookie_with_auth)
-    out_filepath = csv_filename_template.format(year, month, day, run)
+    out_filepath = gfs_data_directory + csv_filename_template.format(year, month, day, run)
     out_file = open(out_filepath, 'w')
     with out_file:
         writer = csv.writer(out_file)
@@ -166,20 +187,22 @@ def save_test_data():
         print("Saving data from file " + filename + " to file " + out_filepath)
         writer.writerow(data)
         out_file.close()
-        print("Data saved.")
+        drive.flush_and_unmount()
+        # print("Data saved.")
 
 
 def save_all_data():
     year = 2020
     gfs_runs = ['00', '06', '12', '18']
     cookie_with_auth = authenticate_to_rda().cookies
-    for month in range(13):
+    for month in range(12):
         for day in range(calendar.monthrange(year, month + 1)[1]):  # January is '1'
             for run in gfs_runs:
-                out_filepath = csv_filename_template.format(str(year),
-                                                            prep_zeros_if_needed(str(month + 1), 1),
-                                                            prep_zeros_if_needed(str(day + 1), 1),
-                                                            run)
+                out_filepath = gfs_data_directory + csv_filename_template.format(str(year),
+                                                                                 prep_zeros_if_needed(str(month + 1),
+                                                                                                      1),
+                                                                                 prep_zeros_if_needed(str(day + 1), 1),
+                                                                                 run)
                 try:
                     os.remove(out_filepath)
                 except OSError:
@@ -205,14 +228,18 @@ def save_all_data():
                         print("Saving data from file: " + filename_base + " to file " + out_filepath)
                         data.insert(0, prep_zeros_if_needed(str(hour), 2))
                         writer.writerow(data)
-    print("All data saved.")
+    drive.flush_and_unmount()
+    print("All data saved to directory " + gfs_data_directory)
 
 
 if __name__ == '__main__':
-    if len(sys.argv) > 1 and sys.argv[1] == 'prod':
-        start = time.time()
-        save_all_data()
-        end = time.time()
-        print(end - start)
-    else:
-        save_test_data()
+    try:
+        if len(sys.argv) > 1 and sys.argv[1] == 'prod':
+            start = time.time()
+            save_all_data()
+            end = time.time()
+            print(end - start)
+        else:
+            save_test_data()
+    except KeyboardInterrupt:
+        drive.flush_and_unmount()
