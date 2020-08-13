@@ -9,6 +9,7 @@ from zipfile import ZipFile
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+import tqdm
 
 """This code obtains SYNOP data from 'https://danepubliczne.imgw.pl/'.
     
@@ -54,7 +55,7 @@ def get_localisation_id(localisation_name: str, dir='synop_data'):
     return row.iloc[0]['meteo_code']
 
 
-def get_synop_data(localisation_code, year: str, dir: str):
+def get_synop_data(localisation_code: str, year: str, dir: str):
     dir_per_year = os.path.join(dir, year, 'download')
     Path(dir_per_year).mkdir(parents=True, exist_ok=True)
 
@@ -85,15 +86,14 @@ def extract_zip_files(year: str, dir: str):
             zip.extractall(path=data_directory)
 
 
-def read_data(localisation_code, dir='synop_data'):
-    columns = ['year', 'month', 'day', 'hour', 'direction', 'velocity', 'gust']
+def read_data(localisation_code: str, year: str, number_column, columns, dir='synop_data'):
     station_data = pd.DataFrame(columns=columns)
 
-    for filepath in glob.iglob(rf'{dir}/*/*{localisation_code}*.csv', recursive=True):
+    for filepath in glob.iglob(rf'{dir}/{year}/*{localisation_code}*.csv', recursive=True):
         synop_data = pd.read_csv(filepath, encoding="ISO-8859-1", header=None)
-        required_data = synop_data[[YEAR, MONTH, DAY, HOUR, DIRECTION_COLUMN, VELOCITY_COLUMN, GUST_COLUMN]]
+        required_data = synop_data[number_column]
         station_data[columns] = required_data
-    station_data.to_csv(os.path.join(dir, localisation_code + '_data.csv'), index=False)
+    return station_data
 
 
 def plot_scatter_data_for_year(localisation_code: str, year: int, dir='synop_data'):
@@ -116,11 +116,20 @@ def plot_each_month_in_year(localisation_code: str, year: int, dir='synop_data')
     plt.show()
 
 
+def process_all_data(from_year, until_year, localisation_code):
+    dir = 'synop_data'
+    columns = ['year', 'month', 'day', 'hour', 'direction', 'velocity', 'gust']
+    station_data = pd.DataFrame(columns=columns)
+    number_column = [YEAR, MONTH, DAY, HOUR, DIRECTION_COLUMN, VELOCITY_COLUMN, GUST_COLUMN]
+
+    for year in tqdm.tqdm(range(from_year, until_year)):
+        get_synop_data(localisation_code, str(year), dir)
+        extract_zip_files(str(year), dir)
+        processed_wind_data = read_data(localisation_code, str(year), number_column, columns, dir)
+        station_data = station_data.append(processed_wind_data)
+    station_data.to_csv(os.path.join(dir, localisation_code + '_data.csv'), index=False)
+
+
 if __name__ == "__main__":
-    dir = './synop_data'
-    # extract_zip_files('2019', dir)
-    # download_list_of_station(dir)
-    # localisation_code = get_localisation_id("HEL")
-    # get_synop_data(str(localisation_code), '2018', dir)
-    read_data('135')
-    plot_each_month_in_year('135', 2018)
+    process_all_data(2001, 2020, '135')
+    plot_each_month_in_year('135', 2016)
