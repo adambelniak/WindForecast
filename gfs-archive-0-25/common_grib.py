@@ -25,4 +25,5 @@ def fetch_data_from_grib(grib_file, gfs_variables, latitude=0., longitude=0.):
             data[variable['fullName']] = interpolated_function_for_values(latitude, longitude).item()
         except:
             data[variable['fullName']] = 0.0
+    gr.close()
     return data

@@ -4,7 +4,7 @@ import csv
 import re
 import argparse
 import pygrib
-
+import gc
 from os.path import isfile, join
 
 from utils import prep_zeros_if_needed
@@ -90,9 +90,10 @@ grib_filename_pattern = 'gfs.0p25.(\d{10}).f(\d{3}).grib2.*'
 
 def save_to_csv(data, out_filepath, field_names):
     out_file = open(out_filepath, 'a')
-    writer = csv.DictWriter(out_file, fieldnames=field_names)
-    writer.writerow(data)
-    out_file.close()
+    with out_file:
+        writer = csv.DictWriter(out_file, fieldnames=field_names)
+        writer.writerow(data)
+        out_file.close()
 
 
 def check_if_variable_exists(variable, grib):
@@ -107,6 +108,30 @@ def check_if_variable_exists(variable, grib):
         return False
 
 
+def extract_data_to_csv(filepath, output_dir, latitude, longitude):
+    grib = pygrib.open(filepath)
+    full_names = ['date']
+    data = {}
+    for variable in gfs_variables:
+        if check_if_variable_exists(variable, grib):
+            data[variable['fullName']] = fetch_data_from_grib(filepath, [variable], latitude, longitude)[
+                variable['fullName']]
+            full_names.append(variable['fullName'])
+
+    grib.close()
+    raw_date = re.search(grib_filename_pattern, filepath).group(1)
+    offset = re.search(grib_filename_pattern, filepath).group(2)
+
+    date = '{0}-{1}-{2}'.format(raw_date[0:4], raw_date[4:6], raw_date[6:8])
+    run = raw_date[8:10]
+    csv_filename = date + '-' + run + 'Z.csv'
+    if os.path.exists(output_dir) is False:
+        os.mkdir(output_dir)
+    csv_out_path = os.path.join(output_dir, csv_filename)
+    data['date'] = date + ' ' + prep_zeros_if_needed(str((int(run) + int(offset)) % 24), 1) + ':00'
+    save_to_csv(data, csv_out_path, full_names)
+
+
 def grib_to_csv(input_dir, output_dir, latitude=0., longitude=0.):
     files_in_directory = [f for f in os.listdir(input_dir) if isfile(join(input_dir, f)) and bool(re.search(grib_filename_pattern, f))]
 
@@ -114,27 +139,8 @@ def grib_to_csv(input_dir, output_dir, latitude=0., longitude=0.):
     files_in_directory.sort(key=lambda str: re.search(grib_filename_pattern, str).group(2))
 
     for f in files_in_directory:
-        print("Fetching data from " + f)
-        filepath = os.path.join(input_dir, f)
-        grib = pygrib.open(filepath)
-        data = {}
-        full_names = ['date']
-        for variable in gfs_variables:
-            if check_if_variable_exists(variable, grib):
-                data[variable['fullName']] = fetch_data_from_grib(filepath, [variable], latitude, longitude)[variable['fullName']]
-                full_names.append(variable['fullName'])
-
-        raw_date = re.search(grib_filename_pattern, f).group(1)
-        offset = re.search(grib_filename_pattern, f).group(2)
-
-        date = '{0}-{1}-{2}'.format(raw_date[0:4], raw_date[4:6], raw_date[6:8])
-        run = raw_date[8:10]
-        csv_filename = date + '-' + run + 'Z.csv'
-        if os.path.exists(output_dir) is False:
-            os.mkdir(output_dir)
-        csv_out_path = os.path.join(output_dir,  csv_filename)
-        data['date'] = date + ' ' + prep_zeros_if_needed(str((int(run) + int(offset)) % 24), 1) + ':00'
-        save_to_csv(data, csv_out_path, full_names)
+        extract_data_to_csv(os.path.join(input_dir, f), output_dir, latitude, longitude)
+        gc.collect()
 
 
 if __name__ == '__main__':
