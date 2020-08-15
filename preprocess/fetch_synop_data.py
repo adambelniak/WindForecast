@@ -12,9 +12,9 @@ import seaborn as sns
 import tqdm
 
 """This code obtains SYNOP data from 'https://danepubliczne.imgw.pl/'.
-    
+
     SYNOP file contains meteorological data for single localisation and year. 
-    
+
     https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/dane_meteorologiczne/terminowe/synop/s_t_format.txt 
     - under this url, is available descriptions of file format. For project purpose it's required to process at least three columns, 
     which contains wind direction, wind velocity and gust of wind which are available at column:
@@ -34,6 +34,8 @@ HOUR = 5
 DIRECTION_COLUMN = 23
 VELOCITY_COLUMN = 25
 GUST_COLUMN = 27
+
+FEATURES = ['year', 'month', 'day', 'hour', 'direction', 'velocity', 'gust']
 
 
 def download_list_of_station(dir: str):
@@ -111,14 +113,23 @@ def plot_each_month_in_year(localisation_code: str, year: int, dir='synop_data')
     one_year_data['date_time'] = pd.to_datetime(one_year_data[['year', 'month', 'day', 'hour']])
 
     sns.boxplot(x='month', y="velocity",
-                     data=one_year_data, palette="Set3")
+                data=one_year_data, palette="Set3")
+
+    plt.show()
+
+
+def plot_box_all_data(localisation_code: str, dir='synop_data'):
+    station_data = pd.read_csv(os.path.join(dir, localisation_code + '_data.csv'))
+    print(station_data.head())
+    sns.boxplot(x='year', y="velocity",
+                data=station_data, palette="Set3")
 
     plt.show()
 
 
 def process_all_data(from_year, until_year, localisation_code):
-    dir = 'synop_data'
-    columns = ['year', 'month', 'day', 'hour', 'direction', 'velocity', 'gust']
+    dir = '../synop_data'
+    columns = FEATURES
     station_data = pd.DataFrame(columns=columns)
     number_column = [YEAR, MONTH, DAY, HOUR, DIRECTION_COLUMN, VELOCITY_COLUMN, GUST_COLUMN]
 
@@ -132,4 +143,4 @@ def process_all_data(from_year, until_year, localisation_code):
 
 if __name__ == "__main__":
     process_all_data(2001, 2020, '135')
-    plot_each_month_in_year('135', 2016)
+    plot_each_month_in_year('135', 2019, "../synop_data")
