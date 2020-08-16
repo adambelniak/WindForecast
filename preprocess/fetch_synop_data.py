@@ -34,8 +34,9 @@ HOUR = 5
 DIRECTION_COLUMN = 23
 VELOCITY_COLUMN = 25
 GUST_COLUMN = 27
+TEMPERATURE = 29
 
-FEATURES = ['year', 'month', 'day', 'hour', 'direction', 'velocity', 'gust']
+FEATURES = ['year', 'month', 'day', 'hour', 'direction', 'velocity', 'gust', 'temperature']
 
 
 def download_list_of_station(dir: str):
@@ -131,7 +132,7 @@ def process_all_data(from_year, until_year, localisation_code):
     dir = '../synop_data'
     columns = FEATURES
     station_data = pd.DataFrame(columns=columns)
-    number_column = [YEAR, MONTH, DAY, HOUR, DIRECTION_COLUMN, VELOCITY_COLUMN, GUST_COLUMN]
+    number_column = [YEAR, MONTH, DAY, HOUR, DIRECTION_COLUMN, VELOCITY_COLUMN, GUST_COLUMN, TEMPERATURE]
 
     for year in tqdm.tqdm(range(from_year, until_year)):
         get_synop_data(localisation_code, str(year), dir)

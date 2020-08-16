@@ -22,7 +22,7 @@ def split_features_into_arrays(data, train_split, past_len, future_offset, y_col
     return x_data, y_data
 
 
-def prepare_synop_dataset(file_path, train_split_factor=0.75, step=1, batch_size=32, past_len=20, label_len=1,
+def prepare_synop_dataset(file_path, train_split_factor=0.75, step=1, batch_size=32, past_len=40,
                           future_offset=10):
     data = pd.read_csv(file_path)
     train_split = int(len(data) * train_split_factor)
@@ -37,7 +37,6 @@ def prepare_synop_dataset(file_path, train_split_factor=0.75, step=1, batch_size
     dataset_train = keras.preprocessing.timeseries_dataset_from_array(
         x_train,
         y_train,
-        # label_len,
         sequence_length=sequence_length,
         sampling_rate=step,
         batch_size=batch_size,
@@ -47,7 +46,7 @@ def prepare_synop_dataset(file_path, train_split_factor=0.75, step=1, batch_size
 
     print("Input shape:", inputs.numpy().shape)
     print("Target shape:", targets.numpy().shape)
-
+    return dataset_train
 
 if __name__ == '__main__':
     prepare_synop_dataset("../synop_data/135_data.csv")
