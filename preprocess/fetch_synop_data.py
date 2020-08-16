@@ -10,6 +10,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import tqdm
+import argparse
 
 """This code obtains SYNOP data from 'https://danepubliczne.imgw.pl/'.
 
@@ -41,11 +42,13 @@ FEATURES = ['year', 'month', 'day', 'hour', 'direction', 'velocity', 'gust', 'te
 
 def download_list_of_station(dir: str):
     file_name = 'wykaz_stacji.csv'
-    url = 'https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/dane_meteorologiczne/' + file_name
-    file = requests.get(url, stream=True)
-    opened_file = open(os.path.join(dir, file_name), 'wb')
-    opened_file.write(file.content)
-    opened_file.close()
+
+    if not os.path.isfile(os.path.join(dir, file_name)):
+        url = 'https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/dane_meteorologiczne/' + file_name
+        file = requests.get(url, stream=True)
+        opened_file = open(os.path.join(dir, file_name), 'wb')
+        opened_file.write(file.content)
+        opened_file.close()
 
 
 def get_localisation_id(localisation_name: str, dir='synop_data'):
@@ -128,8 +131,7 @@ def plot_box_all_data(localisation_code: str, dir='synop_data'):
     plt.show()
 
 
-def process_all_data(from_year, until_year, localisation_code):
-    dir = '../synop_data'
+def process_all_data(from_year, until_year, localisation_code, dir='synop_data'):
     columns = FEATURES
     station_data = pd.DataFrame(columns=columns)
     number_column = [YEAR, MONTH, DAY, HOUR, DIRECTION_COLUMN, VELOCITY_COLUMN, GUST_COLUMN, TEMPERATURE]
@@ -143,5 +145,20 @@ def process_all_data(from_year, until_year, localisation_code):
 
 
 if __name__ == "__main__":
-    process_all_data(2001, 2020, '135')
-    plot_each_month_in_year('135', 2019, "../synop_data")
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('--dir', help='Working directory', default='')
+    parser.add_argument('--out', help='Directory where to save synop files', default='synop_data')
+    parser.add_argument('--localisation_name', help='Localisation name for which to get data', default='HEL', type=str)
+    parser.add_argument('--start_year', help='Start date for fetching data', type=int, default=2001)
+    parser.add_argument('--end_year', help='End date for fetching data', type=int, default=2020)
+
+    parser.add_argument('--plot_box_year', help='Year fow which create box plot for each month', type=int, default=2019)
+
+
+    args = parser.parse_args()
+    download_list_of_station(args.dir)
+    localisation_code = get_localisation_id(args.localisation_name, args.dir)
+
+    process_all_data(args.start_year, args.end_year, str(localisation_code))
+    plot_each_month_in_year(str(localisation_code), args.plot_box_year, args.out)
