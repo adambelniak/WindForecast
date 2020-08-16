@@ -2,6 +2,8 @@
 import os
 import csv
 import re
+import calendar
+import datetime
 import argparse
 from os.path import isfile, join
 
@@ -24,14 +26,16 @@ def extract_data_to_csv(filepath, output_dir, latitude, longitude, gfs_parameter
     raw_date = re.search(grib_filename_pattern, filepath).group(1)
     offset = re.search(grib_filename_pattern, filepath).group(2)
     run = raw_date[8:10]
-    date = '{0}-{1}-{2}'.format(raw_date[0:4], raw_date[4:6], raw_date[6:8])
+    init_date = '{0}-{1}-{2}'.format(raw_date[0:4], raw_date[4:6], raw_date[6:8])
+    date = datetime.datetime(int(raw_date[0:4]), int(raw_date[4:6]), int(raw_date[6:8]))
+    date = date.replace(hour=int(run)) + datetime.timedelta(hours=int(offset))
 
     data = {
-        'date': date + ' ' + prep_zeros_if_needed(str((int(run) + int(offset)) % 24), 1) + ':00',
+        'date': date.isoformat(),
         gfs_parameter['fullName']: fetch_data_from_grib(filepath, [gfs_parameter], latitude, longitude)[gfs_parameter['fullName']]
     }
 
-    csv_filename = date + '-' + run + 'Z.csv'
+    csv_filename = init_date + '-' + run + 'Z.csv'
     if os.path.exists(output_dir) is False:
         os.mkdir(output_dir)
     csv_out_path = os.path.join(output_dir, csv_filename)
