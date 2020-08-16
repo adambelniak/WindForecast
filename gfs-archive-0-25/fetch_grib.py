@@ -11,7 +11,7 @@ from utils import prep_zeros_if_needed
 from common_grib import fetch_data_from_grib
 
 
-gfs_variables = [
+gfs_parameters = [
     {"shortName": "refc",
      "fullName": "Maximum/Composite radar reflectivity, dBz"},
     {"shortName": "gust",
@@ -132,11 +132,11 @@ def save_test_data():
     out_file = open(out_filepath, 'w')
     with out_file:
         full_names = []
-        for variable in gfs_variables:
-            full_names.append(variable['fullName'])
+        for parameter in gfs_parameters:
+            full_names.append(parameter['fullName'])
         writer = csv.DictWriter(out_file, fieldnames=full_names)
         writer.writeheader()
-        data = fetch_data_from_grib(filename.split('/')[-1], gfs_variables, hel_lat, hel_long)
+        data = fetch_data_from_grib(filename.split('/')[-1], gfs_parameters, hel_lat, hel_long)
         print("Saving data from file " + filename + " to file " + out_filepath)
         writer.writerow(data)
         out_file.close()
@@ -161,8 +161,8 @@ def save_all_data():
                 out_file = open(out_filepath, 'a')
                 with out_file:
                     full_names = ['offset']
-                    for variable in gfs_variables:
-                        full_names.append(variable['fullName'])
+                    for parameter in gfs_parameters:
+                        full_names.append(parameter['fullName'])
                     writer = csv.DictWriter(out_file, fieldnames=full_names)
                     writer.writeheader()
                     for hour in range(0, 168, 3):
@@ -174,7 +174,7 @@ def save_all_data():
                         filename_base = filename.split('/')[-1]
                         if os.path.exists(filename_base) is False:
                             download_file(filename, cookie_with_auth)
-                        data = fetch_data_from_grib(filename_base, gfs_variables, hel_lat, hel_long)
+                        data = fetch_data_from_grib(filename_base, gfs_parameters, hel_lat, hel_long)
                         data['offset'] = prep_zeros_if_needed(str(hour), 2)
                         os.remove(filename_base)
                         print("Saving data from file: " + filename_base + " to file " + out_filepath)
