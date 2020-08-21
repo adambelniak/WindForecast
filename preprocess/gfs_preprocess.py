@@ -23,48 +23,48 @@ def prepare_gfs_data(dir):
 
 
 def filter_desired_time_stride(data: dict, time_stride: int):
-    columns = ["Date", "Wind", "Temperature", "Convective"]
     if time_stride % 3:
         raise Exception("Time stride must be number divisible by 3")
 
-    data_for_single_time_stride = pd.DataFrame(columns=columns)
+    single_gfs_frame = next(iter(data.values()))
+
+    data_for_single_time_stride = pd.DataFrame(columns=single_gfs_frame.columns)
     for gfs_time_key in sorted(data.keys()):
         single_gfs = data[gfs_time_key]
         date_time = datetime.strptime(gfs_time_key, '%Y-%m-%d-%HZ') + timedelta(hours=time_stride)
 
         single_gfs['date'] = pd.to_datetime(single_gfs['date'])
         filtered = single_gfs[single_gfs['date'] == date_time]
-        filtered.columns = columns
+        filtered.columns = single_gfs_frame.columns
 
         data_for_single_time_stride = data_for_single_time_stride.append(filtered, ignore_index=True)
 
     return data_for_single_time_stride
 
 
-def show_raw_for_desired_time_stride(data: dict, time_stride: int):
-    data_for_single_time_stride = filter_desired_time_stride(data, time_stride)
+def show_raw_for_desired_time_stride(data: dict, time_stride: int, feature_keys: list):
 
+    data_for_single_time_stride = filter_desired_time_stride(data, time_stride)
     fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(15, 20), dpi=80, facecolor="w", edgecolor="k")
 
-    feature_keys = ["Wind", "Temperature", "Convective"]
 
     for i in range(len(feature_keys)):
         key = feature_keys[i]
         t_data = data_for_single_time_stride[key]
-        t_data.index = data_for_single_time_stride["Date"]
+        t_data.index = data_for_single_time_stride["date"]
         t_data.head()
         ax = t_data.plot(
             ax=axes[i // 2, i % 2],
-            title="{} - {}".format(feature_keys[i], key),
+            title="{}".format(feature_keys[i]),
             rot=25,
         )
         ax.legend([feature_keys[i]])
     plt.show()
 
 
-def show_heatmap_for_desired_time_stride(data, time_stride):
+def show_heatmap_for_desired_time_stride(data, time_stride, columns):
     data_for_single_time_stride = filter_desired_time_stride(data, time_stride)
-    data_for_single_time_stride = data_for_single_time_stride.drop('Date', 1)
+    data_for_single_time_stride = data_for_single_time_stride.drop('date', 1)
 
     plt.matshow(data_for_single_time_stride.corr())
     plt.xticks(range(data_for_single_time_stride.shape[1]), data_for_single_time_stride.columns, fontsize=14, rotation=90)
@@ -77,7 +77,15 @@ def show_heatmap_for_desired_time_stride(data, time_stride):
     plt.show()
 
 
+def process_and_plot(dir, time_stride, index_column):
+    data = prepare_gfs_data(dir)
+    single_gfs_frame = next(iter(data.values()))
+    columns = [column for column in single_gfs_frame.columns if column != index_column]
+
+    show_raw_for_desired_time_stride(data, time_stride, columns)
+    show_heatmap_for_desired_time_stride(data, time_stride, columns)
+
+
 if __name__ == "__main__":
-    data = prepare_gfs_data("./gfs_forecast")
-    show_raw_for_desired_time_stride(data, 12)
-    show_heatmap_for_desired_time_stride(data, 12)
+    index_column = "date"
+    process_and_plot("./wind", 12, index_column)
