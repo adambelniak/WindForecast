@@ -7,6 +7,8 @@ def create_model(inputs, gfs_input, learning_rate: float, ):
 
     inputs = keras.layers.Input(shape=(inputs.shape[1], inputs.shape[2]))
     lstm_out = keras.layers.LSTM(32)(inputs)
+    keras.layers.Concatenate()([lstm_out, auxiliary_input])
+
     outputs = keras.layers.Dense(1)(lstm_out)
 
     model = keras.Model(inputs=[inputs, auxiliary_input], outputs=outputs)
