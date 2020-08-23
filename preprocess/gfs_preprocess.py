@@ -5,6 +5,9 @@ import re
 from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
 
+from preprocess.synop_preprocess import normalize
+
+CREATED_AT_COLUMN_NAME = "created_at"
 
 def prepare_gfs_data(dir):
     gfs_data = {}
@@ -76,6 +79,25 @@ def show_heatmap_for_desired_time_stride(data, time_stride, columns):
     plt.title("Feature Correlation Heatmap", fontsize=14)
     plt.show()
 
+def filter_time_stride_with_origin_date(data: dict, time_stride: int):
+    if time_stride % 3:
+        raise Exception("Time stride must be number divisible by 3")
+
+    single_gfs_frame = next(iter(data.values()))
+    data_for_single_time_stride = pd.DataFrame(columns=single_gfs_frame.columns)
+    for gfs_time_key in sorted(data.keys()):
+        single_gfs = data[gfs_time_key]
+        date_time = datetime.strptime(gfs_time_key, '%Y-%m-%d-%HZ') + timedelta(hours=time_stride)
+
+        single_gfs['date'] = pd.to_datetime(single_gfs['date'])
+        filtered = single_gfs[single_gfs['date'] == date_time]
+        filtered.columns = single_gfs_frame.columns
+        filtered[CREATED_AT_COLUMN_NAME] = datetime.strptime(gfs_time_key, '%Y-%m-%d-%HZ')
+
+        data_for_single_time_stride = data_for_single_time_stride.append(filtered, ignore_index=True)
+
+    return data_for_single_time_stride
+
 
 def process_and_plot(dir, time_stride, index_column):
     data = prepare_gfs_data(dir)
@@ -86,6 +108,20 @@ def process_and_plot(dir, time_stride, index_column):
     show_heatmap_for_desired_time_stride(data, time_stride, columns)
 
 
+def normalize_data_without_dates(data, index_column):
+    columns_withou_dates = [column for column in data.columns if column not in [index_column, CREATED_AT_COLUMN_NAME]]
+    data[columns_withou_dates] = normalize(data[columns_withou_dates].values)
+    return data
+
+
+def prepare_gfs_dataset(dir: str, index_column: str, time_stride=12, train_split_factor=0.75):
+    data = prepare_gfs_data(dir)
+    data_for_single_time_stride = filter_time_stride_with_origin_date(data, time_stride)
+    data_for_single_time_stride = normalize_data_without_dates(data_for_single_time_stride, index_column)
+
+    return data_for_single_time_stride
+
+
 if __name__ == "__main__":
     index_column = "date"
-    process_and_plot("./wind", 12, index_column)
+    prepare_gfs_dataset("./wind", index_column, 12)
