@@ -183,7 +183,7 @@ def save_all_data():
 
 
 if __name__ == '__main__':
-   if len(sys.argv) > 1 and sys.argv[1] == 'prod':
+    if len(sys.argv) > 1 and sys.argv[1] == 'prod':
         start = time.time()
         save_all_data()
         end = time.time()

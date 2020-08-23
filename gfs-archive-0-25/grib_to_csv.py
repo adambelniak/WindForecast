@@ -2,12 +2,10 @@
 import os
 import csv
 import re
-import calendar
 import datetime
 import argparse
 from os.path import isfile, join
 
-from utils import prep_zeros_if_needed
 from common_grib import fetch_data_from_grib
 
 
@@ -63,11 +61,11 @@ def grib_to_csv(input_dir, output_dir, latitude, longitude, shortName, typeOfLev
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--dir', help='Directory with grib files', default='')
-    parser.add_argument('--out', help='Output directory for csv files', default='')
-    parser.add_argument('--lat', help='Latitude of point for which to get the data', default=54.6, type=float)
-    parser.add_argument('--long', help='Longitude of point for which to get the data', default=18.8, type=float)
-    parser.add_argument('--shortName', help='Short name of parameter to fetch', default='2t')
+    parser.add_argument('--dir', help='Directory with grib files. Default: current directory.', default='')
+    parser.add_argument('--out', help='Output directory for csv files. Default: current directory.', default='')
+    parser.add_argument('--lat', help='Latitude of point for which to get the data. Default: 54.6', default=54.6, type=float)
+    parser.add_argument('--long', help='Longitude of point for which to get the data. Default: 18.8', default=18.8, type=float)
+    parser.add_argument('--shortName', help='Short name of parameter to fetch. Default: 2t', default='2t')
     parser.add_argument('--type', help='Type of level')
     parser.add_argument('--level', help='Level', type=int)
 
