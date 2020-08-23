@@ -50,7 +50,7 @@ def prepare_data(past_len=12, future_offset=12, train_split_factor=0.75):
                                                                       future_offset)
 
     print(train_synop_input.shape)
-    model = create_model(train_synop_input, gfs_input, 0.0005)
+    model = create_model(train_synop_input, gfs_input, 0.001)
     #
     history = model.fit([train_synop_input, gfs_input], [train_synop_label], epochs=300, batch_size=32)
 
