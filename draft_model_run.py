@@ -26,18 +26,18 @@ def create_sequence(data, gfs_data, past_len, future_offset):
     gfs_input = []
     gfs_columns_without_dates = [column for column in gfs_data.columns if
                                  column not in ['date', CREATED_AT_COLUMN_NAME]]
-    synop_columns_withou_dates = [column for column in data.columns if column != 'date']
+    synop_columns_without_dates = [column for column in data.columns if column not in ['date', 'year', 'day', 'month']]
     gfs_time_diff = get_gfs_time_laps(gfs_data)
     gfs_index = gfs_time_diff.seconds // 3600
     for single_stride in range(train_size // gfs_index - 4):
         past_synop_data = data.iloc[gfs_index * single_stride:(single_stride + 1) * gfs_index + past_len][
-            synop_columns_withou_dates].values
+            synop_columns_without_dates].values
         gfs_prediction = gfs_data.iloc[single_stride]
         gfs_prediction = gfs_prediction[gfs_columns_without_dates].values
 
         # wind_velocity = np.sqrt(gfs_prediction["U-wind, m/s"] ** 2 + gfs_prediction["V-wind, m/s"] ** 2)
         future_index = gfs_index * (single_stride + 1) + future_offset
-        label = data.iloc[future_index][['velocity']].values.flatten()
+        label = data.iloc[future_index][['temperature']].values.flatten()
         train_synop_input.append(past_synop_data.astype(np.float32))
         train_synop_label.append(label.astype(np.float32))
         gfs_input.append(gfs_prediction.astype(np.float32))

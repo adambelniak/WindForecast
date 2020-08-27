@@ -9,6 +9,7 @@ from preprocess.synop_preprocess import normalize
 
 CREATED_AT_COLUMN_NAME = "created_at"
 
+
 def prepare_gfs_data(dir):
     gfs_data = {}
 
@@ -46,10 +47,8 @@ def filter_desired_time_stride(data: dict, time_stride: int):
 
 
 def show_raw_for_desired_time_stride(data: dict, time_stride: int, feature_keys: list):
-
     data_for_single_time_stride = filter_desired_time_stride(data, time_stride)
     fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(15, 20), dpi=80, facecolor="w", edgecolor="k")
-
 
     for i in range(len(feature_keys)):
         key = feature_keys[i]
@@ -70,7 +69,8 @@ def show_heatmap_for_desired_time_stride(data, time_stride, columns):
     data_for_single_time_stride = data_for_single_time_stride.drop('date', 1)
 
     plt.matshow(data_for_single_time_stride.corr())
-    plt.xticks(range(data_for_single_time_stride.shape[1]), data_for_single_time_stride.columns, fontsize=14, rotation=90)
+    plt.xticks(range(data_for_single_time_stride.shape[1]), data_for_single_time_stride.columns, fontsize=14,
+               rotation=90)
     plt.gca().xaxis.tick_bottom()
     plt.yticks(range(data_for_single_time_stride.shape[1]), data_for_single_time_stride.columns, fontsize=14)
 
@@ -79,7 +79,14 @@ def show_heatmap_for_desired_time_stride(data, time_stride, columns):
     plt.title("Feature Correlation Heatmap", fontsize=14)
     plt.show()
 
-def filter_time_stride_with_origin_date(data: dict, time_stride: int):
+
+def filter_desired_time_stride_with_origin_date(data: dict, time_stride: int, number_future_samples: int):
+    """
+    This method return GFS prediction for provided point of time.
+    :param data: dictionary contains gfs by creation time
+    :param time_stride: in hours - specify which gfs prediction should be considered; interested time = created_at + time_stride
+    :return:
+    """
     if time_stride % 3:
         raise Exception("Time stride must be number divisible by 3")
 
@@ -87,16 +94,69 @@ def filter_time_stride_with_origin_date(data: dict, time_stride: int):
     data_for_single_time_stride = pd.DataFrame(columns=single_gfs_frame.columns)
     for gfs_time_key in sorted(data.keys()):
         single_gfs = data[gfs_time_key]
-        date_time = datetime.strptime(gfs_time_key, '%Y-%m-%d-%HZ') + timedelta(hours=time_stride)
+        start_gfs_prediction_time = datetime.strptime(gfs_time_key, '%Y-%m-%d-%HZ') + timedelta(hours=time_stride)
+        end_gfs_prediction_time = datetime.strptime(gfs_time_key, '%Y-%m-%d-%HZ') + timedelta(
+            hours=time_stride + number_future_samples)
 
         single_gfs['date'] = pd.to_datetime(single_gfs['date'])
-        filtered = single_gfs[single_gfs['date'] == date_time]
+        filtered = single_gfs[
+            (single_gfs['date'] >= start_gfs_prediction_time) & (single_gfs['date'] <= end_gfs_prediction_time)]
         filtered.columns = single_gfs_frame.columns
         filtered[CREATED_AT_COLUMN_NAME] = datetime.strptime(gfs_time_key, '%Y-%m-%d-%HZ')
 
         data_for_single_time_stride = data_for_single_time_stride.append(filtered, ignore_index=True)
 
     return data_for_single_time_stride
+
+
+def get_gfs_time_laps(gfs_creation_time):
+    creation_time = sorted(gfs_creation_time)[:2]
+    return datetime.strptime(creation_time[1], '%Y-%m-%d-%HZ') - datetime.strptime(creation_time[0], '%Y-%m-%d-%HZ')
+
+
+def filter_desired_time_with_future(data: dict, time_stride: int, number_future_samples: int):
+    """
+    This method return GFS predictions for provided point of time together with next samples.
+    :param data: dictionary contains gfs by creation time
+    :param time_stride: in hours - specify which gfs prediction should be considered; interested time = created_at + time_stride
+    :return:
+    """
+    gfs_file_time_laps = get_gfs_time_laps(data.keys())
+    gfs_file_time_laps_hours = gfs_file_time_laps.seconds // 3600
+    if gfs_file_time_laps_hours < number_future_samples:
+        raise Exception("Hours of future samples cannot be grater than difference of gfs creation")
+    data_for_single_time_stride = filter_desired_time_stride_with_origin_date(data, time_stride, number_future_samples)
+
+
+def create_gfs_sequence(data: dict, start_sequence: int, end_sequence: int, past_samples_length: int,
+                        future_samples_length: int):
+    """
+
+    :param data: dictionary contains gfs data from files
+    :param start_sequence: index of start sample from which the sequences will be generated
+    :param end_sequence: index of end sample until which the sequences will be generated
+    :param past_samples_length: number of samples before point time, to be considered during sequence generating
+    :param future_samples_length: number of samples after point time, to be considered during sequence generating
+    :return:
+    """
+    single_gfs_data_frame = next(iter(data.values()))
+
+    if end_sequence <= start_sequence:
+        raise Exception("Start bias time cannot be greater than end bias")
+    if start_sequence - past_samples_length < 0:
+        raise Exception("Time window for the Past cannot be less than 0")
+    if end_sequence + future_samples_length > single_gfs_data_frame.shape[0]:
+        raise Exception("Time window for the Future cannot be greater than count samples in single GFS")
+
+    gfs_sequences = {}
+    for gfs_time_key in sorted(data.keys()):
+        single_gfs = data[gfs_time_key]
+        start = start_sequence - past_samples_length
+        end = end_sequence + future_samples_length
+        single_gfs = single_gfs.iloc[start:end]
+
+        gfs_sequences[gfs_time_key] = single_gfs
+    return gfs_sequences
 
 
 def process_and_plot(dir, time_stride, index_column):
@@ -114,14 +174,23 @@ def normalize_data_without_dates(data, index_column):
     return data
 
 
-def prepare_gfs_dataset(dir: str, index_column: str, time_stride=12, train_split_factor=0.75):
+def prepare_gfs_dataset(dir: str, index_column: str, time_stride=12):
     data = prepare_gfs_data(dir)
-    data_for_single_time_stride = filter_time_stride_with_origin_date(data, time_stride)
+    data_for_single_time_stride = filter_desired_time_stride_with_origin_date(data, time_stride, 0)
     data_for_single_time_stride = normalize_data_without_dates(data_for_single_time_stride, index_column)
 
     return data_for_single_time_stride
 
 
+def prepare_gfs_sequence_dataset(dir: str, start_sequence: int, end_sequence: int, past_samples_length: int,
+                                 future_samples_length: int):
+    data = prepare_gfs_data(dir)
+    gfs_sequences = create_gfs_sequence(data, start_sequence, end_sequence, past_samples_length, future_samples_length)
+
+    return gfs_sequences
+
 if __name__ == "__main__":
     index_column = "date"
-    prepare_gfs_dataset("./wind", index_column, 12)
+    data = prepare_gfs_data("./wind")
+
+    create_gfs_sequence(data, 6, 9, 2, 2)
