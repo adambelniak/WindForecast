@@ -7,7 +7,10 @@ def create_model(inputs, gfs_input, learning_rate: float, ):
 
     inputs = keras.layers.Input(shape=(inputs.shape[1], inputs.shape[2]))
     lstm_out = keras.layers.LSTM(32)(inputs)
-    outputs = keras.layers.Dense(1)(lstm_out)
+    conc = keras.layers.Concatenate()([lstm_out, auxiliary_input])
+    outputs = keras.layers.Dense(32, activation='relu')(conc)
+
+    outputs = keras.layers.Dense(1)(outputs)
 
     model = keras.Model(inputs=[inputs, auxiliary_input], outputs=outputs)
     model.compile(optimizer=keras.optimizers.Adam(learning_rate=learning_rate), loss="mse")
