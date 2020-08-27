@@ -1,7 +1,7 @@
 from datetime import timedelta
 
 from models.gfs_model import create_model
-from preprocess.gfs_preprocess import prepare_gfs_dataset, CREATED_AT_COLUMN_NAME
+from preprocess.gfs_preprocess import prepare_gfs_dataset_for_single_point_time, CREATED_AT_COLUMN_NAME
 from preprocess.synop_preprocess import prepare_synop_dataset, split_features_into_arrays
 import pandas as pd
 import numpy as np
@@ -47,7 +47,7 @@ def create_sequence(data, gfs_data, past_len, future_offset):
 
 def prepare_data(past_len=12, future_offset=12, train_split_factor=0.75):
     dataset_train = prepare_synop_dataset("preprocess/synop_data/135_data.csv")
-    gfs_dataset = prepare_gfs_dataset("preprocess/wind_and_temp", 'date', future_offset)
+    gfs_dataset = prepare_gfs_dataset_for_single_point_time("preprocess/wind_and_temp", 'date', future_offset)
 
     least_recent_date = gfs_dataset["date"].min()
     dataset_train = dataset_train[dataset_train["date"] >= least_recent_date - timedelta(hours=past_len)]

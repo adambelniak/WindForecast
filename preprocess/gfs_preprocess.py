@@ -154,6 +154,7 @@ def create_gfs_sequence(data: dict, start_sequence: int, end_sequence: int, past
         start = start_sequence - past_samples_length
         end = end_sequence + future_samples_length
         single_gfs = single_gfs.iloc[start:end]
+        single_gfs['date'] = pd.to_datetime(single_gfs['date'])
 
         gfs_sequences[gfs_time_key] = single_gfs
     return gfs_sequences
@@ -174,7 +175,7 @@ def normalize_data_without_dates(data, index_column):
     return data
 
 
-def prepare_gfs_dataset(dir: str, index_column: str, time_stride=12):
+def prepare_gfs_dataset_for_single_point_time(dir: str, index_column: str, time_stride=12):
     data = prepare_gfs_data(dir)
     data_for_single_time_stride = filter_desired_time_stride_with_origin_date(data, time_stride, 0)
     data_for_single_time_stride = normalize_data_without_dates(data_for_single_time_stride, index_column)
@@ -182,15 +183,45 @@ def prepare_gfs_dataset(dir: str, index_column: str, time_stride=12):
     return data_for_single_time_stride
 
 
-def prepare_gfs_sequence_dataset(dir: str, start_sequence: int, end_sequence: int, past_samples_length: int,
-                                 future_samples_length: int):
+def get_single_gfs_time_dif(gfs):
+    gfs = pd.to_datetime(gfs['date'])
+    return gfs.at[1] - gfs.at[0]
+
+
+def get_single_gfs_start_time(gfs_data: dict):
+    created_at_key = next(iter(gfs_data.keys()))
+    gfs = gfs_data[created_at_key]
+    gfs = pd.to_datetime(gfs['date'])
+
+    return gfs.at[0] - datetime.strptime(created_at_key, '%Y-%m-%d-%HZ')
+
+
+def convert_hours_to_index(gfs_hour_diff: int, gfs_start_at: int, interested_hour):
+    return (interested_hour - gfs_start_at) // gfs_hour_diff
+
+
+def prepare_gfs_sequence_dataset(dir: str, start_sequence_hour: int, end_sequence_hour: int,
+                                 past_samples_length_hour: int,
+                                 future_samples_length_hour: int):
     data = prepare_gfs_data(dir)
-    gfs_sequences = create_gfs_sequence(data, start_sequence, end_sequence, past_samples_length, future_samples_length)
+    gfs_hour_diff = get_single_gfs_time_dif(next(iter(data.values()))).seconds // 3600
+    gfs_start_at = get_single_gfs_start_time(data).seconds // 3600
+
+    start_sequence_index = convert_hours_to_index(gfs_hour_diff, gfs_start_at, start_sequence_hour)
+    end_sequence_index = convert_hours_to_index(gfs_hour_diff, gfs_start_at, end_sequence_hour) + 1
+    past_samples_length = past_samples_length_hour // gfs_hour_diff
+    future_samples_length = future_samples_length_hour // gfs_hour_diff
+
+    gfs_sequences = create_gfs_sequence(data, start_sequence_index, end_sequence_index, past_samples_length,
+                                        future_samples_length)
+    # gfs_file_time_laps_hours = gfs_file_time_laps.seconds // 3600
 
     return gfs_sequences
 
+
 if __name__ == "__main__":
     index_column = "date"
-    data = prepare_gfs_data("./wind")
+    # data = prepare_gfs_data("./wind")
 
-    create_gfs_sequence(data, 6, 9, 2, 2)
+    data = prepare_gfs_sequence_dataset('./wind', 24, 52, 3, 3)
+    print(next(iter(data.values())).head)
