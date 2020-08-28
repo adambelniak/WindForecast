@@ -214,9 +214,8 @@ def prepare_gfs_sequence_dataset(dir: str, start_sequence_hour: int, end_sequenc
 
     gfs_sequences = create_gfs_sequence(data, start_sequence_index, end_sequence_index, past_samples_length,
                                         future_samples_length)
-    # gfs_file_time_laps_hours = gfs_file_time_laps.seconds // 3600
 
-    return gfs_sequences
+    return gfs_sequences, gfs_hour_diff
 
 
 if __name__ == "__main__":
