@@ -1,11 +1,13 @@
 Basically, we don't download grib files via python script.
-We use subsetting GUI at https://rda.ucar.edu/datasets/ds084.1/index.html#!cgi-bin/datasets/getSubset?dsnum=084.1&listAction=customize&_da=y
+Initially, we used subsetting GUI at https://rda.ucar.edu/datasets/ds084.1/index.html#!cgi-bin/datasets/getSubset?dsnum=084.1&listAction=customize&_da=y.
+We switched to a python client: https://github.com/NCAR/rda-apps-clients/tree/master/src/python
+When using the python client, base on their README and our GFSControlFileTemplate.txt
 
 This is the flow we perform:
 
-    1. Request a data subset via the aforementioned link.
+    1. Request a data subset via GUI or python client.
     2. When the data is ready, download tar files with python script provided by RDA.
-    3. Use grib_to_csv.py to fetch data from grib file and save it to csv files. 
+    3. [Only if requesting data in grib2 format] Use grib_to_csv.py to fetch data from grib file and save it to csv files.
        Each csv file will contain one GFS forecast for one variable.
     4. Use merge_csv.py to merge one-parameter csv files into multi-parameter csv files.
     5. Upload files to drive and use.

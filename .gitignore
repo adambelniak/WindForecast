@@ -141,3 +141,5 @@ cython_debug/
 *.grib2
 .idea
 synop_data
+preprocess/wind
+preprocess/wykaz_stacji.csv
