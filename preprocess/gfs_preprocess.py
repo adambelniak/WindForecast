@@ -48,7 +48,7 @@ def filter_desired_time_stride(data: dict, time_stride: int):
 
 def show_raw_for_desired_time_stride(data: dict, time_stride: int, feature_keys: list):
     data_for_single_time_stride = filter_desired_time_stride(data, time_stride)
-    fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(15, 20), dpi=80, facecolor="w", edgecolor="k")
+    fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(20, 20), dpi=80, facecolor="w", edgecolor="k")
 
     for i in range(len(feature_keys)):
         key = feature_keys[i]
@@ -160,8 +160,19 @@ def create_gfs_sequence(data: dict, start_sequence: int, end_sequence: int, past
     return gfs_sequences
 
 
+def wind_transformation(gfs_data_frames):
+    transformed = {}
+    for gfs_time_key in sorted(gfs_data_frames.keys()):
+        single_gfs = gfs_data_frames[gfs_time_key]
+        single_gfs["gfs_velocity"] = np.sqrt(single_gfs["U-wind, m/s"] ** 2 + single_gfs["V-wind, m/s"] ** 2)
+        single_gfs = single_gfs.drop(["U-wind, m/s", "V-wind, m/s"], axis=1)
+        transformed[gfs_time_key] = single_gfs
+    return transformed
+
+
 def process_and_plot(dir, time_stride, index_column):
     data = prepare_gfs_data(dir)
+    data = wind_transformation(data)
     single_gfs_frame = next(iter(data.values()))
     columns = [column for column in single_gfs_frame.columns if column != index_column]
 
@@ -177,8 +188,9 @@ def normalize_data_without_dates(data, index_column):
 
 def prepare_gfs_dataset_for_single_point_time(dir: str, index_column: str, time_stride=12):
     data = prepare_gfs_data(dir)
+    data = wind_transformation(data)
     data_for_single_time_stride = filter_desired_time_stride_with_origin_date(data, time_stride, 0)
-    data_for_single_time_stride = normalize_data_without_dates(data_for_single_time_stride, index_column)
+    # data_for_single_time_stride = normalize_data_without_dates(data_for_single_time_stride, index_column)
 
     return data_for_single_time_stride
 
@@ -222,5 +234,5 @@ if __name__ == "__main__":
     index_column = "date"
     # data = prepare_gfs_data("./wind")
 
-    data = prepare_gfs_sequence_dataset('./wind', 24, 52, 3, 3)
-    print(next(iter(data.values())).head)
+    data = process_and_plot('./wind_and_temp', 12, 'date')
+    print(data.head)

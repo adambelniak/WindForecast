@@ -36,8 +36,8 @@ DIRECTION_COLUMN = 23
 VELOCITY_COLUMN = 25
 GUST_COLUMN = 27
 TEMPERATURE = 29
-
-FEATURES = ['year', 'month', 'day', 'hour', 'direction', 'velocity', 'gust', 'temperature']
+PRESSURE = 41
+FEATURES = ['year', 'month', 'day', 'hour', 'direction', 'velocity', 'gust', 'temperature', 'pressure']
 
 
 def download_list_of_station(dir: str):
@@ -116,7 +116,7 @@ def plot_each_month_in_year(localisation_code: str, year: int, dir='synop_data')
     one_year_data = station_data.loc[station_data['year'] == year]
     one_year_data['date_time'] = pd.to_datetime(one_year_data[['year', 'month', 'day', 'hour']])
 
-    sns.boxplot(x='month', y="velocity",
+    sns.boxplot(x='month', y="pressure",
                 data=one_year_data, palette="Set3")
 
     plt.show()
@@ -134,7 +134,7 @@ def plot_box_all_data(localisation_code: str, dir='synop_data'):
 def process_all_data(from_year, until_year, localisation_code, dir='synop_data'):
     columns = FEATURES
     station_data = pd.DataFrame(columns=columns)
-    number_column = [YEAR, MONTH, DAY, HOUR, DIRECTION_COLUMN, VELOCITY_COLUMN, GUST_COLUMN, TEMPERATURE]
+    number_column = [YEAR, MONTH, DAY, HOUR, DIRECTION_COLUMN, VELOCITY_COLUMN, GUST_COLUMN, TEMPERATURE, PRESSURE]
 
     for year in tqdm.tqdm(range(from_year, until_year)):
         get_synop_data(localisation_code, str(year), dir)
@@ -157,7 +157,7 @@ if __name__ == "__main__":
 
 
     args = parser.parse_args()
-    download_list_of_station(args.dir)
+    # download_list_of_station(args.dir)
     localisation_code = get_localisation_id(args.localisation_name, args.dir)
 
     process_all_data(args.start_year, args.end_year, str(localisation_code))
