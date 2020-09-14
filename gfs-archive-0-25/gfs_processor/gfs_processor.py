@@ -58,8 +58,8 @@ def find_coordinates(path, output_file_name="city_geo.csv"):
 
 
 def build_template(latitude, longitude, start_date, end_date, param_code, product, level='HTGL:10'):
-    end_date = end_date.strftime('%Y%m%d%H')
-    start_date = start_date.strftime('%Y%m%d%H')
+    end_date = end_date.strftime('%Y%m%d%H%H%M%M')
+    start_date = start_date.strftime('%Y%m%d%H%H%M%M')
     date = '{}/to/{}'.format(start_date, end_date)
     control = {
         'dataset': 'ds084.1',
