@@ -13,7 +13,7 @@ import os
 from utils import get_nearest_coords
 from enum import Enum
 
-req_id_path = 'req_list.csv'
+REQ_ID_PATH = 'req_list.csv'
 
 class RequestStatus(Enum):
     SENT = 'sent'
@@ -22,12 +22,12 @@ class RequestStatus(Enum):
 
 
 def save_request_id(req_id: str):
-    if not os.path.isfile(req_id_path):
+    if not os.path.isfile(REQ_ID_PATH):
         pseudo_db = pd.DataFrame(columns=["req_id", "status"])
     else:
-        pseudo_db = pd.read_csv(req_id_path)
-    pseudo_db.append({"req_id": req_id, "status": RequestStatus.SENT}, ignore_index=True)
-    pseudo_db.to_csv(req_id_path)
+        pseudo_db = pd.read_csv(REQ_ID_PATH)
+    pseudo_db = pseudo_db.append({"req_id": req_id, "status": RequestStatus.SENT.value}, ignore_index=True)
+    pseudo_db.to_csv(REQ_ID_PATH)
 
 
 def generate_product_description(start_hour, end_hour, step=3):
@@ -105,14 +105,16 @@ def run_gfs_processor(**kwargs):
     end_date = datetime.strptime(kwargs["end_date"], '%Y-%m-%d %H:%M')
     product = generate_product_description(kwargs['forecast_start'], kwargs['forecast_end'])
 
-    data.to_csv('map_cities_to_gfs_cords')
+    data.to_csv('map_cities_to_gfs_cords.csv')
 
     for latitude, longitude in gfs_coordinates:
         template = build_template(latitude, longitude, start_date, end_date, 'V GRD', product)
         response = rc.submit_json(template)
-        assert response['status'] == 'ok'
-        rqst_id = response['result']['request_id']
-        save_request_id(rqst_id)
+        if response['status'] == 'ok':
+            rqst_id = response['result']['request_id']
+            save_request_id(rqst_id)
+        else:
+            print("Rda has returned error")
         print(response)
 
 
@@ -124,7 +126,7 @@ if __name__ == '__main__':
     parser.add_argument('--coordinate_path', help='Path to list of cities with coordinates',
                         default='../city_coordinates/city_geo_test.csv')
     parser.add_argument('--start_date', help='Start date GFS', default='2015-01-15 00:00')
-    parser.add_argument('--end_date', help='End date GFS', default='2020-08-01 00:00')
+    parser.add_argument('--end_date', help='End date GFS', default='2015-01-21 00:00')
     parser.add_argument('--gfs_parameter', help='Parameter to process from NCAR', type=str)
     parser.add_argument('--forecast_start', default=3)
     parser.add_argument('--forecast_end', default=168)
