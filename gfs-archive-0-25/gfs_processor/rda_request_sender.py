@@ -2,6 +2,7 @@ import argparse
 import sys
 from datetime import datetime
 import pandas as pd
+import schedule
 
 sys.path.insert(0, '../rda-apps-clients/src/python')
 sys.path.insert(1, '..')
@@ -12,21 +13,27 @@ from tqdm import tqdm
 import os
 from utils import get_nearest_coords
 from enum import Enum
+from own_logger import logger
+from typing import Optional
 
 REQ_ID_PATH = 'req_list.csv'
 
+
 class RequestStatus(Enum):
+    PENDING = 'pending'
     SENT = 'sent'
     FAILED = 'failed'
     COMPLETED = 'completed'
 
 
-def save_request_id(req_id: str):
+def save_request(latitude: str, longitude: str, status: RequestStatus, req_id: Optional[str] = None):
     if not os.path.isfile(REQ_ID_PATH):
         pseudo_db = pd.DataFrame(columns=["req_id", "status"])
     else:
-        pseudo_db = pd.read_csv(REQ_ID_PATH)
-    pseudo_db = pseudo_db.append({"req_id": req_id, "status": RequestStatus.SENT.value}, ignore_index=True)
+        pseudo_db = pd.read_csv(REQ_ID_PATH, index_col=[0])
+    pseudo_db = pseudo_db.append(
+        {"req_id": req_id, "status": status.value, "latitude": latitude, "longitude": longitude},
+        ignore_index=True)
     pseudo_db.to_csv(REQ_ID_PATH)
 
 
@@ -45,7 +52,7 @@ def find_coordinates(path, output_file_name="city_geo.csv"):
     geolocator = Nominatim(user_agent='gfs_fetch_processor')
     geo_list = []
 
-    print("Downloading coordinates for provided cities")
+    logger.info("Downloading coordinates for provided cities")
     for city_name in tqdm(city_list):
         geo = geolocator.geocode(city_name)
         if geo:
@@ -90,12 +97,12 @@ def transform_coordinates(data):
     gfs_coordinates = data.drop_duplicates(subset=["latitude", "longitude"])
     num_dup = before_duplicates_filter - len(gfs_coordinates)
 
-    print("Removed {} duplicates rows".format(num_dup))
+    logger.info("Removed {} duplicates rows".format(num_dup))
 
     return data, gfs_coordinates[["latitude", "longitude"]].values
 
 
-def run_gfs_processor(**kwargs):
+def prepare_data(**kwargs):
     if kwargs["fetch_city_coordinates"]:
         data = find_coordinates(kwargs["citi_list"])
     else:
@@ -108,15 +115,45 @@ def run_gfs_processor(**kwargs):
     data.to_csv('map_cities_to_gfs_cords.csv')
 
     for latitude, longitude in gfs_coordinates:
-        template = build_template(latitude, longitude, start_date, end_date, 'V GRD', product)
-        response = rc.submit_json(template)
-        if response['status'] == 'ok':
-            rqst_id = response['result']['request_id']
-            save_request_id(rqst_id)
-        else:
-            print("Rda has returned error")
-        print(response)
+        save_request(latitude, longitude, RequestStatus.PENDING)
+    return gfs_coordinates
 
+
+def gfs_request_sender(kwargs):
+
+    start_date = datetime.strptime(kwargs["start_date"], '%Y-%m-%d %H:%M')
+    end_date = datetime.strptime(kwargs["end_date"], '%Y-%m-%d %H:%M')
+    product = generate_product_description(kwargs['forecast_start'], kwargs['forecast_end'])
+    request_db = pd.read_csv(REQ_ID_PATH, index_col=0)
+
+    request_to_sent = request_db[request_db["status"] == RequestStatus.PENDING.value]
+
+    for index, request in request_to_sent.iterrows():
+        latitude = request["latitude"]
+        longitude = request["longitude"]
+
+        template = build_template(latitude, longitude, start_date, end_date, 'V GRD', product)
+        # response = rc.submit_json(template)
+        # if response['status'] == 'ok':
+        #     reqst_id = response['result']['request_id']
+        request_db.loc[index, "status"] = RequestStatus.SENT.value
+        # request_db.loc[index]["req_id"] = reqst_id
+        # else:
+        #     logger.info("Rda has returned error")
+        # logger.info(response)
+    request_db.to_csv(REQ_ID_PATH)
+
+
+def prepare_and_start_processor(**kwargs):
+    gfs_coordinates = prepare_data(**kwargs)
+    gfs_request_sender(kwargs)
+    # try:
+    #     schedule.every(30).seconds.do(gfs_request_sender, kwargs)
+    # except Exception as e:
+    #     logger.error(e, exc_info=True)
+
+    # while True:
+    #     schedule.run_pending()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -132,4 +169,4 @@ if __name__ == '__main__':
     parser.add_argument('--forecast_end', default=168)
 
     args = parser.parse_args()
-    run_gfs_processor(**vars(args))
+    prepare_and_start_processor(**vars(args))
