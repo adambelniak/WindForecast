@@ -7,8 +7,6 @@ import argparse
 from os.path import isfile, join
 
 from common_grib import fetch_data_from_grib
-
-
 grib_filename_pattern = 'gfs.0p25.(\d{10}).f(\d{3}).grib2.*'
 
 

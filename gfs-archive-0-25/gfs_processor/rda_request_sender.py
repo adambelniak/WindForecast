@@ -8,7 +8,6 @@ sys.path.insert(0, '../rda-apps-clients/src/python')
 sys.path.insert(1, '..')
 
 from geopy.geocoders import Nominatim, GeoNames
-import rdams_client as rc
 from tqdm import tqdm
 import os
 from utils import get_nearest_coords
@@ -84,22 +83,21 @@ def build_template(latitude, longitude, start_date, end_date, param_code, produc
     return control
 
 
-def transform_coordinates(data):
+def prepare_coordinates(data):
     """
-    Find nearest GFS coordinates for provided cities. Filter duplicates
+    Round GFS coordinates for provided cities. Filter duplicates.
     :param data: Pandas dataFrame
     :return:
     """
-    coordinates = data.apply(lambda x: get_nearest_coords(x["latitude"], x["longitude"]), axis=1)
-    coordinates = [[x[0], y[0]] for x, y in coordinates]
-    data[["latitude", "longitude"]] = coordinates
+    coordinates = data.apply(lambda x: [round(x["latitude"], 1), round(x["longitude"], 1)], axis=1)
+    data[["latitude", "longitude"]] = [x for x in coordinates]
     before_duplicates_filter = len(data)
-    gfs_coordinates = data.drop_duplicates(subset=["latitude", "longitude"])
-    num_dup = before_duplicates_filter - len(gfs_coordinates)
+    data = data.drop_duplicates(subset=["latitude", "longitude"])
+    num_dup = before_duplicates_filter - len(data)
 
     logger.info("Removed {} duplicates rows".format(num_dup))
 
-    return data, gfs_coordinates[["latitude", "longitude"]].values
+    return data
 
 
 def prepare_data(**kwargs):
@@ -107,16 +105,16 @@ def prepare_data(**kwargs):
         data = find_coordinates(kwargs["citi_list"])
     else:
         data = pd.read_csv(kwargs["coordinate_path"])
-    data, gfs_coordinates = transform_coordinates(data)
+    data = prepare_coordinates(data)
     start_date = datetime.strptime(kwargs["start_date"], '%Y-%m-%d %H:%M')
     end_date = datetime.strptime(kwargs["end_date"], '%Y-%m-%d %H:%M')
     product = generate_product_description(kwargs['forecast_start'], kwargs['forecast_end'])
 
     data.to_csv('map_cities_to_gfs_cords.csv')
 
-    for latitude, longitude in gfs_coordinates:
+    for latitude, longitude in data[['latitude', 'longitude']].values:
         save_request(latitude, longitude, RequestStatus.PENDING)
-    return gfs_coordinates
+    return data[['latitude', 'longitude']].values
 
 
 def gfs_request_sender(kwargs):
@@ -124,6 +122,7 @@ def gfs_request_sender(kwargs):
     start_date = datetime.strptime(kwargs["start_date"], '%Y-%m-%d %H:%M')
     end_date = datetime.strptime(kwargs["end_date"], '%Y-%m-%d %H:%M')
     product = generate_product_description(kwargs['forecast_start'], kwargs['forecast_end'])
+    param = kwargs['gfs_parameter']
     request_db = pd.read_csv(REQ_ID_PATH, index_col=0)
 
     request_to_sent = request_db[request_db["status"] == RequestStatus.PENDING.value]
@@ -132,7 +131,7 @@ def gfs_request_sender(kwargs):
         latitude = request["latitude"]
         longitude = request["longitude"]
 
-        template = build_template(latitude, longitude, start_date, end_date, 'V GRD', product)
+        template = build_template(latitude, longitude, start_date, end_date, param, product)
         # response = rc.submit_json(template)
         # if response['status'] == 'ok':
         #     reqst_id = response['result']['request_id']
@@ -161,10 +160,10 @@ if __name__ == '__main__':
     parser.add_argument('--fetch_city_coordinates', help='get coordinates for provided cities', default=False)
     parser.add_argument('--citi_list', help='Path to SYNOP list with locations names', default=False)
     parser.add_argument('--coordinate_path', help='Path to list of cities with coordinates',
-                        default='../city_coordinates/city_geo_test.csv')
+                        default='../city_coordinates/city_geo.csv')
     parser.add_argument('--start_date', help='Start date GFS', default='2015-01-15 00:00')
     parser.add_argument('--end_date', help='End date GFS', default='2015-01-21 00:00')
-    parser.add_argument('--gfs_parameter', help='Parameter to process from NCAR', type=str)
+    parser.add_argument('--gfs_parameter', help='Parameter to process from NCAR', type=str, default='V GRD')
     parser.add_argument('--forecast_start', default=3)
     parser.add_argument('--forecast_end', default=168)
 

@@ -3,7 +3,7 @@ Initially, we used subsetting GUI at https://rda.ucar.edu/datasets/ds084.1/index
 We switched to a python client: https://github.com/NCAR/rda-apps-clients/tree/master/src/python
 When using the python client, base on their README and our GFSControlFileTemplate.txt
 
-This is the flow we perform:
+This is the flow we perform (still under improvement):
 
     1. Request a data subset via GUI or python client.
     2. When the data is ready, download tar files with python script provided by RDA.
