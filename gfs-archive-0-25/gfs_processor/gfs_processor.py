@@ -20,11 +20,11 @@ def create_dir_by_location_and_request(req_id: str, latitude: str, longitute: st
     Path(location_path).mkdir(parents=True, exist_ok=True)
     request_path = os.path.join(location_path, req_id)
     Path(request_path).mkdir(parents=True, exist_ok=True)
-    return location_path, request_path
+    return request_path
 
 
 def download_request(req_id: int, latitude: str, longitute: str):
-    _, request_path = create_dir_by_location_and_request(str(req_id), latitude, longitute)
+    request_path = create_dir_by_location_and_request(str(req_id), latitude, longitute)
     logger.info("start downloading")
     try:
         download(req_id, request_path)
@@ -41,20 +41,28 @@ def processor():
     logger.info("Start processor")
     request_db = read_pseudo_rda_request_db()
     not_completed = request_db[request_db["status"] == RequestStatus.SENT.value]
-    logger.info("{} requests is pending".format(len(not_completed)))
+    logger.info("{} requests are pending".format(len(not_completed)))
     for index, request in not_completed.iterrows():
         req_id = request['req_id']
         res = rc.get_status(req_id)
-        request_status = res['result']['status']
 
-        if request_status == 'Completed':
-            logger.info("Request id: {} is completed".format(req_id))
-            try:
-                download_request(req_id, str(request["latitude"]), str(request["longitude"]))
-                request_db.loc[index,"status"] = RequestStatus.COMPLETED.value
-                purge(req_id)
-            except Exception as e:
-                logger.error(e, exc_info=True)
+        if res['status'] == 'error':
+            logger.info("Request id: {} has failed".format(req_id))
+            request_db.loc[index, "status"] = RequestStatus.FAILED.value
+
+        elif res['status'] == 'ok':
+            request_status = res['result']['status']
+
+            if request_status == RequestStatus.COMPLETED.value:
+                logger.info("Request id: {} is completed".format(req_id))
+                try:
+                    download_request(req_id, str(request["latitude"]), str(request["longitude"]))
+                    request_db.loc[index, "status"] = RequestStatus.COMPLETED.value
+                    purge(req_id)
+                except Exception as e:
+                    logger.error(e, exc_info=True)
+        else:
+            logger.error("Unhandled request status: {}".format(res['status']))
 
     request_db.to_csv(REQ_ID_PATH)
 

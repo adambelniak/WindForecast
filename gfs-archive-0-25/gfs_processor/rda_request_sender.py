@@ -13,6 +13,7 @@ import os
 from utils import get_nearest_coords
 from enum import Enum
 from own_logger import logger
+from rdams_client import submit_json
 from typing import Optional
 
 REQ_ID_PATH = 'req_list.csv'
@@ -102,7 +103,7 @@ def prepare_coordinates(data):
 
 def prepare_data(**kwargs):
     if kwargs["fetch_city_coordinates"]:
-        data = find_coordinates(kwargs["citi_list"])
+        data = find_coordinates(kwargs["city_list"])
     else:
         data = pd.read_csv(kwargs["coordinate_path"])
     data = prepare_coordinates(data)
@@ -132,14 +133,14 @@ def gfs_request_sender(kwargs):
         longitude = request["longitude"]
 
         template = build_template(latitude, longitude, start_date, end_date, param, product)
-        # response = rc.submit_json(template)
-        # if response['status'] == 'ok':
-        #     reqst_id = response['result']['request_id']
-        request_db.loc[index, "status"] = RequestStatus.SENT.value
-        # request_db.loc[index]["req_id"] = reqst_id
-        # else:
-        #     logger.info("Rda has returned error")
-        # logger.info(response)
+        response = submit_json(template)
+        if response['status'] == 'ok':
+            reqst_id = response['result']['request_id']
+            request_db.loc[index]["status"] = RequestStatus.SENT.value
+            request_db.loc[index]["req_id"] = reqst_id
+        else:
+            logger.info("Rda has returned error")
+        logger.info(response)
     request_db.to_csv(REQ_ID_PATH)
 
 
@@ -158,9 +159,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--fetch_city_coordinates', help='get coordinates for provided cities', default=False)
-    parser.add_argument('--citi_list', help='Path to SYNOP list with locations names', default=False)
+    parser.add_argument('--city_list', help='Path to SYNOP list with locations names', default=False)
     parser.add_argument('--coordinate_path', help='Path to list of cities with coordinates',
-                        default='../city_coordinates/city_geo.csv')
+                        default='../city_coordinates/city_geo_test.csv')
     parser.add_argument('--start_date', help='Start date GFS', default='2015-01-15 00:00')
     parser.add_argument('--end_date', help='End date GFS', default='2015-01-21 00:00')
     parser.add_argument('--gfs_parameter', help='Parameter to process from NCAR', type=str, default='V GRD')
