@@ -4,7 +4,6 @@ from rda_request_sender import RequestStatus, REQ_ID_PATH
 import rdams_client as rc
 from modified_rda_download_client import download
 from own_logger import logger
-from pathlib import Path
 import os
 
 
@@ -12,22 +11,17 @@ def read_pseudo_rda_request_db():
     return pd.read_csv(REQ_ID_PATH, index_col=0)
 
 
-def create_dir_by_location_and_request(req_id: str, latitude: str, longitute: str):
+def get_download_target_path(req_id: str, latitude: str, longitute: str, param: str, level: str):
     latitude = latitude.replace('.', '_')
     longitute = longitute.replace('.', '_')
 
-    location_path = latitude + "_" + longitute
-    Path(location_path).mkdir(parents=True, exist_ok=True)
-    request_path = os.path.join(location_path, req_id)
-    Path(request_path).mkdir(parents=True, exist_ok=True)
-    return request_path
+    return os.path.join("download/tar", latitude + "_" + longitute, param, level, req_id)
 
 
-def download_request(req_id: int, latitude: str, longitute: str):
-    request_path = create_dir_by_location_and_request(str(req_id), latitude, longitute)
-    logger.info("start downloading")
+def download_request(req_id: int, target_dir):
+    logger.info("Downloading files from request {0} into {1}".format(req_id, target_dir))
     try:
-        download(req_id, request_path)
+        download(req_id, target_dir)
     except Exception as e:
         logger.error("Downloading failed", exc_info=True)
         raise e
@@ -37,11 +31,21 @@ def purge(req_id: int):
     rc.purge_request(req_id)
 
 
-def processor():
-    logger.info("Start processor")
-    request_db = read_pseudo_rda_request_db()
-    not_completed = request_db[request_db["status"] == RequestStatus.SENT.value]
+def print_db_stats(db):
+    not_completed = db[db["status"] == RequestStatus.SENT.value]
     logger.info("{} requests are pending".format(len(not_completed)))
+    completed = db[db["status"] == RequestStatus.COMPLETED.value]
+    logger.info("{} requests are completed".format(len(completed)))
+    failed = db[db["status"] == RequestStatus.FAILED.value]
+    logger.info("{} requests have failed".format(len(failed)))
+
+
+def processor():
+    logger.info("Starting rda download processor")
+    request_db = read_pseudo_rda_request_db()
+    print_db_stats(request_db)
+
+    not_completed = request_db[request_db["status"] == RequestStatus.SENT.value]
     for index, request in not_completed.iterrows():
         req_id = request['req_id']
         res = rc.get_status(req_id)
@@ -52,13 +56,17 @@ def processor():
 
         elif res['status'] == 'ok':
             request_status = res['result']['status']
+            logger.info("Status of request {0} is {1}".format(req_id, request_status))
 
             if request_status == RequestStatus.COMPLETED.value:
-                logger.info("Request id: {} is completed".format(req_id))
+                latitude, longitude = str(request["latitude"]), str(request["longitude"])
+                param, level = str(request["param"]), str(request["level"])
+                download_target_path = get_download_target_path(str(req_id), latitude, longitude, param, level)
+                os.makedirs(download_target_path, exist_ok=True)
                 try:
-                    download_request(req_id, str(request["latitude"]), str(request["longitude"]))
+                    download_request(req_id, download_target_path)
                     request_db.loc[index, "status"] = RequestStatus.COMPLETED.value
-                    purge(req_id)
+                    #purge(req_id)
                 except Exception as e:
                     logger.error(e, exc_info=True)
         else:

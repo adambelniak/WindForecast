@@ -16,24 +16,29 @@ from own_logger import logger
 from rdams_client import submit_json
 from typing import Optional
 
-REQ_ID_PATH = 'req_list.csv'
+REQ_ID_PATH = 'csv/req_list.csv'
 
 
 class RequestStatus(Enum):
-    PENDING = 'pending'
-    SENT = 'sent'
-    FAILED = 'failed'
-    COMPLETED = 'completed'
+    PENDING = 'Pending'
+    SENT = 'Sent'
+    FAILED = 'Failed'
+    COMPLETED = 'Completed'
 
 
-def save_request(latitude: str, longitude: str, status: RequestStatus, req_id: Optional[str] = None):
+def save_request(latitude: str, longitude: str, param: str, level: str,  status: RequestStatus, req_id: Optional[str] = None):
     if not os.path.isfile(REQ_ID_PATH):
-        pseudo_db = pd.DataFrame(columns=["req_id", "status"])
+        pseudo_db = pd.DataFrame(columns=["req_id", "status", "latitude", "longitude", "param", "level"])
     else:
         pseudo_db = pd.read_csv(REQ_ID_PATH, index_col=[0])
     pseudo_db = pseudo_db.append(
-        {"req_id": req_id, "status": status.value, "latitude": latitude, "longitude": longitude},
-        ignore_index=True)
+        {"req_id": req_id,
+         status: status.value,
+         latitude: latitude,
+         longitude: longitude,
+         param: param,
+         level: level
+         }, ignore_index=True)
     pseudo_db.to_csv(REQ_ID_PATH)
 
 
@@ -64,7 +69,7 @@ def find_coordinates(path, output_file_name="city_geo.csv"):
     return data
 
 
-def build_template(latitude, longitude, start_date, end_date, param_code, product, level='HTGL:10'):
+def build_template(latitude, longitude, start_date, end_date, param_code, product, level):
     end_date = end_date.strftime('%Y%m%d%H%H%M%M')
     start_date = start_date.strftime('%Y%m%d%H%H%M%M')
     date = '{}/to/{}'.format(start_date, end_date)
@@ -101,29 +106,27 @@ def prepare_coordinates(data):
     return data
 
 
-def prepare_data(**kwargs):
+def prepare_requests(**kwargs):
     if kwargs["fetch_city_coordinates"]:
         data = find_coordinates(kwargs["city_list"])
     else:
         data = pd.read_csv(kwargs["coordinate_path"])
     data = prepare_coordinates(data)
-    start_date = datetime.strptime(kwargs["start_date"], '%Y-%m-%d %H:%M')
-    end_date = datetime.strptime(kwargs["end_date"], '%Y-%m-%d %H:%M')
-    product = generate_product_description(kwargs['forecast_start'], kwargs['forecast_end'])
+    # save city coordinates just for debug
+    data.to_csv('csv/map_cities_to_gfs_cords.csv')
 
-    data.to_csv('map_cities_to_gfs_cords.csv')
-
+    param, level = kwargs['param'], kwargs['level']
+    data[['param', 'level']] = param, level
     for latitude, longitude in data[['latitude', 'longitude']].values:
-        save_request(latitude, longitude, RequestStatus.PENDING)
-    return data[['latitude', 'longitude']].values
+        save_request(latitude, longitude, param, level, RequestStatus.PENDING)
 
 
-def gfs_request_sender(kwargs):
+def send_prepared_requests(kwargs):
 
     start_date = datetime.strptime(kwargs["start_date"], '%Y-%m-%d %H:%M')
     end_date = datetime.strptime(kwargs["end_date"], '%Y-%m-%d %H:%M')
     product = generate_product_description(kwargs['forecast_start'], kwargs['forecast_end'])
-    param = kwargs['gfs_parameter']
+
     request_db = pd.read_csv(REQ_ID_PATH, index_col=0)
 
     request_to_sent = request_db[request_db["status"] == RequestStatus.PENDING.value]
@@ -131,8 +134,10 @@ def gfs_request_sender(kwargs):
     for index, request in request_to_sent.iterrows():
         latitude = request["latitude"]
         longitude = request["longitude"]
+        param = request['gfs_parameter']
+        level = request['level']
 
-        template = build_template(latitude, longitude, start_date, end_date, param, product)
+        template = build_template(latitude, longitude, start_date, end_date, param, product, level)
         response = submit_json(template)
         if response['status'] == 'ok':
             reqst_id = response['result']['request_id']
@@ -145,8 +150,8 @@ def gfs_request_sender(kwargs):
 
 
 def prepare_and_start_processor(**kwargs):
-    gfs_coordinates = prepare_data(**kwargs)
-    gfs_request_sender(kwargs)
+    prepare_requests(**kwargs)
+    send_prepared_requests(kwargs)
     # try:
     #     schedule.every(30).seconds.do(gfs_request_sender, kwargs)
     # except Exception as e:
@@ -165,8 +170,10 @@ if __name__ == '__main__':
     parser.add_argument('--start_date', help='Start date GFS', default='2015-01-15 00:00')
     parser.add_argument('--end_date', help='End date GFS', default='2015-01-21 00:00')
     parser.add_argument('--gfs_parameter', help='Parameter to process from NCAR', type=str, default='V GRD')
-    parser.add_argument('--forecast_start', default=3)
-    parser.add_argument('--forecast_end', default=168)
+    parser.add_argument('--gfs_level', help='Level of parameter', type=str, default='HTGL:10')
+    parser.add_argument('--forecast_start', help='Offset (in hours) of beginning of the forecast. Should be divisible '
+                                                 'by 3.', default=3)
+    parser.add_argument('--forecast_end', help='Offset (in hours) of end of the forecast. Should be divisible by 3.', default=168)
 
     args = parser.parse_args()
     prepare_and_start_processor(**vars(args))

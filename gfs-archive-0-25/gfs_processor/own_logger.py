@@ -8,7 +8,7 @@ def get_logger():
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setFormatter(formatter)
 
-    handler = logging.FileHandler('gfs_prcessor.log')
+    handler = logging.FileHandler('log/gfs_processor.log')
     handler.setLevel(logging.INFO)
     handler.setFormatter(formatter)
 

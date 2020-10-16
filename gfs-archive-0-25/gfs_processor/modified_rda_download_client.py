@@ -9,7 +9,7 @@ import subprocess
 
 BASE_URL = 'https://rda.ucar.edu/json_apps/'
 USE_NETRC = False
-DEFAULT_AUTH_FILE = './rdamspw.txt'
+DEFAULT_AUTH_FILE = './txt/rdamspw.txt'
 
 
 def get_filelist(request_idx):
