@@ -24,6 +24,8 @@ class RequestStatus(Enum):
     SENT = 'Sent'
     FAILED = 'Failed'
     COMPLETED = 'Completed'
+    DOWNLOADED = 'Downloaded'
+    FINISHED = 'Finished'
 
 
 def save_request(latitude: str, longitude: str, param: str, level: str,  status: RequestStatus, req_id: Optional[str] = None):
