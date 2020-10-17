@@ -6,9 +6,10 @@ import csv
 import requests
 import time
 
+sys.path.insert(0, '..')
 from past.builtins import raw_input
 from utils import prep_zeros_if_needed
-from common_grib import fetch_data_from_grib
+from grib_miscellanous.common_grib import fetch_data_from_grib
 
 
 gfs_parameters = [

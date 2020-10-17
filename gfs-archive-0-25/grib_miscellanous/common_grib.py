@@ -1,4 +1,5 @@
-import pygrib
+import pygrib, sys
+sys.path.insert(0, '..')
 from utils import get_nearest_coords
 from scipy import interpolate
 

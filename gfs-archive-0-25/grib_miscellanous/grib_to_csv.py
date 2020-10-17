@@ -6,8 +6,8 @@ import datetime
 import argparse
 from os.path import isfile, join
 
-from common_grib import fetch_data_from_grib
-grib_filename_pattern = 'gfs.0p25.(\d{10}).f(\d{3}).grib2.*'
+from grib_miscellanous.common_grib import fetch_data_from_grib
+GRIB_FILENAME_PATTERN = 'gfs.0p25.(\d{10}).f(\d{3}).grib2.*'
 
 
 def save_to_csv(data, out_filepath, field_names):
@@ -19,8 +19,8 @@ def save_to_csv(data, out_filepath, field_names):
 
 
 def extract_data_to_csv(filepath, output_dir, latitude, longitude, gfs_parameter):
-    raw_date = re.search(grib_filename_pattern, filepath).group(1)
-    offset = re.search(grib_filename_pattern, filepath).group(2)
+    raw_date = re.search(GRIB_FILENAME_PATTERN, filepath).group(1)
+    offset = re.search(GRIB_FILENAME_PATTERN, filepath).group(2)
     run = raw_date[8:10]
     init_date = '{0}-{1}-{2}'.format(raw_date[0:4], raw_date[4:6], raw_date[6:8])
     date = datetime.datetime(int(raw_date[0:4]), int(raw_date[4:6]), int(raw_date[6:8]))
@@ -40,10 +40,10 @@ def extract_data_to_csv(filepath, output_dir, latitude, longitude, gfs_parameter
 
 
 def grib_to_csv(input_dir, output_dir, latitude, longitude, shortName, typeOfLevel, level):
-    files_in_directory = [f for f in os.listdir(input_dir) if isfile(join(input_dir, f)) and bool(re.search(grib_filename_pattern, f))]
+    files_in_directory = [f for f in os.listdir(input_dir) if isfile(join(input_dir, f)) and bool(re.search(GRIB_FILENAME_PATTERN, f))]
 
     print("Found " + str(len(files_in_directory)) + " matching files.")
-    files_in_directory.sort(key=lambda str: re.search(grib_filename_pattern, str).group(2))
+    files_in_directory.sort(key=lambda str: re.search(GRIB_FILENAME_PATTERN, str).group(2))
     gfs_parameter = {
         "shortName": shortName,
         "fullName": shortName
