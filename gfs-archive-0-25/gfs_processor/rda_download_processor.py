@@ -4,26 +4,29 @@ from rda_request_sender import RequestStatus, REQ_ID_PATH
 import rdams_client as rc
 from modified_rda_download_client import download
 from own_logger import logger
-import os, tarfile
+import os, tarfile, re, argparse
+
+
+CSV_FILENAME_FORMAT = r'(gfs\.0p25\.\d{10}\.f\d{3}\.grib2\.[a-zA-Z]+)(\d+)(.gp.csv)'
 
 
 def read_pseudo_rda_request_db():
     return pd.read_csv(REQ_ID_PATH, index_col=0)
 
 
-def get_target_path(req_id: str, latitude: str, longitute: str, param: str, level: str):
+def get_target_path(latitude: str, longitute: str, param: str, level: str):
     latitude = latitude.replace('.', '_')
     longitute = longitute.replace('.', '_')
 
-    return os.path.join(latitude + "_" + longitute, param, level, req_id)
+    return os.path.join(latitude + "_" + longitute, param, level)
 
 
 def get_download_target_path_tar(req_id: str, latitude: str, longitute: str, param: str, level: str):
-    return os.path.join("download/tar", get_target_path(req_id, latitude, longitute, param, level))
+    return os.path.join("download/tar", req_id, get_target_path(latitude, longitute, param, level))
 
 
-def get_download_target_path_csv(req_id: str, latitude: str, longitute: str, param: str, level: str):
-    return os.path.join("download/csv", get_target_path(req_id, latitude, longitute, param, level))
+def get_download_target_path_csv(latitude: str, longitute: str, param: str, level: str):
+    return os.path.join("download/csv", get_target_path(latitude, longitute, param, level))
 
 
 def download_request(req_id: int, target_dir):
@@ -56,6 +59,11 @@ def extract_files(download_target_path, extract_target_path):
         tar.extractall(extract_target_path)
         tar.close()
 
+    new_csvs_pattern = re.compile(CSV_FILENAME_FORMAT)
+    for file in [f for f in os.listdir(extract_target_path) if new_csvs_pattern.match(f)]:
+        final_csv_name = re.sub(CSV_FILENAME_FORMAT, r"\1\3", file)
+        os.replace(os.path.join(extract_target_path, file), os.path.join(extract_target_path, final_csv_name))
+
 
 # Update request status by reaching rda web service
 def check_request_actual_status(index_in_db, request, request_db):
@@ -77,31 +85,31 @@ def check_request_actual_status(index_in_db, request, request_db):
         logger.error("Unhandled request status: {}".format(res['status']))
 
 
-def download_completed_request(index_in_db, request, request_db):
+def download_completed_request(index_in_db, request, request_db, purge_downloaded: bool):
     req_id = request['req_id']
     latitude, longitude = str(request["latitude"]), str(request["longitude"])
     param, level = str(request["param"]), str(request["level"])
-    download_target_path = get_download_target_path_tar(str(req_id), latitude, longitude, param, level)
+    download_target_path = get_download_target_path_tar(latitude, longitude, param, level)
     os.makedirs(download_target_path, exist_ok=True)
     try:
         download_request(req_id, download_target_path)
         request_db.loc[index_in_db, "status"] = RequestStatus.DOWNLOADED.value
-        # purge(req_id)
+        if purge_downloaded:
+            purge(req_id)
     except Exception as e:
         logger.error(e, exc_info=True)
 
 
 def process_tars(index_in_db, request, request_db):
-    req_id = request['req_id']
     latitude, longitude = str(request["latitude"]), str(request["longitude"])
     param, level = str(request["param"]), str(request["level"])
-    download_target_path = get_download_target_path_tar(str(req_id), latitude, longitude, param, level)
-    extract_target_path = get_download_target_path_csv(str(req_id), latitude, longitude, param, level)
+    download_target_path = get_download_target_path_tar(latitude, longitude, param, level)
+    extract_target_path = get_download_target_path_csv(latitude, longitude, param, level)
     extract_files(download_target_path, extract_target_path)
     request_db.loc[index_in_db, "status"] = RequestStatus.FINISHED.value
 
 
-def processor():
+def processor(purge_downloaded: bool):
     logger.info("Starting rda download processor")
     request_db = read_pseudo_rda_request_db()
     print_db_stats(request_db)
@@ -113,7 +121,7 @@ def processor():
     
     completed = request_db[request_db["status"] == RequestStatus.COMPLETED.value]
     for index, request in completed.iterrows():
-        download_completed_request(index, request, request_db)
+        download_completed_request(index, request, request_db, purge_downloaded)
         
     ready_for_unpacking = request_db[request_db["status"] == RequestStatus.DOWNLOADED.value]
     for index, request in ready_for_unpacking.iterrows():
@@ -130,4 +138,9 @@ def scheduler():
 
 
 if __name__ == '__main__':
-    processor()
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('--purge', help='Purge request after downloading files.', default=False)
+
+    args = parser.parse_args()
+    processor(args.purge)
