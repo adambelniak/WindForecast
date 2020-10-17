@@ -5,9 +5,17 @@ import rdams_client as rc
 from modified_rda_download_client import download
 from own_logger import logger
 import os, tarfile, re, argparse
+import datetime
+import sys
+
+sys.path.insert(0, '..')
+
+from utils import prep_zeros_if_needed
 
 
-CSV_FILENAME_FORMAT = r'(gfs\.0p25\.\d{10}\.f\d{3}\.grib2\.[a-zA-Z]+)(\d+)(.gp.csv)'
+RAW_CSV_FILENAME_REGEX = r'(gfs\.0p25\.\d{10}\.f\d{3}\.grib2\.[a-zA-Z]+)(\d+)(.gp.csv)'
+RDA_CSV_FILENAME_FORMAT = 'gfs.0p25.{0}{1}{2}{3}.f{4}.grib2.{5}.gp.csv'
+FINAL_CSV_FILENAME_FORMAT = '{0}-{1}-{2}-{3}Z.csv'
 
 
 def read_pseudo_rda_request_db():
@@ -18,7 +26,7 @@ def get_target_path(latitude: str, longitute: str, param: str, level: str):
     latitude = latitude.replace('.', '_')
     longitute = longitute.replace('.', '_')
 
-    return os.path.join(latitude + "_" + longitute, param, level)
+    return os.path.join(latitude + "-" + longitute, param, level)
 
 
 def get_download_target_path_tar(req_id: str, latitude: str, longitute: str, param: str, level: str):
@@ -59,9 +67,9 @@ def extract_files(download_target_path, extract_target_path):
         tar.extractall(extract_target_path)
         tar.close()
 
-    new_csvs_pattern = re.compile(CSV_FILENAME_FORMAT)
+    new_csvs_pattern = re.compile(RAW_CSV_FILENAME_REGEX)
     for file in [f for f in os.listdir(extract_target_path) if new_csvs_pattern.match(f)]:
-        final_csv_name = re.sub(CSV_FILENAME_FORMAT, r"\1\3", file)
+        final_csv_name = re.sub(RAW_CSV_FILENAME_REGEX, r"\1\3", file)
         os.replace(os.path.join(extract_target_path, file), os.path.join(extract_target_path, final_csv_name))
 
 
@@ -89,7 +97,7 @@ def download_completed_request(index_in_db, request, request_db, purge_downloade
     req_id = request['req_id']
     latitude, longitude = str(request["latitude"]), str(request["longitude"])
     param, level = str(request["param"]), str(request["level"])
-    download_target_path = get_download_target_path_tar(latitude, longitude, param, level)
+    download_target_path = get_download_target_path_tar(str(req_id), latitude, longitude, param, level)
     os.makedirs(download_target_path, exist_ok=True)
     try:
         download_request(req_id, download_target_path)
@@ -103,10 +111,55 @@ def download_completed_request(index_in_db, request, request_db, purge_downloade
 def process_tars(index_in_db, request, request_db):
     latitude, longitude = str(request["latitude"]), str(request["longitude"])
     param, level = str(request["param"]), str(request["level"])
-    download_target_path = get_download_target_path_tar(latitude, longitude, param, level)
+    download_target_path = get_download_target_path_tar(str(request['req_id']), latitude, longitude, param, level)
     extract_target_path = get_download_target_path_csv(latitude, longitude, param, level)
     extract_files(download_target_path, extract_target_path)
     request_db.loc[index_in_db, "status"] = RequestStatus.FINISHED.value
+
+
+def get_value_from_csv(csv_file_path):
+    pass
+
+
+def save_value_in_csv(value, final_csv_path, init_date, offset, param, level):
+    pass
+
+
+def prepare_final_csvs(dir_with_csvs, latitude: str, longitude: str):
+    final_date = datetime.datetime.now()
+    latlon_dir = os.path.join("download/csv", dir_with_csvs)
+    for root, param_dirs, filenames in os.walk(latlon_dir):
+        for param_dir in param_dirs:
+            for root, level_dirs, filenames in os.walk(os.path.join(latlon_dir, param_dir)):
+                for level_dir in level_dirs:
+                    init_date = datetime.datetime(2015, 1, 15)
+                    while init_date < final_date:
+                        for run in ['00', '06', '12', '18']:
+                            offset = 3
+                            while offset < 168:
+                                csv_file_path = os.path.join(dir_with_csvs,
+                                                             level_dir,
+                                                             param_dir,
+                                                             RDA_CSV_FILENAME_FORMAT.format(init_date.year,
+                                                                                            prep_zeros_if_needed(init_date.month, 1),
+                                                                                            prep_zeros_if_needed(init_date.day, 1),
+                                                                                            run,
+                                                                                            prep_zeros_if_needed(offset, 3),
+                                                                                              'belniak'))
+                                if os.path.exists(csv_file_path):
+                                    value = get_value_from_csv(csv_file_path)
+                                    final_csv_path = os.path.join("output_csvs",
+                                                                  latitude.replace('.', '_') + '-' +
+                                                                  longitude.replace('.', '_'),
+                                                                  FINAL_CSV_FILENAME_FORMAT.format(init_date.year,
+                                                                                            prep_zeros_if_needed(init_date.month, 1),
+                                                                                            prep_zeros_if_needed(init_date.day, 1),
+                                                                                            run))
+                                    save_value_in_csv(value, final_csv_path, init_date, offset, param_dir, level_dir)
+                                offset = offset + 3
+                        init_date = init_date + datetime.timedelta(days=1)
+                break  # check only first-level subdirectories
+        break  # check only first-level subdirectories
 
 
 def processor(purge_downloaded: bool):
@@ -126,7 +179,16 @@ def processor(purge_downloaded: bool):
     ready_for_unpacking = request_db[request_db["status"] == RequestStatus.DOWNLOADED.value]
     for index, request in ready_for_unpacking.iterrows():
         process_tars(index, request, request_db)
-    
+
+    for root, dirs, filenames in os.walk("download/csv"):
+        for dir_with_csvs in dirs:
+            latlon_search = re.search(r'(\d+(_\d)?)-(\d+(_\d)?)', dir_with_csvs)
+            latitude = latlon_search.group(1)
+            longitude = latlon_search.group(3)
+            prepare_final_csvs(dir_with_csvs, latitude, longitude)
+        break
+
+
     request_db.to_csv(REQ_ID_PATH)
 
 

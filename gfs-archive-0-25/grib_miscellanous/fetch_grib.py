@@ -66,9 +66,9 @@ gfs_parameters = [
 ]
 hel_long = 18.8
 hel_lat = 54.6
-dspath = 'https://rda.ucar.edu/data/ds084.1/'
-grib_filename_template = '{0}/{0}{1}{2}/gfs.0p25.{0}{1}{2}{3}.f{4}.grib2'
-csv_filename_template = '{0}-{1}-{2}-{3}Z.csv'
+DS_PATH = 'https://rda.ucar.edu/data/ds084.1/'
+GRIB_FILENAME_TEMPLATE = '{0}/{0}{1}{2}/gfs.0p25.{0}{1}{2}{3}.f{4}.grib2'
+CSV_FILENAME_TEMPLATE = '{0}-{1}-{2}-{3}Z.csv'
 
 
 def check_file_status(filepath, filesize):
@@ -104,7 +104,7 @@ def authenticate_to_rda():
 
 
 def download_file(file, cookies):
-    filename = dspath + file
+    filename = DS_PATH + file
     file_base = os.path.basename(file)
     print('Downloading', file_base)
     req = requests.get(filename, cookies=cookies, allow_redirects=True, stream=True)
@@ -125,11 +125,11 @@ def save_test_data():
     day = '30'
     run = '00'
     hour = '015'
-    filename = grib_filename_template.format(year, month, day, run, hour)
+    filename = GRIB_FILENAME_TEMPLATE.format(year, month, day, run, hour)
     if os.path.exists(filename.split('/')[-1]) is False:
         cookie_with_auth = authenticate_to_rda().cookies
         download_file(filename, cookie_with_auth)
-    out_filepath = csv_filename_template.format(year, month, day, run)
+    out_filepath = CSV_FILENAME_TEMPLATE.format(year, month, day, run)
     out_file = open(out_filepath, 'w')
     with out_file:
         full_names = []
@@ -151,7 +151,7 @@ def save_all_data():
     for month in range(13):
         for day in range(calendar.monthrange(year, month + 1)[1]):  # January is '1'
             for run in gfs_runs:
-                out_filepath = csv_filename_template.format(str(year),
+                out_filepath = CSV_FILENAME_TEMPLATE.format(str(year),
                                                             prep_zeros_if_needed(str(month + 1), 1),
                                                             prep_zeros_if_needed(str(day + 1), 1),
                                                             run)
@@ -167,7 +167,7 @@ def save_all_data():
                     writer = csv.DictWriter(out_file, fieldnames=full_names)
                     writer.writeheader()
                     for hour in range(0, 168, 3):
-                        filename = grib_filename_template.format(year,
+                        filename = GRIB_FILENAME_TEMPLATE.format(year,
                                                                  prep_zeros_if_needed(str(month + 1), 1),
                                                                  prep_zeros_if_needed(str(day + 1), 1),
                                                                  run,
