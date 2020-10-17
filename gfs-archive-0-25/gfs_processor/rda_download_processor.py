@@ -55,6 +55,10 @@ def print_db_stats(db):
     logger.info("{} requests are pending".format(len(not_completed)))
     completed = db[db["status"] == RequestStatus.COMPLETED.value]
     logger.info("{} requests are completed".format(len(completed)))
+    downloaded = db[db["status"] == RequestStatus.DOWNLOADED.value]
+    logger.info("{} requests are downloaded, but not processed yet".format(len(downloaded)))
+    finished = db[db["status"] == RequestStatus.FINISHED.value]
+    logger.info("{} requests are already processed".format(len(finished)))
     failed = db[db["status"] == RequestStatus.FAILED.value]
     logger.info("{} requests have failed".format(len(failed)))
 
@@ -118,44 +122,63 @@ def process_tars(index_in_db, request, request_db):
 
 
 def get_value_from_csv(csv_file_path):
-    pass
+    df = pd.read_csv(csv_file_path, error_bad_lines=False, warn_bad_lines=False)
+    return df.iloc[0]['ParameterValue']
 
 
-def save_value_in_csv(value, final_csv_path, init_date, offset, param, level):
-    pass
+def save_value_in_csv(value, final_csv_path, date, param, level):
+    param_name = param + '_' + level
+    if not os.path.exists(final_csv_path):
+        df = pd.DataFrame(columns=["date", param_name])
+        df = df.append({'date': date, param_name: value}, ignore_index=True)
+    else:
+        df = pd.read_csv(final_csv_path, index_col=[0])
+        rows = df[df['date'] == date]
+        if len(rows) == 0:
+            df.loc[len(df.index), :] = ''
+            df.loc[len(df.index) - 1, ['date', param_name]] = [date, value]
+            df.sort_values('date')
+        else:
+            df.loc[df['date'] == date, param_name] = value
+
+    df.to_csv(final_csv_path)
 
 
 def prepare_final_csvs(dir_with_csvs, latitude: str, longitude: str):
     final_date = datetime.datetime.now()
     latlon_dir = os.path.join("download/csv", dir_with_csvs)
+    final_csv_dir = os.path.join("output_csvs", latitude.replace('.', '_') + '-' + longitude.replace('.', '_'))
+    if not os.path.exists(final_csv_dir):
+        os.makedirs(final_csv_dir)
     for root, param_dirs, filenames in os.walk(latlon_dir):
         for param_dir in param_dirs:
             for root, level_dirs, filenames in os.walk(os.path.join(latlon_dir, param_dir)):
                 for level_dir in level_dirs:
                     init_date = datetime.datetime(2015, 1, 15)
+                    level_dir_path = os.path.join(latlon_dir, param_dir, level_dir)
                     while init_date < final_date:
                         for run in ['00', '06', '12', '18']:
                             offset = 3
                             while offset < 168:
-                                csv_file_path = os.path.join(dir_with_csvs,
-                                                             level_dir,
-                                                             param_dir,
+                                csv_file_path = os.path.join(level_dir_path,
                                                              RDA_CSV_FILENAME_FORMAT.format(init_date.year,
-                                                                                            prep_zeros_if_needed(init_date.month, 1),
-                                                                                            prep_zeros_if_needed(init_date.day, 1),
+                                                                                            prep_zeros_if_needed(str(init_date.month), 1),
+                                                                                            prep_zeros_if_needed(str(init_date.day), 1),
                                                                                             run,
-                                                                                            prep_zeros_if_needed(offset, 3),
+                                                                                            prep_zeros_if_needed(str(offset), 2),
                                                                                               'belniak'))
                                 if os.path.exists(csv_file_path):
                                     value = get_value_from_csv(csv_file_path)
-                                    final_csv_path = os.path.join("output_csvs",
-                                                                  latitude.replace('.', '_') + '-' +
-                                                                  longitude.replace('.', '_'),
+                                    final_csv_path = os.path.join(final_csv_dir,
                                                                   FINAL_CSV_FILENAME_FORMAT.format(init_date.year,
-                                                                                            prep_zeros_if_needed(init_date.month, 1),
-                                                                                            prep_zeros_if_needed(init_date.day, 1),
+                                                                                            prep_zeros_if_needed(str(init_date.month), 1),
+                                                                                            prep_zeros_if_needed(str(init_date.day), 1),
                                                                                             run))
-                                    save_value_in_csv(value, final_csv_path, init_date, offset, param_dir, level_dir)
+
+                                    save_value_in_csv(value, final_csv_path,
+                                                      (init_date + datetime.timedelta(hours=offset)).isoformat(),
+                                                      param_dir, level_dir)
+
                                 offset = offset + 3
                         init_date = init_date + datetime.timedelta(days=1)
                 break  # check only first-level subdirectories
@@ -187,7 +210,6 @@ def processor(purge_downloaded: bool):
             longitude = latlon_search.group(3)
             prepare_final_csvs(dir_with_csvs, latitude, longitude)
         break
-
 
     request_db.to_csv(REQ_ID_PATH)
 
