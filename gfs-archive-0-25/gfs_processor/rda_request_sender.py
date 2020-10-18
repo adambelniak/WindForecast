@@ -10,7 +10,6 @@ sys.path.insert(1, '..')
 from geopy.geocoders import Nominatim, GeoNames
 from tqdm import tqdm
 import os
-from utils import get_nearest_coords
 from enum import Enum
 from own_logger import logger
 from rdams_client import submit_json
@@ -35,11 +34,11 @@ def save_request(latitude: str, longitude: str, param: str, level: str,  status:
         pseudo_db = pd.read_csv(REQ_ID_PATH, index_col=[0])
     pseudo_db = pseudo_db.append(
         {"req_id": req_id,
-         status: status.value,
-         latitude: latitude,
-         longitude: longitude,
-         param: param,
-         level: level
+         "status": status.value,
+         "latitude": latitude,
+         "longitude": longitude,
+         "param": param,
+         "level": level
          }, ignore_index=True)
     pseudo_db.to_csv(REQ_ID_PATH)
 
@@ -79,7 +78,6 @@ def build_template(latitude, longitude, start_date, end_date, param_code, produc
         'dataset': 'ds084.1',
         'date': date,
         'param': param_code,
-        'level': level,
         'oformat': 'csv',
         'nlat': latitude,
         'slat': latitude,
@@ -87,6 +85,9 @@ def build_template(latitude, longitude, start_date, end_date, param_code, produc
         'wlon': longitude,
         'product': product
     }
+
+    if level != 'Def':
+        control['level'] = level
 
     return control
 
@@ -117,7 +118,9 @@ def prepare_requests(**kwargs):
     # save city coordinates just for debug
     data.to_csv('csv/map_cities_to_gfs_cords.csv')
 
-    param, level = kwargs['param'], kwargs['level']
+    param, level = kwargs['gfs_parameter'], kwargs['gfs_level']
+    if level == '':
+        level = 'Def'
     data[['param', 'level']] = param, level
     for latitude, longitude in data[['latitude', 'longitude']].values:
         save_request(latitude, longitude, param, level, RequestStatus.PENDING)
@@ -131,20 +134,20 @@ def send_prepared_requests(kwargs):
 
     request_db = pd.read_csv(REQ_ID_PATH, index_col=0)
 
-    request_to_sent = request_db[request_db["status"] == RequestStatus.PENDING.value]
+    requests_to_send = request_db[request_db["status"] == RequestStatus.PENDING.value]
 
-    for index, request in request_to_sent.iterrows():
+    for index, request in requests_to_send.iterrows():
         latitude = request["latitude"]
         longitude = request["longitude"]
-        param = request['gfs_parameter']
+        param = request['param']
         level = request['level']
 
         template = build_template(latitude, longitude, start_date, end_date, param, product, level)
         response = submit_json(template)
         if response['status'] == 'ok':
             reqst_id = response['result']['request_id']
-            request_db.loc[index]["status"] = RequestStatus.SENT.value
-            request_db.loc[index]["req_id"] = reqst_id
+            request_db.loc[index, "status"] = RequestStatus.SENT.value
+            request_db.loc[index, "req_id"] = str(reqst_id)
         else:
             logger.info("Rda has returned error")
         logger.info(response)
