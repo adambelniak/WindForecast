@@ -7,6 +7,7 @@ from own_logger import logger
 import os, tarfile, re, argparse
 import datetime
 import sys
+import time
 
 sys.path.insert(0, '..')
 
@@ -103,6 +104,7 @@ def check_request_actual_status(index_in_db, request, request_db, purge_failed):
             
     else:
         logger.error("Unhandled request status: {}".format(res['status']))
+    request_db.to_csv(REQ_ID_PATH)
 
 
 def download_completed_request(index_in_db, request, request_db, purge_downloaded: bool):
@@ -114,6 +116,7 @@ def download_completed_request(index_in_db, request, request_db, purge_downloade
     try:
         download_request(req_id, download_target_path)
         request_db.loc[index_in_db, "status"] = RequestStatus.DOWNLOADED.value
+        request_db.to_csv(REQ_ID_PATH)
         if purge_downloaded:
             purge(req_id)
     except Exception as e:
@@ -133,7 +136,7 @@ def get_value_from_csv(csv_file_path):
     df = pd.read_csv(csv_file_path, error_bad_lines=False, warn_bad_lines=False,
                      names=['#ParameterName', 'Longitude', 'Latitude', 'ValidDate', 'ValidTime', 'LevelValue', 'ParameterValue'])
     value = df.iloc[1]['ParameterValue']
-    if type(value) is 'lev':  # in some csvs first row is different
+    if value == 'lev':  # in some csvs first row is different
         value = df.iloc[2]['ParameterValue']
     return value
 
@@ -226,14 +229,18 @@ def processor(purge: bool):
         break
 
     request_db.to_csv(REQ_ID_PATH)
-    print("Done")
+    print("Done. Waiting for next scheduler trigger.")
 
-def scheduler():
+def scheduler(purge = False):
     try:
-        schedule.every(3).hours.do(processor)
+        job = schedule.every(1).hours.do(lambda: processor(purge))
     except Exception as e:
         logger.error(e, exc_info=True)
 
+    job.run()
+    while True:
+        schedule.run_pending()
+        time.sleep(60)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -242,4 +249,4 @@ if __name__ == '__main__':
                         default=False)
 
     args = parser.parse_args()
-    processor(args.purge)
+    scheduler(args.purge)

@@ -2,6 +2,7 @@ import argparse
 import json
 import sys
 from datetime import datetime
+import time
 import pandas as pd
 import schedule
 
@@ -17,6 +18,7 @@ from rdams_client import submit_json
 from typing import Optional
 
 REQ_ID_PATH = 'csv/req_list.csv'
+TOO_MANY_REQUESTS = 'User has more than 10 open requests. Purge requests before trying again.'
 
 
 class RequestStatus(Enum):
@@ -173,22 +175,27 @@ def send_prepared_requests(kwargs):
             request_db.loc[index, "status"] = RequestStatus.SENT.value
             request_db.loc[index, "req_id"] = str(int(reqst_id))
         else:
-            logger.info("Rda has returned error")
-            request_db.loc[index, "status"] = RequestStatus.FAILED.value
+            logger.info("Rda has returned error.")
+            if response['status'] == 'error' and TOO_MANY_REQUESTS in response['messages']:
+                logger.info("Too many requests. Request will be sent on next scheduler trigger.")
+            else:
+                request_db.loc[index, "status"] = RequestStatus.FAILED.value
         logger.info(response)
     request_db.to_csv(REQ_ID_PATH)
 
 
 def prepare_and_start_processor(**kwargs):
     prepare_requests(**kwargs)
-    send_prepared_requests(kwargs)
-    # try:
-    #     schedule.every(30).seconds.do(gfs_request_sender, kwargs)
-    # except Exception as e:
-    #     logger.error(e, exc_info=True)
+    try:
+        logger.info("Scheduling sender job.")
+        job = schedule.every(30).minutes.do(send_prepared_requests, kwargs)
+    except Exception as e:
+        logger.error(e, exc_info=True)
 
-    # while True:
-    #     schedule.run_pending()
+    job.run()
+    while True:
+        schedule.run_pending()
+        time.sleep(60)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

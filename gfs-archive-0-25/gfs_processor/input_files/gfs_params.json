@@ -8,5 +8,35 @@
     "param": "T CDC",
     "level":  "HCY:0",
     "hours_type": "average"
+  },
+  {
+    "param": "V GRD",
+    "level":  "HTGL:10",
+    "hours_type": "point"
+  },
+  {
+    "param": "U GRD",
+    "level":  "HTGL:10",
+    "hours_type": "point"
+  },
+  {
+    "param": "GUST",
+    "level":  "SFC:0",
+    "hours_type": "point"
+  },
+  {
+    "param": "TMP",
+    "level":  "HTGL:2",
+    "hours_type": "point"
+  },
+  {
+    "param": "PRMSL",
+    "level":  "MSL:0",
+    "hours_type": "point"
+  },
+  {
+    "param": "PRATE",
+    "level":  "SFC:0",
+    "hours_type": "point"
   }
 ]
