@@ -1,0 +1,12 @@
+[
+  {
+    "param": "T CDC",
+    "level":  "LCY:0",
+    "hours_type": "average"
+  },
+  {
+    "param": "T CDC",
+    "level":  "HCY:0",
+    "hours_type": "average"
+  }
+]

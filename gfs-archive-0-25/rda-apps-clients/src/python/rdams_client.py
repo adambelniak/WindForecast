@@ -268,7 +268,7 @@ def get_authentication(pwfile=DEFAULT_AUTH_FILE):
         pwfile (str): location of password file.
 
     Returns:
-        (tuple): username, passord
+        (tuple): username, password
         (None): If using .netrc file
     """
     if USE_NETRC:

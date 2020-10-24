@@ -1,4 +1,5 @@
 import argparse
+import json
 import sys
 from datetime import datetime
 import pandas as pd
@@ -21,15 +22,17 @@ REQ_ID_PATH = 'csv/req_list.csv'
 class RequestStatus(Enum):
     PENDING = 'Pending'
     SENT = 'Sent'
-    FAILED = 'Failed'
+    FAILED = 'Failed'  # HTTP request has failed
+    ERROR = 'Error'  # HTTP request succeeded, but request processing failed
     COMPLETED = 'Completed'
     DOWNLOADED = 'Downloaded'
     FINISHED = 'Finished'
 
 
-def save_request(latitude: str, longitude: str, param: str, level: str,  status: RequestStatus, req_id: Optional[str] = None):
+def save_request(latitude: str, longitude: str, param: str, level: str, hours_type: str,
+                 status: RequestStatus, req_id: Optional[str] = None):
     if not os.path.isfile(REQ_ID_PATH):
-        pseudo_db = pd.DataFrame(columns=["req_id", "status", "latitude", "longitude", "param", "level"])
+        pseudo_db = pd.DataFrame(columns=["req_id", "status", "latitude", "longitude", "param", "level", "hours_type"])
     else:
         pseudo_db = pd.read_csv(REQ_ID_PATH, index_col=[0])
     pseudo_db = pseudo_db.append(
@@ -38,15 +41,21 @@ def save_request(latitude: str, longitude: str, param: str, level: str,  status:
          "latitude": latitude,
          "longitude": longitude,
          "param": param,
-         "level": level
+         "level": level,
+         "hours_type": hours_type
          }, ignore_index=True)
+    logger.info("Saving a new request for coords {0}, param {1}, level {2}, hours_type {3}...".format(
+                                                    "({0}, {1})".format(latitude, longitude), param, level, hours_type))
     pseudo_db.to_csv(REQ_ID_PATH)
 
 
-def generate_product_description(start_hour, end_hour, step=3):
+def generate_product_description(start_hour, end_hour, hours_type, step=3):
     product = ''
     for x in range(start_hour, end_hour + step, step):
-        product = product + '{}-hour Forecast/'.format(x)
+        if hours_type in ['average', 'all']:
+            product = product + '3-hour Average (initial+{0} to initial+{1})/'.format(x, x + step)
+        if hours_type in ['point', 'all']:
+            product = product + '{}-hour Forecast/'.format(x)
     return product[:-1]
 
 
@@ -109,6 +118,15 @@ def prepare_coordinates(data):
     return data
 
 
+def read_params_from_input_file(path):
+    print("Reading gfs parameters from " + path)
+    if os.path.exists(path):
+        with open(path) as f:
+            return json.load(f)
+    else:
+        raise Exception("Input path does not exist.")
+
+
 def prepare_requests(**kwargs):
     if kwargs["fetch_city_coordinates"]:
         data = find_coordinates(kwargs["city_list"])
@@ -118,20 +136,24 @@ def prepare_requests(**kwargs):
     # save city coordinates just for debug
     data.to_csv('csv/map_cities_to_gfs_cords.csv')
 
-    param, level = kwargs['gfs_parameter'], kwargs['gfs_level']
-    if level == '':
-        level = 'Def'
-    data[['param', 'level']] = param, level
-    for latitude, longitude in data[['latitude', 'longitude']].values:
-        save_request(latitude, longitude, param, level, RequestStatus.PENDING)
+    if(kwargs['input_file'] is not None):
+        inputs = read_params_from_input_file(kwargs['input_file'])
+    else:
+        inputs = [{"param": kwargs['gfs_parameter'], "level": kwargs['gfs_level'], "hours_type": kwargs['hours_type']}]
+
+    for input in inputs:
+        param, level, hours_type = input['param'], input['level'], input['hours_type']
+        if level == '':
+            level = 'Def'
+        data[['param', 'level', 'hours_type']] = param, level, hours_type
+        for latitude, longitude in data[['latitude', 'longitude']].values:
+            save_request(latitude, longitude, param, level, hours_type, RequestStatus.PENDING)
 
 
 def send_prepared_requests(kwargs):
 
     start_date = datetime.strptime(kwargs["start_date"], '%Y-%m-%d %H:%M')
     end_date = datetime.strptime(kwargs["end_date"], '%Y-%m-%d %H:%M')
-    product = generate_product_description(kwargs['forecast_start'], kwargs['forecast_end'])
-
     request_db = pd.read_csv(REQ_ID_PATH, index_col=0)
 
     requests_to_send = request_db[request_db["status"] == RequestStatus.PENDING.value]
@@ -141,15 +163,18 @@ def send_prepared_requests(kwargs):
         longitude = request["longitude"]
         param = request['param']
         level = request['level']
+        hours_type = request['hours_type']
+        product = generate_product_description(kwargs['forecast_start'], kwargs['forecast_end'], hours_type=hours_type)
 
         template = build_template(latitude, longitude, start_date, end_date, param, product, level)
         response = submit_json(template)
         if response['status'] == 'ok':
             reqst_id = response['result']['request_id']
             request_db.loc[index, "status"] = RequestStatus.SENT.value
-            request_db.loc[index, "req_id"] = str(reqst_id)
+            request_db.loc[index, "req_id"] = str(int(reqst_id))
         else:
             logger.info("Rda has returned error")
+            request_db.loc[index, "status"] = RequestStatus.FAILED.value
         logger.info(response)
     request_db.to_csv(REQ_ID_PATH)
 
@@ -174,11 +199,18 @@ if __name__ == '__main__':
                         default='../city_coordinates/city_geo_test.csv')
     parser.add_argument('--start_date', help='Start date GFS', default='2015-01-15 00:00')
     parser.add_argument('--end_date', help='End date GFS', default='2015-01-21 00:00')
+    parser.add_argument('--input_file', help='Path to JSON input file with parameters, levels and forecast hours type.',
+                        type=str, default=None)
     parser.add_argument('--gfs_parameter', help='Parameter to process from NCAR', type=str, default='V GRD')
     parser.add_argument('--gfs_level', help='Level of parameter', type=str, default='HTGL:10')
     parser.add_argument('--forecast_start', help='Offset (in hours) of beginning of the forecast. Should be divisible '
                                                  'by 3.', default=3)
     parser.add_argument('--forecast_end', help='Offset (in hours) of end of the forecast. Should be divisible by 3.', default=168)
+    parser.add_argument('--hours_type', type=str, choices=['point', 'average', 'all'], help='For some params only 3h '
+                                                        'averages are available instead of exact time-point forecasts. '
+                                                        'Set to "average" if you want to fetch dates like "3-hour Average'
+                                                        ' (initial+0, intial+3)". Set to "all" to fetch both types. '
+                                                        'Leave empty to use time-points.', default='point')
 
     args = parser.parse_args()
     prepare_and_start_processor(**vars(args))

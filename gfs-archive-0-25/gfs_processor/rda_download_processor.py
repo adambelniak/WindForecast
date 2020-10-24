@@ -37,7 +37,7 @@ def get_download_target_path_csv(latitude: str, longitute: str, param: str, leve
     return os.path.join("download/csv", get_target_path(latitude, longitute, param, level))
 
 
-def download_request(req_id: int, target_dir):
+def download_request(req_id: str, target_dir):
     logger.info("Downloading files from request {0} into {1}".format(req_id, target_dir))
     try:
         download(req_id, target_dir)
@@ -46,7 +46,8 @@ def download_request(req_id: int, target_dir):
         raise e
 
 
-def purge(req_id: int):
+def purge(req_id: str):
+    logger.info("Purging request {}".format(req_id))
     rc.purge_request(req_id)
 
 
@@ -78,17 +79,24 @@ def extract_files(download_target_path, extract_target_path):
 
 
 # Update request status by reaching rda web service
-def check_request_actual_status(index_in_db, request, request_db):
-    req_id = request['req_id']
+def check_request_actual_status(index_in_db, request, request_db, purge_failed):
+    req_id = int(request['req_id'])
     res = rc.get_status(req_id)
 
-    if res['status'] == 'error':
+    if res['status'] == 'Error':
         logger.info("Request id: {} has failed".format(req_id))
         request_db.loc[index_in_db, "status"] = RequestStatus.FAILED.value
+        if purge_failed:
+            purge(str(req_id))
 
     elif res['status'] == 'ok':
         request_status = res['result']['status']
         logger.info("Status of request {0} is {1}".format(req_id, request_status))
+        if request_status == RequestStatus.ERROR.value:
+            request_db.loc[index_in_db, "status"] = RequestStatus.ERROR.value
+            if purge_failed:
+                purge(str(req_id))
+            print(res)
 
         if request_status == RequestStatus.COMPLETED.value:
             request_db.loc[index_in_db, "status"] = RequestStatus.COMPLETED.value
@@ -98,10 +106,10 @@ def check_request_actual_status(index_in_db, request, request_db):
 
 
 def download_completed_request(index_in_db, request, request_db, purge_downloaded: bool):
-    req_id = request['req_id']
+    req_id = str(int(request['req_id']))
     latitude, longitude = str(request["latitude"]), str(request["longitude"])
     param, level = str(request["param"]), str(request["level"])
-    download_target_path = get_download_target_path_tar(str(req_id), latitude, longitude, param, level)
+    download_target_path = get_download_target_path_tar(req_id, latitude, longitude, param, level)
     os.makedirs(download_target_path, exist_ok=True)
     try:
         download_request(req_id, download_target_path)
@@ -115,15 +123,19 @@ def download_completed_request(index_in_db, request, request_db, purge_downloade
 def process_tars(index_in_db, request, request_db):
     latitude, longitude = str(request["latitude"]), str(request["longitude"])
     param, level = str(request["param"]), str(request["level"])
-    download_target_path = get_download_target_path_tar(str(request['req_id']), latitude, longitude, param, level)
+    download_target_path = get_download_target_path_tar(str(int(request['req_id'])), latitude, longitude, param, level)
     extract_target_path = get_download_target_path_csv(latitude, longitude, param, level)
     extract_files(download_target_path, extract_target_path)
     request_db.loc[index_in_db, "status"] = RequestStatus.FINISHED.value
 
 
 def get_value_from_csv(csv_file_path):
-    df = pd.read_csv(csv_file_path, error_bad_lines=False, warn_bad_lines=False)
-    return df.iloc[0]['ParameterValue']
+    df = pd.read_csv(csv_file_path, error_bad_lines=False, warn_bad_lines=False,
+                     names=['#ParameterName', 'Longitude', 'Latitude', 'ValidDate', 'ValidTime', 'LevelValue', 'ParameterValue'])
+    value = df.iloc[1]['ParameterValue']
+    if type(value) is 'lev':  # in some csvs first row is different
+        value = df.iloc[2]['ParameterValue']
+    return value
 
 
 def save_value_in_csv(value, final_csv_path, date, param, level):
@@ -185,24 +197,26 @@ def prepare_final_csvs(dir_with_csvs, latitude: str, longitude: str):
         break  # check only first-level subdirectories
 
 
-def processor(purge_downloaded: bool):
+def processor(purge: bool):
     logger.info("Starting rda download processor")
     request_db = read_pseudo_rda_request_db()
     print_db_stats(request_db)
+    print("Checking actual status of pending requests...")
 
     not_completed = request_db[request_db["status"] == RequestStatus.SENT.value]
     
     for index, request in not_completed.iterrows():
-        check_request_actual_status(index, request, request_db)
+        check_request_actual_status(index, request, request_db, purge)
     
     completed = request_db[request_db["status"] == RequestStatus.COMPLETED.value]
     for index, request in completed.iterrows():
-        download_completed_request(index, request, request_db, purge_downloaded)
+        download_completed_request(index, request, request_db, purge)
         
     ready_for_unpacking = request_db[request_db["status"] == RequestStatus.DOWNLOADED.value]
     for index, request in ready_for_unpacking.iterrows():
         process_tars(index, request, request_db)
 
+    print("Processing csv files...")
     for root, dirs, filenames in os.walk("download/csv"):
         for dir_with_csvs in dirs:
             latlon_search = re.search(r'(\d+(_\d)?)-(\d+(_\d)?)', dir_with_csvs)
@@ -212,7 +226,7 @@ def processor(purge_downloaded: bool):
         break
 
     request_db.to_csv(REQ_ID_PATH)
-
+    print("Done")
 
 def scheduler():
     try:
@@ -224,7 +238,8 @@ def scheduler():
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--purge', help='Purge request after downloading files.', default=False)
+    parser.add_argument('--purge', help='Purge request after downloading files or if the request has failed',
+                        default=False)
 
     args = parser.parse_args()
     processor(args.purge)
