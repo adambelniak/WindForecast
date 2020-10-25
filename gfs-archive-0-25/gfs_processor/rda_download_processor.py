@@ -13,7 +13,6 @@ sys.path.insert(0, '..')
 
 from utils import prep_zeros_if_needed
 
-
 RAW_CSV_FILENAME_REGEX = r'(gfs\.0p25\.\d{10}\.f\d{3}\.grib2\.[a-zA-Z]+)(\d+)(.gp.csv)'
 RDA_CSV_FILENAME_FORMAT = 'gfs.0p25.{0}{1}{2}{3}.f{4}.grib2.{5}.gp.csv'
 FINAL_CSV_FILENAME_FORMAT = '{0}-{1}-{2}-{3}Z.csv'
@@ -66,7 +65,8 @@ def print_db_stats(db):
 
 
 def extract_files(download_target_path, extract_target_path):
-    tars = [f for f in os.listdir(download_target_path) if os.path.isfile(os.path.join(download_target_path, f)) and f.endswith("tar")]
+    tars = [f for f in os.listdir(download_target_path) if
+            os.path.isfile(os.path.join(download_target_path, f)) and f.endswith("tar")]
     logger.info("Unpacking {0} tars into {1} directory".format(len(tars), extract_target_path))
     for file in tars:
         tar = tarfile.open(os.path.join(download_target_path, file), "r:")
@@ -101,9 +101,9 @@ def check_request_actual_status(index_in_db, request, request_db, purge_failed):
 
         if request_status == RequestStatus.COMPLETED.value:
             request_db.loc[index_in_db, "status"] = RequestStatus.COMPLETED.value
-            
+
     else:
-        logger.error("Unhandled request status: {}".format(res['status']))
+        logger.error("Unhandled request status: {0} for request {1}".format(res['status'], req_id))
     request_db.to_csv(REQ_ID_PATH)
 
 
@@ -134,29 +134,12 @@ def process_tars(index_in_db, request, request_db):
 
 def get_value_from_csv(csv_file_path):
     df = pd.read_csv(csv_file_path, error_bad_lines=False, warn_bad_lines=False,
-                     names=['#ParameterName', 'Longitude', 'Latitude', 'ValidDate', 'ValidTime', 'LevelValue', 'ParameterValue'])
+                     names=['#ParameterName', 'Longitude', 'Latitude', 'ValidDate', 'ValidTime', 'LevelValue',
+                            'ParameterValue'])
     value = df.iloc[1]['ParameterValue']
     if value == 'lev':  # in some csvs first row is different
         value = df.iloc[2]['ParameterValue']
     return value
-
-
-def save_value_in_csv(value, final_csv_path, date, param, level):
-    param_name = param + '_' + level
-    if not os.path.exists(final_csv_path):
-        df = pd.DataFrame(columns=["date", param_name])
-        df = df.append({'date': date, param_name: value}, ignore_index=True)
-    else:
-        df = pd.read_csv(final_csv_path, index_col=[0])
-        rows = df[df['date'] == date]
-        if len(rows) == 0:
-            df.loc[len(df.index), :] = ''
-            df.loc[len(df.index) - 1, ['date', param_name]] = [date, value]
-            df.sort_values('date')
-        else:
-            df.loc[df['date'] == date, param_name] = value
-
-    df.to_csv(final_csv_path)
 
 
 def prepare_final_csvs(dir_with_csvs, latitude: str, longitude: str):
@@ -165,39 +148,58 @@ def prepare_final_csvs(dir_with_csvs, latitude: str, longitude: str):
     final_csv_dir = os.path.join("output_csvs", latitude.replace('.', '_') + '-' + longitude.replace('.', '_'))
     if not os.path.exists(final_csv_dir):
         os.makedirs(final_csv_dir)
-    for root, param_dirs, filenames in os.walk(latlon_dir):
-        for param_dir in param_dirs:
-            for root, level_dirs, filenames in os.walk(os.path.join(latlon_dir, param_dir)):
-                for level_dir in level_dirs:
-                    init_date = datetime.datetime(2015, 1, 15)
-                    level_dir_path = os.path.join(latlon_dir, param_dir, level_dir)
-                    while init_date < final_date:
-                        for run in ['00', '06', '12', '18']:
-                            offset = 3
-                            while offset < 168:
-                                csv_file_path = os.path.join(level_dir_path,
-                                                             RDA_CSV_FILENAME_FORMAT.format(init_date.year,
-                                                                                            prep_zeros_if_needed(str(init_date.month), 1),
-                                                                                            prep_zeros_if_needed(str(init_date.day), 1),
-                                                                                            run,
-                                                                                            prep_zeros_if_needed(str(offset), 2),
-                                                                                              'belniak'))
+
+    init_date = datetime.datetime(2015, 1, 15)
+    while init_date < final_date:
+        for run in ['00', '06', '12', '18']:
+            # final csv name for this forecast
+            final_csv_name = FINAL_CSV_FILENAME_FORMAT.format(init_date.year,
+                                                              prep_zeros_if_needed(str(init_date.month), 1),
+                                                              prep_zeros_if_needed(str(init_date.day), 1),
+                                                              run)
+            final_csv_path = os.path.join(final_csv_dir, final_csv_name)
+            if os.path.exists(final_csv_path):
+                forecast_df = pd.read_csv(final_csv_path, index_col=[0])
+            else:
+                forecast_df = pd.DataFrame(columns=["date"])
+            offset = 3
+            while offset < 168:
+                # fetch values from all params and levels
+                for root, param_dirs, filenames in os.walk(latlon_dir):
+                    for param_dir in param_dirs:
+                        for root, level_dirs, filenames in os.walk(os.path.join(latlon_dir, param_dir)):
+                            for level_dir in level_dirs:
+                                level_dir_path = os.path.join(latlon_dir, param_dir, level_dir)
+                                csv_file_name = RDA_CSV_FILENAME_FORMAT.format(init_date.year, prep_zeros_if_needed(str(init_date.month), 1),
+                                                                               prep_zeros_if_needed(str(init_date.day),1),
+                                                                               run,
+                                                                               prep_zeros_if_needed(str(offset), 2),
+                                                                               'belniak')
+                                csv_file_path = os.path.join(level_dir_path, csv_file_name)
+
                                 if os.path.exists(csv_file_path):
                                     value = get_value_from_csv(csv_file_path)
-                                    final_csv_path = os.path.join(final_csv_dir,
-                                                                  FINAL_CSV_FILENAME_FORMAT.format(init_date.year,
-                                                                                            prep_zeros_if_needed(str(init_date.month), 1),
-                                                                                            prep_zeros_if_needed(str(init_date.day), 1),
-                                                                                            run))
+                                    param_name = param_dir + '_' + level_dir
+                                    date = (init_date + datetime.timedelta(hours=offset)).isoformat()
 
-                                    save_value_in_csv(value, final_csv_path,
-                                                      (init_date + datetime.timedelta(hours=offset)).isoformat(),
-                                                      param_dir, level_dir)
+                                    if param_name not in forecast_df:
+                                        forecast_df[param_name] = 0
 
-                                offset = offset + 3
-                        init_date = init_date + datetime.timedelta(days=1)
-                break  # check only first-level subdirectories
-        break  # check only first-level subdirectories
+                                    rows = forecast_df[forecast_df['date'] == date]
+                                    if len(rows) == 0:
+                                        forecast_df.loc[len(forecast_df.index), :] = ''
+                                        forecast_df.loc[len(forecast_df.index) - 1, ['date', param_name]] = [date, value]
+                                        forecast_df.sort_values('date')
+                                    else:
+                                        forecast_df.loc[forecast_df['date'] == date, param_name] = value
+                                    os.remove(csv_file_path)
+
+                            break  # check only first-level subdirectories
+                    break  # check only first-level subdirectories
+
+                offset = offset + 3
+            forecast_df.to_csv(final_csv_path)
+        init_date = init_date + datetime.timedelta(days=1)
 
 
 def processor(purge: bool):
@@ -207,14 +209,14 @@ def processor(purge: bool):
     print("Checking actual status of pending requests...")
 
     not_completed = request_db[request_db["status"] == RequestStatus.SENT.value]
-    
+
     for index, request in not_completed.iterrows():
         check_request_actual_status(index, request, request_db, purge)
-    
+
     completed = request_db[request_db["status"] == RequestStatus.COMPLETED.value]
     for index, request in completed.iterrows():
         download_completed_request(index, request, request_db, purge)
-        
+
     ready_for_unpacking = request_db[request_db["status"] == RequestStatus.DOWNLOADED.value]
     for index, request in ready_for_unpacking.iterrows():
         process_tars(index, request, request_db)
@@ -231,7 +233,8 @@ def processor(purge: bool):
     request_db.to_csv(REQ_ID_PATH)
     print("Done. Waiting for next scheduler trigger.")
 
-def scheduler(purge = False):
+
+def scheduler(purge=False):
     try:
         job = schedule.every(1).hours.do(lambda: processor(purge))
     except Exception as e:
@@ -241,6 +244,7 @@ def scheduler(purge = False):
     while True:
         schedule.run_pending()
         time.sleep(60)
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

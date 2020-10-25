@@ -11,14 +11,16 @@
 9,453086.0,Error,54.6,18.8,Middle Cloud Cover,Def,
 10,453734.0,Error,54.6,18.8,T CDC,MCY:0,
 11,453867.0,Finished,54.6,18.8,T CDC,MCY:0,
-12,454411.0,Sent,54.6,18.8,T CDC,MCY:0,average
-13,454412.0,Sent,54.6,18.8,T CDC,LCY:0,average
-14,454413.0,Sent,54.6,18.8,T CDC,HCY:0,average
-15,454414.0,Sent,54.6,18.8,T CDC,LCY:0,average
-16,454415.0,Sent,54.6,18.8,T CDC,HCY:0,average
-17,454416.0,Sent,54.6,18.8,V GRD,HTGL:10,point
-18,454417.0,Sent,54.6,18.8,U GRD,HTGL:10,point
-19,454418.0,Sent,54.6,18.8,GUST,SFC:0,point
-20,,Pending,54.6,18.8,TMP,HTGL:2,point
-21,,Pending,54.6,18.8,PRMSL,MSL:0,point
-22,,Pending,54.6,18.8,PRATE,SFC:0,point
+12,454411.0,Finished,54.6,18.8,T CDC,MCY:0,average
+13,454412.0,Finished,54.6,18.8,T CDC,LCY:0,average
+14,454413.0,Finished,54.6,18.8,T CDC,HCY:0,average
+15,454414.0,Finished,54.6,18.8,T CDC,LCY:0,average
+16,454415.0,Finished,54.6,18.8,T CDC,HCY:0,average
+17,454416.0,Finished,54.6,18.8,V GRD,HTGL:10,point
+18,454417.0,Finished,54.6,18.8,U GRD,HTGL:10,point
+19,454418.0,Finished,54.6,18.8,GUST,SFC:0,point
+20,454433.0,Finished,54.6,18.8,TMP,HTGL:2,point
+21,454434.0,Finished,54.6,18.8,PRMSL,MSL:0,point
+22,454563.0,Sent,54.6,18.8,T CDC,LCY:0,average
+23,,Pending,54.6,18.8,T CDC,MCY:0,average
+24,,Pending,54.6,18.8,T CDC,HCY:0,average

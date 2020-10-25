@@ -55,7 +55,10 @@ def generate_product_description(start_hour, end_hour, hours_type, step=3):
     product = ''
     for x in range(start_hour, end_hour + step, step):
         if hours_type in ['average', 'all']:
-            product = product + '3-hour Average (initial+{0} to initial+{1})/'.format(x, x + step)
+            if x % 2 == 0:
+                product = product + '3-hour Average (initial+{0} to initial+{1})/'.format(x, x + step)
+                product = product + '6-hour Average (initial+{0} to initial+{1})/'.format(x, x + 2 * step)
+
         if hours_type in ['point', 'all']:
             product = product + '{}-hour Forecast/'.format(x)
     return product[:-1]
@@ -205,7 +208,7 @@ if __name__ == '__main__':
     parser.add_argument('--coordinate_path', help='Path to list of cities with coordinates',
                         default='../city_coordinates/city_geo_test.csv')
     parser.add_argument('--start_date', help='Start date GFS', default='2015-01-15 00:00')
-    parser.add_argument('--end_date', help='End date GFS', default='2015-01-21 00:00')
+    parser.add_argument('--end_date', help='End date GFS', default='2016-01-01 00:00')
     parser.add_argument('--input_file', help='Path to JSON input file with parameters, levels and forecast hours type.',
                         type=str, default=None)
     parser.add_argument('--gfs_parameter', help='Parameter to process from NCAR', type=str, default='V GRD')
