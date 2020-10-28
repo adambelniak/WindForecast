@@ -1,8 +1,5 @@
 import pandas as pd
-import tensorflow.keras as keras
-import numpy as np
 from preprocess.fetch_synop_data import FEATURES
-from tensorflow.keras.preprocessing.sequence import TimeseriesGenerator
 
 
 def normalize(data):

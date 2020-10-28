@@ -139,8 +139,8 @@ def process_all_data(from_year, until_year, localisation_code, dir='synop_data')
     for year in tqdm.tqdm(range(from_year, until_year)):
         get_synop_data(localisation_code, str(year), dir)
         extract_zip_files(str(year), dir)
-        processed_wind_data = read_data(localisation_code, str(year), number_column, columns, dir)
-        station_data = station_data.append(processed_wind_data)
+        processed_data = read_data(localisation_code, str(year), number_column, columns, dir)
+        station_data = station_data.append(processed_data)
     station_data.to_csv(os.path.join(dir, localisation_code + '_data.csv'), index=False)
 
 
@@ -157,8 +157,8 @@ if __name__ == "__main__":
 
 
     args = parser.parse_args()
-    # download_list_of_station(args.dir)
+    download_list_of_station(args.dir)
     localisation_code = get_localisation_id(args.localisation_name, args.dir)
 
     process_all_data(args.start_year, args.end_year, str(localisation_code))
-    plot_each_month_in_year(str(localisation_code), args.plot_box_year, args.out)
+    plot_scatter_data_for_year(str(localisation_code), args.plot_box_year, args.out)

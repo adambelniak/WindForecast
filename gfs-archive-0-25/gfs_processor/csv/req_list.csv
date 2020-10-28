@@ -21,6 +21,6 @@
 19,454418.0,Finished,54.6,18.8,GUST,SFC:0,point
 20,454433.0,Finished,54.6,18.8,TMP,HTGL:2,point
 21,454434.0,Finished,54.6,18.8,PRMSL,MSL:0,point
-22,454563.0,Sent,54.6,18.8,T CDC,LCY:0,average
-23,,Pending,54.6,18.8,T CDC,MCY:0,average
-24,,Pending,54.6,18.8,T CDC,HCY:0,average
+22,454563.0,Finished,54.6,18.8,T CDC,LCY:0,average
+23,454564.0,Finished,54.6,18.8,T CDC,MCY:0,average
+24,454565.0,Finished,54.6,18.8,T CDC,HCY:0,average

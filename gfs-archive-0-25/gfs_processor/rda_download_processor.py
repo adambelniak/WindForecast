@@ -236,7 +236,7 @@ def processor(purge: bool):
 
 def scheduler(purge=False):
     try:
-        job = schedule.every(1).hours.do(lambda: processor(purge))
+        job = schedule.every(30).minutes.do(lambda: processor(purge))
     except Exception as e:
         logger.error(e, exc_info=True)
 

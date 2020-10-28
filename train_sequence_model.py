@@ -1,11 +1,11 @@
 import argparse
-import os
 from datetime import datetime, timedelta
 import numpy as np
 import matplotlib.pyplot as plt
 from models.seq_2_seq_model import create_model
 from preprocess.gfs_preprocess import prepare_gfs_sequence_dataset, CREATED_AT_COLUMN_NAME
 from preprocess.synop_preprocess import prepare_synop_dataset, normalize
+from util.utils import convert_wind
 import pandas as pd
 import tqdm
 import warnings
@@ -23,13 +23,6 @@ def filter_gfs(gfs: dict, last_synop_date: datetime, gfs_time_diff: int, label_s
         if gfs_crated_at < last_synop_date - timedelta(hours=gfs_time_diff + label_seqence_len):
             fitlered[key] = gfs[key]
     return fitlered
-
-
-def convert_wind(single_gfs):
-    single_gfs["velocity"] = np.sqrt(single_gfs["U-wind, m/s"] ** 2 + single_gfs["V-wind, m/s"] ** 2)
-    single_gfs = single_gfs.drop(["U-wind, m/s", "V-wind, m/s"], axis=1)
-
-    return single_gfs
 
 
 def prepare_data(gfs_dir: str, synop_dir: str, start_seq: int, end_seq: int, gfs_past: int, gfs_future: int,
@@ -51,7 +44,7 @@ def prepare_data(gfs_dir: str, synop_dir: str, start_seq: int, end_seq: int, gfs
     for key in tqdm.tqdm(gfs_dataset.keys()):
         gfs_creation_date = datetime.strptime(key, '%Y-%m-%d-%HZ')
         single_gfs = gfs_dataset[key]
-        single_gfs = convert_wind(single_gfs)
+        single_gfs = convert_wind(single_gfs, "U-wind, m/s", "V-wind, m/s")
         for hour in range(gfs_hour_diff):
             try:
                 synop_index = synop_dataset.index[synop_dataset['date'] == gfs_creation_date][0]
@@ -72,6 +65,7 @@ def prepare_data(gfs_dir: str, synop_dir: str, start_seq: int, end_seq: int, gfs
                 pass
     return np.array(synop_dataset_input), np.array(gfs_dataset_input), np.array(dataset_label)
 
+
 def plot_history(history):
     # summarize history for loss
     plt.plot(history.history['loss'])
@@ -82,9 +76,10 @@ def plot_history(history):
     plt.legend(['train', 'test'], loc='upper left')
     plt.show()
 
+
 def train_model(**kwargs):
     dataset_input, gfs_dataset_input, dataset_label = prepare_data(**kwargs)
-    print("Dataset size: {}".format(np.shape(dataset_input))[0])
+    print("Dataset size: {}".format(np.shape(dataset_input)[0]))
     print("Label format: {}".format(np.shape(dataset_label)))
 
     train_index = int(dataset_input.shape[0] * kwargs["train_split"])
@@ -100,6 +95,7 @@ def train_model(**kwargs):
     model = create_model(dataset_input, gfs_dataset_input, 0.001, dataset_label.shape[1])
     history = model.fit(x_train, y_train, epochs=10, batch_size=32, validation_data=(x_valid, y_label))
     plot_history(history)
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
