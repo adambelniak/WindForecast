@@ -22,7 +22,7 @@ def prepare_gfs_data(dir):
             raise Exception("Invalid file name format - except 'YYYY-MM-DD-HHZ.csv'")
 
         date_forecast = date_forecast_re.group(1)
-        gfs_data[date_forecast] = single_gfs
+        gfs_data[date_forecast] = single_gfs.drop(single_gfs.columns[0], axis=1)
     return gfs_data
 
 
@@ -181,8 +181,8 @@ def process_and_plot(dir, time_stride, index_column):
 
 
 def normalize_data_without_dates(data, index_column):
-    columns_withou_dates = [column for column in data.columns if column not in [index_column, CREATED_AT_COLUMN_NAME]]
-    data[columns_withou_dates] = normalize(data[columns_withou_dates].values)
+    columns_without_dates = [column for column in data.columns if column not in [index_column, CREATED_AT_COLUMN_NAME]]
+    data[columns_without_dates] = normalize(data[columns_without_dates].values)
     return data
 
 
