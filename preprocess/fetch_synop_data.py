@@ -37,7 +37,7 @@ VELOCITY_COLUMN = 25
 GUST_COLUMN = 27
 TEMPERATURE = 29
 PRESSURE = 41
-FEATURES = ['year', 'month', 'day', 'hour', 'direction', 'velocity', 'gust', 'temperature', 'pressure']
+FEATURES = ['year', 'month', 'day', 'hour', 'direction', 'velocity', 'gust', 'temperature']
 
 
 def download_list_of_station(dir: str):
@@ -134,7 +134,7 @@ def plot_box_all_data(localisation_code: str, dir='synop_data'):
 def process_all_data(from_year, until_year, localisation_code, dir='synop_data'):
     columns = FEATURES
     station_data = pd.DataFrame(columns=columns)
-    number_column = [YEAR, MONTH, DAY, HOUR, DIRECTION_COLUMN, VELOCITY_COLUMN, GUST_COLUMN, TEMPERATURE, PRESSURE]
+    number_column = [YEAR, MONTH, DAY, HOUR, DIRECTION_COLUMN, VELOCITY_COLUMN, GUST_COLUMN, TEMPERATURE]
 
     for year in tqdm.tqdm(range(from_year, until_year)):
         get_synop_data(localisation_code, str(year), dir)

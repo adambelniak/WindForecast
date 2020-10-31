@@ -20,11 +20,12 @@ def split_features_into_arrays(data, train_split, past_len, future_offset, y_col
     return x_data, y_data
 
 
-def prepare_synop_dataset(file_path):
+def prepare_synop_dataset(file_path, norm=True):
     data = pd.read_csv(file_path)
 
     data["date"] = pd.to_datetime(data[['year', 'month', 'day', 'hour']])
-    data[FEATURES] = normalize(data[FEATURES].values)
+    if norm:
+        data[FEATURES] = normalize(data[FEATURES].values)
     print(data.head())
 
     return data
