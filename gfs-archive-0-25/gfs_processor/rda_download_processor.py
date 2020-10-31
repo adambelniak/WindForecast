@@ -189,7 +189,7 @@ def prepare_final_csvs(dir_with_csvs, latitude: str, longitude: str):
                                     if len(rows) == 0:
                                         forecast_df.loc[len(forecast_df.index), :] = ''
                                         forecast_df.loc[len(forecast_df.index) - 1, ['date', param_name]] = [date, value]
-                                        forecast_df.sort_values('date')
+                                        forecast_df.sort_values('date', inplace=True)
                                     else:
                                         forecast_df.loc[forecast_df['date'] == date, param_name] = value
                                     os.remove(csv_file_path)
