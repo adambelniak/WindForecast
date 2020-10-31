@@ -185,6 +185,7 @@ def send_prepared_requests(kwargs):
                 request_db.loc[index, "status"] = RequestStatus.FAILED.value
         logger.info(response)
     request_db.to_csv(REQ_ID_PATH)
+    print("Sending requests done.")
 
 
 def prepare_and_start_processor(**kwargs):
@@ -214,8 +215,9 @@ if __name__ == '__main__':
     parser.add_argument('--gfs_parameter', help='Parameter to process from NCAR', type=str, default='V GRD')
     parser.add_argument('--gfs_level', help='Level of parameter', type=str, default='HTGL:10')
     parser.add_argument('--forecast_start', help='Offset (in hours) of beginning of the forecast. Should be divisible '
-                                                 'by 3.', default=3)
-    parser.add_argument('--forecast_end', help='Offset (in hours) of end of the forecast. Should be divisible by 3.', default=168)
+                                                 'by 3.', type=int, default=3)
+    parser.add_argument('--forecast_end', help='Offset (in hours) of end of the forecast. Should be divisible by 3.', type=int,
+                                            default=168)
     parser.add_argument('--hours_type', type=str, choices=['point', 'average', 'all'], help='For some params only 3h '
                                                         'averages are available instead of exact time-point forecasts. '
                                                         'Set to "average" if you want to fetch dates like "3-hour Average'
