@@ -1,7 +1,7 @@
 import os
 import requests
 import sys
-sys.path.insert(0, '../rda-apps-clients/src/python')
+sys.path.insert(0, '../rda_apps_clients/src/python')
 sys.path.insert(1, '..')
 import rdams_client as rc
 from own_logger import logger

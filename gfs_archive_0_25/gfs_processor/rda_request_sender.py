@@ -6,20 +6,28 @@ import time
 import pandas as pd
 import schedule
 
-sys.path.insert(0, '../rda-apps-clients/src/python')
+sys.path.insert(0, '../rda_apps_clients/src/python')
 sys.path.insert(1, '..')
 
 from geopy.geocoders import Nominatim, GeoNames
 from tqdm import tqdm
 import os
 from enum import Enum
-from own_logger import logger
-from rdams_client import submit_json
-from typing import Optional
+from gfs_archive_0_25.gfs_processor.own_logger import logger
+from gfs_archive_0_25.rda_apps_clients.src.python.rdams_client import submit_json
 
 REQ_ID_PATH = 'csv/req_list.csv'
 TOO_MANY_REQUESTS = 'User has more than 10 open requests. Purge requests before trying again.'
-
+REQUEST_TYPE_FIELD = "request_type"
+REQUEST_STATUS_FIELD = "request_status"
+REQUEST_ID_FIELD = "request_id"
+NLAT_FIELD = "nlat"
+SLAT_FIELD = "slat"
+ELON_FIELD = "elon"
+WLON_FIELD = "wlon"
+LEVEL_FIELD = "level"
+PARAM_FIELD = "param"
+HOURS_TYPE_FIELD = "hours_type"
 
 class RequestStatus(Enum):
     PENDING = 'Pending'
@@ -37,30 +45,30 @@ class RequestType(Enum):
 
 
 def point_coords_to_region_coords(coords):
-    region_coords = pd.DataFrame(columns=["nlat", "slat", "wlon", "elon"])
-    region_coords[["nlat", "slat", "wlon", "elon"]] = [[x['latitude'], x['latitude'], x['longitude'], x['longitude']] for x in coords]
+    region_coords = pd.DataFrame(columns=[NLAT_FIELD, SLAT_FIELD, WLON_FIELD, ELON_FIELD])
+    region_coords[[NLAT_FIELD, SLAT_FIELD, WLON_FIELD, ELON_FIELD]] = [[x['latitude'], x['latitude'], x['longitude'], x['longitude']] for x in coords]
     return region_coords
 
 
 def save_request_to_pseudo_db(request_type: RequestType, request_status: RequestStatus, **kwargs):
     if not os.path.isfile(REQ_ID_PATH):
-        pseudo_db = pd.DataFrame(columns=["req_id", "request_type", "status", "nlat", "slat", "wlon", "elon", "param", "level", "hours_type"])
+        pseudo_db = pd.DataFrame(columns=[REQUEST_ID_FIELD, REQUEST_TYPE_FIELD, REQUEST_STATUS_FIELD, NLAT_FIELD, SLAT_FIELD, WLON_FIELD, ELON_FIELD, PARAM_FIELD, LEVEL_FIELD, HOURS_TYPE_FIELD])
     else:
         pseudo_db = pd.read_csv(REQ_ID_PATH, index_col=[0])
     pseudo_db = pseudo_db.append(
-        {"req_id": kwargs["req_id"],
-         "request_type": request_type.value,
-         "status": request_status.value,
-         "nlat": kwargs["nlat"],
-         "slat": kwargs["slat"],
-         "wlon": kwargs["wlon"],
-         "elon": kwargs["elon"],
-         "param": kwargs["param"],
-         "level": kwargs["level"],
-         "hours_type": kwargs["hours_type"]
+        {REQUEST_ID_FIELD: kwargs[REQUEST_ID_FIELD],
+         REQUEST_TYPE_FIELD: request_type.value,
+         REQUEST_STATUS_FIELD: request_status.value,
+         NLAT_FIELD: kwargs[NLAT_FIELD],
+         SLAT_FIELD: kwargs[SLAT_FIELD],
+         WLON_FIELD: kwargs[WLON_FIELD],
+         ELON_FIELD: kwargs[ELON_FIELD],
+         PARAM_FIELD: kwargs[PARAM_FIELD],
+         LEVEL_FIELD: kwargs[LEVEL_FIELD],
+         HOURS_TYPE_FIELD: kwargs[HOURS_TYPE_FIELD]
          }, ignore_index=True)
-    logger.info(f"Saving a new request of type {request_type} for coords (lat: {kwargs['nlat']}-{kwargs['slat']}, "
-                f"lon: {kwargs['wlon']}-{kwargs['elon']}), param {kwargs['param']}, level {kwargs['level']}, hours_type {kwargs['hours_type']}...")
+    logger.info(f"Saving a new request of type {request_type} for coords (lat: {kwargs[NLAT_FIELD]}-{kwargs[SLAT_FIELD]}, "
+                f"lon: {kwargs[WLON_FIELD]}-{kwargs[ELON_FIELD]}), param {kwargs[PARAM_FIELD]}, level {kwargs[LEVEL_FIELD]}, hours_type {kwargs[HOURS_TYPE_FIELD]}...")
     pseudo_db.to_csv(REQ_ID_PATH)
 
 
@@ -97,7 +105,7 @@ def find_coordinates(path, output_file_name="city_geo.csv"):
     return data
 
 
-def build_template(latitude, longitude, start_date, end_date, param_code, product, level):
+def build_template(nlat, slat, elon, wlon, start_date, end_date, param_code, product, level, format):
     end_date = end_date.strftime('%Y%m%d%H%H%M%M')
     start_date = start_date.strftime('%Y%m%d%H%H%M%M')
     date = '{}/to/{}'.format(start_date, end_date)
@@ -105,11 +113,11 @@ def build_template(latitude, longitude, start_date, end_date, param_code, produc
         'dataset': 'ds084.1',
         'date': date,
         'param': param_code,
-        'oformat': 'csv',
-        'nlat': latitude,
-        'slat': latitude,
-        'elon': longitude,
-        'wlon': longitude,
+        'oformat': format,
+        'nlat': nlat,
+        'slat': slat,
+        'elon': elon,
+        'wlon': wlon,
         'product': product
     }
 
@@ -125,10 +133,10 @@ def prepare_coordinates(coords_data):
     :param coords_data: Pandas dataFrame
     :return:
     """
-    coordinates = coords_data.apply(lambda x: [round(x["nlat"], 1), round(x["slat"], 1), round(x["wlon"], 1), round(x["elon"], 1)], axis=1)
-    coords_data[["nlat", "slat", "wlon", "elon"]] = [x for x in coordinates]
+    coordinates = coords_data.apply(lambda x: [round(x[NLAT_FIELD], 1), round(x[SLAT_FIELD], 1), round(x[WLON_FIELD], 1), round(x[ELON_FIELD], 1)], axis=1)
+    coords_data[[NLAT_FIELD, SLAT_FIELD, WLON_FIELD, ELON_FIELD]] = [x for x in coordinates]
     before_duplicates_filter = len(coords_data)
-    coords_data = coords_data.drop_duplicates(subset=["nlat", "slat", "wlon", "elon"])
+    coords_data = coords_data.drop_duplicates(subset=[NLAT_FIELD, SLAT_FIELD, WLON_FIELD, ELON_FIELD])
     num_dup = before_duplicates_filter - len(coords_data)
 
     logger.info("Removed {} duplicates rows".format(num_dup))
@@ -146,21 +154,21 @@ def read_params_from_input_file(path):
 
 
 def prepare_bulk_region_request(params_to_fetch, **kwargs):
-    coords_data = pd.DataFrame(columns=["nlat", "slat", "wlon", "elon"])
+    coords_data = pd.DataFrame(columns=[NLAT_FIELD, SLAT_FIELD, WLON_FIELD, ELON_FIELD])
     coords_data.append(
         {
-            "nlat": kwargs['nlat'],
-            "slat": kwargs['slat'],
-            "wlon": kwargs['wlon'],
-            "elon": kwargs['elon']
+            NLAT_FIELD: kwargs[NLAT_FIELD],
+            SLAT_FIELD: kwargs[SLAT_FIELD],
+            WLON_FIELD: kwargs[WLON_FIELD],
+            ELON_FIELD: kwargs[ELON_FIELD]
         })
     coords_data = prepare_coordinates(coords_data)
 
     for param in params_to_fetch:
-        param, level, hours_type = param['param'], param['level'], param['hours_type']
+        param, level, hours_type = param[PARAM_FIELD], param[LEVEL_FIELD], param[HOURS_TYPE_FIELD]
         if level == '':
             level = 'Def'
-        for nlat, slat, wlon, elon in coords_data[["nlat", "slat", "wlon", "elon"]].values:
+        for nlat, slat, wlon, elon in coords_data[[NLAT_FIELD, SLAT_FIELD, WLON_FIELD, ELON_FIELD]].values:
             save_request_to_pseudo_db(RequestType.BULK, RequestStatus.PENDING, nlat=nlat, slat=slat,
                                       elon=elon, wlon=wlon, param=param, level=level, hours_type=hours_type)
 
@@ -176,10 +184,10 @@ def prepare_points_request(params_to_fetch, **kwargs):
     coords_data.to_csv('csv/map_cities_to_gfs_cords.csv')
 
     for param in params_to_fetch:
-        param, level, hours_type = param['param'], param['level'], param['hours_type']
+        param, level, hours_type = param[PARAM_FIELD], param[LEVEL_FIELD], param[HOURS_TYPE_FIELD]
         if level == '':
             level = 'Def'
-        for nlat, slat, wlon, elon in coords_data[["nlat", "slat", "wlon", "elon"]].values:
+        for nlat, slat, wlon, elon in coords_data[[NLAT_FIELD, SLAT_FIELD, WLON_FIELD, ELON_FIELD]].values:
             save_request_to_pseudo_db(RequestType.POINT, RequestStatus.PENDING, nlat=nlat, slat=slat,
                                       elon=elon, wlon=wlon, param=param, level=level, hours_type=hours_type)
 
@@ -188,7 +196,7 @@ def prepare_requests(**kwargs):
     if kwargs['input_file'] is not None:
         params_to_fetch = read_params_from_input_file(kwargs['input_file'])
     else:
-        params_to_fetch = [{"param": kwargs['gfs_parameter'], "level": kwargs['gfs_level'], "hours_type": kwargs['hours_type']}]
+        params_to_fetch = [{PARAM_FIELD: kwargs['gfs_parameter'], "level": kwargs['gfs_level'], HOURS_TYPE_FIELD: kwargs[HOURS_TYPE_FIELD]}]
 
     if kwargs["bulk_region_fetch"]:
         prepare_bulk_region_request(params_to_fetch, **kwargs)
@@ -202,28 +210,28 @@ def send_prepared_requests(kwargs):
     end_date = datetime.strptime(kwargs["end_date"], '%Y-%m-%d %H:%M')
     request_db = pd.read_csv(REQ_ID_PATH, index_col=0)
 
-    requests_to_send = request_db[request_db["status"] == RequestStatus.PENDING.value]
+    requests_to_send = request_db[request_db[REQUEST_STATUS_FIELD] == RequestStatus.PENDING.value]
 
     for index, request in requests_to_send.iterrows():
-        latitude = request["latitude"]
-        longitude = request["longitude"]
-        param = request['param']
-        level = request['level']
-        hours_type = request['hours_type']
+        nlat, slat, elon, wlon = request[NLAT_FIELD, SLAT_FIELD, ELON_FIELD, WLON_FIELD]
+        request_type = request[REQUEST_TYPE_FIELD]
+        param = request[PARAM_FIELD]
+        level = request[LEVEL_FIELD]
+        hours_type = request[HOURS_TYPE_FIELD]
         product = generate_product_description(kwargs['forecast_start'], kwargs['forecast_end'], hours_type=hours_type)
 
-        template = build_template(latitude, longitude, start_date, end_date, param, product, level)
+        template = build_template(nlat, slat, elon, wlon, start_date, end_date, param, product, level, 'csv' if request_type == RequestType.POINT.value else 'netCDF')
         response = submit_json(template)
         if response['status'] == 'ok':
-            reqst_id = response['result']['request_id']
-            request_db.loc[index, "status"] = RequestStatus.SENT.value
-            request_db.loc[index, "req_id"] = str(int(reqst_id))
+            request_id = response['result']['request_id']
+            request_db.loc[index, REQUEST_STATUS_FIELD] = RequestStatus.SENT.value
+            request_db.loc[index, REQUEST_ID_FIELD] = str(int(request_id))
         else:
             logger.info("Rda has returned error.")
             if response['status'] == 'error' and TOO_MANY_REQUESTS in response['messages']:
                 logger.info("Too many requests. Request will be sent on next scheduler trigger.")
             else:
-                request_db.loc[index, "status"] = RequestStatus.FAILED.value
+                request_db.loc[index, REQUEST_STATUS_FIELD] = RequestStatus.FAILED.value
         logger.info(response)
     request_db.to_csv(REQ_ID_PATH)
     print("Sending requests done.")
