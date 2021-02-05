@@ -31,23 +31,36 @@ class RequestStatus(Enum):
     FINISHED = 'Finished'
 
 
-def save_request(latitude: str, longitude: str, param: str, level: str, hours_type: str,
-                 status: RequestStatus, req_id: Optional[str] = None):
+class RequestType(Enum):
+    BULK = 'Bulk'
+    POINT = 'Point'
+
+
+def point_coords_to_region_coords(coords):
+    region_coords = pd.DataFrame(columns=["nlat", "slat", "wlon", "elon"])
+    region_coords[["nlat", "slat", "wlon", "elon"]] = [[x['latitude'], x['latitude'], x['longitude'], x['longitude']] for x in coords]
+    return region_coords
+
+
+def save_request_to_pseudo_db(request_type: RequestType, request_status: RequestStatus, **kwargs):
     if not os.path.isfile(REQ_ID_PATH):
-        pseudo_db = pd.DataFrame(columns=["req_id", "status", "latitude", "longitude", "param", "level", "hours_type"])
+        pseudo_db = pd.DataFrame(columns=["req_id", "request_type", "status", "nlat", "slat", "wlon", "elon", "param", "level", "hours_type"])
     else:
         pseudo_db = pd.read_csv(REQ_ID_PATH, index_col=[0])
     pseudo_db = pseudo_db.append(
-        {"req_id": req_id,
-         "status": status.value,
-         "latitude": latitude,
-         "longitude": longitude,
-         "param": param,
-         "level": level,
-         "hours_type": hours_type
+        {"req_id": kwargs["req_id"],
+         "request_type": request_type.value,
+         "status": request_status.value,
+         "nlat": kwargs["nlat"],
+         "slat": kwargs["slat"],
+         "wlon": kwargs["wlon"],
+         "elon": kwargs["elon"],
+         "param": kwargs["param"],
+         "level": kwargs["level"],
+         "hours_type": kwargs["hours_type"]
          }, ignore_index=True)
-    logger.info("Saving a new request for coords {0}, param {1}, level {2}, hours_type {3}...".format(
-                                                    "({0}, {1})".format(latitude, longitude), param, level, hours_type))
+    logger.info(f"Saving a new request of type {request_type} for coords (lat: {kwargs['nlat']}-{kwargs['slat']}, "
+                f"lon: {kwargs['wlon']}-{kwargs['elon']}), param {kwargs['param']}, level {kwargs['level']}, hours_type {kwargs['hours_type']}...")
     pseudo_db.to_csv(REQ_ID_PATH)
 
 
@@ -106,21 +119,21 @@ def build_template(latitude, longitude, start_date, end_date, param_code, produc
     return control
 
 
-def prepare_coordinates(data):
+def prepare_coordinates(coords_data):
     """
-    Round GFS coordinates for provided cities. Filter duplicates.
-    :param data: Pandas dataFrame
+    Round GFS coordinates for provided data. Filter duplicates.
+    :param coords_data: Pandas dataFrame
     :return:
     """
-    coordinates = data.apply(lambda x: [round(x["latitude"], 1), round(x["longitude"], 1)], axis=1)
-    data[["latitude", "longitude"]] = [x for x in coordinates]
-    before_duplicates_filter = len(data)
-    data = data.drop_duplicates(subset=["latitude", "longitude"])
-    num_dup = before_duplicates_filter - len(data)
+    coordinates = coords_data.apply(lambda x: [round(x["nlat"], 1), round(x["slat"], 1), round(x["wlon"], 1), round(x["elon"], 1)], axis=1)
+    coords_data[["nlat", "slat", "wlon", "elon"]] = [x for x in coordinates]
+    before_duplicates_filter = len(coords_data)
+    coords_data = coords_data.drop_duplicates(subset=["nlat", "slat", "wlon", "elon"])
+    num_dup = before_duplicates_filter - len(coords_data)
 
     logger.info("Removed {} duplicates rows".format(num_dup))
 
-    return data
+    return coords_data
 
 
 def read_params_from_input_file(path):
@@ -132,27 +145,55 @@ def read_params_from_input_file(path):
         raise Exception("Input path does not exist.")
 
 
-def prepare_requests(**kwargs):
-    if kwargs["fetch_city_coordinates"]:
-        data = find_coordinates(kwargs["city_list"])
-    else:
-        data = pd.read_csv(kwargs["coordinate_path"])
-    data = prepare_coordinates(data)
-    # save city coordinates just for debug
-    data.to_csv('csv/map_cities_to_gfs_cords.csv')
+def prepare_bulk_region_request(params_to_fetch, **kwargs):
+    coords_data = pd.DataFrame(columns=["nlat", "slat", "wlon", "elon"])
+    coords_data.append(
+        {
+            "nlat": kwargs['nlat'],
+            "slat": kwargs['slat'],
+            "wlon": kwargs['wlon'],
+            "elon": kwargs['elon']
+        })
+    coords_data = prepare_coordinates(coords_data)
 
-    if(kwargs['input_file'] is not None):
-        inputs = read_params_from_input_file(kwargs['input_file'])
-    else:
-        inputs = [{"param": kwargs['gfs_parameter'], "level": kwargs['gfs_level'], "hours_type": kwargs['hours_type']}]
-
-    for input in inputs:
-        param, level, hours_type = input['param'], input['level'], input['hours_type']
+    for param in params_to_fetch:
+        param, level, hours_type = param['param'], param['level'], param['hours_type']
         if level == '':
             level = 'Def'
-        data[['param', 'level', 'hours_type']] = param, level, hours_type
-        for latitude, longitude in data[['latitude', 'longitude']].values:
-            save_request(latitude, longitude, param, level, hours_type, RequestStatus.PENDING)
+        for nlat, slat, wlon, elon in coords_data[["nlat", "slat", "wlon", "elon"]].values:
+            save_request_to_pseudo_db(RequestType.BULK, RequestStatus.PENDING, nlat=nlat, slat=slat,
+                                      elon=elon, wlon=wlon, param=param, level=level, hours_type=hours_type)
+
+
+def prepare_points_request(params_to_fetch, **kwargs):
+    if kwargs["fetch_city_coordinates"]:
+        coords_data = find_coordinates(kwargs["city_list"])
+    else:
+        coords_data = pd.read_csv(kwargs["coordinate_path"])
+
+    coords_data = prepare_coordinates(point_coords_to_region_coords(coords_data))
+    # save city coordinates just for debug
+    coords_data.to_csv('csv/map_cities_to_gfs_cords.csv')
+
+    for param in params_to_fetch:
+        param, level, hours_type = param['param'], param['level'], param['hours_type']
+        if level == '':
+            level = 'Def'
+        for nlat, slat, wlon, elon in coords_data[["nlat", "slat", "wlon", "elon"]].values:
+            save_request_to_pseudo_db(RequestType.POINT, RequestStatus.PENDING, nlat=nlat, slat=slat,
+                                      elon=elon, wlon=wlon, param=param, level=level, hours_type=hours_type)
+
+
+def prepare_requests(**kwargs):
+    if kwargs['input_file'] is not None:
+        params_to_fetch = read_params_from_input_file(kwargs['input_file'])
+    else:
+        params_to_fetch = [{"param": kwargs['gfs_parameter'], "level": kwargs['gfs_level'], "hours_type": kwargs['hours_type']}]
+
+    if kwargs["bulk_region_fetch"]:
+        prepare_bulk_region_request(params_to_fetch, **kwargs)
+    else:
+        prepare_points_request(params_to_fetch, **kwargs)
 
 
 def send_prepared_requests(kwargs):
@@ -190,6 +231,7 @@ def send_prepared_requests(kwargs):
 
 def prepare_and_start_processor(**kwargs):
     prepare_requests(**kwargs)
+    job = {}
     try:
         logger.info("Scheduling sender job.")
         job = schedule.every(30).minutes.do(send_prepared_requests, kwargs)
@@ -201,13 +243,25 @@ def prepare_and_start_processor(**kwargs):
         schedule.run_pending()
         time.sleep(60)
 
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--fetch_city_coordinates', help='get coordinates for provided cities', default=False)
+    parser.add_argument('--bulk_region_fetch', help='If true, grib files will be requested for an area specified in '
+                                                    '--nlat, --slat, --wlon and --elon. Otherwise, coordinates from '
+                                                    '--coordinate_path will be used', default=False)
+    parser.add_argument('--fetch_city_coordinates', help='Get coordinates for provided cities', default=False)
     parser.add_argument('--city_list', help='Path to SYNOP list with locations names', default=False)
-    parser.add_argument('--coordinate_path', help='Path to list of cities with coordinates',
+    parser.add_argument('--coordinate_path', help='Path to list of cities with coordinates to fetch.',
                         default='../city_coordinates/city_geo_test.csv')
+    parser.add_argument('--nlat', help='Optional, use for spatial subset requests 90 to -90. Specifies upper bound of '
+                                       'spherical rectangle.', default=None, type=float)
+    parser.add_argument('--slat', help='Optional, use for spatial subset requests 90 to -90. Specifies lower bound of '
+                                       'spherical rectangle.', default=None, type=float)
+    parser.add_argument('--wlon', help='Optional, use for spatial subset requests -180 to 180. Specifies western '
+                                       'bound of spherical rectangle.', default=None, type=float)
+    parser.add_argument('--elon', help='Optional, use for spatial subset requests -180 to 180. Specifies eastern '
+                                       'bound of spherical rectangle.', default=None, type=float)
     parser.add_argument('--start_date', help='Start date GFS', default='2015-01-15 00:00')
     parser.add_argument('--end_date', help='End date GFS', default='2016-01-01 00:00')
     parser.add_argument('--input_file', help='Path to JSON input file with parameters, levels and forecast hours type.',
