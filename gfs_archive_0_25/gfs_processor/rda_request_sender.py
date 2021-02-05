@@ -13,8 +13,8 @@ from geopy.geocoders import Nominatim, GeoNames
 from tqdm import tqdm
 import os
 from enum import Enum
-from gfs_archive_0_25.gfs_processor.own_logger import logger
-from gfs_archive_0_25.rda_apps_clients.src.python.rdams_client import submit_json
+from own_logger import logger
+from rdams_client import submit_json
 
 REQ_ID_PATH = 'csv/req_list.csv'
 TOO_MANY_REQUESTS = 'User has more than 10 open requests. Purge requests before trying again.'
@@ -155,13 +155,13 @@ def read_params_from_input_file(path):
 
 def prepare_bulk_region_request(params_to_fetch, **kwargs):
     coords_data = pd.DataFrame(columns=[NLAT_FIELD, SLAT_FIELD, WLON_FIELD, ELON_FIELD])
-    coords_data.append(
+    coords_data = coords_data.append(
         {
             NLAT_FIELD: kwargs[NLAT_FIELD],
             SLAT_FIELD: kwargs[SLAT_FIELD],
             WLON_FIELD: kwargs[WLON_FIELD],
             ELON_FIELD: kwargs[ELON_FIELD]
-        })
+        }, ignore_index=True)
     coords_data = prepare_coordinates(coords_data)
 
     for param in params_to_fetch:
@@ -170,7 +170,7 @@ def prepare_bulk_region_request(params_to_fetch, **kwargs):
             level = 'Def'
         for nlat, slat, wlon, elon in coords_data[[NLAT_FIELD, SLAT_FIELD, WLON_FIELD, ELON_FIELD]].values:
             save_request_to_pseudo_db(RequestType.BULK, RequestStatus.PENDING, nlat=nlat, slat=slat,
-                                      elon=elon, wlon=wlon, param=param, level=level, hours_type=hours_type)
+                                      elon=elon, wlon=wlon, param=param, level=level, hours_type=hours_type, request_id=None)
 
 
 def prepare_points_request(params_to_fetch, **kwargs):
@@ -189,7 +189,7 @@ def prepare_points_request(params_to_fetch, **kwargs):
             level = 'Def'
         for nlat, slat, wlon, elon in coords_data[[NLAT_FIELD, SLAT_FIELD, WLON_FIELD, ELON_FIELD]].values:
             save_request_to_pseudo_db(RequestType.POINT, RequestStatus.PENDING, nlat=nlat, slat=slat,
-                                      elon=elon, wlon=wlon, param=param, level=level, hours_type=hours_type)
+                                      elon=elon, wlon=wlon, param=param, level=level, hours_type=hours_type, request_id=None)
 
 
 def prepare_requests(**kwargs):
@@ -198,7 +198,7 @@ def prepare_requests(**kwargs):
     else:
         params_to_fetch = [{PARAM_FIELD: kwargs['gfs_parameter'], "level": kwargs['gfs_level'], HOURS_TYPE_FIELD: kwargs[HOURS_TYPE_FIELD]}]
 
-    if kwargs["bulk_region_fetch"]:
+    if kwargs["bulk"]:
         prepare_bulk_region_request(params_to_fetch, **kwargs)
     else:
         prepare_points_request(params_to_fetch, **kwargs)
@@ -213,14 +213,14 @@ def send_prepared_requests(kwargs):
     requests_to_send = request_db[request_db[REQUEST_STATUS_FIELD] == RequestStatus.PENDING.value]
 
     for index, request in requests_to_send.iterrows():
-        nlat, slat, elon, wlon = request[NLAT_FIELD, SLAT_FIELD, ELON_FIELD, WLON_FIELD]
+        nlat, slat, elon, wlon = request[[NLAT_FIELD, SLAT_FIELD, ELON_FIELD, WLON_FIELD]]
         request_type = request[REQUEST_TYPE_FIELD]
         param = request[PARAM_FIELD]
         level = request[LEVEL_FIELD]
         hours_type = request[HOURS_TYPE_FIELD]
         product = generate_product_description(kwargs['forecast_start'], kwargs['forecast_end'], hours_type=hours_type)
 
-        template = build_template(nlat, slat, elon, wlon, start_date, end_date, param, product, level, 'csv' if request_type == RequestType.POINT.value else 'netCDF')
+        template = build_template(nlat, slat, elon, wlon, start_date, end_date, param, product, level, 'csv' if request_type == RequestType.POINT.value else 'grib2')
         response = submit_json(template)
         if response['status'] == 'ok':
             request_id = response['result']['request_id']
@@ -255,9 +255,9 @@ def prepare_and_start_processor(**kwargs):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--bulk_region_fetch', help='If true, grib files will be requested for an area specified in '
+    parser.add_argument('-bulk', help='If true, grib files will be requested for an area specified in '
                                                     '--nlat, --slat, --wlon and --elon. Otherwise, coordinates from '
-                                                    '--coordinate_path will be used', default=False)
+                                                    '--coordinate_path will be used', action='store_true')
     parser.add_argument('--fetch_city_coordinates', help='Get coordinates for provided cities', default=False)
     parser.add_argument('--city_list', help='Path to SYNOP list with locations names', default=False)
     parser.add_argument('--coordinate_path', help='Path to list of cities with coordinates to fetch.',
