@@ -5,29 +5,19 @@ from datetime import datetime
 import time
 import pandas as pd
 import schedule
-
-sys.path.insert(0, '../rda_apps_clients/src/python')
-sys.path.insert(1, '..')
-
 from geopy.geocoders import Nominatim, GeoNames
 from tqdm import tqdm
 import os
 from enum import Enum
-from own_logger import logger
-from rdams_client import submit_json
+
+sys.path.insert(0, '../rda_apps_clients/src/python')
+sys.path.insert(1, '../..')
+
+from gfs_archive_0_25.gfs_processor.own_logger import logger
+from gfs_archive_0_25.rda_apps_clients.src.python.rdams_client import submit_json
+from gfs_archive_0_25.gfs_processor.consts import *
 
 REQ_ID_PATH = 'csv/req_list.csv'
-TOO_MANY_REQUESTS = 'User has more than 10 open requests. Purge requests before trying again.'
-REQUEST_TYPE_FIELD = "request_type"
-REQUEST_STATUS_FIELD = "request_status"
-REQUEST_ID_FIELD = "request_id"
-NLAT_FIELD = "nlat"
-SLAT_FIELD = "slat"
-ELON_FIELD = "elon"
-WLON_FIELD = "wlon"
-LEVEL_FIELD = "level"
-PARAM_FIELD = "param"
-HOURS_TYPE_FIELD = "hours_type"
 
 class RequestStatus(Enum):
     PENDING = 'Pending'
@@ -220,7 +210,7 @@ def send_prepared_requests(kwargs):
         hours_type = request[HOURS_TYPE_FIELD]
         product = generate_product_description(kwargs['forecast_start'], kwargs['forecast_end'], hours_type=hours_type)
 
-        template = build_template(nlat, slat, elon, wlon, start_date, end_date, param, product, level, 'csv' if request_type == RequestType.POINT.value else 'grib2')
+        template = build_template(nlat, slat, elon, wlon, start_date, end_date, param, product, level, 'csv' if request_type == RequestType.POINT.value else 'netCDF')
         response = submit_json(template)
         if response['status'] == 'ok':
             request_id = response['result']['request_id']
@@ -234,7 +224,7 @@ def send_prepared_requests(kwargs):
                 request_db.loc[index, REQUEST_STATUS_FIELD] = RequestStatus.FAILED.value
         logger.info(response)
     request_db.to_csv(REQ_ID_PATH)
-    print("Sending requests done.")
+    print("Sending requests done. Waiting for next scheduler trigger.")
 
 
 def prepare_and_start_processor(**kwargs):

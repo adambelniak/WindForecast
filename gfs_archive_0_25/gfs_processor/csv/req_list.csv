@@ -1,5 +1,10 @@
 ,request_id,request_type,request_status,nlat,slat,wlon,elon,param,level,hours_type
-0,471693,Bulk,Sent,55.5,55.2,13.2,13.0,T CDC,LCY:0,average
-1,471694,Bulk,Sent,55.5,55.2,13.2,13.0,T CDC,MCY:0,average
-2,471695,Bulk,Sent,55.5,55.2,13.2,13.0,T CDC,HCY:0,average
-
+0,471693.0,Bulk,Error,55.5,55.2,13.2,13.0,T CDC,LCY:0,average
+1,471694.0,Bulk,Error,55.5,55.2,13.2,13.0,T CDC,MCY:0,average
+2,471695.0,Bulk,Error,55.5,55.2,13.2,13.0,T CDC,HCY:0,average
+3,471698.0,Bulk,Error,55.5,55.2,13.2,13.0,T CDC,LCY:0,average
+4,471769.0,Bulk,Error,55.5,55.2,13.2,13.0,T CDC,LCY:0,average
+5,471772.0,Bulk,Finished,55.5,55.2,13.2,13.0,T CDC,LCY:0,average
+6,471791.0,Bulk,Error,56.0,48.0,13.0,26.0,T CDC,LCY:0,average
+7,471792.0,Bulk,Error,56.0,48.0,13.0,26.0,T CDC,MCY:0,average
+8,471793.0,Bulk,Error,56.0,48.0,13.0,26.0,T CDC,HCY:0,average
