@@ -1,15 +1,15 @@
+from os.path import isfile, join
 import netCDF4 as nc
 import os
 import re
 import datetime
+import sys
+import pandas as pd
+
+sys.path.insert(1, '../..')
+
 from gfs_archive_0_25.utils import prep_zeros_if_needed
 from gfs_archive_0_25.gfs_processor.consts import *
-import pandas as pd
-#
-# path = '../gfs_processor/download/csv/55_5-55_2-13_0-13_2/T CDC/LCY_0/gfs.0p25.2015011500.f009.grib2.belniak471772.nc'
-# ds = nc.Dataset(path)
-#
-# print(ds)
 
 
 def get_value_from_csv(csv_file_path):
@@ -22,7 +22,7 @@ def get_value_from_csv(csv_file_path):
     return value
 
 
-def prepare_final_csvs(dir_with_csvs, latitude: str, longitude: str):
+def prepare_final_csvs_from_csvs(dir_with_csvs, latitude: str, longitude: str):
     final_date = datetime.datetime.now()
     latlon_dir = os.path.join("download/csv", dir_with_csvs)
     final_csv_dir = os.path.join("output_csvs", latitude.replace('.', '_') + '-' + longitude.replace('.', '_'))
@@ -91,16 +91,28 @@ def process_csv_files():
             latlon_search = re.search(r'(\d+(_\d)?)-(\d+(_\d)?)', dir_with_csvs)
             latitude = latlon_search.group(1)
             longitude = latlon_search.group(3)
-            prepare_final_csvs(dir_with_csvs, latitude, longitude)
+            prepare_final_csvs_from_csvs(dir_with_csvs, latitude, longitude)
         break
 
 
-def process_netCDF_files():
+def process_netCDF_file_to_csv(file):
     pass
+
+
+def process_netCDF_files():
+    print("Processing netCDF files...")
+    netCDF_dir = "download/netCDF"
+    files_in_directory = [f for f in os.listdir(netCDF_dir) if isfile(join(netCDF_dir, f)) and f.endswith(".nc")]
+    for file in files_in_directory:
+        process_netCDF_file_to_csv(file)
 
 
 if __name__ == '__main__':
     process_csv_files()
     process_netCDF_files()
 
+    # path = '../gfs_processor/download/netCDF/gfs.0p25.2015011500.f009.grib2.belniak.nc'
+    # ds = nc.Dataset(path)
+    #
+    # print(ds.dimensions['ncl_strlen_0']):
 
