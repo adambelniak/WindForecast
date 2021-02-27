@@ -1,3 +1,4 @@
+import time
 from os.path import isfile, join
 import netCDF4 as nc
 import os
@@ -5,6 +6,7 @@ import re
 import datetime
 import sys
 import pandas as pd
+import schedule
 import tqdm
 
 sys.path.insert(1, '../..')
@@ -92,8 +94,22 @@ def process_netCDF_files():
         # do not take subdirs
         break
 
+    logger.info("Processing done.")
+
+
+def schedule_processing():
+    try:
+        job = schedule.every(15).minutes.do(lambda: process_netCDF_files())
+        job.run()
+        while True:
+            schedule.run_pending()
+            time.sleep(60)
+    except Exception as e:
+        logger.error(e, exc_info=True)
+
 
 if __name__ == '__main__':
-    process_netCDF_files()
+    schedule_processing()
+
 
 
