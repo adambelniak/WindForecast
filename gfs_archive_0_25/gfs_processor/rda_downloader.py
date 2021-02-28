@@ -157,12 +157,14 @@ def processor(purge_requests: bool, tidy: bool):
     request_db.to_csv(REQ_ID_PATH)
 
     if purge_requests:
-        done_requests = request_db[request_db[REQUEST_STATUS_FIELD] in [RequestStatus.ERROR.value,
-                                                                        RequestStatus.FAILED.value,
-                                                                        RequestStatus.DOWNLOADED.value,
-                                                                        RequestStatus.FINISHED.value]]
-        for request in done_requests:
-            purge(request[REQUEST_ID_FIELD])
+        done_requests = request_db[(request_db[REQUEST_STATUS_FIELD] == RequestStatus.ERROR.value) |
+                                   (request_db[REQUEST_STATUS_FIELD] == RequestStatus.FAILED.value) |
+                                   (request_db[REQUEST_STATUS_FIELD] == RequestStatus.DOWNLOADED.value) |
+                                   (request_db[REQUEST_STATUS_FIELD] == RequestStatus.FINISHED.value)]
+        for index, request in done_requests.iterrows():
+            purge(str(int(request[REQUEST_ID_FIELD])))
+            request_db.loc[index, REQUEST_STATUS_FIELD] = RequestStatus.PURGED.value
+        request_db.to_csv(REQ_ID_PATH)
 
     print("Done. Waiting for next scheduler trigger.")
 
@@ -181,10 +183,10 @@ def scheduler(purge_done=False, tidy=False):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--purge', help='Purge request after downloading files or if the request has failed',
-                        default=False)
-    parser.add_argument('--tidy', help='Remove downloaded tars after unpacking.',
-                        default=False)
+    parser.add_argument('-purge', help='Purge request after downloading files or if the request has failed',
+                        default=False, action="store_true")
+    parser.add_argument('-tidy', help='Remove downloaded tars after unpacking.',
+                        default=False, action="store_true")
 
     args = parser.parse_args()
     scheduler(args.purge, args.tidy)

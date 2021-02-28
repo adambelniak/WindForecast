@@ -49,7 +49,7 @@ def process_netCDF_file_to_csv(file, param, level):
                 os.makedirs(final_csv_dir)
 
             value = get_value_from_netCDF(ds, lat_index, lon_index)
-            param_name = param + '_' + level.replace("_", ":")
+            param_name = param + '_' + level.replace("_", ":").replace(",", "_")
 
             final_csv_name = FINAL_CSV_FILENAME_FORMAT.format(init_date.year,
                                                               prep_zeros_if_needed(str(init_date.month), 1),

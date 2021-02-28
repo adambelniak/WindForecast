@@ -27,6 +27,7 @@ class RequestStatus(Enum):
     COMPLETED = 'Completed'
     DOWNLOADED = 'Downloaded'
     FINISHED = 'Finished'
+    PURGED = 'Purged'
 
 
 class RequestType(Enum):
@@ -185,6 +186,7 @@ def prepare_points_request(params_to_fetch, **kwargs):
 def prepare_requests(**kwargs):
     if kwargs['input_file'] is not None:
         params_to_fetch = read_params_from_input_file(kwargs['input_file'])
+        logger.info(f"Preparing requests for {len(params_to_fetch)} parameters...")
     else:
         params_to_fetch = [{PARAM_FIELD: kwargs['gfs_parameter'], "level": kwargs['gfs_level'], HOURS_TYPE_FIELD: kwargs[HOURS_TYPE_FIELD]}]
 
@@ -220,6 +222,7 @@ def send_prepared_requests(kwargs):
             logger.info("Rda has returned error.")
             if response['status'] == 'error' and TOO_MANY_REQUESTS in response['messages']:
                 logger.info("Too many requests. Request will be sent on next scheduler trigger.")
+                break
             else:
                 request_db.loc[index, REQUEST_STATUS_FIELD] = RequestStatus.FAILED.value
         logger.info(response)
@@ -228,7 +231,8 @@ def send_prepared_requests(kwargs):
 
 
 def prepare_and_start_processor(**kwargs):
-    prepare_requests(**kwargs)
+    if kwargs['send_only'] is False:
+        prepare_requests(**kwargs)
     job = {}
     try:
         logger.info("Scheduling sender job.")
@@ -245,6 +249,7 @@ def prepare_and_start_processor(**kwargs):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
+    parser.add_argument('-send_only', help='Do not prepare new request. Send request from db only.', action='store_true')
     parser.add_argument('-bulk', help='If true, grib files will be requested for an area specified in '
                                                     '--nlat, --slat, --wlon and --elon. Otherwise, coordinates from '
                                                     '--coordinate_path will be used', action='store_true')

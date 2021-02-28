@@ -545,7 +545,6 @@ def purge_request(request_idx):
     ret = requests.delete(url, auth=user_auth)
 
     check_status(ret)
-    return ret.json()
 
 def get_selected_function(args_dict):
     """Returns correct function based on options.

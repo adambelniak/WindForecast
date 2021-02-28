@@ -68,7 +68,7 @@ def prepare_final_csvs_from_csvs(dir_with_csvs, latitude: str, longitude: str, i
                                 if len(csv_files_found) != 0:
                                     csv_file = csv_files_found[0]
                                     value = get_value_from_csv(csv_file)
-                                    param_name = param_dir + '_' + level_dir.replace("_", ":")
+                                    param_name = param_dir + '_' + level_dir.replace("_", ":").replace(",", "_")
                                     date = (date + datetime.timedelta(hours=offset)).isoformat()
 
                                     if param_name not in forecast_df:
