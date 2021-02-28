@@ -22,18 +22,18 @@ def get_download_target_path_tar(request_id: str, request_type: str, nlat: str, 
     if request_type == RequestType.POINT.value:
         lat = nlat.replace('.', '_')
         lon = elon.replace('.', '_')
-        return os.path.join("download", "tar", request_id, lat + "-" + lon, param, level.replace(":", "_"))
+        return os.path.join("download", "tar", request_id, lat + "-" + lon, param, level.replace(":", "_").replace(',', '-'))
     else:
-        return os.path.join("download", "tar", request_id, param, level.replace(":", "_"))
+        return os.path.join("download", "tar", request_id, param, level.replace(":", "_").replace(',', '-'))
 
 
 def get_unpacked_target_path(request_type: str, nlat: str, elon: str, param: str, level: str):
     if request_type == RequestType.POINT.value:
         lat = nlat.replace('.', '_')
         lon = elon.replace('.', '_')
-        return os.path.join("download", "csv", lat + "-" + lon, param, level.replace(":", "_"))
+        return os.path.join("download", "csv", lat + "-" + lon, param, level.replace(":", "_").replace(",", "-"))
     else:
-        return os.path.join("download", "netCDF", param, level.replace(":", "_"))
+        return os.path.join("download", "netCDF", param, level.replace(":", "_").replace(',', '-'))
 
 
 def download_request(req_id: str, target_dir):

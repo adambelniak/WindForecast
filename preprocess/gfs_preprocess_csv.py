@@ -19,7 +19,7 @@ def prepare_gfs_data(dir):
         date_forecast_re = re.search(r'^([12]\d{3}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])-([0|1][0-9]|2[0-4])Z).csv*',
                                      file_name)
         if not date_forecast_re:
-            raise Exception("Invalid file name format - except 'YYYY-MM-DD-HHZ.csv'")
+            raise Exception("Invalid file name format - expected 'YYYY-MM-DD-HHZ.csv'")
 
         date_forecast = date_forecast_re.group(1)
         gfs_data[date_forecast] = single_gfs.drop(single_gfs.columns[0], axis=1)
@@ -116,7 +116,7 @@ def get_gfs_time_laps(gfs_creation_time):
 
 def filter_desired_time_with_future(data: dict, time_stride: int, number_future_samples: int):
     """
-    This method return GFS predictions for provided point of time together with next samples.
+    This method returns GFS predictions for provided point of time together with next samples.
     :param data: dictionary contains gfs by creation time
     :param time_stride: in hours - specify which gfs prediction should be considered; interested time = created_at + time_stride
     :return:

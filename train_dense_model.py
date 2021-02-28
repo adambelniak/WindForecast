@@ -4,7 +4,7 @@ from models.dense_model import create_model
 import argparse
 import numpy as np
 from preprocess.synop_preprocess import prepare_synop_dataset, normalize
-from preprocess.gfs_preprocess import prepare_gfs_data
+from preprocess.gfs_preprocess_csv import prepare_gfs_data
 import tqdm
 from datetime import datetime, timedelta
 from train_sequence_model import plot_history

@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import numpy as np
 import matplotlib.pyplot as plt
 from models.seq_2_seq_model import create_model
-from preprocess.gfs_preprocess import prepare_gfs_sequence_dataset, CREATED_AT_COLUMN_NAME
+from preprocess.gfs_preprocess_csv import prepare_gfs_sequence_dataset, CREATED_AT_COLUMN_NAME
 from preprocess.synop_preprocess import prepare_synop_dataset, normalize
 from util.utils import convert_wind
 import pandas as pd

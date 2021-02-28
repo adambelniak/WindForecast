@@ -43,13 +43,13 @@ def process_netCDF_file_to_csv(file, param, level):
     date_str = (init_date + datetime.timedelta(hours=int(offset))).isoformat()
 
     for lat_index, lat in enumerate(lats):
-        for lon_index, lon in list(enumerate(lons))[:2]:
+        for lon_index, lon in list(enumerate(lons)):
             final_csv_dir = os.path.join("output_csvs", str(lat).replace('.', '_') + '-' + str(lon).replace('.', '_'))
             if not os.path.exists(final_csv_dir):
                 os.makedirs(final_csv_dir)
 
             value = get_value_from_netCDF(ds, lat_index, lon_index)
-            param_name = param + '_' + level.replace("_", ":").replace(",", "_")
+            param_name = param + '_' + level.replace("_", ":")
 
             final_csv_name = FINAL_CSV_FILENAME_FORMAT.format(init_date.year,
                                                               prep_zeros_if_needed(str(init_date.month), 1),

@@ -1,7 +1,7 @@
 from datetime import timedelta
 
 from models.gfs_model import create_model
-from preprocess.gfs_preprocess import prepare_gfs_dataset_for_single_point_time, CREATED_AT_COLUMN_NAME
+from preprocess.gfs_preprocess_csv import prepare_gfs_dataset_for_single_point_time, CREATED_AT_COLUMN_NAME
 from preprocess.synop_preprocess import prepare_synop_dataset, split_features_into_arrays
 import pandas as pd
 import numpy as np

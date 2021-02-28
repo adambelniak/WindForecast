@@ -1,10 +1,113 @@
 ,request_id,request_type,request_status,nlat,slat,wlon,elon,param,level,hours_type
-0,471693.0,Bulk,Error,55.5,55.2,13.2,13.0,T CDC,LCY:0,average
-1,471694.0,Bulk,Error,55.5,55.2,13.2,13.0,T CDC,MCY:0,average
-2,471695.0,Bulk,Error,55.5,55.2,13.2,13.0,T CDC,HCY:0,average
-3,471698.0,Bulk,Error,55.5,55.2,13.2,13.0,T CDC,LCY:0,average
-4,471769.0,Bulk,Error,55.5,55.2,13.2,13.0,T CDC,LCY:0,average
-5,471772.0,Bulk,Finished,55.5,55.2,13.2,13.0,T CDC,LCY:0,average
-6,471791.0,Bulk,Error,56.0,48.0,13.0,26.0,T CDC,LCY:0,average
-7,471792.0,Bulk,Error,56.0,48.0,13.0,26.0,T CDC,MCY:0,average
-8,471793.0,Bulk,Error,56.0,48.0,13.0,26.0,T CDC,HCY:0,average
+0,471693.0,Bulk,Purged,55.5,55.2,13.2,13.0,T CDC,LCY:0,average
+1,471694.0,Bulk,Purged,55.5,55.2,13.2,13.0,T CDC,MCY:0,average
+2,471695.0,Bulk,Purged,55.5,55.2,13.2,13.0,T CDC,HCY:0,average
+3,471698.0,Bulk,Purged,55.5,55.2,13.2,13.0,T CDC,LCY:0,average
+4,471769.0,Bulk,Purged,55.5,55.2,13.2,13.0,T CDC,LCY:0,average
+5,471772.0,Bulk,Purged,55.5,55.2,13.2,13.0,T CDC,LCY:0,average
+6,471791.0,Bulk,Purged,56.0,48.0,13.0,26.0,T CDC,LCY:0,average
+7,471792.0,Bulk,Purged,56.0,48.0,13.0,26.0,T CDC,MCY:0,average
+8,471793.0,Bulk,Purged,56.0,48.0,13.0,26.0,T CDC,HCY:0,average
+9,474653.0,Bulk,Sent,56.0,48.0,13.0,26.0,T CDC,LCY:0,average
+10,474654.0,Bulk,Sent,56.0,48.0,13.0,26.0,T CDC,MCY:0,average
+11,474655.0,Bulk,Sent,56.0,48.0,13.0,26.0,T CDC,HCY:0,average
+12,474656.0,Bulk,Sent,56.0,48.0,13.0,26.0,GUST,SFC:0,point
+13,474657.0,Bulk,Sent,56.0,48.0,13.0,26.0,V GRD,ISBL:1000,point
+14,474658.0,Bulk,Sent,56.0,48.0,13.0,26.0,V GRD,ISBL:975,point
+15,474663.0,Bulk,Sent,56.0,48.0,13.0,26.0,V GRD,ISBL:950,point
+16,474664.0,Bulk,Sent,56.0,48.0,13.0,26.0,V GRD,ISBL:925,point
+17,474665.0,Bulk,Sent,56.0,48.0,13.0,26.0,V GRD,ISBL:900,point
+18,474666.0,Bulk,Sent,56.0,48.0,13.0,26.0,V GRD,ISBL:850,point
+19,474667.0,Bulk,Sent,56.0,48.0,13.0,26.0,V GRD,ISBL:800,point
+20,,Bulk,Pending,56.0,48.0,13.0,26.0,V GRD,ISBL:750,point
+21,,Bulk,Pending,56.0,48.0,13.0,26.0,V GRD,ISBL:700,point
+22,,Bulk,Pending,56.0,48.0,13.0,26.0,V GRD,ISBL:650,point
+23,,Bulk,Pending,56.0,48.0,13.0,26.0,V GRD,ISBL:600,point
+24,,Bulk,Pending,56.0,48.0,13.0,26.0,V GRD,ISBL:550,point
+25,,Bulk,Pending,56.0,48.0,13.0,26.0,V GRD,ISBL:500,point
+26,,Bulk,Pending,56.0,48.0,13.0,26.0,V GRD,ISBL:450,point
+27,,Bulk,Pending,56.0,48.0,13.0,26.0,V GRD,ISBL:400,point
+28,,Bulk,Pending,56.0,48.0,13.0,26.0,V GRD,ISBL:350,point
+29,,Bulk,Pending,56.0,48.0,13.0,26.0,V GRD,ISBL:300,point
+30,,Bulk,Pending,56.0,48.0,13.0,26.0,V GRD,ISBL:250,point
+31,,Bulk,Pending,56.0,48.0,13.0,26.0,V GRD,ISBL:200,point
+32,,Bulk,Pending,56.0,48.0,13.0,26.0,V GRD,HTGL:10,point
+33,,Bulk,Pending,56.0,48.0,13.0,26.0,U GRD,ISBL:1000,point
+34,,Bulk,Pending,56.0,48.0,13.0,26.0,U GRD,ISBL:975,point
+35,,Bulk,Pending,56.0,48.0,13.0,26.0,U GRD,ISBL:950,point
+36,,Bulk,Pending,56.0,48.0,13.0,26.0,U GRD,ISBL:925,point
+37,,Bulk,Pending,56.0,48.0,13.0,26.0,U GRD,ISBL:900,point
+38,,Bulk,Pending,56.0,48.0,13.0,26.0,U GRD,ISBL:850,point
+39,,Bulk,Pending,56.0,48.0,13.0,26.0,U GRD,ISBL:800,point
+40,,Bulk,Pending,56.0,48.0,13.0,26.0,U GRD,ISBL:750,point
+41,,Bulk,Pending,56.0,48.0,13.0,26.0,U GRD,ISBL:700,point
+42,,Bulk,Pending,56.0,48.0,13.0,26.0,U GRD,ISBL:650,point
+43,,Bulk,Pending,56.0,48.0,13.0,26.0,U GRD,ISBL:600,point
+44,,Bulk,Pending,56.0,48.0,13.0,26.0,U GRD,ISBL:550,point
+45,,Bulk,Pending,56.0,48.0,13.0,26.0,U GRD,ISBL:500,point
+46,,Bulk,Pending,56.0,48.0,13.0,26.0,U GRD,ISBL:450,point
+47,,Bulk,Pending,56.0,48.0,13.0,26.0,U GRD,ISBL:400,point
+48,,Bulk,Pending,56.0,48.0,13.0,26.0,U GRD,ISBL:350,point
+49,,Bulk,Pending,56.0,48.0,13.0,26.0,U GRD,ISBL:300,point
+50,,Bulk,Pending,56.0,48.0,13.0,26.0,U GRD,ISBL:250,point
+51,,Bulk,Pending,56.0,48.0,13.0,26.0,U GRD,ISBL:200,point
+52,,Bulk,Pending,56.0,48.0,13.0,26.0,U GRD,HTGL:10,point
+53,,Bulk,Pending,56.0,48.0,13.0,26.0,GUST,SFC:0,point
+54,,Bulk,Pending,56.0,48.0,13.0,26.0,TMP,ISBL:1000,point
+55,,Bulk,Pending,56.0,48.0,13.0,26.0,TMP,ISBL:975,point
+56,,Bulk,Pending,56.0,48.0,13.0,26.0,TMP,ISBL:950,point
+57,,Bulk,Pending,56.0,48.0,13.0,26.0,TMP,ISBL:925,point
+58,,Bulk,Pending,56.0,48.0,13.0,26.0,TMP,ISBL:900,point
+59,,Bulk,Pending,56.0,48.0,13.0,26.0,TMP,ISBL:850,point
+60,,Bulk,Pending,56.0,48.0,13.0,26.0,TMP,ISBL:800,point
+61,,Bulk,Pending,56.0,48.0,13.0,26.0,TMP,ISBL:750,point
+62,,Bulk,Pending,56.0,48.0,13.0,26.0,TMP,ISBL:700,point
+63,,Bulk,Pending,56.0,48.0,13.0,26.0,TMP,ISBL:650,point
+64,,Bulk,Pending,56.0,48.0,13.0,26.0,TMP,ISBL:600,point
+65,,Bulk,Pending,56.0,48.0,13.0,26.0,TMP,ISBL:550,point
+66,,Bulk,Pending,56.0,48.0,13.0,26.0,TMP,ISBL:500,point
+67,,Bulk,Pending,56.0,48.0,13.0,26.0,TMP,ISBL:450,point
+68,,Bulk,Pending,56.0,48.0,13.0,26.0,TMP,ISBL:400,point
+69,,Bulk,Pending,56.0,48.0,13.0,26.0,TMP,ISBL:350,point
+70,,Bulk,Pending,56.0,48.0,13.0,26.0,TMP,ISBL:300,point
+71,,Bulk,Pending,56.0,48.0,13.0,26.0,TMP,ISBL:250,point
+72,,Bulk,Pending,56.0,48.0,13.0,26.0,TMP,ISBL:200,point
+73,,Bulk,Pending,56.0,48.0,13.0,26.0,TMP,HTGL:2,point
+74,,Bulk,Pending,56.0,48.0,13.0,26.0,PRATE,SFC:0,average
+75,,Bulk,Pending,56.0,48.0,13.0,26.0,PRES,SFC:0,point
+76,,Bulk,Pending,56.0,48.0,13.0,26.0,HGT,ISBL:850,point
+77,,Bulk,Pending,56.0,48.0,13.0,26.0,HGT,ISBL:700,point
+78,,Bulk,Pending,56.0,48.0,13.0,26.0,HGT,ISBL:550,point
+79,,Bulk,Pending,56.0,48.0,13.0,26.0,HGT,ISBL:300,point
+80,,Bulk,Pending,56.0,48.0,13.0,26.0,CAPE,SFC:0,point
+81,,Bulk,Pending,56.0,48.0,13.0,26.0,CAPE,"SPDL:0,180",point
+82,,Bulk,Pending,56.0,48.0,13.0,26.0,CAPE,"SPDL:0,255",point
+83,,Bulk,Pending,56.0,48.0,13.0,26.0,CIN,SFC:0,point
+84,,Bulk,Pending,56.0,48.0,13.0,26.0,CIN,"SPDL:0,180",point
+85,,Bulk,Pending,56.0,48.0,13.0,26.0,CIN,"SPDL:0,255",point
+86,,Bulk,Pending,56.0,48.0,13.0,26.0,LFT X,SFC:0,point
+87,,Bulk,Pending,56.0,48.0,13.0,26.0,HLCY,"HGTL:0,3000",point
+88,,Bulk,Pending,56.0,48.0,13.0,26.0,V VEL,ISBL:1000,point
+89,,Bulk,Pending,56.0,48.0,13.0,26.0,V VEL,ISBL:950,point
+90,,Bulk,Pending,56.0,48.0,13.0,26.0,V VEL,ISBL:900,point
+91,,Bulk,Pending,56.0,48.0,13.0,26.0,V VEL,ISBL:850,point
+92,,Bulk,Pending,56.0,48.0,13.0,26.0,V VEL,ISBL:800,point
+93,,Bulk,Pending,56.0,48.0,13.0,26.0,V VEL,ISBL:700,point
+94,,Bulk,Pending,56.0,48.0,13.0,26.0,V VEL,ISBL:600,point
+95,,Bulk,Pending,56.0,48.0,13.0,26.0,V VEL,ISBL:500,point
+96,,Bulk,Pending,56.0,48.0,13.0,26.0,V VEL,ISBL:400,point
+97,,Bulk,Pending,56.0,48.0,13.0,26.0,V VEL,ISBL:300,point
+98,,Bulk,Pending,56.0,48.0,13.0,26.0,POT,SIGL:0.995,point
+99,,Bulk,Pending,56.0,48.0,13.0,26.0,R H,HTGL:2,point
+100,,Bulk,Pending,56.0,48.0,13.0,26.0,R H,ISBL:1000,point
+101,,Bulk,Pending,56.0,48.0,13.0,26.0,R H,ISBL:950,point
+102,,Bulk,Pending,56.0,48.0,13.0,26.0,R H,ISBL:900,point
+103,,Bulk,Pending,56.0,48.0,13.0,26.0,R H,ISBL:850,point
+104,,Bulk,Pending,56.0,48.0,13.0,26.0,R H,ISBL:800,point
+105,,Bulk,Pending,56.0,48.0,13.0,26.0,R H,ISBL:700,point
+106,,Bulk,Pending,56.0,48.0,13.0,26.0,R H,ISBL:600,point
+107,,Bulk,Pending,56.0,48.0,13.0,26.0,R H,ISBL:500,point
+108,,Bulk,Pending,56.0,48.0,13.0,26.0,R H,ISBL:400,point
+109,,Bulk,Pending,56.0,48.0,13.0,26.0,R H,ISBL:300,point
+110,,Bulk,Pending,56.0,48.0,13.0,26.0,DPT,HTGL:2,point
+111,,Bulk,Pending,56.0,48.0,13.0,26.0,P WAT,EATM:0,point
