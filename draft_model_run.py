@@ -2,8 +2,7 @@ from datetime import timedelta
 
 from models.gfs_model import create_model
 from preprocess.gfs_preprocess_csv import prepare_gfs_dataset_for_single_point_time, CREATED_AT_COLUMN_NAME
-from preprocess.synop_preprocess import prepare_synop_dataset, split_features_into_arrays
-import pandas as pd
+from preprocess.synop_preprocess import prepare_synop_dataset
 import numpy as np
 
 AUXILIARY_COLUMNS = ["10m U-wind, m/s", "10m V-wind, m/s", "Gusts, m/s"]
@@ -46,7 +45,8 @@ def create_sequence(data, gfs_data, past_len, future_offset):
 
 
 def prepare_data(past_len=12, future_offset=12, train_split_factor=0.75):
-    dataset_train = prepare_synop_dataset("preprocess/synop_data/135_data.csv")
+    features = []
+    dataset_train = prepare_synop_dataset("preprocess/synop_data/135_data.csv", )
     gfs_dataset = prepare_gfs_dataset_for_single_point_time("preprocess/wind_and_temp", 'date', future_offset)
 
     least_recent_date = gfs_dataset["date"].min()
