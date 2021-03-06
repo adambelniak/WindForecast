@@ -22,18 +22,18 @@ def get_download_target_path_tar(request_id: str, request_type: str, nlat: str, 
     if request_type == RequestType.POINT.value:
         lat = nlat.replace('.', '_')
         lon = elon.replace('.', '_')
-        return os.path.join("download", "tar", request_id, lat + "-" + lon, param, level.replace(":", "_").replace(',', '-'))
+        return os.path.join("D:\\", "WindForecast", "download", "tar", request_id, lat + "-" + lon, param, level.replace(":", "_").replace(',', '-'))
     else:
-        return os.path.join("download", "tar", request_id, param, level.replace(":", "_").replace(',', '-'))
+        return os.path.join("D:\\", "WindForecast", "download", "tar", request_id, param, level.replace(":", "_").replace(',', '-'))
 
 
 def get_unpacked_target_path(request_type: str, nlat: str, elon: str, param: str, level: str):
     if request_type == RequestType.POINT.value:
         lat = nlat.replace('.', '_')
         lon = elon.replace('.', '_')
-        return os.path.join("download", "csv", lat + "-" + lon, param, level.replace(":", "_").replace(",", "-"))
+        return os.path.join("D:\\", "WindForecast", "download", "csv", lat + "-" + lon, param, level.replace(":", "_").replace(",", "-"))
     else:
-        return os.path.join("download", "netCDF", param, level.replace(":", "_").replace(',', '-'))
+        return os.path.join("D:\\", "WindForecast", "download", "netCDF", param, level.replace(":", "_").replace(',', '-'))
 
 
 def download_request(req_id: str, target_dir):
@@ -77,12 +77,12 @@ def extract_files_from_tar(download_target_path, extract_target_path, file_type:
     if file_type == "csv":
         new_file_pattern = re.compile(RAW_CSV_FILENAME_WITH_REQUEST_REGEX)
         for file in [f for f in os.listdir(extract_target_path) if new_file_pattern.match(f)]:
-            final_csv_name = re.sub(RAW_CSV_FILENAME_WITH_REQUEST_REGEX, r"\1\3", file)  # remove request number
+            final_csv_name = re.sub(RAW_CSV_FILENAME_WITH_REQUEST_REGEX, r"\1\5", file)  # remove request number
             os.replace(os.path.join(extract_target_path, file), os.path.join(extract_target_path, final_csv_name))
     else:
         new_file_pattern = re.compile(RAW_NETCDF_FILENAME_WITH_REQUEST_REGEX)
         for file in [f for f in os.listdir(extract_target_path) if new_file_pattern.match(f)]:
-            final_csv_name = re.sub(RAW_NETCDF_FILENAME_WITH_REQUEST_REGEX, r"\1\3", file)
+            final_csv_name = re.sub(RAW_NETCDF_FILENAME_WITH_REQUEST_REGEX, r"\1\5", file)
             os.replace(os.path.join(extract_target_path, file), os.path.join(extract_target_path, final_csv_name))
 
 
@@ -91,7 +91,7 @@ def check_request_actual_status(index_in_db, request, request_db):
     req_id = int(request[REQUEST_ID_FIELD])
     res = rc.get_status(req_id)
 
-    if res['status'] == 'Error':
+    if res['status'].lower() == 'error':
         logger.info("Request id: {} has failed".format(req_id))
         request_db.loc[index_in_db, REQUEST_STATUS_FIELD] = RequestStatus.FAILED.value
 
@@ -171,7 +171,7 @@ def processor(purge_requests: bool, tidy: bool):
 
 def scheduler(purge_done=False, tidy=False):
     try:
-        job = schedule.every(15).minutes.do(lambda: processor(purge_done, tidy))
+        job = schedule.every(90).minutes.do(lambda: processor(purge_done, tidy))
         job.run()
         while True:
             schedule.run_pending()

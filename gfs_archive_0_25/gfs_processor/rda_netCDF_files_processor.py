@@ -1,16 +1,22 @@
+import argparse
 import time
 from os.path import isfile, join
+from pathlib import Path
+
 import netCDF4 as nc
 import os
 import re
-import datetime
+from datetime import datetime, timedelta
 import sys
 import pandas as pd
 import schedule
 import tqdm
+import numpy as np
 
 sys.path.insert(1, '../..')
 
+from models.common import GFS_PARAMETERS
+from preprocess.gfs.gfs_preprocess_netCDF import get_forecasts_for_date_offsets_and_params
 from gfs_archive_0_25.gfs_processor.own_logger import logger
 from gfs_archive_0_25.utils import prep_zeros_if_needed
 from gfs_archive_0_25.gfs_processor.consts import *
@@ -29,7 +35,7 @@ def get_date_run_offset_from_netCDF_file_name(file):
     year = date_from_filename[:4]
     month = date_from_filename[4:6]
     day = date_from_filename[6:8]
-    return datetime.datetime(int(year), int(month), int(day)), date_from_filename[8:10], date_matcher.group(3)
+    return datetime(int(year), int(month), int(day)), date_from_filename[8:10], date_matcher.group(3)
 
 
 def get_value_from_netCDF(dataset, lat_index, lon_index):
@@ -40,7 +46,7 @@ def process_netCDF_file_to_csv(file, param, level):
     ds = nc.Dataset(os.path.join("download", "netCDF", param, level, file))
     lats, lons = ds.variables['lat_0'][:], ds.variables['lon_0'][:]
     init_date, run, offset = get_date_run_offset_from_netCDF_file_name(file)
-    date_str = (init_date + datetime.timedelta(hours=int(offset))).isoformat()
+    date_str = (init_date + timedelta(hours=int(offset))).isoformat()
 
     for lat_index, lat in enumerate(lats):
         for lon_index, lon in list(enumerate(lons)):
@@ -74,7 +80,7 @@ def process_netCDF_file_to_csv(file, param, level):
     # #os.remove(csv_file_path)
 
 
-def process_netCDF_files():
+def process_netCDF_files_to_csv():
     logger.info("Processing netCDF files...")
     netCDF_dir = "download/netCDF"
     for root, param_dirs, filenames in os.walk(netCDF_dir):
@@ -97,9 +103,45 @@ def process_netCDF_files():
     logger.info("Processing done.")
 
 
+def process_to_numpy_array(init_date, end_date, parameter_level_tuple, nlat, slat, wlon, elon):
+    output_dir = f"D:\\WindForecast\\output_np\\{parameter_level_tuple[0]}\\{parameter_level_tuple[1]}"
+
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    date = init_date
+    delta = end_date - init_date
+
+    for offset in range(3, LAST_OFFSET_FOR_FORECAST, 3):
+        forecasts = []
+        output_path = os.path.join(output_dir, FINAL_NUMPY_FILENAME_FORMAT.format(
+            f"{init_date.year}-{init_date.month}-{init_date.day}",
+            f"{end_date.year}-{end_date.month}-{end_date.day}",
+            prep_zeros_if_needed(str(offset), 2)))
+
+        # consider as done if output file already exists
+        if not os.path.exists(output_path):
+            try:
+                for i in tqdm.tqdm(range(delta.days)):
+                    for index, run in enumerate(['00', '06', '12', '18']):
+                        forecast = get_forecasts_for_date_offsets_and_params(date, run, offset, offset, [parameter_level_tuple], nlat, slat, wlon, elon)
+                        forecasts.append(forecast)
+                    date = date + timedelta(days=1)
+
+                np.save(output_path, forecasts)
+            except FileNotFoundError:
+                pass
+
+def process_netCDF_files_to_npy():
+    for param in GFS_PARAMETERS:
+        process_to_numpy_array(datetime(2015, 1, 15), datetime(2016, 1, 1), param, 56, 48, 13, 26)
+        process_to_numpy_array(datetime(2016, 1, 1), datetime(2017, 1, 1), param, 56, 48, 13, 26)
+        process_to_numpy_array(datetime(2017, 1, 1), datetime(2018, 1, 1), param, 56, 48, 13, 26)
+
+
 def schedule_processing():
     try:
-        job = schedule.every(15).minutes.do(lambda: process_netCDF_files())
+        job = schedule.every(15).minutes.do(lambda: process_netCDF_files_to_csv())
         job.run()
         while True:
             schedule.run_pending()
@@ -109,7 +151,14 @@ def schedule_processing():
 
 
 if __name__ == '__main__':
-    schedule_processing()
+    parser = argparse.ArgumentParser()
 
+    parser.add_argument('--mode', help='CSV or NPY - output format to which save the data. ', default="NPY")
+    args = parser.parse_args()
 
-
+    if args.mode == "CSV":
+        schedule_processing()
+    elif args.mode == "NPY":
+        process_netCDF_files_to_npy()
+    else:
+        raise Exception("Unexpected mode: " + args.mode + ". Please specify 'CSV' or 'NPY'")

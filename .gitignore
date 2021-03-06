@@ -144,3 +144,4 @@ synop_data
 preprocess/wind
 preprocess/wykaz_stacji.csv
 rdamspw.txt
+datasets/gfs

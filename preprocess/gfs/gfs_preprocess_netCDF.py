@@ -5,21 +5,23 @@ from pathlib import Path
 
 import netCDF4 as nc
 import numpy as np
+from tqdm import tqdm
 
 from gfs_archive_0_25.gfs_processor.consts import RDA_NETCDF_FILENAME_FORMAT
+from gfs_archive_0_25.utils import prep_zeros_if_needed
 
-NETCDF_DIR = os.path.join(Path(__file__), "..", "..", "gfs_archive_0_25", "gfs_processor", "download", "netCDF")
+NETCDF_DIR = os.path.join("D:\\", "WindForecast", "download", "netCDF")
 
 def get_netCDF_file(init_date, run, offset, param, level):
     netCDF_file_glob = RDA_NETCDF_FILENAME_FORMAT.format(str(init_date.year),
-                                                         str(init_date.month),
-                                                         str(init_date.day),
+                                                         prep_zeros_if_needed(str(init_date.month), 1),
+                                                         prep_zeros_if_needed(str(init_date.day), 1),
                                                          str(run),
-                                                         offset,
+                                                         prep_zeros_if_needed(str(offset), 2),
                                                          "*")
     netCDF_path_glob = os.path.join(NETCDF_DIR, param, level.replace(":", "_").replace(",", "-"), netCDF_file_glob)
     found_files = glob.glob(netCDF_path_glob)
-    if found_files is not None:
+    if len(found_files) > 0:
         return found_files
     return None
 
@@ -30,20 +32,22 @@ def get_values_as_numpy_arr_from_file(netCDF_filepath, nlat, slat, wlon, elon):
     if nlat not in lats or slat not in lats or wlon not in lons or elon not in lons:
         return None
     else:
+        lats = lats.data.tolist()
+        lons = lons.data.tolist()
         nlat_index, slat_index, wlon_index, elon_index = lats.index(nlat), lats.index(slat), lons.index(wlon), lons.index(elon)
-        return np.array(next(iter(ds.variables.values()))[0, slat_index:nlat_index, wlon_index:elon_index])
+
+        return next(iter(ds.variables.values()))[0, nlat_index:slat_index, wlon_index:elon_index].data
 
 
 def create_single_slice_for_param_and_region(init_date, run, offset, param, level, nlat, slat, wlon, elon):
     netCDF_filepaths = get_netCDF_file(init_date, run, offset, param, level)
     if netCDF_filepaths is None:
-        raise Exception(f"Could not find netCDF file for init date {init_date.isoformat()}, run {run}, offset {offset},"
-                        f" param {param}, level {level}.")
+        return np.zeros(((nlat - slat) * 4 + 1, (elon - wlon) * 4 + 1))
 
     values = None
     for file in netCDF_filepaths:
+        values = get_values_as_numpy_arr_from_file(file, nlat, slat, wlon, elon)
         if values is not None:
-            values = get_values_as_numpy_arr_from_file(file, nlat, slat, wlon, elon)
             break
 
     if values is None:
@@ -59,23 +63,26 @@ def get_forecast_for_date_and_params(init_date, run, offset, param_level_tuples:
     return np.array(result)
 
 
-def get_forecasts_for_date_offsets_and_params(init_date, run, init, end, param_level_tuples: [(str, str)], nlat, slat, wlon, elon):
-    if init % 3 != 0:
-        init = init + (3 - init % 3)
-    if end % 3 != 0:
-        end = end + (3 - end % 3)
+def get_forecasts_for_date_offsets_and_params(init_date, run, init_offset, end_offset, param_level_tuples: [(str, str)], nlat, slat, wlon, elon):
+    if init_offset == end_offset:
+        return get_forecast_for_date_and_params(init_date, run, init_offset, param_level_tuples, nlat, slat, wlon, elon)
+
+    if init_offset % 3 != 0:
+        init_offset = init_offset + (3 - init_offset % 3)
+    if end_offset % 3 != 0:
+        end_offset = end_offset + (3 - end_offset % 3)
 
     result = []
-    for offset in range(init, end, 3):
+    for offset in range(init_offset, end_offset, 3):
         result.append(get_forecast_for_date_and_params(init_date, run, offset, param_level_tuples, nlat, slat, wlon, elon))
 
     return np.array(result)
 
 
-def get_forecasts_for_date_all_runs_specified_offsets_and_params(init_date, init, end, param_level_tuples: [(str, str)], nlat, slat, wlon, elon):
+def get_forecasts_for_date_all_runs_specified_offsets_and_params(init_date, init_offset, end_offset, param_level_tuples: [(str, str)], nlat, slat, wlon, elon):
     result = []
     for run in ['00', '06', '12', '18']:
-        result.append(get_forecasts_for_date_offsets_and_params(init_date, run, init, end, param_level_tuples, nlat, slat, wlon, elon))
+        result.append(get_forecasts_for_date_offsets_and_params(init_date, run, init_offset, end_offset, param_level_tuples, nlat, slat, wlon, elon))
 
     return np.array(result)
 
@@ -83,7 +90,8 @@ def get_forecasts_for_date_all_runs_specified_offsets_and_params(init_date, init
 def get_forecasts_for_date_range_all_runs_specified_offsets_and_params(init_date, end_date, init_offset, end_offset, param_level_tuples: [(str, str)], nlat, slat, wlon, elon):
     result = []
     date = init_date
-    while date < end_date:
+    delta = end_date - init_date
+    for i in tqdm(range(delta.days)):
         result.append(get_forecasts_for_date_all_runs_specified_offsets_and_params(date, init_offset, end_offset, param_level_tuples, nlat, slat, wlon,
                                                                                    elon))
         date = date + datetime.timedelta(days=1)

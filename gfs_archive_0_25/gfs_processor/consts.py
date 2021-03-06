@@ -10,9 +10,12 @@ LEVEL_FIELD = "level"
 PARAM_FIELD = "param"
 HOURS_TYPE_FIELD = "hours_type"
 
+LAST_OFFSET_FOR_FORECAST = 120
+
 RAW_CSV_FILENAME_WITH_REQUEST_REGEX = r'(gfs\.0p25\.\d{10}\.f\d{3}\.grib2\.[a-zA-Z]+)(\d+)(\.gp\.csv)'
 RAW_NETCDF_FILENAME_WITH_REQUEST_REGEX = r'(gfs\.0p25\.(\d{10})\.f(\d{3})\.grib2\.[a-zA-Z]+)(\d+)(\.nc)'
 RAW_NETCDF_FILENAME_REGEX = r'(gfs\.0p25\.(\d{10})\.f(\d{3})\.grib2\.[a-zA-Z]+)(\.nc)'
 RDA_CSV_FILENAME_FORMAT = 'gfs.0p25.{0}{1}{2}{3}.f{4}.grib2.{5}.gp.csv'
 RDA_NETCDF_FILENAME_FORMAT = 'gfs.0p25.{0}{1}{2}{3}.f{4}.grib2.{5}.nc'
 FINAL_CSV_FILENAME_FORMAT = '{0}-{1}-{2}-{3}Z.csv'
+FINAL_NUMPY_FILENAME_FORMAT = '{0}-{1}-f{2}.npy'
