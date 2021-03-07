@@ -16,7 +16,8 @@ import numpy as np
 sys.path.insert(1, '../..')
 
 from models.common import GFS_PARAMETERS
-from preprocess.gfs.gfs_preprocess_netCDF import get_forecasts_for_date_offsets_and_params
+from preprocess.gfs.gfs_preprocess_netCDF import get_forecasts_for_date_offsets_and_params, \
+    create_single_slice_for_param_and_region
 from gfs_archive_0_25.gfs_processor.own_logger import logger
 from gfs_archive_0_25.utils import prep_zeros_if_needed
 from gfs_archive_0_25.gfs_processor.consts import *
@@ -112,25 +113,28 @@ def process_to_numpy_array(init_date, end_date, parameter_level_tuple, nlat, sla
     date = init_date
     delta = end_date - init_date
 
-    for offset in range(3, LAST_OFFSET_FOR_FORECAST, 3):
-        forecasts = []
-        output_path = os.path.join(output_dir, FINAL_NUMPY_FILENAME_FORMAT.format(
-            f"{init_date.year}-{init_date.month}-{init_date.day}",
-            f"{end_date.year}-{end_date.month}-{end_date.day}",
-            prep_zeros_if_needed(str(offset), 2)))
+    # for offset in range(3, LAST_OFFSET_FOR_FORECAST, 3):
+    offset = 3
+    forecasts = []
+    output_path = os.path.join(output_dir, FINAL_NUMPY_FILENAME_FORMAT.format(
+        init_date.strftime("%Y-%m-%d"),
+        end_date.strftime("%Y-%m-%d"),
+        prep_zeros_if_needed(str(offset), 2)))
 
-        # consider as done if output file already exists
-        if not os.path.exists(output_path):
-            try:
-                for i in tqdm.tqdm(range(delta.days)):
-                    for index, run in enumerate(['00', '06', '12', '18']):
-                        forecast = get_forecasts_for_date_offsets_and_params(date, run, offset, offset, [parameter_level_tuple], nlat, slat, wlon, elon)
-                        forecasts.append(forecast)
-                    date = date + timedelta(days=1)
+    # consider as done if output file already exists
+    if not os.path.exists(output_path):
+        try:
+            for i in tqdm.tqdm(range(delta.days)):
+                for index, run in enumerate(['00', '06', '12', '18']):
+                    forecast = create_single_slice_for_param_and_region(date, run, offset,
+                                                                        parameter_level_tuple[0],
+                                                                        parameter_level_tuple[1], nlat, slat, wlon, elon)
+                    forecasts.append(forecast)
+                date = date + timedelta(days=1)
 
-                np.save(output_path, forecasts)
-            except FileNotFoundError:
-                pass
+            np.save(output_path, np.array(forecasts), allow_pickle=False)
+        except FileNotFoundError:
+            pass
 
 def process_netCDF_files_to_npy():
     for param in GFS_PARAMETERS:

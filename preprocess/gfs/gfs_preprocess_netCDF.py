@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime, timedelta
 import glob
 import os
 from pathlib import Path
@@ -7,10 +7,11 @@ import netCDF4 as nc
 import numpy as np
 from tqdm import tqdm
 
-from gfs_archive_0_25.gfs_processor.consts import RDA_NETCDF_FILENAME_FORMAT
+from gfs_archive_0_25.gfs_processor.consts import RDA_NETCDF_FILENAME_FORMAT, FINAL_NUMPY_FILENAME_FORMAT
 from gfs_archive_0_25.utils import prep_zeros_if_needed
 
 NETCDF_DIR = os.path.join("D:\\", "WindForecast", "download", "netCDF")
+
 
 def get_netCDF_file(init_date, run, offset, param, level):
     netCDF_file_glob = RDA_NETCDF_FILENAME_FORMAT.format(str(init_date.year),
@@ -36,7 +37,7 @@ def get_values_as_numpy_arr_from_file(netCDF_filepath, nlat, slat, wlon, elon):
         lons = lons.data.tolist()
         nlat_index, slat_index, wlon_index, elon_index = lats.index(nlat), lats.index(slat), lons.index(wlon), lons.index(elon)
 
-        return next(iter(ds.variables.values()))[0, nlat_index:slat_index, wlon_index:elon_index].data
+        return next(iter(ds.variables.values()))[0, nlat_index:slat_index + 1, wlon_index:elon_index + 1].data
 
 
 def create_single_slice_for_param_and_region(init_date, run, offset, param, level, nlat, slat, wlon, elon):
@@ -94,6 +95,24 @@ def get_forecasts_for_date_range_all_runs_specified_offsets_and_params(init_date
     for i in tqdm(range(delta.days)):
         result.append(get_forecasts_for_date_all_runs_specified_offsets_and_params(date, init_offset, end_offset, param_level_tuples, nlat, slat, wlon,
                                                                                    elon))
-        date = date + datetime.timedelta(days=1)
+        date = date + timedelta(days=1)
 
     return np.array(result)
+
+
+def get_forecasts_for_year_offset_param_from_npy_file(year, param_level_tuple, offset, dataset_dir):
+    if year == 2015:
+        init_date = datetime(2015, 1, 15)
+    else:
+        init_date = datetime(year, 1, 1)
+    end_date = datetime(init_date.year + 1, 1, 1)
+
+    netCDF_filename = FINAL_NUMPY_FILENAME_FORMAT.format(init_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"),
+                                                         prep_zeros_if_needed(str(offset), 2))
+
+    netCDF_path = os.path.join(dataset_dir, param_level_tuple[0], param_level_tuple[1], netCDF_filename)
+
+    with open(netCDF_path, 'rb') as f:
+        return np.load(f)
+
+

@@ -3,17 +3,19 @@ import numpy as np
 
 
 GFS_PARAMETERS = [
-    ("V GRD", "ISBL_975"),
-    ("V GRD", "ISBL_950"),
-    ("V GRD", "ISBL_750"),
-    ("V GRD", "ISBL_500"),
-    ("V GRD", "ISBL_450"),
-    ("V GRD", "ISBL_400"),
-    ("V GRD", "ISBL_300"),
-    ("V GRD", "ISBL_250"),
-    ("V GRD", "ISBL_200"),
-    ("V GRD", "HTGL_10"),
-    ("U GRD", "ISBL_925")
+    ("V GRD", "ISBL_975")
+    # ("V GRD", "ISBL_950"),
+    # ("V GRD", "ISBL_900"),
+    # ("V GRD", "ISBL_850"),
+    # ("V GRD", "ISBL_800"),
+    # ("V GRD", "ISBL_700"),
+    # ("V GRD", "ISBL_600"),
+    # ("V GRD", "ISBL_500"),
+    # ("V GRD", "ISBL_400"),
+    # ("V GRD", "ISBL_300"),
+    # ("V GRD", "ISBL_200"),
+    # ("V GRD", "HTGL_10"),
+    # ("U GRD", "ISBL_975")
 ]
 
 
