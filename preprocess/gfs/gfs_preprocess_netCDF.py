@@ -41,6 +41,9 @@ def get_values_as_numpy_arr_from_file(netCDF_filepath, nlat, slat, wlon, elon):
 
 
 def create_single_slice_for_param_and_region(init_date, run, offset, param, level, nlat, slat, wlon, elon):
+    if not os.path.exists(os.path.join(NETCDF_DIR, param, level.replace(":", "_").replace(",", "-"))):
+        raise FileNotFoundError
+
     netCDF_filepaths = get_netCDF_file(init_date, run, offset, param, level)
     if netCDF_filepaths is None:
         return np.zeros(((nlat - slat) * 4 + 1, (elon - wlon) * 4 + 1))
@@ -113,6 +116,6 @@ def get_forecasts_for_year_offset_param_from_npy_file(year, param_level_tuple, o
     netCDF_path = os.path.join(dataset_dir, param_level_tuple[0], param_level_tuple[1], netCDF_filename)
 
     with open(netCDF_path, 'rb') as f:
-        return np.load(f)
+        return np.load(f, allow_pickle=True)
 
 

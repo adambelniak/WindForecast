@@ -265,14 +265,14 @@ if __name__ == '__main__':
                                        'bound of spherical rectangle.', default=None, type=float)
     parser.add_argument('--elon', help='Optional, use for spatial subset requests -180 to 180. Specifies eastern '
                                        'bound of spherical rectangle.', default=None, type=float)
-    parser.add_argument('--start_date', help='Start date GFS', default='2015-01-15 00:00')
-    parser.add_argument('--end_date', help='End date GFS', default='2018-01-01 00:00')
+    parser.add_argument('--start_date', help='Start date GFS', default='2016-01-01 00:00')
+    parser.add_argument('--end_date', help='End date GFS', default='2017-01-01 00:00')
     parser.add_argument('--input_file', help='Path to JSON input file with parameters, levels and forecast hours type.',
                         type=str, default=None)
     parser.add_argument('--gfs_parameter', help='Parameter to process from NCAR', type=str, default='V GRD')
     parser.add_argument('--gfs_level', help='Level of parameter', type=str, default='HTGL:10')
     parser.add_argument('--forecast_start', help='Offset (in hours) of beginning of the forecast. Should be divisible '
-                                                 'by 3.', type=int, default=3)
+                                                 'by 3.', type=int, default=0)
     parser.add_argument('--forecast_end', help='Offset (in hours) of end of the forecast. Should be divisible by 3.', type=int,
                                             default=120)
     parser.add_argument('--hours_type', type=str, choices=['point', 'average', 'all'], help='For some params only 3h '

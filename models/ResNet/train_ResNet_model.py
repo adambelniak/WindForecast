@@ -10,23 +10,22 @@ sys.path.insert(1, '../..')
 from preprocess.gfs.spatial.convolution_preprocess import prepare_training_data
 from models.common import GFS_PARAMETERS, plot_history
 from preprocess.synop.consts import TEMPERATURE, VELOCITY_COLUMN
-from models.CNN.CNN_model import create_model
+from models.ResNet.ResNet_model import create_model
+from keras.applications.resnet50 import preprocess_input
 
-
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+# os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 
 def train_model(training_data):
     x_train, x_valid, y_train, y_valid = train_test_split(training_data[0], training_data[1], test_size=0.2, shuffle=True)
-    datagen = ImageDataGenerator(featurewise_center=True, featurewise_std_normalization=True)
+    datagen = ImageDataGenerator(featurewise_center=True, featurewise_std_normalization=True, preprocessing_function=preprocess_input)
     datagen.fit(x_train)
     # print(datagen.mean)
-    train_iterator = datagen.flow(x_train, y_train, batch_size=32)
-    val_iterator = datagen.flow(x_valid, y_valid, batch_size=32)
+    train_iterator = datagen.flow(x_train, y_train, batch_size=16)
+    val_iterator = datagen.flow(x_valid, y_valid, batch_size=16)
     #
     model = create_model(training_data[0][0].shape)
-    history = model.fit_generator(train_iterator, epochs=40, validation_data=val_iterator)
-    print(datagen.mean, datagen.std)
+    history = model.fit_generator(train_iterator, epochs=20, validation_data=val_iterator)
     #
     # # temp_slice = create_single_slice_for_param_and_region(datetime(2015, 2, 9), '00', 3, 'TMP', 'HTGL_2', 56, 48, 13, 26)
     # # print(temp_slice)
@@ -47,13 +46,12 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     PARAMETERS = [
-        ("TMP", "HTGL_2"),
-        ("T CDC", "LCY_0"),
+        # ("TMP", "HTGL_2"),
+        # ("T CDC", "LCY_0")
         ("V GRD", "HTGL_10"),
-        # ("U GRD", "HTGL_10"),
+        ("U GRD", "HTGL_10"),
         ("GUST", "SFC_0")
     ]
-    training, labels = prepare_training_data(PARAMETERS, TEMPERATURE[1], 3, args.years, args.gfs_dataset_dir, args.synop_dataset_path)
+    training, labels = prepare_training_data(PARAMETERS, VELOCITY_COLUMN[1], 3, args.years, args.gfs_dataset_dir, args.synop_dataset_path)
 
     train_model((training, labels))
-
