@@ -1,7 +1,7 @@
-# AI driven wind forecasting model. 
+# AI driven ~~wind~~ weather forecasting model. 
 
 Trying to predict the most exact wind range for hours and days ahead
-using LSTM and some data analysis tools.
+using LSTM, ResNet etc. and some data analysis tools.
 
 Seed for the analysis consists of:
  * GFS 0.25° archive forecasts from https://rda.ucar.edu
