@@ -1,0 +1,26 @@
+{
+    "gfs_dataset_dir": "D:\\WindForecast\\output_np2",
+    "synop_file": "KOZIENICE_488_data.csv",
+    "train_parameters": [
+        {
+            "name": "TMP",
+            "level": "HTGL_2"
+        },
+        {
+            "name": "T CDC",
+            "level": "LCY_0"
+        },
+        {
+            "name": "V GRD",
+            "level": "HTGL_10"
+        },
+        {
+            "name": "GUST",
+            "level": "SFC_0"
+        }
+    ],
+    "target_parameter": "temperature",
+    "prediction_offset": 3,
+    "data_dim_x": 53,
+    "data_dim_y": 33
+}

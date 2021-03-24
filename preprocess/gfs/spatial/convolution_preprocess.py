@@ -2,7 +2,6 @@ import sys
 from datetime import datetime, timedelta
 
 import numpy as np
-import os
 
 from util.utils import utc_to_local
 
@@ -11,9 +10,6 @@ sys.path.insert(1, '../..')
 
 from preprocess.gfs.gfs_preprocess_netCDF import get_forecasts_for_year_offset_param_from_npy_file
 from preprocess.synop.synop_preprocess import prepare_synop_dataset, filter_for_dates
-
-
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 
 def prepare_target_attribute_dataset(synop_data_file, target_attribute, init_date, end_date):

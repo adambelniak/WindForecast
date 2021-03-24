@@ -2,11 +2,12 @@ import argparse
 import os
 from datetime import datetime, timedelta
 from pathlib import Path
-
+import sys
 import numpy as np
 
+sys.path.insert(1, "..")
 from models.common import plot_history
-from models.sequence.seq_2_seq_model import create_model
+from models.S2SModel import create_model
 from preprocess.gfs.gfs_preprocess_csv import prepare_gfs_sequence_dataset
 from preprocess.synop import consts
 from preprocess.synop.synop_preprocess import prepare_synop_dataset, normalize

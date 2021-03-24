@@ -2,15 +2,16 @@ import os
 import argparse
 import numpy as np
 import tqdm
-
+import sys
 from pathlib import Path
 from datetime import datetime, timedelta
 from sklearn import preprocessing
 from sklearn.utils import shuffle
 
+sys.path.insert(1, '..')
+
 from models.common import plot_history, convert_wind
-from models.dense.dense_model import create_model
-from preprocess.synop import consts
+from models.DenseModel import create_model
 from preprocess.synop.synop_preprocess import prepare_synop_dataset
 from preprocess.gfs.gfs_preprocess_csv import prepare_gfs_data
 
@@ -117,7 +118,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--gfs_data_dir', help='Directory with GFS forecasts in csv format', default=GFS_CSV_DIR)
-    parser.add_argument('--synop_data_csv', help='CSV with SYNOP data', default='preprocess/synop_data/135_data.csv')
+    parser.add_argument('--synop_data_csv', help='CSV with SYNOP data', default='135_data.csv')
     parser.add_argument('--train_split', help='Train split factor from 0 to 1', default=0.2, type=float)
     parser.add_argument('--parameter', help='Parameter to train on', default='temperature', type=str)
     parser.add_argument('--spec_hour', help='Train only for a specific hour of a first day in forecast', default='', type=str)

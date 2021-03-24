@@ -145,3 +145,4 @@ preprocess/wind
 preprocess/wykaz_stacji.csv
 rdamspw.txt
 datasets/gfs
+dump_file_for_ideas.py

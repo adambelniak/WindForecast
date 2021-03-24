@@ -2,7 +2,6 @@ import argparse
 import glob
 import time
 from os.path import isfile, join
-from pathlib import Path
 
 import netCDF4 as nc
 import os
@@ -17,13 +16,22 @@ import numpy as np
 sys.path.insert(1, '../..')
 
 from models.common import GFS_PARAMETERS
+from gfs_archive_0_25.gfs_processor.Coords import Coords
 from preprocess.gfs.gfs_preprocess_netCDF import get_forecasts_for_date_offsets_and_params, \
-    create_single_slice_for_param_and_region, NETCDF_DIR
+    create_single_slice_for_param_and_region, NETCDF_DIR, get_values_as_numpy_arr_from_file
 from gfs_archive_0_25.gfs_processor.own_logger import logger
 from gfs_archive_0_25.utils import prep_zeros_if_needed
 from gfs_archive_0_25.gfs_processor.consts import *
 
 OFFSET = 3
+POLAND_NLAT = 56
+POLAND_SLAT = 48
+POLAND_WLON = 13
+POLAND_ELON = 26
+
+
+class ProcessingException(Exception):
+    pass
 
 
 def get_forecast_df_for_date_and_run(csv_path):
@@ -35,6 +43,9 @@ def get_forecast_df_for_date_and_run(csv_path):
 
 def get_date_run_offset_from_netCDF_file_name(file):
     date_matcher = re.match(RAW_NETCDF_FILENAME_REGEX, file)
+    if date_matcher is None:
+        raise ProcessingException(f"Filename {file} does not match raw netCDF file regex: {RAW_NETCDF_FILENAME_REGEX}")
+
     date_from_filename = date_matcher.group(2)
     year = date_from_filename[:4]
     month = date_from_filename[4:6]
@@ -122,51 +133,81 @@ def check_if_any_file_for_year_exists(year, parameter_level_tuple):
     return False
 
 
-def process_to_numpy_array(year, parameter_level_tuple, nlat, slat, wlon, elon):
-    if check_if_any_file_for_year_exists(year, parameter_level_tuple):
-        if year == 2015:
-            process_dates_to_numpy_array(datetime(2015, 1, 15), datetime(2016, 1, 1), parameter_level_tuple, nlat, slat, wlon, elon)
-        else:
-            process_dates_to_numpy_array(datetime(year, 1, 1), datetime(year + 1, 1, 1), parameter_level_tuple, nlat, slat, wlon, elon)
+# def process_to_numpy_array(year, parameter_level_tuple, nlat, slat, wlon, elon):
+#     if check_if_any_file_for_year_exists(year, parameter_level_tuple):
+#         if year == 2015:
+#             process_dates_to_numpy_array(datetime(2015, 1, 15), datetime(2016, 1, 1), parameter_level_tuple, nlat, slat, wlon, elon)
+#         else:
+#             process_dates_to_numpy_array(datetime(year, 1, 1), datetime(year + 1, 1, 1), parameter_level_tuple, nlat, slat, wlon, elon)
 
 
-def process_dates_to_numpy_array(init_date, end_date, parameter_level_tuple, nlat, slat, wlon, elon):
-    output_dir = f"D:\\WindForecast\\output_np\\{parameter_level_tuple[0]}\\{parameter_level_tuple[1]}"
+# def process_dates_to_numpy_array(init_date, end_date, parameter_level_tuple, nlat, slat, wlon, elon):
+#     output_dir = f"D:\\WindForecast\\output_np\\{parameter_level_tuple[0]}\\{parameter_level_tuple[1]}"
+#
+#     if not os.path.exists(output_dir):
+#         os.makedirs(output_dir)
+#
+#     date = init_date
+#     delta = end_date - init_date
+#
+#     # for offset in range(3, LAST_OFFSET_FOR_FORECAST, 3):
+#     forecasts = []
+#     output_path = os.path.join(output_dir, FINAL_NUMPY_FILENAME_FORMAT.format(
+#         init_date.strftime("%Y-%m-%d"),
+#         end_date.strftime("%Y-%m-%d"),
+#         prep_zeros_if_needed(str(OFFSET), 2)))
+#
+#     # consider as done if output file already exists
+#     if not os.path.exists(output_path):
+#         try:
+#             for i in tqdm.tqdm(range(delta.days)):
+#                 for index, run in enumerate(['00', '06', '12', '18']):
+#                     forecast = create_single_slice_for_param_and_region(date, run, OFFSET,
+#                                                                         parameter_level_tuple[0],
+#                                                                         parameter_level_tuple[1], nlat, slat, wlon, elon)
+#                     forecasts.append(forecast)
+#                 date = date + timedelta(days=1)
+#
+#             np.save(output_path, np.array(forecasts))
+#         except FileNotFoundError:
+#             pass
 
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
 
-    date = init_date
-    delta = end_date - init_date
+def process_to_numpy_array(parameter_level_tuple, coords: Coords):
+    download_dir = f"D:\\WindForecast\\download\\netCDF\\{parameter_level_tuple[0]}\\{parameter_level_tuple[1]}"
 
-    # for offset in range(3, LAST_OFFSET_FOR_FORECAST, 3):
-    forecasts = []
-    output_path = os.path.join(output_dir, FINAL_NUMPY_FILENAME_FORMAT.format(
-        init_date.strftime("%Y-%m-%d"),
-        end_date.strftime("%Y-%m-%d"),
-        prep_zeros_if_needed(str(OFFSET), 2)))
+    for root, dirs, filenames in os.walk(download_dir):
+        if len(filenames) > 0:
+            output_dir = f"D:\\WindForecast\\output_np2\\{parameter_level_tuple[0]}\\{parameter_level_tuple[1]}"
 
-    # consider as done if output file already exists
-    if not os.path.exists(output_path):
-        try:
-            for i in tqdm.tqdm(range(delta.days)):
-                for index, run in enumerate(['00', '06', '12', '18']):
-                    forecast = create_single_slice_for_param_and_region(date, run, OFFSET,
-                                                                        parameter_level_tuple[0],
-                                                                        parameter_level_tuple[1], nlat, slat, wlon, elon)
-                    forecasts.append(forecast)
-                date = date + timedelta(days=1)
+            if not os.path.exists(output_dir):
+                os.makedirs(output_dir)
 
-            np.save(output_path, np.array(forecasts))
-        except FileNotFoundError:
-            pass
+            for file in tqdm.tqdm(filenames):
+                try:
+                    date, run, offset = get_date_run_offset_from_netCDF_file_name(file)
+
+                    output_path = os.path.join(output_dir, FINAL_NUMPY_FILENAME_FORMAT.format(
+                        str(date.year),
+                        prep_zeros_if_needed(str(date.month), 1),
+                        prep_zeros_if_needed(str(date.day), 1),
+                        run,
+                        prep_zeros_if_needed(str(offset), 2)))
+
+                    # consider as done if output file already exists
+                    if not os.path.exists(output_path):
+                        forecast = get_values_as_numpy_arr_from_file(os.path.join(download_dir, file), coords)
+                        if forecast is not None:
+                            np.save(output_path, forecast)
+                except ProcessingException:
+                    pass
+        break
+
 
 def process_netCDF_files_to_npy():
     for param in GFS_PARAMETERS:
         logger.info(f"Converting parameter {param[0]} {param[1]}")
-        # process_to_numpy_array(2015, param, 56, 48, 13, 26)
-        process_to_numpy_array(2016, param, 56, 48, 13, 26)
-        # process_to_numpy_array(2017, param, 56, 48, 13, 26)
+        process_to_numpy_array(param, Coords(56, 48, 13, 26))
 
 
 def schedule_processing():

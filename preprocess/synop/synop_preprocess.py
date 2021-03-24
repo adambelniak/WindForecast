@@ -26,10 +26,10 @@ def split_features_into_arrays(data, train_split, past_len, future_offset, y_col
     return x_data, y_data
 
 
-def prepare_synop_dataset(file_path, features, norm=True):
-    synop_file_path = os.path.join(DATASETS_DIRECTORY, file_path)
+def prepare_synop_dataset(synop_file_name, features, norm=True):
+    synop_file_path = os.path.join(DATASETS_DIRECTORY, synop_file_name)
     if not os.path.exists(synop_file_path):
-        raise Exception(f"Dataset not fount. Looked for {synop_file_path}")
+        raise Exception(f"Dataset not found. Looked for {synop_file_path}")
 
     data = pd.read_csv(synop_file_path, usecols=features + ['year', 'month', 'day', 'hour'])
 
