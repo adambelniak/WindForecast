@@ -5,7 +5,7 @@ import re
 from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
 
-from preprocess.synop_preprocess import normalize
+from preprocess.synop.synop_preprocess import normalize
 
 CREATED_AT_COLUMN_NAME = "created_at"
 

@@ -1,6 +1,8 @@
 import os
 import re
 import sys
+from datetime import datetime
+
 import numpy as np
 import pytz
 from tqdm import tqdm
@@ -28,7 +30,13 @@ def get_available_numpy_files(features, offset, directory):
     result = None
     matcher = re.compile(rf".*f{prep_zeros_if_needed(str(offset), 2)}.*")
     for feature in tqdm(features):
-        files = [f for f in os.listdir(os.path.join(directory, feature['name'], feature['level'])) if matcher.match(f)]
+        files = [f.name for f in os.scandir(os.path.join(directory, feature['name'], feature['level'])) if matcher.match(f.name)]
         result = np.intersect1d(result, np.array(files)) if result is not None else np.array(files)
+        # result = np.array(files)
 
     return result
+
+
+def declination_of_earth(date):
+    day_of_year = date.timetuple().tm_yday
+    return 23.45*np.sin(np.deg2rad(360.0*(283.0+day_of_year)/365.0))

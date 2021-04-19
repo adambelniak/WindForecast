@@ -30,6 +30,11 @@
     "hours_type": "point"
   },
   {
+    "param": "V GRD",
+    "level": "ISBL:975",
+    "hours_type": "point"
+  },
+  {
     "param": "U GRD",
     "level": "HTGL:10",
     "hours_type": "point"
@@ -76,7 +81,7 @@
   },
   {
     "param": "HGT",
-    "level": "ISBL:550",
+    "level": "ISBL:500",
     "hours_type": "point"
   },
   {

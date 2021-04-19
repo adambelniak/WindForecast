@@ -1,3 +1,4 @@
+import math
 import os
 import re
 import sys
@@ -5,11 +6,11 @@ from datetime import datetime, timedelta
 
 import numpy as np
 import keras
+from tqdm import tqdm
 
 sys.path.insert(1, '../..')
 sys.path.insert(2, '../../..')
 
-from gfs_archive_0_25.gfs_processor.rda_netCDF_files_processor import ProcessingException
 from preprocess.synop.synop_preprocess import prepare_synop_dataset
 from util.utils import GFS_DATASET_DIR, utc_to_local
 
@@ -20,7 +21,7 @@ SYNOP_FILE = "KOZIENICE_488_data.csv"
 class MultiChannelDataGenerator(keras.utils.Sequence):
     """Generates data for Keras"""
     def __init__(self, list_IDs, parameters: [(str, str)], target_param: (str, str), synop_file=SYNOP_FILE,
-                 batch_size=32, dim=(32, 32), shuffle=True):
+                 batch_size=16, dim=(32, 32), shuffle=True, normalize=False):
         """Initialization"""
         self.dim = dim
         self.batch_size = batch_size
@@ -30,6 +31,23 @@ class MultiChannelDataGenerator(keras.utils.Sequence):
         self.shuffle = shuffle
         self.labels = prepare_synop_dataset(synop_file, [target_param])
         self.on_epoch_end()
+        self.mean, self.std = [], []
+
+        if normalize:
+            self.initialize_mean_and_std()
+
+    def initialize_mean_and_std(self):
+        for param in tqdm(self.parameters):
+            sum, sqr_sum = 0, 0
+            for id in tqdm(self.list_IDs):
+                values = np.load(os.path.join(GFS_DATASET_DIR, param['name'], param['level'], id))
+                sum += np.sum(values)
+                sqr_sum += pow(sum, 2)
+
+            mean = sum / (len(self.list_IDs) * self.dim[0] * self.dim[1])
+            self.mean.append(mean)
+            self.std.append(math.sqrt(sqr_sum / (len(self.list_IDs) * self.dim[0] * self.dim[1]) - pow(mean, 2)))
+
 
     def __len__(self):
         """Denotes the number of batches per epoch"""
@@ -65,12 +83,10 @@ class MultiChannelDataGenerator(keras.utils.Sequence):
             for j, param in enumerate(self.parameters):
                 # Store sample
                 x[i, j, ] = np.load(os.path.join(GFS_DATASET_DIR, param['name'], param['level'], ID))
+                x[i, j, ] = (x[i, j, ] - self.mean[j]) / self.std[j]
 
             # Store class
             date_matcher = re.match(NETCDF_FILE_REGEX, ID)
-            if date_matcher is None:
-                raise ProcessingException(
-                    f"Filename {ID} does not match netCDF file regex: {NETCDF_FILE_REGEX}")
 
             date_from_filename = date_matcher.group(1)
             year = int(date_from_filename[:4])
@@ -79,6 +95,9 @@ class MultiChannelDataGenerator(keras.utils.Sequence):
             run = int(date_matcher.group(2))
             offset = int(date_matcher.group(3))
             forecast_date = utc_to_local(datetime(year, month, day) + timedelta(hours=run + offset))
+            label = self.labels[self.labels["date"] == forecast_date][self.target_param]
+            if len(label) == 0:
+                print(forecast_date)
             y[i] = self.labels[self.labels["date"] == forecast_date][self.target_param].values[0]
 
         x = np.einsum('klij->kijl', x)

@@ -17,8 +17,7 @@ sys.path.insert(1, '../..')
 
 from models.common import GFS_PARAMETERS
 from gfs_archive_0_25.gfs_processor.Coords import Coords
-from preprocess.gfs.gfs_preprocess_netCDF import get_forecasts_for_date_offsets_and_params, \
-    create_single_slice_for_param_and_region, NETCDF_DIR, get_values_as_numpy_arr_from_file
+from preprocess.gfs.gfs_preprocess_netCDF import NETCDF_DIR, get_values_as_numpy_arr_from_file
 from gfs_archive_0_25.gfs_processor.own_logger import logger
 from gfs_archive_0_25.utils import prep_zeros_if_needed
 from gfs_archive_0_25.gfs_processor.consts import *
@@ -131,46 +130,6 @@ def check_if_any_file_for_year_exists(year, parameter_level_tuple):
     if len(found_files) > 0:
         return True
     return False
-
-
-# def process_to_numpy_array(year, parameter_level_tuple, nlat, slat, wlon, elon):
-#     if check_if_any_file_for_year_exists(year, parameter_level_tuple):
-#         if year == 2015:
-#             process_dates_to_numpy_array(datetime(2015, 1, 15), datetime(2016, 1, 1), parameter_level_tuple, nlat, slat, wlon, elon)
-#         else:
-#             process_dates_to_numpy_array(datetime(year, 1, 1), datetime(year + 1, 1, 1), parameter_level_tuple, nlat, slat, wlon, elon)
-
-
-# def process_dates_to_numpy_array(init_date, end_date, parameter_level_tuple, nlat, slat, wlon, elon):
-#     output_dir = f"D:\\WindForecast\\output_np\\{parameter_level_tuple[0]}\\{parameter_level_tuple[1]}"
-#
-#     if not os.path.exists(output_dir):
-#         os.makedirs(output_dir)
-#
-#     date = init_date
-#     delta = end_date - init_date
-#
-#     # for offset in range(3, LAST_OFFSET_FOR_FORECAST, 3):
-#     forecasts = []
-#     output_path = os.path.join(output_dir, FINAL_NUMPY_FILENAME_FORMAT.format(
-#         init_date.strftime("%Y-%m-%d"),
-#         end_date.strftime("%Y-%m-%d"),
-#         prep_zeros_if_needed(str(OFFSET), 2)))
-#
-#     # consider as done if output file already exists
-#     if not os.path.exists(output_path):
-#         try:
-#             for i in tqdm.tqdm(range(delta.days)):
-#                 for index, run in enumerate(['00', '06', '12', '18']):
-#                     forecast = create_single_slice_for_param_and_region(date, run, OFFSET,
-#                                                                         parameter_level_tuple[0],
-#                                                                         parameter_level_tuple[1], nlat, slat, wlon, elon)
-#                     forecasts.append(forecast)
-#                 date = date + timedelta(days=1)
-#
-#             np.save(output_path, np.array(forecasts))
-#         except FileNotFoundError:
-#             pass
 
 
 def process_to_numpy_array(parameter_level_tuple, coords: Coords):

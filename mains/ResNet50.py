@@ -2,9 +2,7 @@ import argparse
 import sys
 import os
 
-
 sys.path.insert(1, '..')
-
 
 from util.utils import get_available_numpy_files
 from generators.MultiChannelDataGenerator import MultiChannelDataGenerator
@@ -19,17 +17,15 @@ def get_training_and_validation_generators(IDs, config):
     features, target_attribute, synop_file = config.train_parameters, config.target_parameter, config.synop_file
     length = len(IDs)
     training_data, validation_data = IDs[:int(length * 0.8)], IDs[int(length * 0.8):]
-    training_datagen = MultiChannelDataGenerator(training_data, features, target_attribute, synop_file,
-                                                 dim=(config.data_dim_y, config.data_dim_x))
-    validation_datagen = MultiChannelDataGenerator(validation_data, features, target_attribute, synop_file,
-                                                   dim=(config.data_dim_y, config.data_dim_x))
+    training_datagen = MultiChannelDataGenerator(training_data, features, target_attribute, synop_file, dim=(config.data_dim_y, config.data_dim_x), normalize=True)
+    validation_datagen = MultiChannelDataGenerator(validation_data, features, target_attribute, synop_file, dim=(config.data_dim_y, config.data_dim_x), normalize=True)
 
     return training_datagen, validation_datagen
 
 
 def train_model(config):
-    features, target_attribute, offset, gfs_dir, synop_file = config.train_parameters, config.target_parameter, \
-                                                              config.prediction_offset, config.gfs_dataset_dir, \
+    features, target_attribute, offset, gfs_dir, synop_file = config.train_parameters, config.target_parameter,\
+                                                              config.prediction_offset, config.gfs_dataset_dir,\
                                                               config.synop_file
 
     IDs = get_available_numpy_files(features, offset, gfs_dir)
@@ -43,7 +39,7 @@ def train_model(config):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--config', help='Configuration file path', type=str)
+    parser.add_argument('--config', help='Configuration file path', type=str, default="../config/ResNet50Config.json")
     args = parser.parse_args()
 
     config = process_config(args.config)

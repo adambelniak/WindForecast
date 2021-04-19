@@ -171,7 +171,7 @@ def processor(purge_requests: bool, tidy: bool):
 
 def scheduler(purge_done=False, tidy=False):
     try:
-        job = schedule.every(90).minutes.do(lambda: processor(purge_done, tidy))
+        job = schedule.every(60).minutes.do(lambda: processor(purge_done, tidy))
         job.run()
         while True:
             schedule.run_pending()

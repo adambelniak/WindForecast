@@ -12,7 +12,7 @@ import seaborn as sns
 import tqdm
 import argparse
 
-import preprocess.synop.consts as consts
+import consts as consts
 
 """This code obtains SYNOP data from 'https://danepubliczne.imgw.pl/'.
 

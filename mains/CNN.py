@@ -5,7 +5,7 @@ import os
 sys.path.insert(1, '..')
 
 from util.utils import get_available_numpy_files
-from generators.MultiChannelDataGenerator import MultiChannelDataGenerator
+from generators.MultiChannelDataGeneratorWithEarthDeclination import MultiChannelDataGeneratorWithEarthDeclination
 from models.common import plot_history
 from models.CNNModel import create_model
 from util.config import process_config
@@ -17,9 +17,11 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 def get_training_and_validation_generators(IDs, config):
     features, target_attribute, synop_file = config.train_parameters, config.target_parameter, config.synop_file
     length = len(IDs)
+    print(length)
+    print(IDs[0:6])
     training_data, validation_data = IDs[:int(length * 0.8)], IDs[int(length * 0.8):]
-    training_datagen = MultiChannelDataGenerator(training_data, features, target_attribute, synop_file, dim=(config.data_dim_y, config.data_dim_x))
-    validation_datagen = MultiChannelDataGenerator(validation_data, features, target_attribute, synop_file, dim=(config.data_dim_y, config.data_dim_x))
+    training_datagen = MultiChannelDataGeneratorWithEarthDeclination(training_data, features, target_attribute, synop_file, dim=(config.data_dim_y, config.data_dim_x), normalize=True)
+    validation_datagen = MultiChannelDataGeneratorWithEarthDeclination(validation_data, features, target_attribute, synop_file, dim=(config.data_dim_y, config.data_dim_x), normalize=True)
 
     return training_datagen, validation_datagen
 
