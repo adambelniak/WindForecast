@@ -1,0 +1,13 @@
+name: wind-forecast
+dependencies:
+  - python=3.8
+  - conda-forge::jupyterlab
+  - conda-forge::jupyterlab-lsp
+  - conda-forge::python-language-server
+  - conda-forge::nodejs
+  - numpy
+  - pandas
+  - pip
+  - cudatoolkit=11.1
+  - pip:
+      - -r file:requirements.txt

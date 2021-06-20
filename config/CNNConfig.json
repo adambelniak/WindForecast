@@ -1,0 +1,78 @@
+{
+    "gfs_dataset_dir": "D:\\WindForecast\\output_np2",
+    "synop_file": "KOZIENICE_488_data.csv",
+    "train_parameters": [
+          {
+            "name": "T CDC",
+            "level":  "LCY_0"
+          },
+          {
+            "name": "T CDC",
+            "level":  "MCY_0"
+          },
+          {
+            "name": "T CDC",
+            "level":  "HCY_0"
+          },
+          {
+            "name": "V GRD",
+            "level": "HTGL_10"
+          },
+          {
+            "name": "U GRD",
+            "level": "HTGL_10"
+          },
+          {
+            "name": "TMP",
+            "level": "ISBL_850"
+          },
+          {
+            "name": "TMP",
+            "level": "HTGL_2"
+          },
+          {
+            "name": "PRATE",
+            "level": "SFC_0"
+          },
+          {
+            "name": "PRES",
+            "level": "SFC_0"
+          },
+          {
+            "name": "HGT",
+            "level": "ISBL_850"
+          },
+          {
+            "name": "HGT",
+            "level": "ISBL_500"
+          },
+          {
+            "name": "R H",
+            "level": "HTGL_2"
+          },
+          {
+            "name": "R H",
+            "level": "ISBL_900"
+          },
+          {
+            "name": "R H",
+            "level": "ISBL_800"
+          },
+          {
+            "name": "R H",
+            "level": "ISBL_700"
+          },
+          {
+            "name": "R H",
+            "level": "ISBL_500"
+          },
+          {
+            "name": "DPT",
+            "level": "HTGL_2"
+          }
+    ],
+    "target_parameter": "temperature",
+    "prediction_offset": 3,
+    "data_dim_x": 53,
+    "data_dim_y": 33
+}
