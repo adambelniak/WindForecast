@@ -72,7 +72,5 @@
           }
     ],
     "target_parameter": "temperature",
-    "prediction_offset": 3,
-    "data_dim_x": 53,
-    "data_dim_y": 33
+    "prediction_offset": 3
 }
