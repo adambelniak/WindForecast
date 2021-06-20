@@ -90,7 +90,7 @@ def train_model(**kwargs):
     y_label = dataset_label[train_index:]
 
     model = create_model(dataset_input, gfs_dataset_input, 0.001, dataset_label.shape[1])
-    history = model.fit(x_train, y_train, epochs=10, batch_size=32, validation_data=(x_valid, y_label))
+    history = model.fit(x_train, y_train, epochs=10, batch_size=64, validation_data=(x_valid, y_label))
     plot_history(history)
 
 
