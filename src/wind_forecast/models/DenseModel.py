@@ -1,18 +1,26 @@
-from tensorflow import keras
-from tensorflow.keras.layers import Dense
-from tensorflow.python.keras import Input, Model
+from pytorch_lightning import LightningModule
+import torch
+from torch import nn
+
+from wind_forecast.config.register import Config
 
 
-def create_model(input_shape):
-    input = Input(input_shape)
-    X = Dense(units=32, input_shape=input_shape, activation='relu')(input)
-    X = Dense(units=64, activation='relu')(X)
-    X = Dense(units=128, activation='relu')(X)
-    X = Dense(units=64, activation='relu')(X)
-    X = Dense(units=32, activation='relu')(X)
-    X = Dense(units=1)(X)
-    model = Model(inputs=input, outputs=X, name='Dense')
-    model.summary()
-    model.compile(optimizer=keras.optimizers.Adam(learning_rate=0.0001), loss="mse")
+class DenseModel(LightningModule):
+    def __init__(self, cfg: Config):
+        super(DenseModel, self).__init__()
+        self.cfg = cfg
+        self.model = nn.Sequential(
+            nn.Linear(in_features=cfg.experiment.input_size, out_features=2048),
+            nn.ReLU(),
+            nn.BatchNorm2d(num_features=2048),
+            nn.Linear(in_features=2048, out_features=8192),
+            nn.ReLU(),
+            nn.BatchNorm2d(num_features=8192),
+            nn.Linear(in_features=8192, out_features=1024),
+            nn.ReLU(),
+            nn.BatchNorm2d(num_features=1024),
+            nn.Linear(in_features=1024, out_features=1)
+        )
 
-    return model
+    def forward(self, x: torch.Tensor) -> torch.Tensor:  # type: ignore
+        return self.model(x)

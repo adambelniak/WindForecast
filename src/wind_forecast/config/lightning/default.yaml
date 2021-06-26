@@ -1,0 +1,5 @@
+# Specific lightning settings (like trainer settings for instance)
+# (default settings inherited from configs.lightning.LightningSettings)
+
+defaults:
+  - schema_lightning

@@ -24,7 +24,6 @@ POLAND_NLAT = 56
 POLAND_SLAT = 48
 POLAND_WLON = 13
 POLAND_ELON = 26
-NETCDF_DIR = os.path.join("D:\\", "WindForecast", "download", "netCDF")
 
 class ProcessingException(Exception):
     pass
@@ -121,7 +120,7 @@ def check_if_any_file_for_year_exists(year, parameter_level_tuple):
                                                          '',
                                                          '00' + str(OFFSET),
                                                          '*')
-    netCDF_path_glob = os.path.join(NETCDF_DIR, parameter_level_tuple[0],
+    netCDF_path_glob = os.path.join(NETCDF_DOWNLOAD_PATH, parameter_level_tuple[0],
                                     parameter_level_tuple[1].replace(":", "_").replace(",", "-"), netCDF_file_glob)
     found_files = glob.glob(netCDF_path_glob)
     if len(found_files) > 0:
@@ -130,7 +129,7 @@ def check_if_any_file_for_year_exists(year, parameter_level_tuple):
 
 
 def process_to_numpy_array(parameter_level_tuple, coords: Coords):
-    download_dir = f"D:\\WindForecast\\download\\netCDF\\{parameter_level_tuple[0]}\\{parameter_level_tuple[1]}"
+    download_dir = os.path.join(NETCDF_DOWNLOAD_PATH, parameter_level_tuple[0], parameter_level_tuple[1])
 
     for root, dirs, filenames in os.walk(download_dir):
         if len(filenames) > 0:

@@ -1,3 +1,5 @@
+import os
+
 TOO_MANY_REQUESTS = 'User has more than 10 open requests. Purge requests before trying again.'
 REQUEST_TYPE_FIELD = "request_type"
 REQUEST_STATUS_FIELD = "request_status"
@@ -20,3 +22,7 @@ RDA_NETCDF_FILENAME_FORMAT = 'gfs.0p25.{0}{1}{2}{3}.f{4}.grib2.{5}.nc'
 FINAL_CSV_FILENAME_FORMAT = '{0}-{1}-{2}-{3}Z.csv'
 FINAL_NUMPY_FILENAME_FORMAT = '{0}-{1}-{2}-{3}-f{4}.npy'
 WHOLE_YEAR_NUMPY_FILENAME_FORMAT = '{0}-{1}-f{2}.npy'
+
+TAR_DOWNLOAD_PATH = os.path.join("D:\\", "WindForecast", "download", "tar")
+CSV_DOWNLOAD_PATH = os.path.join("D:\\", "WindForecast", "download", "csv")
+NETCDF_DOWNLOAD_PATH = os.path.join("D:\\", "WindForecast", "download", "netCDF")

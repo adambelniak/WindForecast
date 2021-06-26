@@ -1,6 +1,6 @@
 import pandas as pd
 import schedule
-import os, tarfile, re, argparse
+import tarfile, re, argparse
 import time
 
 from gfs_archive_0_25.gfs_processor.rda_request_sender import RequestStatus, REQ_ID_PATH, RequestType
@@ -18,18 +18,18 @@ def get_download_target_path_tar(request_id: str, request_type: str, nlat: str, 
     if request_type == RequestType.POINT.value:
         lat = nlat.replace('.', '_')
         lon = elon.replace('.', '_')
-        return os.path.join("D:\\", "WindForecast", "download", "tar", request_id, lat + "-" + lon, param, level.replace(":", "_").replace(',', '-'))
+        return os.path.join(TAR_DOWNLOAD_PATH, request_id, lat + "-" + lon, param, level.replace(":", "_").replace(',', '-'))
     else:
-        return os.path.join("D:\\", "WindForecast", "download", "tar", request_id, param, level.replace(":", "_").replace(',', '-'))
+        return os.path.join(TAR_DOWNLOAD_PATH, request_id, param, level.replace(":", "_").replace(',', '-'))
 
 
 def get_unpacked_target_path(request_type: str, nlat: str, elon: str, param: str, level: str):
     if request_type == RequestType.POINT.value:
         lat = nlat.replace('.', '_')
         lon = elon.replace('.', '_')
-        return os.path.join("D:\\", "WindForecast", "download", "csv", lat + "-" + lon, param, level.replace(":", "_").replace(",", "-"))
+        return os.path.join(CSV_DOWNLOAD_PATH, lat + "-" + lon, param, level.replace(":", "_").replace(",", "-"))
     else:
-        return os.path.join("D:\\", "WindForecast", "download", "netCDF", param, level.replace(":", "_").replace(',', '-'))
+        return os.path.join(NETCDF_DOWNLOAD_PATH, param, level.replace(":", "_").replace(',', '-'))
 
 
 def download_request(req_id: str, target_dir):

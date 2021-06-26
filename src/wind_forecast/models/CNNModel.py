@@ -1,32 +1,38 @@
-from tensorflow import keras
-from tensorflow.keras.layers import Conv2D, Dense, MaxPooling2D, Flatten
-from tensorflow.python.keras import Input, Model
-from tensorflow.python.keras.layers import Dropout, concatenate
+from pytorch_lightning import LightningModule
+import torch
+from torch import nn
+
+from wind_forecast.config.register import Config
 
 
-def create_model(input_shape):
-    input = Input(input_shape)
-    X = Dropout(.4, input_shape=input_shape)(input)
-    X = Conv2D(filters=32, kernel_size=3, padding="same",
-               activation="swish")(X)
-    X = MaxPooling2D(padding="same")(X)
-    X = Dropout(.4, input_shape=input_shape)(X)
-    X = Conv2D(input_shape=input_shape, filters=64, kernel_size=3, padding="same",
-               activation="swish")(X)
-    X = MaxPooling2D(padding="same")(X)
-    X = Conv2D(input_shape=input_shape, filters=128, kernel_size=3, padding="same",
-               activation="swish")(X)
-    X = MaxPooling2D(padding="same")(X)
-    X = Flatten()(X)
+class CNNModel(LightningModule):
+    def __init__(self, cfg: Config):
+        super(CNNModel, self).__init__()
+        self.cfg = cfg
+        channels, width, height = cfg.experiment.input_size
+        self.model = nn.Sequential(
+            nn.Conv2d(in_channels=channels, out_channels=32, kernel_size=(3, 3), padding=(1, 1)),
+            nn.ReLU(),
+            nn.BatchNorm2d(num_features=32),
+            nn.MaxPool2d(padding=(1, 1), kernel_size=(2, 2)),
+            nn.Dropout(),
+            nn.Conv2d(in_channels=32, out_channels=64, kernel_size=(3, 3), padding=(1, 1)),
+            nn.ReLU(),
+            nn.BatchNorm2d(num_features=64),
+            nn.MaxPool2d(padding=(1, 1), kernel_size=(2, 2)),
+            nn.Dropout(),
+            nn.Conv2d(in_channels=64, out_channels=128, kernel_size=(3, 3), padding=(1, 1)),
+            nn.ReLU(),
+            nn.BatchNorm2d(num_features=128),
+            nn.MaxPool2d(padding=(1, 1), kernel_size=(2, 2)),
+            nn.Flatten(),
+            nn.Linear(in_features=5120, out_features=2048),
+            nn.ReLU(),
+            nn.Dropout(p=0.3),
+            nn.Linear(in_features=2048, out_features=512),
+            nn.ReLU(),
+            nn.Linear(in_features=512, out_features=1)
+        )
 
-    day_length_input = Input(1)
-
-    concat_input = concatenate([day_length_input, X])
-
-    X = Dense(129, activation="linear")(concat_input)
-    X = Dense(1, activation="linear")(X)
-    model = Model(inputs=[input, day_length_input], outputs=X, name='CNN')
-    model.summary()
-    model.compile(optimizer=keras.optimizers.Adam(learning_rate=0.001), loss="mse")
-
-    return model
+    def forward(self, x: torch.Tensor) -> torch.Tensor:  # type: ignore
+        return self.model(x)

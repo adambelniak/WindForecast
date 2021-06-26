@@ -1,5 +1,4 @@
 import glob
-import os
 import re
 import datetime
 import pandas as pd
@@ -79,7 +78,6 @@ def prepare_final_csvs_from_csvs(dir_with_csvs, latitude: str, longitude: str, i
                                         forecast_df.sort_values('date')
                                     else:
                                         forecast_df.loc[forecast_df['date'] == date, param_name] = value
-                                    #os.remove(csv_file_path)
 
                             break  # check only first-level subdirectories
                     break  # check only first-level subdirectories

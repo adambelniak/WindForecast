@@ -2,7 +2,6 @@ sklearn
 beautifulsoup4
 google-auth
 google-auth-oauthlib
-Keras-Preprocessing
 matplotlib
 numpy
 pandas
@@ -10,9 +9,6 @@ pyproj
 requests
 scipy
 scikit-learn
-tensorboard==2.5.0
-tensorflow==2.5.0
-tensorflow-estimator==2.5.0
 hydra-core
 seaborn
 tqdm
@@ -20,3 +16,14 @@ schedule
 geopy
 netCDF4
 bunch
+omegaconf
+python-dotenv
+coolname
+wandb
+torch==1.8.1
+git+https://github.com/pytorch/hydra-torch
+pytorch-lightning-bolts==0.3.2
+pytorch-lightning==1.2.8
+rich
+hydra-configs-pytorch-lightning
+setproctitle
