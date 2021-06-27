@@ -34,7 +34,7 @@ class ExperimentSettings:
     # Data loading settings
     # ----------------------------------------------------------------------------------------------
     # Training batch size
-    batch_size: int = 32
+    batch_size: int = 128
 
     # Enable dataset shuffling
     shuffle: bool = True
@@ -73,4 +73,4 @@ class ExperimentSettings:
 
     input_size: Any = (17, 33, 53)
 
-    epochs: int = 10
+    epochs: int = 100

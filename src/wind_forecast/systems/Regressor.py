@@ -285,7 +285,6 @@ class Regressor(pl.LightningModule):
         #     metrics[key] = float(self._reduce(outputs, key).item())
 
         self.logger.log_metrics(metrics, step=step)
-        self.model.save_model()
 
         #save results to view
         labels = [x['labels'] for x in outputs]

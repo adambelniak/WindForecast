@@ -15,6 +15,8 @@ from wind_forecast.util.utils import convert_wind
 
 warnings.filterwarnings('ignore')
 
+# TODO rewrite to pytorch lightning
+
 
 def get_oldest_gfs_date(gfs: dict):
     gfs.keys()

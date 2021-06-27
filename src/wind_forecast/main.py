@@ -60,6 +60,7 @@ def main(cfg: Config):
     trainer: pl.Trainer = instantiate(
         cfg.lightning,
         logger=wandb_logger,
+        max_epochs=cfg.experiment.epochs,
         checkpoint_callback=True if cfg.experiment.save_checkpoints else False,
         num_sanity_val_steps=-1 if cfg.experiment.validate_before_training else 0,
     )

@@ -18,6 +18,7 @@ from wind_forecast.preprocess.gfs.gfs_preprocess_csv import prepare_gfs_data
 
 GFS_CSV_DIR = os.path.join(Path(__file__), "..", "..", 'gfs-archive-0-25/gfs_processor/output_csvs/54_6-18_8')
 
+# TODO rewrite to pytorch lightning
 
 def add_hours_based_on_time_shift(date):
     if date.month > 10 or date.month < 4:
