@@ -1,91 +1,339 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-
 GFS_PARAMETERS = [
-    # ("V GRD", "ISBL_1000"),
-    # ("V GRD", "ISBL_975"),
-    # ("V GRD", "ISBL_950"),
-    # ("V GRD", "ISBL_900"),
-    # ("V GRD", "ISBL_850"),
-    # ("V GRD", "ISBL_800"),
-    # ("V GRD", "ISBL_700"),
-    # ("V GRD", "ISBL_600"),
-    # ("V GRD", "ISBL_500"),
-    # ("V GRD", "ISBL_400"),
-    # ("V GRD", "ISBL_300"),
-    # ("V GRD", "ISBL_200"),
-    # ("V GRD", "HTGL_10"),
-    # ("U GRD", "ISBL_1000"),
-    # ("U GRD", "ISBL_975"),
-    # ("U GRD", "ISBL_950"),
-    # ("U GRD", "ISBL_900"),
-    # ("U GRD", "ISBL_850"),
-    # ("U GRD", "ISBL_800"),
-    # ("U GRD", "ISBL_700"),
-    # ("U GRD", "ISBL_600"),
-    # ("U GRD", "ISBL_500"),
-    # ("U GRD", "ISBL_400"),
-    # ("U GRD", "ISBL_300"),
-    # ("U GRD", "ISBL_200"),
-    # ("U GRD", "HTGL_10"),
-    ("GUST", "SFC_0"),
-    ("TMP", "ISBL_1000"),
-    ("TMP", "ISBL_975"),
-    ("TMP", "ISBL_950"),
-    ("TMP", "ISBL_900"),
-    ("TMP", "ISBL_850"),
-    ("TMP", "ISBL_800"),
-    ("TMP", "ISBL_700"),
-    ("TMP", "ISBL_600"),
-    # ("TMP", "ISBL_500"),
-    # ("TMP", "ISBL_400"),
-    # ("TMP", "ISBL_300"),
-    # ("TMP", "ISBL_200"),
-    ("TMP", "HTGL_2"),
-    ("CAPE", "SFC_0"),
-    # ("CAPE", "SPDL_0-180"),
-    # ("CAPE", "SPDL_0-255"),
-    # ("LFT X", "SFC_0"),
-    ("DPT", "HTGL_2"),
-    # ("CIN", "SFC_0"),
-    # ("CIN", "SPDL_0-180"),
-    # ("CIN", "SPDL_0-255"),
-    ("P WAT", "EATM_0"),
-    # ("POT", "SIGL_0.995"),
-    ("R H", "ISBL_1000"),
-    ("R H", "ISBL_975"),
-    ("R H", "ISBL_950"),
-    ("R H", "ISBL_900"),
-    ("R H", "ISBL_850"),
-    ("R H", "ISBL_800"),
-    ("R H", "ISBL_700"),
-    ("R H", "ISBL_600"),
-    ("R H", "ISBL_500"),
-    ("R H", "ISBL_400"),
-    ("R H", "ISBL_300"),
-    ("R H", "HTGL_2"),
-    # ("V VEL", "ISBL_1000"),
-    # ("V VEL", "ISBL_975"),
-    # ("V VEL", "ISBL_950"),
-    # ("V VEL", "ISBL_900"),
-    # ("V VEL", "ISBL_850"),
-    # ("V VEL", "ISBL_800"),
-    # ("V VEL", "ISBL_700"),
-    # ("V VEL", "ISBL_600"),
-    # ("V VEL", "ISBL_500"),
-    # ("V VEL", "ISBL_400"),
-    # ("V VEL", "ISBL_300"),
-    ("T CDC", "LCY_0"),
-    ("T CDC", "MCY_0"),
-    ("T CDC", "HCY_0"),
-    ("PRATE", "SFC_0"),
-    ("PRES", "SFC_0"),
-    # ("HLCY", "HTGL_0-3000"),
-    ("HGT", "ISBL_850"),
-    ("HGT", "ISBL_700"),
-    ("HGT", "ISBL_500"),
-    ("HGT", "ISBL_300"),
+    {
+        "name": "V GRD",
+        "level": "ISBL_1000"
+    },
+    {
+        "name": "V GRD",
+        "level": "ISBL_975"
+    },
+    {
+        "name": "V GRD",
+        "level": "ISBL_950"
+    },
+    {
+        "name": "V GRD",
+        "level": "ISBL_900"
+    },
+    {
+        "name": "V GRD",
+        "level": "ISBL_850"
+    },
+    {
+        "name": "V GRD",
+        "level": "ISBL_800"
+    },
+    {
+        "name": "V GRD",
+        "level": "ISBL_700"
+    },
+    {
+        "name": "V GRD",
+        "level": "ISBL_600"
+    },
+    {
+        "name": "V GRD",
+        "level": "ISBL_500"
+    },
+    {
+        "name": "V GRD",
+        "level": "ISBL_400"
+    },
+    {
+        "name": "V GRD",
+        "level": "ISBL_300"
+    },
+    {
+        "name": "V GRD",
+        "level": "ISBL_200"
+    },
+    {
+        "name": "V GRD",
+        "level": "HTGL_10"
+    },
+    {
+        "name": "U GRD",
+        "level": "ISBL_1000"
+    },
+    {
+        "name": "U GRD",
+        "level": "ISBL_975"
+    },
+    {
+        "name": "U GRD",
+        "level": "ISBL_950"
+    },
+    {
+        "name": "U GRD",
+        "level": "ISBL_900"
+    },
+    {
+        "name": "U GRD",
+        "level": "ISBL_850"
+    },
+    {
+        "name": "U GRD",
+        "level": "ISBL_800"
+    },
+    {
+        "name": "U GRD",
+        "level": "ISBL_700"
+    },
+    {
+        "name": "U GRD",
+        "level": "ISBL_600"
+    },
+    {
+        "name": "U GRD",
+        "level": "ISBL_500"
+    },
+    {
+        "name": "U GRD",
+        "level": "ISBL_400"
+    },
+    {
+        "name": "U GRD",
+        "level": "ISBL_300"
+    },
+    {
+        "name": "U GRD",
+        "level": "ISBL_200"
+    },
+    {
+        "name": "U GRD",
+        "level": "HTGL_10"
+    },
+    {
+        "name": "GUST",
+        "level": "SFC_0"
+    },
+    {
+        "name": "TMP",
+        "level": "ISBL_1000"
+    },
+    {
+        "name": "TMP",
+        "level": "ISBL_975"
+    },
+    {
+        "name": "TMP",
+        "level": "ISBL_950"
+    },
+    {
+        "name": "TMP",
+        "level": "ISBL_900"
+    },
+    {
+        "name": "TMP",
+        "level": "ISBL_850"
+    },
+    {
+        "name": "TMP",
+        "level": "ISBL_800"
+    },
+    {
+        "name": "TMP",
+        "level": "ISBL_700"
+    },
+    {
+        "name": "TMP",
+        "level": "ISBL_600"
+    },
+    {
+        "name": "TMP",
+        "level": "ISBL_500"
+    },
+    {
+        "name": "TMP",
+        "level": "ISBL_400"
+    },
+    {
+        "name": "TMP",
+        "level": "ISBL_300"
+    },
+    {
+        "name": "TMP",
+        "level": "ISBL_200"
+    },
+    {
+        "name": "TMP",
+        "level": "HTGL_2"
+    },
+    {
+        "name": "CAPE",
+        "level": "SFC_0"
+    },
+    {
+        "name": "CAPE",
+        "level": "SPDL_0-180"
+    },
+    {
+        "name": "CAPE",
+        "level": "SPDL_0-255"
+    },
+    {
+        "name": "LFT X",
+        "level": "SFC_0"
+    },
+    {
+        "name": "DPT",
+        "level": "HTGL_2"
+    },
+    {
+        "name": "CIN",
+        "level": "SFC_0"
+    },
+    {
+        "name": "CIN",
+        "level": "SPDL_0-180"
+    },
+    {
+        "name": "CIN",
+        "level": "SPDL_0-255"
+    },
+    {
+        "name": "P WAT",
+        "level": "EATM_0"
+    },
+    {
+        "name": "POT",
+        "level": "SIGL_0.995"
+    },
+    {
+        "name": "R H",
+        "level": "ISBL_1000"
+    },
+    {
+        "name": "R H",
+        "level": "ISBL_975"
+    },
+    {
+        "name": "R H",
+        "level": "ISBL_950"
+    },
+    {
+        "name": "R H",
+        "level": "ISBL_900"
+    },
+    {
+        "name": "R H",
+        "level": "ISBL_850"
+    },
+    {
+        "name": "R H",
+        "level": "ISBL_800"
+    },
+    {
+        "name": "R H",
+        "level": "ISBL_700"
+    },
+    {
+        "name": "R H",
+        "level": "ISBL_600"
+    },
+    {
+        "name": "R H",
+        "level": "ISBL_500"
+    },
+    {
+        "name": "R H",
+        "level": "ISBL_400"
+    },
+    {
+        "name": "R H",
+        "level": "ISBL_300"
+    },
+    {
+        "name": "R H",
+        "level": "HTGL_2"
+    },
+    {
+        "name": "V VEL",
+        "level": "ISBL_1000"
+    },
+    {
+        "name": "V VEL",
+        "level": "ISBL_975"
+    },
+    {
+        "name": "V VEL",
+        "level": "ISBL_950"
+    },
+    {
+        "name": "V VEL",
+        "level": "ISBL_900"
+    },
+    {
+        "name": "V VEL",
+        "level": "ISBL_850"
+    },
+    {
+        "name": "V VEL",
+        "level": "ISBL_800"
+    },
+    {
+        "name": "V VEL",
+        "level": "ISBL_700"
+    },
+    {
+        "name": "V VEL",
+        "level": "ISBL_600"
+    },
+    {
+        "name": "V VEL",
+        "level": "ISBL_500"
+    },
+    {
+        "name": "V VEL",
+        "level": "ISBL_400"
+    },
+    {
+        "name": "V VEL",
+        "level": "ISBL_300"
+    },
+    {
+        "name": "T CDC",
+        "level": "LCY_0"
+    },
+    {
+        "name": "T CDC",
+        "level": "MCY_0"
+    },
+    {
+        "name": "T CDC",
+        "level": "HCY_0"
+    },
+    {
+        "name": "PRATE",
+        "level": "SFC_0"
+    },
+    {
+        "name": "PRES",
+        "level": "SFC_0"
+    },
+    {
+        "name": "HLCY",
+        "level": "HTGL_0-3000"
+    },
+    {
+        "name": "HGT",
+        "level": "ISBL_850"
+    },
+    {
+        "name": "HGT",
+        "level": "ISBL_700"
+    },
+    {
+        "name": "HGT",
+        "level": "ISBL_500"
+    },
+    {
+        "name": "HGT",
+        "level": "ISBL_300"
+    }
 ]
 
 
@@ -98,6 +346,7 @@ def plot_history(history):
     plt.xlabel('epoch')
     plt.legend(['train', 'test'], loc='upper left')
     plt.show()
+
 
 def convert_wind(single_date_series, u_wind_label, v_wind_label):
     velocity = np.sqrt(single_date_series[u_wind_label] ** 2 + single_date_series[v_wind_label] ** 2)

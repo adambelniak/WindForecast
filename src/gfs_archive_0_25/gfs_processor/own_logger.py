@@ -10,7 +10,7 @@ def get_logger(log_path: str = "log/gfs_processor.log"):
     console_handler.setFormatter(formatter)
 
     if not os.path.exists(os.path.dirname(log_path)):
-        os.mkdir('log')
+        os.makedirs(os.path.dirname(log_path), exist_ok=True)
 
     handler = logging.FileHandler(log_path)
     handler.setLevel(logging.INFO)

@@ -10,6 +10,7 @@ from hydra.utils import instantiate
 from pytorch_lightning import LightningModule
 from pytorch_lightning.loggers.base import LoggerCollection
 from pytorch_lightning.loggers.wandb import WandbLogger
+from torch.optim.lr_scheduler import _LRScheduler
 from pytorch_lightning.metrics.regression.mean_squared_error import MeanSquaredError
 from rich import print
 from torch.nn import MSELoss
@@ -184,7 +185,7 @@ class Regressor(pl.LightningModule):
     # ----------------------------------------------------------------------------------------------
     # Validation
     # ----------------------------------------------------------------------------------------------
-    def validation_step(self, batch: list[torch.Tensor], batch_idx: int) -> dict[str, Any]:  # type: ignore
+    def validation_step(self, batch: list[torch.Tensor], batch_idx: int) -> dict[str, torch.Tensor]:  # type: ignore
         """
         Compute validation metrics.
 
@@ -238,7 +239,7 @@ class Regressor(pl.LightningModule):
     # ----------------------------------------------------------------------------------------------
     # Test
     # ----------------------------------------------------------------------------------------------
-    def test_step(self, batch: Batch, batch_idx: int) -> dict[str, Any]:  # type: ignore
+    def test_step(self, batch: list[torch.Tensor], batch_idx: int) -> dict[str, torch.Tensor]:  # type: ignore
         """
         Compute test metrics.
 

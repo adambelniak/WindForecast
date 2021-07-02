@@ -8,3 +8,12 @@ GUST_COLUMN = (27, 'wind_gust')
 TEMPERATURE = (29, 'temperature')
 PRESSURE = (41, 'pressure')
 CURRENT_WEATHER = (52, 'current_weather')
+
+lstm_features = [
+    DIRECTION_COLUMN,
+    VELOCITY_COLUMN,
+    GUST_COLUMN,
+    TEMPERATURE,
+    PRESSURE,
+    CURRENT_WEATHER
+]

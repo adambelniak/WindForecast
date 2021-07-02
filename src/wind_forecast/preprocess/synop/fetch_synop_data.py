@@ -12,7 +12,7 @@ import seaborn as sns
 import tqdm
 import argparse
 
-import consts as consts
+import wind_forecast.preprocess.synop.consts as consts
 
 """This code obtains SYNOP data from 'https://danepubliczne.imgw.pl/'.
 

@@ -8,6 +8,7 @@ from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning import LightningDataModule, LightningModule
 from pytorch_lightning.loggers import WandbLogger
+from wandb.sdk.wandb_run import Run
 
 from wind_forecast.config.register import Config, register_configs, get_tags
 from wind_forecast.util.config import process_config

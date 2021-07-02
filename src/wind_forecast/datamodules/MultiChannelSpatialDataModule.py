@@ -4,12 +4,12 @@ from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader, random_split
 
 from wind_forecast.config.register import Config
-from wind_forecast.datasets.MultiChannelDataset import MultiChannelDataset
+from wind_forecast.datasets.MultiChannelSpatialDataset import MultiChannelSpatialDataset
 from wind_forecast.util.config import process_config
 from wind_forecast.util.utils import get_available_numpy_files
 
 
-class MultiChannelDataModule(LightningDataModule):
+class MultiChannelSpatialDataModule(LightningDataModule):
 
     def __init__(
             self,
@@ -34,11 +34,11 @@ class MultiChannelDataModule(LightningDataModule):
 
     def setup(self, stage: Optional[str] = None):
         if stage in (None, 'fit'):
-            dataset = MultiChannelDataset(config=self.config, list_IDs=self.IDs, train=True)
+            dataset = MultiChannelSpatialDataset(config=self.config, list_IDs=self.IDs, train=True, normalize=False)
             length = len(dataset)
             self.dataset_train, self.dataset_val = random_split(dataset, [length - (int(length * self.val_split)), int(length * self.val_split)])
         elif stage == 'test':
-            self.dataset_test = MultiChannelDataset(config=self.config, list_IDs=self.IDs, train=False)
+            self.dataset_test = MultiChannelSpatialDataset(config=self.config, list_IDs=self.IDs, train=False)
 
     def train_dataloader(self):
         return DataLoader(self.dataset_train, batch_size=self.batch_size, shuffle=self.shuffle)

@@ -4,7 +4,6 @@ import time
 from os.path import isfile, join
 
 import netCDF4 as nc
-import os
 import re
 from datetime import datetime, timedelta
 import pandas as pd
@@ -121,7 +120,7 @@ def check_if_any_file_for_year_exists(year, parameter_level_tuple):
                                                          '00' + str(OFFSET),
                                                          '*')
     netCDF_path_glob = os.path.join(NETCDF_DOWNLOAD_PATH, parameter_level_tuple[0],
-                                    parameter_level_tuple[1].replace(":", "_").replace(",", "-"), netCDF_file_glob)
+                                    parameter_level_tuple['level'].replace(":", "_").replace(",", "-"), netCDF_file_glob)
     found_files = glob.glob(netCDF_path_glob)
     if len(found_files) > 0:
         return True
@@ -129,11 +128,11 @@ def check_if_any_file_for_year_exists(year, parameter_level_tuple):
 
 
 def process_to_numpy_array(parameter_level_tuple, coords: Coords):
-    download_dir = os.path.join(NETCDF_DOWNLOAD_PATH, parameter_level_tuple[0], parameter_level_tuple[1])
+    download_dir = os.path.join(NETCDF_DOWNLOAD_PATH, parameter_level_tuple['name'], parameter_level_tuple['level'])
 
     for root, dirs, filenames in os.walk(download_dir):
         if len(filenames) > 0:
-            output_dir = f"D:\\WindForecast\\output_np2\\{parameter_level_tuple[0]}\\{parameter_level_tuple[1]}"
+            output_dir = f"D:\\WindForecast\\output_np2\\{parameter_level_tuple['name']}\\{parameter_level_tuple['level']}"
 
             if not os.path.exists(output_dir):
                 os.makedirs(output_dir)
@@ -161,7 +160,7 @@ def process_to_numpy_array(parameter_level_tuple, coords: Coords):
 
 def process_netCDF_files_to_npy():
     for param in GFS_PARAMETERS:
-        logger.info(f"Converting parameter {param[0]} {param[1]}")
+        logger.info(f"Converting parameter {param['name']} {param['level']}")
         process_to_numpy_array(param, Coords(56, 48, 13, 26))
 
 

@@ -1,7 +1,5 @@
 from tensorflow import keras
 
-# TODO rewrite to pytorch lightning
-
 
 def create_model(inputs, gfs_input, learning_rate: float, ):
     auxiliary_input = keras.layers.Input(shape=(gfs_input.shape[1],), name='single_gfs_input')
@@ -18,4 +16,3 @@ def create_model(inputs, gfs_input, learning_rate: float, ):
     model.summary()
 
     return model
-

@@ -5,15 +5,15 @@ defaults:
   - schema_experiment
 
 _tags_:
-  - CNN
+  - LSTM
 
 resume_checkpoint: ~
 
 datamodule:
-  _target_: wind_forecast.datamodules.MultiChannelSpatialDataModule.MultiChannelSpatialDataModule
+  _target_: wind_forecast.datamodules.SequenceDataModule.SequenceDataModule
 
 model:
-  _target_: wind_forecast.models.CNNModel.CNNModel
+  _target_: wind_forecast.models.LSTMModel.LSTMModel
 
 system:
   _target_: wind_forecast.systems.Regressor.Regressor

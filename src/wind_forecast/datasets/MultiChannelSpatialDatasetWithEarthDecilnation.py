@@ -7,24 +7,15 @@ import torch
 from tqdm import tqdm
 import numpy as np
 
-from wind_forecast.config.register import Config
 from wind_forecast.consts import NETCDF_FILE_REGEX
-from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset
-from wind_forecast.util.config import process_config
-from wind_forecast.util.logging import log
-from wind_forecast.util.utils import GFS_DATASET_DIR, utc_to_local
+from wind_forecast.util.utils import GFS_DATASET_DIR, utc_to_local, declination_of_earth
 
 
-class MultiChannelDataset(torch.utils.data.Dataset):
+class MultiChannelSpatialDatasetWithEarthDecilnation(torch.utils.data.Dataset):
     'Characterizes a dataset for PyTorch'
-    def __init__(self, config: Config, list_IDs, train=True, normalize=True):
+    def __init__(self, list_IDs, train=True, normalize=True):
         'Initialization'
         self.list_IDs = list_IDs
-        self.train_parameters = process_config(config.experiment.train_parameters_config_file)
-        self.target_param = config.experiment.target_parameter
-        self.synop_file = config.experiment.synop_file
-        self.labels = prepare_synop_dataset(self.synop_file, [self.target_param])
-        self.dim = config.experiment.input_size
         length = len(self.list_IDs)
         training_data, validation_data = self.list_IDs[:int(length * 0.8)], self.list_IDs[int(length * 0.8):]
         if train:
@@ -33,16 +24,14 @@ class MultiChannelDataset(torch.utils.data.Dataset):
             data = validation_data
 
         self.data = data
-        self.mean, self.std = [], []
 
         if normalize:
             self.initialize_mean_and_std()
 
     def initialize_mean_and_std(self):
-        log.info("Calculating std and mean for a dataset")
-        for param in tqdm(self.train_parameters):
+        for param in tqdm(self.parameters):
             sum, sqr_sum = 0, 0
-            for id in self.list_IDs:
+            for id in tqdm(self.list_IDs):
                 values = np.load(os.path.join(GFS_DATASET_DIR, param['name'], param['level'], id))
                 sum += np.sum(values)
                 sqr_sum += pow(sum, 2)
@@ -60,20 +49,19 @@ class MultiChannelDataset(torch.utils.data.Dataset):
         # Select sample
         ID = self.data[index]
 
-        X, y = self.__data_generation(ID)
+        x1, x2, y = self.__data_generation(ID)
 
-        return X, y
+        return [x1, x2], y
 
     def __data_generation(self, ID):
         # Initialization
-        x = np.empty(tuple(self.dim))
-        y = np.empty(1)
+        x1 = np.empty((len(self.parameters), *self.dim))
 
         # Generate data
-        for j, param in enumerate(self.train_parameters):
+        for j, param in enumerate(self.parameters):
             # Store sample
-            x[j, ] = np.load(os.path.join(GFS_DATASET_DIR, param['name'], param['level'], ID))
-            x[j, ] = (x[j, ] - self.mean[j]) / self.std[j]
+            x1[j, ] = np.load(os.path.join(GFS_DATASET_DIR, param['name'], param['level'], ID))
+            x1[j, ] = (x1[j, ] - self.mean[j]) / self.std[j]
 
         # Store class
         date_matcher = re.match(NETCDF_FILE_REGEX, ID)
@@ -85,8 +73,9 @@ class MultiChannelDataset(torch.utils.data.Dataset):
         run = int(date_matcher.group(2))
         offset = int(date_matcher.group(3))
         forecast_date = utc_to_local(datetime(year, month, day) + timedelta(hours=run + offset))
+        x2 = declination_of_earth(forecast_date) / 23.45
         label = self.labels[self.labels["date"] == forecast_date][self.target_param]
-        if len(label) == 0:
-            print(forecast_date)
-        y[0] = label.values[0]
-        return x, y
+        y = label.values[0]
+
+        x1 = np.einsum('lij->ijl', x1)
+        return x1, x2, y

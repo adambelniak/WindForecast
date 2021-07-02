@@ -28,7 +28,6 @@ def get_available_numpy_files(features, offset, directory):
     for feature in tqdm(features):
         files = [f.name for f in os.scandir(os.path.join(directory, feature['name'], feature['level'])) if matcher.match(f.name)]
         result = np.intersect1d(result, np.array(files)) if result is not None else np.array(files)
-        # result = np.array(files)
 
     return result
 

@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
-from typing import Any, List, Optional, Tuple
+from dataclasses import dataclass, field
+from typing import Any, List, Optional
 
 from omegaconf.omegaconf import MISSING
 
 
 # Experiment settings validation schema & default values
+from wind_forecast.preprocess.synop.consts import lstm_features
+
+
 @dataclass
 class ExperimentSettings:
     # ----------------------------------------------------------------------------------------------
@@ -57,8 +60,6 @@ class ExperimentSettings:
 
     gfs_dataset_dir: str = os.path.join("D:\\WindForecast", "output_np2")
 
-    synop_dataset_dir: str = os.path.join("datasets", "synop")
-
     synop_file: str = "KOZIENICE_488_data.csv"
 
     target_parameter: str = "temperature"
@@ -71,6 +72,10 @@ class ExperimentSettings:
 
     train_parameters_config_file: str = "CNNConfig.json"
 
-    input_size: Any = (17, 33, 53)
+    input_size: Any = (16, 33, 53)
 
     epochs: int = 100
+
+    lstm_train_parameters: List = field(default_factory=lambda: lstm_features)
+
+    sequence_length: int = 24
