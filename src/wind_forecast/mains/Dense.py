@@ -83,7 +83,7 @@ def prepare_gfs_data_for_forecast_frame(single_gfs, synop_dataset, parameter, fo
 def prepare_data(gfs_data_dir: str, synop_data_path: str, parameter: str, specific_hour: str, forecast_frame: int):
     print("Creating data set")
 
-    synop_dataset = prepare_synop_dataset(synop_data_path, [parameter], False)
+    synop_dataset, _, _ = prepare_synop_dataset(synop_data_path, [parameter], False)
 
     if parameter not in synop_dataset.columns:
         raise Exception("Parameter {} is not available in synop dataset.".format(parameter))

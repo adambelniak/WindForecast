@@ -23,7 +23,7 @@ class MultiChannelSpatialDataset(torch.utils.data.Dataset):
         self.train_parameters = process_config(config.experiment.train_parameters_config_file)
         self.target_param = config.experiment.target_parameter
         self.synop_file = config.experiment.synop_file
-        self.labels = prepare_synop_dataset(self.synop_file, [self.target_param])
+        self.labels, self.label_mean, self.label_std = prepare_synop_dataset(self.synop_file, [self.target_param])
         self.dim = config.experiment.input_size
         length = len(self.list_IDs)
         training_data, test_data = self.list_IDs[:int(length * 0.8)], self.list_IDs[int(length * 0.8):]

@@ -47,7 +47,7 @@ def create_sequence(data, gfs_data, past_len, future_offset):
 
 def prepare_data(past_len=12, future_offset=12, train_split_factor=0.75):
     features = []
-    dataset_train = prepare_synop_dataset("preprocess/synop_data/135_data.csv", )
+    dataset_train, _, _ = prepare_synop_dataset("preprocess/synop_data/135_data.csv", )
     gfs_dataset = prepare_gfs_dataset_for_single_point_time("preprocess/wind_and_temp", 'date', future_offset)
 
     least_recent_date = gfs_dataset["date"].min()

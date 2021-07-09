@@ -89,13 +89,13 @@ GFS_PARAMETERS = [
 
 
 def explore_data_for_each_param():
+    logger = get_logger(os.path.join("explore_results", 'logs.log'))
     for parameter in tqdm(GFS_PARAMETERS):
         param_dir = os.path.join(gfs_dataset_dir, parameter['name'], parameter['level'])
         if os.path.exists(param_dir):
             for offset in tqdm(range(3, 120, 3)):
                 plot_dir = os.path.join('plots', parameter['name'], parameter['level'], str(offset))
                 if not os.path.exists(os.path.join(plot_dir, 'plot.png')):
-                    logger = get_logger(os.path.join("explore_results", parameter['name'], parameter['level'], str(offset), 'logs.log'))
                     matcher = re.compile(rf".*f{prep_zeros_if_needed(str(offset), 2)}.*")
                     files = [f.name for f in os.scandir(param_dir) if matcher.match(f.name)]
                     files_with_nan = []

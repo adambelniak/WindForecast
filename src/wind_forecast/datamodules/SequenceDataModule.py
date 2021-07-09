@@ -5,8 +5,6 @@ from torch.utils.data import random_split, DataLoader
 
 from wind_forecast.config.register import Config
 from wind_forecast.datasets.SequenceDataset import SequenceDataset
-from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset
-from wind_forecast.util.config import process_config
 
 
 class SequenceDataModule(LightningDataModule):

@@ -8,7 +8,7 @@ from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_datase
 
 
 def prepare_target_attribute_dataset(synop_data_file, target_attribute, init_date, end_date):
-    dataset = prepare_synop_dataset(synop_data_file, [target_attribute])
+    dataset, _, _ = prepare_synop_dataset(synop_data_file, [target_attribute])
     return filter_for_dates(dataset, init_date, end_date)
 
 
