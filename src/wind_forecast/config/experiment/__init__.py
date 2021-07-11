@@ -8,7 +8,7 @@ from omegaconf.omegaconf import MISSING
 
 
 # Experiment settings validation schema & default values
-from wind_forecast.preprocess.synop.consts import lstm_features
+from wind_forecast.preprocess.synop.consts import LSTM_FEATURES
 
 
 @dataclass
@@ -76,6 +76,6 @@ class ExperimentSettings:
 
     epochs: int = 100
 
-    lstm_train_parameters: List = field(default_factory=lambda: lstm_features)
+    lstm_train_parameters: List = field(default_factory=lambda: LSTM_FEATURES)
 
     sequence_length: int = 24

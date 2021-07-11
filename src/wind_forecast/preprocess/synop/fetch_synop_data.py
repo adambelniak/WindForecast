@@ -35,20 +35,26 @@ import wind_forecast.preprocess.synop.consts as consts
      - 41 - pressure
 """
 
-def download_list_of_station(dir: str):
+def download_list_of_station(dir = None):
     file_name = 'wykaz_stacji.csv'
 
-    if not os.path.isfile(os.path.join(dir, file_name)):
+    if dir is None:
+        out_file = os.path.join(Path(__file__).parent, 'wykaz_stacji.csv')
+    else:
+        out_file = os.path.join(dir, 'wykaz_stacji.csv')
+
+    if not os.path.isfile(out_file):
         url = 'https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/dane_meteorologiczne/' + file_name
         file = requests.get(url, stream=True)
-        opened_file = open(os.path.join(dir, file_name), 'wb')
+        opened_file = open(out_file, 'wb')
         opened_file.write(file.content)
         opened_file.close()
 
 
-def get_localisation_id(localisation_name: str, code_fallback, dir='synop_data'):
+def get_localisation_id(localisation_name: str, code_fallback, dir=Path(__file__).parent):
     loc_data = pd.read_csv(os.path.join(dir, 'wykaz_stacji.csv'), encoding="latin-1",
                            names=['unknown', 'city_name', 'meteo_code'],  dtype='str')
+    loc_data['meteo_code'] = loc_data['meteo_code'].astype(int)
     row = loc_data.loc[loc_data['city_name'] == localisation_name]
 
     if row.shape[0] == 0:
@@ -132,39 +138,38 @@ def plot_box_all_data(localisation_code: str, localisation_name: str, dir='synop
     plt.show()
 
 
-def process_all_data(from_year, until_year, localisation_code, localisation_name, dir='synop_data'):
+def process_all_data(from_year, until_year, localisation_code, localisation_name, synop_dir=os.path.join(Path(__file__).parent, 'synop_data'), output_dir=os.path.join(Path(__file__).parent, 'synop_data'), columns=None):
     columns = [consts.YEAR, consts.MONTH, consts.DAY, consts.HOUR, consts.DIRECTION_COLUMN, consts.VELOCITY_COLUMN,
-               consts.GUST_COLUMN, consts.TEMPERATURE, consts.PRESSURE, consts.CURRENT_WEATHER]
+               consts.GUST_COLUMN, consts.TEMPERATURE, consts.PRESSURE, consts.CURRENT_WEATHER] if columns is None else columns
     station_data = pd.DataFrame(columns=list(list(zip(*columns))[1]))
     localisation_code = localisation_code.strip()
 
     for year in tqdm.tqdm(range(from_year, until_year)):
-        get_synop_data(localisation_code, str(year), dir)
-        extract_zip_files(str(year), dir)
-        processed_data = read_data(localisation_code, str(year), columns, dir)
+        get_synop_data(localisation_code, str(year), synop_dir)
+        extract_zip_files(str(year), synop_dir)
+        processed_data = read_data(localisation_code, str(year), columns, synop_dir)
         station_data = station_data.append(processed_data)
-    station_data.to_csv(os.path.join(dir, f"{localisation_name}_{localisation_code}_data.csv"), index=False)
+    station_data.to_csv(os.path.join(output_dir, f"{localisation_name}_{localisation_code}_data.csv"), index=False)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--dir', help='Working directory', default='')
+    parser.add_argument('--dir', help='Working directory', default=None)
     parser.add_argument('--out', help='Directory where to save synop files', default='synop_data')
     parser.add_argument('--localisation_name', help='Localisation name for which to get data', default=None, type=str)
-    parser.add_argument('--code_fallback', help='Localisation code as a fallback if name is not found', default=None, type=str)
+    parser.add_argument('--code_fallback', help='Localisation code as a fallback if name is not found', default=None, type=int)
     parser.add_argument('--start_year', help='Start date for fetching data', type=int, default=2001)
     parser.add_argument('--end_year', help='End date for fetching data', type=int, default=2021)
 
     parser.add_argument('--plot_box_year', help='Year fow which create box plot for each month', type=int, default=2019)
-
 
     args = parser.parse_args()
     if args.localisation_name is None and args.code_fallback is None:
         raise Exception("Please provide either localisation_name or code_fallback!")
     download_list_of_station(args.dir)
     localisation_code, name = get_localisation_id(args.localisation_name, args.code_fallback, args.dir)
-    localisation_code = localisation_code.strip()
+    localisation_code = localisation_code
     localisation_name = args.localisation_name
     if localisation_name is None:
         localisation_name = name

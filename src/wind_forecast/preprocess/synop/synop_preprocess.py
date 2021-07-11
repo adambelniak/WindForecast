@@ -4,9 +4,6 @@ from pathlib import Path
 import pandas as pd
 
 
-DATASETS_DIRECTORY = os.path.join(Path(__file__).parent, "..", "..", "..", "data", "synop")
-
-
 def normalize(data):
     data_mean = data.mean(axis=0)
     data_std = data.std(axis=0)
@@ -24,8 +21,8 @@ def split_features_into_arrays(data, train_split, past_len, future_offset, y_col
     return x_data, y_data
 
 
-def prepare_synop_dataset(synop_file_name, features, norm=True):
-    synop_file_path = os.path.join(DATASETS_DIRECTORY, synop_file_name)
+def prepare_synop_dataset(synop_file_name, features, norm=True, dataset_dir=os.path.join(Path(__file__).parent, 'synop_data')):
+    synop_file_path = os.path.join(dataset_dir, synop_file_name)
     if not os.path.exists(synop_file_path):
         raise Exception(f"Dataset not found. Looked for {synop_file_path}")
 

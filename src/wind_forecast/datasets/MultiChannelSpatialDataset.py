@@ -8,7 +8,7 @@ from tqdm import tqdm
 import numpy as np
 
 from wind_forecast.config.register import Config
-from wind_forecast.consts import NETCDF_FILE_REGEX
+from wind_forecast.consts import NETCDF_FILE_REGEX, DATASETS_DIRECTORY
 from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset
 from wind_forecast.util.config import process_config
 from wind_forecast.util.logging import log
@@ -23,7 +23,7 @@ class MultiChannelSpatialDataset(torch.utils.data.Dataset):
         self.train_parameters = process_config(config.experiment.train_parameters_config_file)
         self.target_param = config.experiment.target_parameter
         self.synop_file = config.experiment.synop_file
-        self.labels, self.label_mean, self.label_std = prepare_synop_dataset(self.synop_file, [self.target_param])
+        self.labels, self.label_mean, self.label_std = prepare_synop_dataset(self.synop_file, [self.target_param], dataset_dir=DATASETS_DIRECTORY)
         self.dim = config.experiment.input_size
         length = len(self.list_IDs)
         training_data, test_data = self.list_IDs[:int(length * 0.8)], self.list_IDs[int(length * 0.8):]

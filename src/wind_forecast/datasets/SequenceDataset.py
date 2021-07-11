@@ -2,6 +2,7 @@ import torch
 import numpy as np
 
 from wind_forecast.config.register import Config
+from wind_forecast.consts import DATASETS_DIRECTORY
 from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset
 
 
@@ -15,7 +16,7 @@ class SequenceDataset(torch.utils.data.Dataset):
         self.sequence_length = config.experiment.sequence_length
         self.prediction_offset = config.experiment.prediction_offset
 
-        raw_data, self.mean, self.std = prepare_synop_dataset(self.synop_file, list(list(zip(*self.train_params))[1]))
+        raw_data, self.mean, self.std = prepare_synop_dataset(self.synop_file, list(list(zip(*self.train_params))[1]), dataset_dir=DATASETS_DIRECTORY)
         labels = raw_data[self.target_param].to_numpy()
         features = raw_data[list(list(zip(*self.train_params))[1])].to_numpy()
 
