@@ -13,7 +13,7 @@ def get_nearest_coords(latitude, longitude):
     return [[lat1, lat2], [long1, long2]]
 
 
-def prep_zeros_if_needed(value, number_of_zeros):
+def prep_zeros_if_needed(value: str, number_of_zeros: int):
     for i in range(number_of_zeros - len(value) + 1):
         value = '0' + value
     return value

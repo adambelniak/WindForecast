@@ -4,10 +4,10 @@ import os
 from dataclasses import dataclass, field
 from typing import Any, List, Optional
 
-from omegaconf.omegaconf import MISSING
-
+from omegaconf.omegaconf import MISSING, OmegaConf
 
 # Experiment settings validation schema & default values
+from gfs_archive_0_25.gfs_processor.Coords import Coords
 from wind_forecast.preprocess.synop.consts import LSTM_FEATURES
 
 
@@ -79,3 +79,5 @@ class ExperimentSettings:
     lstm_train_parameters: List = field(default_factory=lambda: LSTM_FEATURES)
 
     sequence_length: int = 24
+
+    target_coords: List = field(default_factory=lambda: [52.1831174, 20.9875259])

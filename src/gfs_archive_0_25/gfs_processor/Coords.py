@@ -1,3 +1,7 @@
+from dataclasses import dataclass
+
+
+@dataclass
 class Coords:
 
     def __init__(self, nlat, slat, wlon, elon):

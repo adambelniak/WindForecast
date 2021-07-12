@@ -179,7 +179,7 @@ def explore_synop_patterns(data, relevant_features, localisation_name):
 
 
 def explore_synop(localisation_name, code_fallback):
-    relevant_features = [f for f in SYNOP_FEATURES if f[1] not in ["station_code", "station_name", 'year', 'month', 'day', 'hour']]
+    relevant_features = [f for f in SYNOP_FEATURES if f[1] not in ['year', 'month', 'day', 'hour']]
     synop_file = f"{localisation_name}_{code_fallback}_data.csv"
     if not os.path.exists(os.path.join(DATASETS_DIRECTORY, synop_file)):
         prepare_synop_csv(localisation_name, code_fallback, SYNOP_FEATURES)

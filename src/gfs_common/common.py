@@ -1,6 +1,10 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
+from gfs_archive_0_25.gfs_processor.Coords import Coords
+
+GFS_SPACE = Coords(56, 48, 13, 26)
+
 GFS_PARAMETERS = [
     {
         "name": "V GRD",

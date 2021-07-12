@@ -1,5 +1,4 @@
-{
-    "train_parameters": [
+[
           {
             "name": "T CDC",
             "level":  "LCY_0"
@@ -69,4 +68,3 @@
             "level": "HTGL_2"
           }
     ]
-}
