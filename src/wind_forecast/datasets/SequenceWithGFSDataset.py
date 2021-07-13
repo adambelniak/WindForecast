@@ -88,7 +88,8 @@ class SequenceWithGFSDataset(torch.utils.data.Dataset):
             hour = int(last_date_in_sequence.hour)
             run = ['00', '06', '12', '18'][(hour // 6)]
 
-            gfs_filename = FINAL_NUMPY_FILENAME_FORMAT.format(year, month, day, run,
+            gfs_filename = FINAL_NUMPY_FILENAME_FORMAT.format(year, prep_zeros_if_needed(str(month), 1),
+                                                              prep_zeros_if_needed(str(day), 1), run,
                                                               prep_zeros_if_needed(
                                                                   str((self.prediction_offset + 1) // 3 * 3), 2))
             if gfs_filename in self.list_IDs:  # check if there is a forecast available
@@ -102,8 +103,8 @@ class SequenceWithGFSDataset(torch.utils.data.Dataset):
                     val = math.sqrt(val_u ** 2 + val_v ** 2)
                 else:
                     val = get_point_from_GFS_slice_for_coords(
-                        np.load(os.path.join(GFS_DATASET_DIR, target_param_to_gfs_name_level(self.target_param)['name'],
-                                             target_param_to_gfs_name_level(self.target_param)['level'], gfs_filename)),
+                        np.load(os.path.join(GFS_DATASET_DIR, target_param_to_gfs_name_level(self.target_param)[0]['name'],
+                                             target_param_to_gfs_name_level(self.target_param)[0]['level'], gfs_filename)),
                         self.target_coords[0], self.target_coords[1])
 
                 gfs_values.append(val)
