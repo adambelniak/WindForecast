@@ -12,13 +12,13 @@ class DenseModel(LightningModule):
         self.model = nn.Sequential(
             nn.Linear(in_features=cfg.experiment.input_size, out_features=2048),
             nn.ReLU(),
-            nn.BatchNorm2d(num_features=2048),
+            nn.BatchNorm1d(num_features=2048),
             nn.Linear(in_features=2048, out_features=8192),
             nn.ReLU(),
-            nn.BatchNorm2d(num_features=8192),
+            nn.BatchNorm1d(num_features=8192),
             nn.Linear(in_features=8192, out_features=1024),
             nn.ReLU(),
-            nn.BatchNorm2d(num_features=1024),
+            nn.BatchNorm1d(num_features=1024),
             nn.Linear(in_features=1024, out_features=1)
         )
 

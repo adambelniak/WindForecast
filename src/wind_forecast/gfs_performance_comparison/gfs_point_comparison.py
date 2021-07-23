@@ -3,7 +3,7 @@ import os
 
 from wind_forecast.consts import SYNOP_DATASETS_DIRECTORY
 from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset
-from wind_forecast.util.utils import match_gfs_with_synop_sequence
+from wind_forecast.util.utils import match_gfs_with_synop_sequence, target_param_to_gfs_name_level
 
 
 def main(lat: float, lon: float, target_param: str, synop_file: str, prediction_offset: int):
@@ -15,7 +15,8 @@ def main(lat: float, lon: float, target_param: str, synop_file: str, prediction_
     targets = [labels[i + prediction_offset - 1] for i in
                range(labels.shape[0] - prediction_offset + 1)]
 
-    _, gfs_data, targets = match_gfs_with_synop_sequence(targets, targets, lat, lon, prediction_offset, target_param, exact_date_match=True)
+    _, gfs_data, targets = match_gfs_with_synop_sequence(targets, targets, lat, lon, prediction_offset,
+                                                         target_param_to_gfs_name_level(target_param), exact_date_match=True)
     if target_param == 'temperature':
         gfs_data = gfs_data - 273.15  # gfs_data is in Kelvins
     mean_diff = abs(targets - gfs_data).mean()

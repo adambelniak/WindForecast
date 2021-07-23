@@ -134,51 +134,48 @@ def add_param_to_train_params(train_params: list, param: str):
 
 
 def match_gfs_with_synop_sequence(features: list, targets: list, lat: float, lon: float,
-                                  prediction_offset: int, target_param: str, exact_date_match=False):
+                                  prediction_offset: int, gfs_params: list, exact_date_match=False):
     gfs_values = []
     new_targets = []
     new_features = []
-    param_level = target_param_to_gfs_name_level(target_param)
 
     for index, value in tqdm(enumerate(targets)):
-        # value = [date, target_param]
         date = value[0]
-        last_date_in_sequence = date - timedelta(
-            hours=prediction_offset + 7)  # 00 run is available at 6 UTC
-        day = last_date_in_sequence.day
-        month = last_date_in_sequence.month
-        year = last_date_in_sequence.year
-        hour = int(last_date_in_sequence.hour)
-        run = ['00', '06', '12', '18'][(hour // 6)]
+        gfs_filename = get_GFS_filename(date, prediction_offset, exact_date_match)
 
-        if exact_date_match:
-            run_hour = int(run)
-            prediction_hour = date.hour if date.hour > run_hour else date.hour + 24
-            pred_offset = str(prediction_hour - run_hour)
-        else:
-            pred_offset = str((prediction_offset + 6) // 3 * 3)
+        # check if there are forecasts available
+        if all(os.path.exists(os.path.join(GFS_DATASET_DIR, param["name"], param["level"], gfs_filename)) for param in gfs_params):
+            val = []
+            for param in gfs_params:
+                val.append(get_point_from_GFS_slice_for_coords(
+                    np.load(
+                        os.path.join(GFS_DATASET_DIR, param['name'], param['level'], gfs_filename)),
+                    lat, lon))
 
-        gfs_filename = FINAL_NUMPY_FILENAME_FORMAT.format(year, prep_zeros_if_needed(str(month), 1),
-                                                          prep_zeros_if_needed(str(day), 1), run,
-                                                          prep_zeros_if_needed(pred_offset, 2))
-        # check if there is a forecast available
-        if target_param == 'wind_velocity' and os.path.exists(os.path.join(GFS_DATASET_DIR, param_level[0]["name"], param_level[0]["level"], gfs_filename)) \
-                and os.path.exists(os.path.join(GFS_DATASET_DIR, param_level[1]["name"], param_level[1]["level"], gfs_filename))\
-                or target_param != 'wind_velocity' and os.path.exists(os.path.join(GFS_DATASET_DIR, param_level[0]["name"], param_level[0]["level"], gfs_filename)):
-            if target_param == 'wind_velocity':
-                val_v = get_point_from_GFS_slice_for_coords(
-                    np.load(os.path.join(GFS_DATASET_DIR, param_level[0]["name"], param_level[0]["level"], gfs_filename)),
-                    lat, lon)
-                val_u = get_point_from_GFS_slice_for_coords(
-                    np.load(os.path.join(GFS_DATASET_DIR, param_level[1]["name"], param_level[1]["level"], gfs_filename)),
-                    lat, lon)
-                val = math.sqrt(val_u ** 2 + val_v ** 2)
-            else:
-                val = get_point_from_GFS_slice_for_coords(
-                    np.load(os.path.join(GFS_DATASET_DIR, param_level[0]['name'], param_level[0]['level'], gfs_filename)),
-                    lat, lon)
             gfs_values.append(val)
             new_targets.append(value[1])
             new_features.append(features[index])
 
     return np.array(new_features), np.array(gfs_values), np.array(new_targets)
+
+
+def get_GFS_filename(date, prediction_offset, exact_date_match):
+    # value = [date, target_param]
+    last_date_in_sequence = date - timedelta(
+        hours=prediction_offset + (7 if date.month < 10 or date.month > 4 else 6))  # 00 run is available at 6 UTC
+    day = last_date_in_sequence.day
+    month = last_date_in_sequence.month
+    year = last_date_in_sequence.year
+    hour = int(last_date_in_sequence.hour)
+    run = ['00', '06', '12', '18'][(hour // 6)]
+
+    if exact_date_match:
+        run_hour = int(run)
+        prediction_hour = date.hour if date.hour > run_hour else date.hour + 24
+        pred_offset = str(prediction_hour - run_hour)
+    else:
+        pred_offset = str((prediction_offset + 6) // 3 * 3)
+
+    return FINAL_NUMPY_FILENAME_FORMAT.format(year, prep_zeros_if_needed(str(month), 1),
+                                                      prep_zeros_if_needed(str(day), 1), run,
+                                                      prep_zeros_if_needed(pred_offset, 2))

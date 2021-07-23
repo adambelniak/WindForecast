@@ -11,17 +11,10 @@ from pytorch_lightning.loggers import WandbLogger
 from wandb.sdk.wandb_run import Run
 
 from wind_forecast.config.register import Config, register_configs, get_tags
-from wind_forecast.util.config import process_config
 from wind_forecast.util.logging import log
 from wind_forecast.util.rundir import setup_rundir
 
 wandb_logger: WandbLogger
-
-
-def validate_dim(train_parameters_config_file, input_size):
-    train_params = process_config(train_parameters_config_file)
-    if len(train_params) != input_size[0]:
-        raise Exception(f"Number of parameters does not match number of channels passed in experiment.input_size[0]. Number of params: {len(train_params)}, number of channels: {input_size[0]}")
 
 
 @hydra.main(config_path='config', config_name='default')
@@ -31,8 +24,6 @@ def main(cfg: Config):
     pl.seed_everything(cfg.experiment.seed)
 
     cfg.experiment.train_parameters_config_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'config', 'train_parameters', cfg.experiment.train_parameters_config_file)
-
-    validate_dim(cfg.experiment.train_parameters_config_file, cfg.experiment.input_size)
 
     RUN_NAME = os.getenv('RUN_NAME')
     log.info(f'[bold yellow]\\[init] Run name --> {RUN_NAME}')

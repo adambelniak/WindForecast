@@ -31,8 +31,8 @@ def prepare_synop_dataset(synop_file_name, features, norm=True, dataset_dir=os.p
 
     data["date"] = pd.to_datetime(data[['year', 'month', 'day', 'hour']])
 
-    first_date = datetime.datetime(year=from_year, month=1, day=1)
-    last_date = datetime.datetime(year=to_year+1, month=1, day=1)
+    first_date = datetime.datetime(year=from_year, month=12, day=1)
+    last_date = datetime.datetime(year=to_year, month=1, day=1)
 
     data = data[(data['date'] >= first_date) & (data['date'] < last_date)]
 
