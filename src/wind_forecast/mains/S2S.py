@@ -7,7 +7,7 @@ import pandas as pd
 import tqdm
 import warnings
 from gfs_common.common import plot_history
-from wind_forecast.consts import DATASETS_DIRECTORY
+from wind_forecast.consts import SYNOP_DATASETS_DIRECTORY
 from wind_forecast.models.S2SModel import create_model
 from wind_forecast.preprocess.gfs.gfs_preprocess_csv import prepare_gfs_sequence_dataset
 from wind_forecast.preprocess.synop import consts
@@ -38,7 +38,7 @@ def prepare_data(gfs_dir: str, synop_dir: str, start_seq: int, end_seq: int, gfs
                  synop_length: int, train_split: int, column_name_label: str):
     features = [consts.DIRECTION_COLUMN, consts.VELOCITY_COLUMN,
                consts.GUST_COLUMN, consts.TEMPERATURE, consts.PRESSURE, consts.CURRENT_WEATHER]
-    synop_dataset, _, _ = prepare_synop_dataset(synop_dir, list(list(zip(*features))[1]), dataset_dir=DATASETS_DIRECTORY)
+    synop_dataset, _, _ = prepare_synop_dataset(synop_dir, list(list(zip(*features))[1]), dataset_dir=SYNOP_DATASETS_DIRECTORY)
     gfs_dataset, gfs_hour_diff = prepare_gfs_sequence_dataset(gfs_dir, start_seq, end_seq, gfs_past, gfs_future)
 
     least_recent_date = get_oldest_gfs_date(gfs_dataset)

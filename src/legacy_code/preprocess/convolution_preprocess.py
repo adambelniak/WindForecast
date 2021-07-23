@@ -2,14 +2,14 @@ from datetime import datetime, timedelta
 
 import numpy as np
 
-from wind_forecast.consts import DATASETS_DIRECTORY
+from wind_forecast.consts import SYNOP_DATASETS_DIRECTORY
 from wind_forecast.util.utils import utc_to_local
 from wind_forecast.preprocess.gfs.gfs_preprocess_netCDF import get_forecasts_for_year_offset_param_from_npy_file
 from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset, filter_for_dates
 
 
 def prepare_target_attribute_dataset(synop_data_file, target_attribute, init_date, end_date):
-    dataset, _, _ = prepare_synop_dataset(synop_data_file, [target_attribute], DATASETS_DIRECTORY)
+    dataset, _, _ = prepare_synop_dataset(synop_data_file, [target_attribute], SYNOP_DATASETS_DIRECTORY)
     return filter_for_dates(dataset, init_date, end_date)
 
 

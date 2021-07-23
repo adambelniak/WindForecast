@@ -1,3 +1,4 @@
+import datetime
 import os
 from pathlib import Path
 
@@ -21,7 +22,7 @@ def split_features_into_arrays(data, train_split, past_len, future_offset, y_col
     return x_data, y_data
 
 
-def prepare_synop_dataset(synop_file_name, features, norm=True, dataset_dir=os.path.join(Path(__file__).parent, 'synop_data')):
+def prepare_synop_dataset(synop_file_name, features, norm=True, dataset_dir=os.path.join(Path(__file__).parent, 'synop_data'), from_year=2001, to_year=2021):
     synop_file_path = os.path.join(dataset_dir, synop_file_name)
     if not os.path.exists(synop_file_path):
         raise Exception(f"Dataset not found. Looked for {synop_file_path}")
@@ -29,6 +30,12 @@ def prepare_synop_dataset(synop_file_name, features, norm=True, dataset_dir=os.p
     data = pd.read_csv(synop_file_path, usecols=features + ['year', 'month', 'day', 'hour'])
 
     data["date"] = pd.to_datetime(data[['year', 'month', 'day', 'hour']])
+
+    first_date = datetime.datetime(year=from_year, month=1, day=1)
+    last_date = datetime.datetime(year=to_year+1, month=1, day=1)
+
+    data = data[(data['date'] >= first_date) & (data['date'] < last_date)]
+
     if norm:
         data[features], mean, std = normalize(data[features].values)
         return data, mean, std

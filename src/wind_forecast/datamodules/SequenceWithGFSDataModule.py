@@ -27,7 +27,9 @@ class SequenceWithGFSDataModule(LightningDataModule):
         self.gfs_dataset_dir = config.experiment.gfs_dataset_dir
         self.target_param = config.experiment.target_parameter
 
-        self.IDs = get_available_numpy_files(target_param_to_gfs_name_level(self.target_param), self.prediction_offset, self.gfs_dataset_dir)
+        # prediction offset for GFS needs to be extended to 6 and 9 hours, because 00 run is available at 06UTC.
+        self.IDs = get_available_numpy_files(target_param_to_gfs_name_level(self.target_param), self.prediction_offset+6, self.gfs_dataset_dir)
+        self.IDs.extend(get_available_numpy_files(target_param_to_gfs_name_level(self.target_param), self.prediction_offset+9, self.gfs_dataset_dir))
 
 
     def prepare_data(self, *args, **kwargs):

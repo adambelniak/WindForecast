@@ -1,26 +1,11 @@
-import datetime
-import math
-import os
-
 import torch
 import numpy as np
-from tqdm import tqdm
+import pandas as pd
 
-from gfs_archive_0_25.gfs_processor.consts import FINAL_NUMPY_FILENAME_FORMAT
-from gfs_archive_0_25.utils import prep_zeros_if_needed
 from wind_forecast.config.register import Config
-from wind_forecast.consts import DATASETS_DIRECTORY
+from wind_forecast.consts import SYNOP_DATASETS_DIRECTORY
 from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset, normalize
-from wind_forecast.util.utils import date_from_gfs_np_file, GFS_DATASET_DIR, get_point_from_GFS_slice_for_coords, \
-    target_param_to_gfs_name_level
-
-
-def filter_synop_data(raw_data, list_IDs):
-    list_IDs = sorted(list_IDs)
-    first_date = date_from_gfs_np_file(list_IDs[0])
-    last_date = date_from_gfs_np_file(list_IDs[-1])
-
-    return raw_data[(raw_data['date'] >= first_date) & (raw_data['date'] <= last_date)]
+from wind_forecast.util.utils import add_param_to_train_params, match_gfs_with_synop_sequence
 
 
 class SequenceWithGFSDataset(torch.utils.data.Dataset):
@@ -37,11 +22,16 @@ class SequenceWithGFSDataset(torch.utils.data.Dataset):
         self.gfs_dim = config.experiment.input_size
         self.target_coords = config.experiment.target_coords
 
-        raw_data, _, _ = prepare_synop_dataset(self.synop_file, list(list(zip(*self.train_params))[1]), norm=False,
-                                               dataset_dir=DATASETS_DIRECTORY)
+        params = add_param_to_train_params(self.train_params, self.target_param)
+        feature_names = list(list(zip(*params))[1])
 
-        synop_data = filter_synop_data(raw_data, self.list_IDs)
-        labels = synop_data[['date', self.target_param]].to_numpy()
+        synop_data, _, _ = prepare_synop_dataset(self.synop_file, feature_names, norm=False,
+                                                 dataset_dir=SYNOP_DATASETS_DIRECTORY, from_year=2015)
+
+        synop_data_dates = synop_data['date']
+        synop_data, synop_mean, synop_std = normalize(synop_data[feature_names])
+
+        labels = pd.concat([synop_data_dates, synop_data[self.target_param]], axis=1).to_numpy()
 
         train_synop_data = synop_data[list(list(zip(*self.train_params))[1])].to_numpy()
 
@@ -49,14 +39,16 @@ class SequenceWithGFSDataset(torch.utils.data.Dataset):
                     range(train_synop_data.shape[0] - self.sequence_length - self.prediction_offset + 1)]
 
         targets = [labels[i + self.sequence_length + self.prediction_offset - 1] for i in
-                        range(labels.shape[0] - self.sequence_length - self.prediction_offset + 1)]
+                   range(labels.shape[0] - self.sequence_length - self.prediction_offset + 1)]
         features = np.array(features).reshape((len(features), self.sequence_length, len(self.train_params)))
 
-        self.features, self.gfs_data, self.targets = self.match_gfs_with_synop_sequence(features, targets)
+        self.features, self.gfs_data, self.targets = match_gfs_with_synop_sequence(features, targets,
+                                                                                   self.target_coords[0],
+                                                                                   self.target_coords[1],
+                                                                                   self.prediction_offset,
+                                                                                   self.target_param)
 
-        self.features, _, _ = normalize(self.features)
-        self.targets, mean, std = normalize(self.targets)
-
+        self.gfs_data = (self.gfs_data - np.mean(self.gfs_data)) / np.std(self.gfs_data)
         assert len(self.features) == len(self.targets)
         assert len(self.features) == len(self.gfs_data)
         length = len(self.targets)
@@ -70,50 +62,8 @@ class SequenceWithGFSDataset(torch.utils.data.Dataset):
 
         self.data = data
 
-        print(mean)
-        print(std)
-
-    def match_gfs_with_synop_sequence(self, features, targets):
-        gfs_values = []
-        new_targets = []
-        new_features = []
-        for index, value in tqdm(enumerate(targets)):
-            # value = [date, target_param]
-            date = value[0]
-            last_date_in_sequence = date - datetime.timedelta(
-                hours=self.prediction_offset + 6)  # 00 run is available at 6 UTC
-            day = last_date_in_sequence.day
-            month = last_date_in_sequence.month
-            year = last_date_in_sequence.year
-            hour = int(last_date_in_sequence.hour)
-            run = ['00', '06', '12', '18'][(hour // 6)]
-
-            gfs_filename = FINAL_NUMPY_FILENAME_FORMAT.format(year, prep_zeros_if_needed(str(month), 1),
-                                                              prep_zeros_if_needed(str(day), 1), run,
-                                                              prep_zeros_if_needed(
-                                                                  str((self.prediction_offset + 1) // 3 * 3), 2))
-            if gfs_filename in self.list_IDs:  # check if there is a forecast available
-                if self.target_param == 'wind_velocity':
-                    val_v = get_point_from_GFS_slice_for_coords(
-                        np.load(os.path.join(GFS_DATASET_DIR, 'V GRD', 'HTGL_10', gfs_filename)),
-                        self.target_coords[0], self.target_coords[1])
-                    val_u = get_point_from_GFS_slice_for_coords(
-                        np.load(os.path.join(GFS_DATASET_DIR, 'U GRD', 'HTGL_10', gfs_filename)),
-                        self.target_coords[0], self.target_coords[1])
-                    val = math.sqrt(val_u ** 2 + val_v ** 2)
-                else:
-                    val = get_point_from_GFS_slice_for_coords(
-                        np.load(os.path.join(GFS_DATASET_DIR, target_param_to_gfs_name_level(self.target_param)[0]['name'],
-                                             target_param_to_gfs_name_level(self.target_param)[0]['level'], gfs_filename)),
-                        self.target_coords[0], self.target_coords[1])
-
-                gfs_values.append(val)
-                new_targets.append(value[1])
-                new_features.append(features[index])
-
-        gfs_values = np.array(gfs_values)
-        gfs_values = (gfs_values - np.mean(gfs_values)) / np.std(gfs_values)
-        return np.array(new_features), gfs_values, np.array(new_targets)
+        print(synop_mean)
+        print(synop_std)
 
     def __len__(self):
         'Denotes the total number of samples'

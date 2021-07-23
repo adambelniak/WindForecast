@@ -8,10 +8,11 @@ import pytz
 from scipy.interpolate import interpolate
 from tqdm import tqdm
 
-
+from gfs_archive_0_25.gfs_processor.consts import FINAL_NUMPY_FILENAME_FORMAT
 from gfs_archive_0_25.utils import prep_zeros_if_needed, get_nearest_coords
 from gfs_common.common import GFS_SPACE
 from wind_forecast.consts import NETCDF_FILE_REGEX
+from wind_forecast.preprocess.synop.consts import SYNOP_FEATURES
 from wind_forecast.util.logging import log
 
 GFS_DATASET_DIR = "D:\\WindForecast\\output_np2"
@@ -32,10 +33,11 @@ def get_available_numpy_files(features, offset, directory):
     result = None
     matcher = re.compile(rf".*f{prep_zeros_if_needed(str(offset), 2)}.*")
     for feature in tqdm(features):
-        files = [f.name for f in os.scandir(os.path.join(directory, feature['name'], feature['level'])) if matcher.match(f.name)]
+        files = [f.name for f in os.scandir(os.path.join(directory, feature['name'], feature['level'])) if
+                 matcher.match(f.name)]
         result = np.intersect1d(result, np.array(files)) if result is not None else np.array(files)
 
-    return result
+    return result.tolist()
 
 
 def date_from_gfs_np_file(filename):
@@ -53,7 +55,7 @@ def date_from_gfs_np_file(filename):
 
 def declination_of_earth(date):
     day_of_year = date.timetuple().tm_yday
-    return 23.45*np.sin(np.deg2rad(360.0*(283.0+day_of_year)/365.0))
+    return 23.45 * np.sin(np.deg2rad(360.0 * (283.0 + day_of_year) / 365.0))
 
 
 def initialize_mean_and_std(list_IDs, train_parameters, dim):
@@ -72,6 +74,7 @@ def initialize_mean_and_std(list_IDs, train_parameters, dim):
         stds.append(math.sqrt(sqr_sum / (len(list_IDs) * dim[0] * dim[1]) - pow(mean, 2)))
 
     return means, stds
+
 
 def initialize_mean_and_std_for_wind_target(list_IDs, dim):
     log.info("Calculating std and mean for a dataset")
@@ -95,7 +98,8 @@ def get_point_from_GFS_slice_for_coords(gfs_data, latitude, longitude):
     lat_index = int((GFS_SPACE.nlat - lat) * 4)
     lon_index = int((GFS_SPACE.elon - lon) * 4)
 
-    return interpolate.interp2d(coords[0], coords[1], gfs_data[lat_index:lat_index+2, lon_index:lon_index+2])(latitude, longitude).item()
+    return interpolate.interp2d(coords[0], coords[1], gfs_data[lat_index:lat_index + 2, lon_index:lon_index + 2])(
+        latitude, longitude).item()
 
 
 def target_param_to_gfs_name_level(target_param):
@@ -107,10 +111,74 @@ def target_param_to_gfs_name_level(target_param):
         "wind_velocity": [{
             "name": "V GRD",
             "level": "HTGL_10"
-          },
-          {
-            "name": "U GRD",
-            "level": "HTGL_10"
-          }
+        },
+            {
+                "name": "U GRD",
+                "level": "HTGL_10"
+            }
         ]
     }[target_param]
+
+
+def add_param_to_train_params(train_params: list, param: str):
+    params = train_params
+    if param not in list(list(zip(*train_params))[1]):
+        if param not in list(list(zip(*SYNOP_FEATURES))[1]):
+            raise ValueError(f"Param {param} is not known as a synop parameter.")
+        for train_param in train_params:
+            if train_param[1] == param:
+                params.append(train_param)
+                break
+
+    return params
+
+
+def match_gfs_with_synop_sequence(features: list, targets: list, lat: float, lon: float,
+                                  prediction_offset: int, target_param: str, exact_date_match=False):
+    gfs_values = []
+    new_targets = []
+    new_features = []
+    param_level = target_param_to_gfs_name_level(target_param)
+
+    for index, value in tqdm(enumerate(targets)):
+        # value = [date, target_param]
+        date = value[0]
+        last_date_in_sequence = date - timedelta(
+            hours=prediction_offset + 7)  # 00 run is available at 6 UTC
+        day = last_date_in_sequence.day
+        month = last_date_in_sequence.month
+        year = last_date_in_sequence.year
+        hour = int(last_date_in_sequence.hour)
+        run = ['00', '06', '12', '18'][(hour // 6)]
+
+        if exact_date_match:
+            run_hour = int(run)
+            prediction_hour = date.hour if date.hour > run_hour else date.hour + 24
+            pred_offset = str(prediction_hour - run_hour)
+        else:
+            pred_offset = str((prediction_offset + 6) // 3 * 3)
+
+        gfs_filename = FINAL_NUMPY_FILENAME_FORMAT.format(year, prep_zeros_if_needed(str(month), 1),
+                                                          prep_zeros_if_needed(str(day), 1), run,
+                                                          prep_zeros_if_needed(pred_offset, 2))
+        # check if there is a forecast available
+        if target_param == 'wind_velocity' and os.path.exists(os.path.join(GFS_DATASET_DIR, param_level[0]["name"], param_level[0]["level"], gfs_filename)) \
+                and os.path.exists(os.path.join(GFS_DATASET_DIR, param_level[1]["name"], param_level[1]["level"], gfs_filename))\
+                or target_param != 'wind_velocity' and os.path.exists(os.path.join(GFS_DATASET_DIR, param_level[0]["name"], param_level[0]["level"], gfs_filename)):
+            if target_param == 'wind_velocity':
+                val_v = get_point_from_GFS_slice_for_coords(
+                    np.load(os.path.join(GFS_DATASET_DIR, param_level[0]["name"], param_level[0]["level"], gfs_filename)),
+                    lat, lon)
+                val_u = get_point_from_GFS_slice_for_coords(
+                    np.load(os.path.join(GFS_DATASET_DIR, param_level[1]["name"], param_level[1]["level"], gfs_filename)),
+                    lat, lon)
+                val = math.sqrt(val_u ** 2 + val_v ** 2)
+            else:
+                val = get_point_from_GFS_slice_for_coords(
+                    np.load(os.path.join(GFS_DATASET_DIR, param_level[0]['name'], param_level[0]['level'], gfs_filename)),
+                    lat, lon)
+            gfs_values.append(val)
+            new_targets.append(value[1])
+            new_features.append(features[index])
+
+    return np.array(new_features), np.array(gfs_values), np.array(new_targets)
