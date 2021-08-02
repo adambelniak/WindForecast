@@ -11,12 +11,12 @@ class SequenceDataset(torch.utils.data.Dataset):
     def __init__(self, config: Config, train=True):
         'Initialization'
         self.target_param = config.experiment.target_parameter
-        self.train_params = config.experiment.lstm_train_parameters
+        self.train_params = config.experiment.synop_train_features
         self.synop_file = config.experiment.synop_file
         self.sequence_length = config.experiment.sequence_length
         self.prediction_offset = config.experiment.prediction_offset
 
-        raw_data, self.mean, self.std = prepare_synop_dataset(self.synop_file, list(list(zip(*self.train_params))[1]), dataset_dir=SYNOP_DATASETS_DIRECTORY)
+        raw_data, synop_feature_1, synop_feature_2 = prepare_synop_dataset(self.synop_file, list(list(zip(*self.train_params))[1]), dataset_dir=SYNOP_DATASETS_DIRECTORY)
         labels = raw_data[self.target_param].to_numpy()
         features = raw_data[list(list(zip(*self.train_params))[1])].to_numpy()
 
@@ -36,8 +36,8 @@ class SequenceDataset(torch.utils.data.Dataset):
 
         self.data = data
         target_param_index = [x[1] for x in self.train_params].index(self.target_param)
-        print(self.mean[target_param_index])
-        print(self.std[target_param_index])
+        print(synop_feature_1[target_param_index])
+        print(synop_feature_2[target_param_index])
 
     def __len__(self):
         'Denotes the total number of samples'

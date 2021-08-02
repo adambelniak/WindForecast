@@ -1,0 +1,19 @@
+# Specific experiments settings
+# (default settings inherited from configs.experiment.ExperimentSettings)
+
+defaults:
+  - schema_experiment
+
+_tags_:
+  - STACKED_LSTM_GFS
+
+resume_checkpoint: ~
+
+datamodule:
+  _target_: wind_forecast.datamodules.SequenceWithGFSDataModule.SequenceWithGFSDataModule
+
+model:
+  _target_: wind_forecast.models.StackedLSTMWithGFSModel.StackedLSTMWithGFSModel
+
+system:
+  _target_: wind_forecast.systems.RegressorWithGFSInput.RegressorWithGFSInput

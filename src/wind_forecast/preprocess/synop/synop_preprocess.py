@@ -4,11 +4,19 @@ from pathlib import Path
 
 import pandas as pd
 
+from wind_forecast.util.utils import NormalizationType
 
-def normalize(data):
-    data_mean = data.mean(axis=0)
-    data_std = data.std(axis=0)
-    return (data - data_mean) / data_std, data_mean, data_std
+
+def normalize(data: pd.DataFrame, normalization_type: NormalizationType = NormalizationType.STANDARD):
+    if normalization_type == NormalizationType.STANDARD:
+        data_mean = data.mean(axis=0)
+        data_std = data.std(axis=0)
+        return (data - data_mean) / data_std, data_mean, data_std
+    else:
+        data_min = data.min(axis=0)
+        data_max = data.max(axis=0)
+        return (data - data_min) / (data_max - data_min), data_min, data_max
+
 
 def split_features_into_arrays(data, train_split, past_len, future_offset, y_column_name="velocity"):
     train_data = data.loc[:train_split - 1]
@@ -22,7 +30,7 @@ def split_features_into_arrays(data, train_split, past_len, future_offset, y_col
     return x_data, y_data
 
 
-def prepare_synop_dataset(synop_file_name, features, norm=True, dataset_dir=os.path.join(Path(__file__).parent, 'synop_data'), from_year=2001, to_year=2021):
+def prepare_synop_dataset(synop_file_name, features, norm=True, dataset_dir=os.path.join(Path(__file__).parent, 'synop_data'), from_year=2001, to_year=2021, normalization_type: NormalizationType = NormalizationType.STANDARD):
     synop_file_path = os.path.join(dataset_dir, synop_file_name)
     if not os.path.exists(synop_file_path):
         raise Exception(f"Dataset not found. Looked for {synop_file_path}")
@@ -37,8 +45,8 @@ def prepare_synop_dataset(synop_file_name, features, norm=True, dataset_dir=os.p
     data = data[(data['date'] >= first_date) & (data['date'] < last_date)]
 
     if norm:
-        data[features], mean, std = normalize(data[features].values)
-        return data, mean, std
+        data[features], mean_or_min, std_or_max = normalize(data[features].values, normalization_type)
+        return data, mean_or_min, std_or_max
 
     return data, 0, 0
 

@@ -4,11 +4,11 @@ import os
 from dataclasses import dataclass, field
 from typing import Any, List, Optional
 
-from omegaconf.omegaconf import MISSING, OmegaConf
+from omegaconf.omegaconf import MISSING
 
 # Experiment settings validation schema & default values
-from gfs_archive_0_25.gfs_processor.Coords import Coords
-from wind_forecast.preprocess.synop.consts import LSTM_FEATURES
+from wind_forecast.preprocess.synop.consts import SYNOP_TRAIN_FEATURES
+from wind_forecast.util.utils import NormalizationType
 
 
 @dataclass
@@ -31,7 +31,7 @@ class ExperimentSettings:
     save_checkpoints: bool = True
 
     # Enable initial validation before training
-    validate_before_training: bool = True
+    validate_before_training: bool = False
 
     # ----------------------------------------------------------------------------------------------
     # Data loading settings
@@ -56,6 +56,8 @@ class ExperimentSettings:
     # Lightning DataModule to use
     datamodule: Any = MISSING
 
+    normalization_type: NormalizationType = NormalizationType.STANDARD
+
     val_split: float = .2
 
     gfs_dataset_dir: str = os.path.join("D:\\WindForecast", "output_np2")
@@ -72,12 +74,14 @@ class ExperimentSettings:
 
     train_parameters_config_file: str = "CNNConfig.json"
 
-    input_size: Any = (16, 33, 53)
+    cnn_input_size: Any = (16, 33, 53)
 
     epochs: int = 100
 
-    lstm_train_parameters: List = field(default_factory=lambda: LSTM_FEATURES)
+    synop_train_features: List = field(default_factory=lambda: SYNOP_TRAIN_FEATURES)
 
     sequence_length: int = 24
 
     target_coords: List = field(default_factory=lambda: [52.1831174, 20.9875259])
+
+    tcn_channels: List = field(default_factory=lambda: [32, 64])

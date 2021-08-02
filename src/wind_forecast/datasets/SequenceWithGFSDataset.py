@@ -8,7 +8,7 @@ from wind_forecast.config.register import Config
 from wind_forecast.consts import SYNOP_DATASETS_DIRECTORY
 from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset, normalize
 from wind_forecast.util.utils import add_param_to_train_params, match_gfs_with_synop_sequence, \
-    target_param_to_gfs_name_level
+    target_param_to_gfs_name_level, NormalizationType
 
 
 class SequenceWithGFSDataset(torch.utils.data.Dataset):
@@ -17,7 +17,7 @@ class SequenceWithGFSDataset(torch.utils.data.Dataset):
     def __init__(self, config: Config, train=True):
         """Initialization"""
         self.target_param = config.experiment.target_parameter
-        self.train_params = config.experiment.lstm_train_parameters
+        self.train_params = config.experiment.synop_train_features
         self.synop_file = config.experiment.synop_file
         self.sequence_length = config.experiment.sequence_length
         self.prediction_offset = config.experiment.prediction_offset
@@ -31,7 +31,7 @@ class SequenceWithGFSDataset(torch.utils.data.Dataset):
 
         synop_data_dates = synop_data['date']
         # normalize here to keep the param_name <> value mapping
-        synop_data, synop_mean, synop_std = normalize(synop_data[feature_names])
+        synop_data, synop_feature_1, synop_feature_2 = normalize(synop_data[feature_names], config.experiment.normalization_type)
 
         labels = pd.concat([synop_data_dates, synop_data[self.target_param]], axis=1).to_numpy()
 
@@ -55,7 +55,11 @@ class SequenceWithGFSDataset(torch.utils.data.Dataset):
         else:
             self.gfs_data = np.array([value[0] for value in self.gfs_data])
 
-        self.gfs_data = (self.gfs_data - np.mean(self.gfs_data)) / np.std(self.gfs_data)
+        if config.experiment.normalization_type == NormalizationType.STANDARD:
+            self.gfs_data = (self.gfs_data - np.mean(self.gfs_data)) / np.std(self.gfs_data)
+        else:
+            self.gfs_data = (self.gfs_data - np.min(self.gfs_data)) / (np.max(self.gfs_data) - np.min(self.gfs_data))
+
         assert len(self.features) == len(self.targets)
         assert len(self.features) == len(self.gfs_data)
         length = len(self.targets)
@@ -69,8 +73,8 @@ class SequenceWithGFSDataset(torch.utils.data.Dataset):
 
         self.data = data
 
-        print(synop_mean)
-        print(synop_std)
+        print(synop_feature_1)
+        print(synop_feature_2)
 
     def __len__(self):
         """Denotes the total number of samples"""

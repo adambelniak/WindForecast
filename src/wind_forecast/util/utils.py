@@ -1,6 +1,7 @@
 import math
 import os
 import re
+import sys
 from datetime import datetime, timedelta
 
 import numpy as np
@@ -14,6 +15,7 @@ from gfs_common.common import GFS_SPACE
 from wind_forecast.consts import NETCDF_FILE_REGEX
 from wind_forecast.preprocess.synop.consts import SYNOP_FEATURES
 from wind_forecast.util.logging import log
+from enum import Enum
 
 GFS_DATASET_DIR = "D:\\WindForecast\\output_np2"
 
@@ -74,6 +76,23 @@ def initialize_mean_and_std(list_IDs, train_parameters, dim):
         stds.append(math.sqrt(sqr_sum / (len(list_IDs) * dim[0] * dim[1]) - pow(mean, 2)))
 
     return means, stds
+
+
+def initialize_min_max(list_IDs, train_parameters):
+    log.info("Calculating min and max for a dataset")
+    mins = []
+    maxes = []
+    for param in tqdm(train_parameters):
+        min, max = sys.float_info.max, sys.float_info.min
+        for id in list_IDs:
+            values = np.load(os.path.join(GFS_DATASET_DIR, param['name'], param['level'], id))
+            min = min(values, min)
+            max = max(values, max)
+
+        mins.append(min)
+        maxes.append(max)
+
+    return mins, maxes
 
 
 def initialize_mean_and_std_for_wind_target(list_IDs, dim):
@@ -179,3 +198,7 @@ def get_GFS_filename(date, prediction_offset, exact_date_match):
     return FINAL_NUMPY_FILENAME_FORMAT.format(year, prep_zeros_if_needed(str(month), 1),
                                                       prep_zeros_if_needed(str(day), 1), run,
                                                       prep_zeros_if_needed(pred_offset, 2))
+
+class NormalizationType(Enum):
+    STANDARD = 0
+    MINMAX = 1

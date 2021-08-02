@@ -10,7 +10,7 @@ class DenseModel(LightningModule):
         super(DenseModel, self).__init__()
         self.cfg = cfg
         self.model = nn.Sequential(
-            nn.Linear(in_features=cfg.experiment.input_size, out_features=2048),
+            nn.Linear(in_features=cfg.experiment.cnn_input_size, out_features=2048),
             nn.ReLU(),
             nn.BatchNorm1d(num_features=2048),
             nn.Linear(in_features=2048, out_features=8192),

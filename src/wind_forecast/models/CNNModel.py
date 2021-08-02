@@ -9,7 +9,7 @@ class CNNModel(LightningModule):
     def __init__(self, cfg: Config):
         super(CNNModel, self).__init__()
         self.cfg = cfg
-        channels, width, height = cfg.experiment.input_size
+        channels, width, height = cfg.experiment.cnn_input_size
         self.model = nn.Sequential(
             nn.Conv2d(in_channels=channels, out_channels=32, kernel_size=(3, 3), padding=(1, 1)),
             nn.ReLU(),

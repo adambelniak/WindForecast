@@ -8,10 +8,10 @@ from wind_forecast.consts import SYNOP_DATASETS_DIRECTORY
 from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset
 from wind_forecast.util.config import process_config
 from wind_forecast.util.utils import GFS_DATASET_DIR, date_from_gfs_np_file, initialize_mean_and_std, NormalizationType, \
-    initialize_min_max
+    initialize_min_max, declination_of_earth
 
 
-class MultiChannelSpatialDataset(torch.utils.data.Dataset):
+class MultiChannelSpatialDatasetWithEarthDeclination(torch.utils.data.Dataset):
     'Characterizes a dataset for PyTorch'
     def __init__(self, config: Config, list_IDs, train=True, normalize=True):
         'Initialization'
@@ -19,7 +19,8 @@ class MultiChannelSpatialDataset(torch.utils.data.Dataset):
         self.train_parameters = process_config(config.experiment.train_parameters_config_file)
         self.target_param = config.experiment.target_parameter
         self.synop_file = config.experiment.synop_file
-        self.labels, self.label_mean, self.label_std = prepare_synop_dataset(self.synop_file, [self.target_param], dataset_dir=SYNOP_DATASETS_DIRECTORY)
+        self.labels, self.label_mean, self.label_std = prepare_synop_dataset(self.synop_file, [self.target_param],
+                                                                             dataset_dir=SYNOP_DATASETS_DIRECTORY)
         self.dim = config.experiment.cnn_input_size
         self.normalization_type = config.experiment.normalization_type
 
@@ -48,9 +49,9 @@ class MultiChannelSpatialDataset(torch.utils.data.Dataset):
         # Select sample
         ID = self.data[index]
 
-        X, y = self.__data_generation(ID)
+        x, x2, y = self.__data_generation(ID)
 
-        return X, y
+        return x, x2, y
 
     def __data_generation(self, ID):
         # Initialization
@@ -60,16 +61,18 @@ class MultiChannelSpatialDataset(torch.utils.data.Dataset):
         # Generate data
         for j, param in enumerate(self.train_parameters):
             # Store sample
-            x[j, ] = np.load(os.path.join(GFS_DATASET_DIR, param['name'], param['level'], ID))
+            x[j,] = np.load(os.path.join(GFS_DATASET_DIR, param['name'], param['level'], ID))
             if self.normalize:
                 if self.normalization_type == NormalizationType.STANDARD:
-                    x[j, ] = (x[j, ] - self.mean[j]) / self.std[j]
+                    x[j,] = (x[j,] - self.mean[j]) / self.std[j]
                 else:
                     x[j,] = (x[j,] - self.min[j]) / (self.max[j] - self.min[j])
 
         forecast_date = date_from_gfs_np_file(ID)
+        x2 = declination_of_earth(forecast_date) / 23.45
         label = self.labels[self.labels["date"] == forecast_date][self.target_param]
         if len(label) == 0:
             print(forecast_date)
         y[0] = label.values[0]
-        return x, y
+
+        return x, x2, y

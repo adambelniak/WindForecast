@@ -6,7 +6,7 @@ from wind_forecast.config.register import Config
 from wind_forecast.consts import SYNOP_DATASETS_DIRECTORY
 from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset
 from wind_forecast.util.config import process_config
-from wind_forecast.util.utils import match_gfs_with_synop_sequence
+from wind_forecast.util.utils import match_gfs_with_synop_sequence, NormalizationType
 
 
 class SingleGFSPointDataset(torch.utils.data.Dataset):
@@ -17,7 +17,7 @@ class SingleGFSPointDataset(torch.utils.data.Dataset):
         self.train_parameters = process_config(config.experiment.train_parameters_config_file)
         self.target_param = config.experiment.target_parameter
         self.synop_file = config.experiment.synop_file
-        self.dim = config.experiment.input_size
+        self.dim = config.experiment.cnn_input_size
         self.prediction_offset = config.experiment.prediction_offset
         self.target_coords = config.experiment.target_coords
 
@@ -34,7 +34,12 @@ class SingleGFSPointDataset(torch.utils.data.Dataset):
                                                                        exact_date_match=True)
 
         self.targets = self.targets.reshape((len(self.targets), 1))
-        self.gfs_data = (self.gfs_data - np.mean(self.gfs_data, axis=0)) / np.std(self.gfs_data, axis=0)
+
+        if config.experiment.normalization_type == NormalizationType.STANDARD:
+            self.gfs_data = (self.gfs_data - np.mean(self.gfs_data, axis=0)) / np.std(self.gfs_data, axis=0)
+        else:
+            self.gfs_data = (self.gfs_data - np.min(self.gfs_data, axis=0)) / (np.max(self.gfs_data, axis=0) - np.min(self.gfs_data, axis=0))
+
         assert len(self.gfs_data) == len(self.targets)
         length = len(self.targets)
         training_data = list(zip(self.gfs_data, self.targets))[:int(length * 0.8)]

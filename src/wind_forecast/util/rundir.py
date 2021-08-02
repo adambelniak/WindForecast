@@ -13,10 +13,9 @@ def setup_rundir():
     """
     Create a working directory with a randomly generated run name.
     """
-    date = datetime.now().strftime("%Y%m%d-%H%M")
     if os.getenv('RUN_NAME') is None:
         name = coolname.generate_slug(2)  # type: ignore
-        os.environ['RUN_NAME'] = f'{date}-{name}'
+        os.environ['RUN_NAME'] = f'{name}'
 
     results_root = f'{os.getenv("RESULTS_DIR")}/{os.getenv("WANDB_PROJECT")}'
     if os.getenv('RUN_MODE', '').lower() in ('debug', 'tune'):
