@@ -3,13 +3,14 @@ import torch
 from torch import nn
 
 from wind_forecast.config.register import Config
+from wind_forecast.util.config import process_config
 
 
 class CNNModel(LightningModule):
     def __init__(self, cfg: Config):
         super(CNNModel, self).__init__()
         self.cfg = cfg
-        channels, width, height = cfg.experiment.cnn_input_size
+        channels = len(process_config(cfg.experiment.train_parameters_config_file))
         self.model = nn.Sequential(
             nn.Conv2d(in_channels=channels, out_channels=32, kernel_size=(3, 3), padding=(1, 1)),
             nn.ReLU(),
@@ -25,13 +26,13 @@ class CNNModel(LightningModule):
             nn.ReLU(),
             nn.BatchNorm2d(num_features=256),
             nn.MaxPool2d(padding=(1, 1), kernel_size=(2, 2)),
-            nn.Dropout(),
-            nn.Conv2d(in_channels=256, out_channels=512, kernel_size=(3, 3), padding=(1, 1)),
-            nn.ReLU(),
-            nn.BatchNorm2d(num_features=512),
-            nn.MaxPool2d(padding=(1, 1), kernel_size=(2, 2)),
+            # nn.Dropout(),
+            # nn.Conv2d(in_channels=256, out_channels=512, kernel_size=(3, 3), padding=(1, 1)),
+            # nn.ReLU(),
+            # nn.BatchNorm2d(num_features=512),
+            # nn.MaxPool2d(padding=(1, 1), kernel_size=(2, 2)),
             nn.Flatten(),
-            nn.Linear(in_features=7680, out_features=512),
+            nn.Linear(in_features=10240, out_features=512),
             nn.ReLU(),
             nn.Linear(in_features=512, out_features=1)
         )

@@ -22,6 +22,7 @@ class MultiChannelSpatialDatasetWithEarthDeclination(torch.utils.data.Dataset):
         self.labels, self.label_mean, self.label_std = prepare_synop_dataset(self.synop_file, [self.target_param],
                                                                              dataset_dir=SYNOP_DATASETS_DIRECTORY)
         self.dim = config.experiment.cnn_input_size
+        self.channels = len(self.train_parameters)
         self.normalization_type = config.experiment.normalization_type
 
         length = len(self.list_IDs)
@@ -55,7 +56,7 @@ class MultiChannelSpatialDatasetWithEarthDeclination(torch.utils.data.Dataset):
 
     def __data_generation(self, ID):
         # Initialization
-        x = np.empty(tuple(self.dim))
+        x = np.empty((self.channels, *self.dim))
         y = np.empty(1)
 
         # Generate data

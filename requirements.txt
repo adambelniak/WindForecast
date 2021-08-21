@@ -1,3 +1,4 @@
+-f https://download.pytorch.org/whl/torch_stable.html
 sklearn
 beautifulsoup4
 google-auth
@@ -20,7 +21,8 @@ omegaconf
 python-dotenv
 coolname
 wandb
-torch==1.8.1
+torch==1.9.0+cu111
+torchvision==0.10.0+cu111
 git+https://github.com/pytorch/hydra-torch
 pytorch-lightning-bolts==0.3.2
 pytorch-lightning==1.2.8

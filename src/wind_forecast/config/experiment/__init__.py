@@ -74,7 +74,7 @@ class ExperimentSettings:
 
     train_parameters_config_file: str = "CNNConfig.json"
 
-    cnn_input_size: Any = (16, 33, 53)
+    cnn_input_size: Any = (33, 53)
 
     epochs: int = 100
 
@@ -84,4 +84,18 @@ class ExperimentSettings:
 
     target_coords: List = field(default_factory=lambda: [52.1831174, 20.9875259])
 
-    tcn_channels: List = field(default_factory=lambda: [32, 64])
+    tcn_channels: List = field(default_factory=lambda: [32, 64, 64])
+
+    dropout: float = 0.3
+
+    time2vec_embedding_size: int = 5
+
+    transformer_ff_dim: int = 1024
+
+    transformer_attention_layers: int = 1
+
+    transformer_attention_heads: int = 2
+
+    # transformer_attention_kdim: int = 26
+
+    # transformer_attention_vdim: int = 26

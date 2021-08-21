@@ -17,7 +17,6 @@ class SingleGFSPointDataset(torch.utils.data.Dataset):
         self.train_parameters = process_config(config.experiment.train_parameters_config_file)
         self.target_param = config.experiment.target_parameter
         self.synop_file = config.experiment.synop_file
-        self.dim = config.experiment.cnn_input_size
         self.prediction_offset = config.experiment.prediction_offset
         self.target_coords = config.experiment.target_coords
 
