@@ -86,15 +86,15 @@ class ExperimentSettings:
 
     tcn_channels: List = field(default_factory=lambda: [32, 64, 64])
 
-    dropout: float = 0.3
+    dropout: float = 0.1
 
     time2vec_embedding_size: int = 5
 
     transformer_ff_dim: int = 1024
 
-    transformer_attention_layers: int = 1
+    transformer_attention_layers: int = 6
 
-    transformer_attention_heads: int = 2
+    transformer_attention_heads: int = 13
 
     # transformer_attention_kdim: int = 26
 

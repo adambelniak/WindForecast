@@ -1,3 +1,5 @@
+import math
+
 import torch
 from pytorch_lightning import LightningModule
 from torch import nn
@@ -53,6 +55,27 @@ class TimeDistributed(nn.Module):
         return y
 
 
+class PositionalEncoding(nn.Module):
+    def __init__(self, d_model: int, dropout: float = 0.1, sequence_length: int = 24):
+        super().__init__()
+        self.dropout = nn.Dropout(p=dropout)
+
+        position = torch.arange(sequence_length).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, d_model, 2) * (-math.log(10000.0) / d_model))
+        pe = torch.zeros(1, sequence_length, d_model)
+        pe[0, :, 0::2] = torch.sin(position * div_term)
+        pe[0, :, 1::2] = torch.cos(position * div_term)[:,:d_model // 2]
+        self.register_buffer('pe', pe)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Args:
+            x: Tensor, shape [batch_size, seq_len, embedding_dim]
+        """
+        x = torch.cat((x, self.pe.expand(x.shape)), -1)
+        return self.dropout(x)
+
+
 class AttentionBlock(LightningModule):
     def __init__(self, config: Config):
         super().__init__()
@@ -61,7 +84,7 @@ class AttentionBlock(LightningModule):
         # vdim = config.experiment.transformer_attention_vdim
         ff_dim = config.experiment.transformer_ff_dim
         features_len = len(config.experiment.synop_train_features)
-        embed_dim = features_len * (config.experiment.time2vec_embedding_size + 1)
+        embed_dim = 2 * features_len # * (config.experiment.time2vec_embedding_size + 1)
         dropout = config.experiment.dropout
 
         self.attention = nn.MultiheadAttention(num_heads=num_heads, embed_dim=embed_dim, kdim=embed_dim, vdim=embed_dim, dropout=dropout, batch_first=True)
@@ -96,20 +119,17 @@ class AttentionBlock(LightningModule):
 class Transformer(LightningModule):
     def __init__(self, config: Config):
         super().__init__()
-        embed_dim = len(config.experiment.synop_train_features) * (config.experiment.time2vec_embedding_size + 1)
-        self.time2vec = Time2Vec(config)
-        self.attention_layers = [
-            AttentionBlock(config) for _ in range(config.experiment.transformer_attention_layers)]
+        embed_dim = 2 * len(config.experiment.synop_train_features) # * (config.experiment.time2vec_embedding_size + 1)
+        # self.time2vec = Time2Vec(config)
+        self.pos_encoder = PositionalEncoding(len(config.experiment.synop_train_features), config.experiment.dropout, config.experiment.sequence_length)
+        self.attention_layers = nn.Sequential(*[AttentionBlock(config) for _ in range(config.experiment.transformer_attention_layers)])
         self.linear = nn.Linear(in_features=embed_dim * config.experiment.sequence_length, out_features=1)
 
     def forward(self, inputs):
-        time_embedding = TimeDistributed(self.time2vec, batch_first=True)(inputs)
-        x = torch.cat([inputs, time_embedding], -1)
-        for attention_layer in self.attention_layers:
-            if self.device.type is not attention_layer.device.type:
-                # device in AttentionBlock is not being set and I coulnd't make it work :(
-                attention_layer.to(self.device)
-            x = attention_layer(x)
+        # time_embedding = TimeDistributed(self.time2vec, batch_first=True)(inputs)
+        x = self.pos_encoder(inputs)
+        # x = torch.cat([inputs, time_embedding], -1)
+        x = self.attention_layers(x)
 
         x = torch.reshape(x, (-1, x.shape[1] * x.shape[2]))  # flat vector of features out
 
