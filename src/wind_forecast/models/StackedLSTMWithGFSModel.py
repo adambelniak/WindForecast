@@ -23,6 +23,6 @@ class StackedLSTMWithGFSModel(LightningModule):
     def forward(self, synop_input, gfs_input) -> torch.Tensor:
         lstm_out, _ = self.lstm(synop_input)
         lstm_out, _ = self.lstm2(lstm_out)
-        combined = torch.cat((lstm_out[:, -1, :], gfs_input.reshape(len(gfs_input), 1)), dim=1)
+        combined = torch.cat((lstm_out[:, -1, :], torch.unsqueeze(gfs_input, -1)), dim=1)
         out = self.dense(combined)
-        return out.reshape((out.shape[0]))
+        return torch.squeeze(out)

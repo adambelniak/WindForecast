@@ -18,6 +18,7 @@ from torch.optim.optimizer import Optimizer
 from wandb.sdk.wandb_run import Run
 
 from wind_forecast.config.register import Config
+from wind_forecast.lr_schedulers.transformer_lr_scheduler import transformer_lr_scheduler
 
 
 class Regressor(pl.LightningModule):
@@ -86,10 +87,12 @@ class Regressor(pl.LightningModule):
         )
 
         if self.cfg.optim.scheduler is not None:
-            scheduler: _LRScheduler = instantiate(  # type: ignore
+            scheduler = instantiate(  # type: ignore
                 self.cfg.optim.scheduler,
                 optimizer=optimizer,
-                _convert_='all'
+                lr_lambda=lambda epoch: transformer_lr_scheduler(epoch, 10, 10, 0.0001, self.cfg.optim.optimizer.lr, 0.00001),
+                _convert_='all',
+                verbose=True
             )
             print(optimizer, scheduler)
             return [optimizer], [scheduler]

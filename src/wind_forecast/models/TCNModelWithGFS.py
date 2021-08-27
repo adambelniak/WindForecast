@@ -41,13 +41,17 @@ class TemporalConvNet(LightningModule):
             layers += [TemporalBlock(in_channels, out_channels, kernel_size, dilation=dilation_size,
                                      padding=(kernel_size-1) * dilation_size)]
 
-        layers += [
-            nn.Flatten(),
-            nn.Linear(in_features=num_channels[-1] * config.experiment.sequence_length, out_features=32),
+        self.convolutional = nn.Sequential(*layers)
+        self.flatten = nn.Flatten()
+        self.feed_forward = nn.Sequential(
+            nn.Linear(in_features=num_channels[-1] * config.experiment.sequence_length + 1, out_features=32),
             nn.ReLU(),
             nn.Linear(in_features=32, out_features=1)
-        ]
-        self.network = nn.Sequential(*layers)
+        )
 
-    def forward(self, x) -> torch.Tensor:
-        return self.network(x.permute(0, 2, 1)).squeeze()
+    def forward(self, synop_input, gfs_input) -> torch.Tensor:
+        x = synop_input.permute(0, 2, 1)
+        x = self.convolutional(x)
+        x = self.flatten(x)
+        x = self.feed_forward(torch.cat((x, gfs_input.unsqueeze(-1)), dim=1))
+        return x.squeeze()

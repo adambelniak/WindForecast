@@ -26,7 +26,7 @@ class Time2Vec(nn.Module):
 
     def forward(self, inputs):
         bias = torch.mul(self.wb, inputs) + self.bb
-        dp = torch.mul(inputs.reshape(*inputs.shape, 1), self.wa) + self.ba
+        dp = torch.mul(torch.unsqueeze(inputs, -1), self.wa) + self.ba
         wgts = torch.sin(dp)
 
         ret = torch.cat([torch.unsqueeze(bias, -1), wgts], -1)
@@ -84,7 +84,7 @@ class AttentionBlock(LightningModule):
         # vdim = config.experiment.transformer_attention_vdim
         ff_dim = config.experiment.transformer_ff_dim
         features_len = len(config.experiment.synop_train_features)
-        embed_dim = 2 * features_len # * (config.experiment.time2vec_embedding_size + 1)
+        embed_dim = features_len * (config.experiment.time2vec_embedding_size + 1)
         dropout = config.experiment.dropout
 
         self.attention = nn.MultiheadAttention(num_heads=num_heads, embed_dim=embed_dim, kdim=embed_dim, vdim=embed_dim, dropout=dropout, batch_first=True)
@@ -104,13 +104,13 @@ class AttentionBlock(LightningModule):
         attention_out = self.attention_norm(inputs + x)
 
         x = attention_out
-        x = x.reshape((x.shape[0], x.shape[-1], x.shape[-2]))
+        x = x.permute(0, 2, 1)
         x = self.ff_conv1(x)
         x = self.act(x)
         x = self.ff_conv2(x)
         x = self.act(x)
         x = self.ff_dropout(x)
-        x = x.reshape((x.shape[0], x.shape[-1], x.shape[-2]))
+        x = x.permute(0, 2, 1)
         x = self.ff_norm(attention_out + x)
 
         return x
@@ -119,19 +119,21 @@ class AttentionBlock(LightningModule):
 class Transformer(LightningModule):
     def __init__(self, config: Config):
         super().__init__()
-        embed_dim = 2 * len(config.experiment.synop_train_features) # * (config.experiment.time2vec_embedding_size + 1)
-        # self.time2vec = Time2Vec(config)
-        self.pos_encoder = PositionalEncoding(len(config.experiment.synop_train_features), config.experiment.dropout, config.experiment.sequence_length)
+        # embed_dim = 4 * len(config.experiment.synop_train_features) # * (config.experiment.time2vec_embedding_size + 1)
+        embed_dim = len(config.experiment.synop_train_features) * (config.experiment.time2vec_embedding_size + 1)
+        self.time2vec = Time2Vec(config)
+        self.pos_encoder = PositionalEncoding(embed_dim, config.experiment.dropout, config.experiment.sequence_length)
         self.attention_layers = nn.Sequential(*[AttentionBlock(config) for _ in range(config.experiment.transformer_attention_layers)])
         self.linear = nn.Linear(in_features=embed_dim * config.experiment.sequence_length, out_features=1)
+        self.flatten = nn.Flatten()
 
     def forward(self, inputs):
-        # time_embedding = TimeDistributed(self.time2vec, batch_first=True)(inputs)
-        x = self.pos_encoder(inputs)
-        # x = torch.cat([inputs, time_embedding], -1)
+        time_embedding = TimeDistributed(self.time2vec, batch_first=True)(inputs)
+        # x = self.pos_encoder(inputs)
+        x = torch.cat([inputs, time_embedding], -1)
         x = self.attention_layers(x)
 
-        x = torch.reshape(x, (-1, x.shape[1] * x.shape[2]))  # flat vector of features out
+        x = self.flatten(x)  # flat vector of features out
 
         return torch.squeeze(self.linear(x))
 

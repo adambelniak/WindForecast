@@ -22,4 +22,4 @@ class LSTMModel(LightningModule):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         output, _ = self.lstm(x)
         out = self.dense(output[:, -1, :])
-        return out.reshape((out.shape[0]))
+        return torch.squeeze(out)
