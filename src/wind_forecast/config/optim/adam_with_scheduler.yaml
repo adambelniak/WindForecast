@@ -16,3 +16,8 @@ optimizer:
 
 scheduler:
   _target_: torch.optim.lr_scheduler.LambdaLR
+
+final_lr: 0.00001
+starting_lr: 0.0001
+lambda_lr:
+  _target_: wind_forecast.lr_schedulers.transformer_lr_scheduler.TransformerLRScheduler

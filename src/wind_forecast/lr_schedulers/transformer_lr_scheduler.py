@@ -1,12 +1,22 @@
-def transformer_lr_scheduler(epoch: int, warmup_epochs: int, decay_epochs: int, initial_lr: float, base_lr: float, final_lr: float):
-    if epoch < warmup_epochs:
-        diff = base_lr - initial_lr
-        rate = (epoch + 1) / warmup_epochs
-        return (diff * rate) / base_lr
+class TransformerLRScheduler:
 
-    if warmup_epochs <= epoch < warmup_epochs + decay_epochs:
-        diff = base_lr - final_lr
-        rate = 1 - ((epoch - warmup_epochs) / decay_epochs)
-        return (diff * rate) / base_lr
+    def __init__(self, warmup_epochs: int, decay_epochs: int, starting_lr: float, base_lr: float, final_lr: float):
+        super().__init__()
+        self.warmup_epochs = warmup_epochs
+        self.decay_epochs = decay_epochs
+        self.starting_lr = starting_lr
+        self.base_lr = base_lr
+        self.final_lr = final_lr
 
-    return final_lr / base_lr
+    def transformer_lr_scheduler(self, epoch: int):
+        if epoch < self.warmup_epochs:
+            diff = self.base_lr - self.starting_lr
+            rate = (epoch + 1) / self.warmup_epochs
+            return (diff * rate) / self.base_lr
+
+        if self.warmup_epochs <= epoch < self.warmup_epochs + self.decay_epochs:
+            diff = self.base_lr - self.final_lr
+            rate = 1 - ((epoch - self.warmup_epochs) / self.decay_epochs)
+            return (diff * rate) / self.base_lr
+
+        return self.final_lr / self.base_lr

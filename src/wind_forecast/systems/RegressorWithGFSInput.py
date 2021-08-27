@@ -86,11 +86,22 @@ class RegressorWithGFSInput(pl.LightningModule):
         )
 
         if self.cfg.optim.scheduler is not None:
+            # if self.cfg.optim.scheduler._target_ == "torch.optim.lr_scheduler.LambdaLR":
+            lambda_lr = instantiate(self.cfg.optim.lambda_lr,
+                                    warmup_epochs=self.cfg.optim.warmup_epochs,
+                                    decay_epochs=self.cfg.optim.decay_epochs,
+                                    starting_lr=self.cfg.optim.starting_lr,
+                                    base_lr=self.cfg.optim.optimizer.lr,
+                                    final_lr=self.cfg.optim.final_lr)
+
             scheduler: _LRScheduler = instantiate(  # type: ignore
                 self.cfg.optim.scheduler,
                 optimizer=optimizer,
-                _convert_='all'
+                lr_lambda=lambda epoch: lambda_lr.transformer_lr_scheduler(epoch),
+                _convert_='all',
+                verbose=True
             )
+
             print(optimizer, scheduler)
             return [optimizer], [scheduler]
         else:

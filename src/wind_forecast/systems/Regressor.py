@@ -18,7 +18,6 @@ from torch.optim.optimizer import Optimizer
 from wandb.sdk.wandb_run import Run
 
 from wind_forecast.config.register import Config
-from wind_forecast.lr_schedulers.transformer_lr_scheduler import transformer_lr_scheduler
 
 
 class Regressor(pl.LightningModule):
@@ -87,13 +86,22 @@ class Regressor(pl.LightningModule):
         )
 
         if self.cfg.optim.scheduler is not None:
-            scheduler = instantiate(  # type: ignore
+            # if self.cfg.optim.scheduler._target_ == "torch.optim.lr_scheduler.LambdaLR":
+            lambda_lr = instantiate(self.cfg.optim.lambda_lr,
+                                    warmup_epochs=self.cfg.optim.warmup_epochs,
+                                    decay_epochs=self.cfg.optim.decay_epochs,
+                                    starting_lr=self.cfg.optim.starting_lr,
+                                    base_lr=self.cfg.optim.optimizer.lr,
+                                    final_lr=self.cfg.optim.final_lr)
+
+            scheduler: _LRScheduler = instantiate(  # type: ignore
                 self.cfg.optim.scheduler,
                 optimizer=optimizer,
-                lr_lambda=lambda epoch: transformer_lr_scheduler(epoch, 10, 10, 0.0001, self.cfg.optim.optimizer.lr, 0.00001),
+                lr_lambda=lambda epoch: lambda_lr.transformer_lr_scheduler(epoch),
                 _convert_='all',
                 verbose=True
             )
+
             print(optimizer, scheduler)
             return [optimizer], [scheduler]
         else:
@@ -290,7 +298,7 @@ class Regressor(pl.LightningModule):
 
         self.logger.log_metrics(metrics, step=step)
 
-        #save results to view
+        # save results to view
         labels = [x['labels'] for x in outputs]
         labels_flatten = []
         for i in labels:

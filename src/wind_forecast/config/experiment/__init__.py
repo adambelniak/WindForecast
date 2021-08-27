@@ -84,7 +84,7 @@ class ExperimentSettings:
 
     target_coords: List = field(default_factory=lambda: [52.1831174, 20.9875259])
 
-    tcn_channels: List = field(default_factory=lambda: [32, 64])
+    tcn_channels: List = field(default_factory=lambda: [64])
 
     dropout: float = 0.1
 
