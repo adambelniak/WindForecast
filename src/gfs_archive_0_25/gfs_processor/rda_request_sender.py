@@ -4,9 +4,8 @@ from datetime import datetime
 import time
 import pandas as pd
 import schedule
-from geopy.geocoders import Nominatim, GeoNames
+from geopy.geocoders import Nominatim
 from tqdm import tqdm
-import os
 from enum import Enum
 from gfs_archive_0_25.gfs_processor.own_logger import logger
 from gfs_archive_0_25.gfs_processor.rdams_client import submit_json

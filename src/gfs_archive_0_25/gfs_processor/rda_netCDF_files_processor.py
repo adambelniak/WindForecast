@@ -127,12 +127,12 @@ def check_if_any_file_for_year_exists(year, parameter_level_tuple):
     return False
 
 
-def process_to_numpy_array(parameter_level_tuple, coords: Coords):
+def process_to_numpy_array(parameter_level_tuple, coords: Coords, output_dir: str):
     download_dir = os.path.join(NETCDF_DOWNLOAD_PATH, parameter_level_tuple['name'], parameter_level_tuple['level'])
 
     for root, dirs, filenames in os.walk(download_dir):
         if len(filenames) > 0:
-            output_dir = f"D:\\WindForecast\\output_np2\\{parameter_level_tuple['name']}\\{parameter_level_tuple['level']}"
+            output_dir = os.path.join(output_dir, f"\\{parameter_level_tuple['name']}\\{parameter_level_tuple['level']}")
 
             if not os.path.exists(output_dir):
                 os.makedirs(output_dir)
@@ -158,10 +158,10 @@ def process_to_numpy_array(parameter_level_tuple, coords: Coords):
         break
 
 
-def process_netCDF_files_to_npy():
+def process_netCDF_files_to_npy(output_dir: str):
     for param in GFS_PARAMETERS:
         logger.info(f"Converting parameter {param['name']} {param['level']}")
-        process_to_numpy_array(param, Coords(56, 48, 13, 26))
+        process_to_numpy_array(param, Coords(56, 48, 13, 26), output_dir)
 
 
 def schedule_processing():
@@ -179,11 +179,12 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--mode', help='CSV or NPY - output format to which save the data. ', default="NPY")
+    parser.add_argument('--output_dir', help='Output directory for the result files.', default="D:\\WindForecast\\output_np2")
     args = parser.parse_args()
 
     if args.mode == "CSV":
         schedule_processing()
     elif args.mode == "NPY":
-        process_netCDF_files_to_npy()
+        process_netCDF_files_to_npy(args.output_dir)
     else:
         raise Exception("Unexpected mode: " + args.mode + ". Please specify 'CSV' or 'NPY'")
