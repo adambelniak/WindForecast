@@ -1,0 +1,19 @@
+# Specific experiments settings
+# (default settings inherited from configs.experiment.ExperimentSettings)
+
+defaults:
+  - schema_experiment
+
+_tags_:
+  - TCN_RESPECTING_GFS_DATES
+
+resume_checkpoint: ~
+
+datamodule:
+  _target_: wind_forecast.datamodules.SequenceLimitedToGFSDatesDataModule.SequenceLimitedToGFSDatesDataModule
+
+model:
+  _target_: wind_forecast.models.TCNModel.TemporalConvNet
+
+system:
+  _target_: wind_forecast.systems.Regressor.Regressor

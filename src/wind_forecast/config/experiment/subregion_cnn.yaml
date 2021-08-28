@@ -1,0 +1,19 @@
+# Specific experiments settings
+# (default settings inherited from configs.experiment.ExperimentSettings)
+
+defaults:
+  - schema_experiment
+
+_tags_:
+  - SUBREGION_CNN
+
+resume_checkpoint: ~
+
+datamodule:
+  _target_: wind_forecast.datamodules.MultiChannelSpatialSubregionDataModule.MultiChannelSpatialSubregionDataModule
+
+model:
+  _target_: wind_forecast.models.CNNModel.CNNModel
+
+system:
+  _target_: wind_forecast.systems.Regressor.Regressor

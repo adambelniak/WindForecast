@@ -3,28 +3,7 @@ import torch.nn as nn
 from pytorch_lightning import LightningModule
 from torch.nn.utils import weight_norm
 from wind_forecast.config.register import Config
-
-
-class TemporalBlock(nn.Module):
-    def __init__(self, n_inputs, n_outputs, kernel_size, dilation, padding, stride=1, dropout=0.5):
-        super(TemporalBlock, self).__init__()
-        self.conv1 = weight_norm(nn.Conv2d(n_inputs, n_outputs, (1, kernel_size),
-                                           stride=stride, padding=(0, 0), dilation=dilation))
-        self.pad = torch.nn.ZeroPad2d((padding, 0, 0, 0))
-        self.relu = nn.ReLU()
-        self.dropout = nn.Dropout(dropout)
-        self.conv2 = weight_norm(nn.Conv2d(n_outputs, n_outputs, (1, kernel_size),
-                                           stride=stride, padding=(0, 0), dilation=dilation))
-        self.net = nn.Sequential(self.pad, self.conv1, self.relu, self.dropout,
-                                 self.pad, self.conv2, self.relu, self.dropout)
-        self.downsample = nn.Conv1d(
-            n_inputs, n_outputs, 1) if n_inputs != n_outputs else None
-        self.relu = nn.ReLU()
-
-    def forward(self, x) -> torch.Tensor:
-        out = self.net(x.unsqueeze(2)).squeeze(2)
-        res = x if self.downsample is None else self.downsample(x)
-        return self.relu(out + res)
+from wind_forecast.models.TCNModel import TemporalBlock
 
 
 class TemporalConvNet(LightningModule):

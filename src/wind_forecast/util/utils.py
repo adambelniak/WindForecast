@@ -3,12 +3,14 @@ import os
 import re
 import sys
 from datetime import datetime, timedelta
+from typing import Union
 
 import numpy as np
 import pytz
 from scipy.interpolate import interpolate
 from tqdm import tqdm
 
+from gfs_archive_0_25.gfs_processor.Coords import Coords
 from gfs_archive_0_25.gfs_processor.consts import FINAL_NUMPY_FILENAME_FORMAT
 from gfs_archive_0_25.utils import prep_zeros_if_needed, get_nearest_coords
 from gfs_common.common import GFS_SPACE
@@ -111,14 +113,51 @@ def initialize_mean_and_std_for_wind_target(list_IDs, dim):
     return mean, math.sqrt(sqr_sum / (len(list_IDs) * dim[0] * dim[1]) - pow(mean, 2))
 
 
-def get_point_from_GFS_slice_for_coords(gfs_data, latitude, longitude):
-    coords = get_nearest_coords(latitude, longitude)
-    lat, lon = coords[0][0], coords[1][0]
+def get_nearest_lat_lon_from_coords(gfs_coords: [[float]], original_coords: Coords):
+    lat = gfs_coords[0][0] if abs(original_coords.nlat - gfs_coords[0][0]) <= abs(
+        original_coords.nlat - gfs_coords[0][1]) else gfs_coords[0][1]
+    lon = gfs_coords[1][0] if abs(original_coords.elon - gfs_coords[1][0]) <= abs(
+        original_coords.elon - gfs_coords[1][1]) else gfs_coords[1][1]
+
+    return lat, lon
+
+
+def get_point_from_GFS_slice_for_coords(gfs_data: np.ndarray, coords: Coords):
+    nearest_coords = get_nearest_coords(coords)
+    lat, lon = get_nearest_lat_lon_from_coords(nearest_coords, coords)
     lat_index = int((GFS_SPACE.nlat - lat) * 4)
     lon_index = int((GFS_SPACE.elon - lon) * 4)
 
-    return interpolate.interp2d(coords[0], coords[1], gfs_data[lat_index:lat_index + 2, lon_index:lon_index + 2])(
-        latitude, longitude).item()
+    return interpolate.interp2d(nearest_coords[0], nearest_coords[1], gfs_data[lat_index:lat_index + 2, lon_index:lon_index + 2])(
+        coords.nlat, coords.elon).item()
+
+
+def get_subregion_from_GFS_slice_for_coords(gfs_data: np.ndarray, coords: Coords) -> np.ndarray:
+    nearest_coords_NW = get_nearest_coords(Coords(coords.nlat, coords.nlat, coords.wlon, coords.wlon))
+    nearest_coords_SE = get_nearest_coords(Coords(coords.slat, coords.slat, coords.elon, coords.elon))
+    lat_NW, lon_NW = get_nearest_lat_lon_from_coords(nearest_coords_NW, Coords(coords.nlat, coords.nlat, coords.wlon, coords.wlon))
+    lat_SE, lon_SE = get_nearest_lat_lon_from_coords(nearest_coords_SE, Coords(coords.slat, coords.slat, coords.elon, coords.elon))
+
+    lat_index_start = int((GFS_SPACE.nlat - lat_NW) * 4)
+    lat_index_end = int((GFS_SPACE.nlat - lat_SE) * 4)
+    lon_index_start = int((GFS_SPACE.elon - lon_SE) * 4)
+    lon_index_end = int((GFS_SPACE.elon - lon_NW) * 4)
+
+    return gfs_data[lat_index_start:lat_index_end + 1, lon_index_start:lon_index_end + 1]
+
+
+def get_dim_of_GFS_slice_for_coords(coords: Coords) -> (int, int):
+    nearest_coords_NW = get_nearest_coords(Coords(coords.nlat, coords.nlat, coords.wlon, coords.wlon))
+    nearest_coords_SE = get_nearest_coords(Coords(coords.slat, coords.slat, coords.elon, coords.elon))
+    lat_NW, lon_NW = get_nearest_lat_lon_from_coords(nearest_coords_NW, Coords(coords.nlat, coords.nlat, coords.wlon, coords.wlon))
+    lat_SE, lon_SE = get_nearest_lat_lon_from_coords(nearest_coords_SE, Coords(coords.slat, coords.slat, coords.elon, coords.elon))
+
+    lat_index_start = int((GFS_SPACE.nlat - lat_NW) * 4)
+    lat_index_end = int((GFS_SPACE.nlat - lat_SE) * 4)
+    lon_index_start = int((GFS_SPACE.elon - lon_SE) * 4)
+    lon_index_end = int((GFS_SPACE.elon - lon_NW) * 4)
+
+    return lat_index_end - lat_index_start + 1, lon_index_end - lon_index_start + 1
 
 
 def target_param_to_gfs_name_level(target_param):
@@ -152,8 +191,8 @@ def add_param_to_train_params(train_params: list, param: str):
     return params
 
 
-def match_gfs_with_synop_sequence(features: list, targets: list, lat: float, lon: float,
-                                  prediction_offset: int, gfs_params: list, exact_date_match=False):
+def match_gfs_with_synop_sequence(features: Union[list, np.ndarray], targets: list, lat: float, lon: float,
+                                  prediction_offset: int, gfs_params: list, exact_date_match=False, return_GFS=True):
     gfs_values = []
     new_targets = []
     new_features = []
@@ -164,18 +203,22 @@ def match_gfs_with_synop_sequence(features: list, targets: list, lat: float, lon
 
         # check if there are forecasts available
         if all(os.path.exists(os.path.join(GFS_DATASET_DIR, param["name"], param["level"], gfs_filename)) for param in gfs_params):
-            val = []
-            for param in gfs_params:
-                val.append(get_point_from_GFS_slice_for_coords(
-                    np.load(
-                        os.path.join(GFS_DATASET_DIR, param['name'], param['level'], gfs_filename)),
-                    lat, lon))
+            if return_GFS:
+                val = []
 
-            gfs_values.append(val)
+                for param in gfs_params:
+                    val.append(get_point_from_GFS_slice_for_coords(
+                        np.load(
+                            os.path.join(GFS_DATASET_DIR, param['name'], param['level'], gfs_filename)),
+                        Coords(lat, lat, lon, lon)))
+
+                gfs_values.append(val)
             new_targets.append(value[1])
             new_features.append(features[index])
 
-    return np.array(new_features), np.array(gfs_values), np.array(new_targets)
+    if return_GFS:
+        return np.array(new_features), np.array(gfs_values), np.array(new_targets)
+    return np.array(new_features), np.array(new_targets)
 
 
 def get_GFS_filename(date, prediction_offset, exact_date_match):
