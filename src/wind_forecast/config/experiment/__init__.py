@@ -78,7 +78,7 @@ class ExperimentSettings:
 
     cnn_ff_input_dim: List = field(default_factory=lambda: [800, 256])
 
-    cnn_filters: List = field(default_factory=lambda: [32]) #, 64]) #, 128])
+    cnn_filters: List = field(default_factory=lambda: [32])
 
     epochs: int = 100
 

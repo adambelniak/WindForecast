@@ -68,12 +68,12 @@ def initialize_mean_and_std(list_IDs, train_parameters, dim, subregion_coords=No
     stds = []
     for param in tqdm(train_parameters):
         sum, sqr_sum = 0, 0
-        for id in list_IDs:
+        for id in tqdm(list_IDs):
             values = np.load(os.path.join(GFS_DATASET_DIR, param['name'], param['level'], id))
             if subregion_coords is not None:
                 values = get_subregion_from_GFS_slice_for_coords(values, subregion_coords)
             sum += np.sum(values)
-            sqr_sum += pow(np.sum(values), 2)
+            sqr_sum += np.sum(np.power(values, 2))
 
         mean = sum / (len(list_IDs) * dim[0] * dim[1])
         means.append(mean)

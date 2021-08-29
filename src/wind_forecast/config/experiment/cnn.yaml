@@ -17,3 +17,11 @@ model:
 
 system:
   _target_: wind_forecast.systems.Regressor.Regressor
+
+cnn_ff_input_dim:
+  - 29376
+  - 1024
+
+cnn_filters:
+  - 32
+  - 64
