@@ -5,8 +5,8 @@ using LSTM, ResNet etc. and some data analysis tools.
 
 Seed for the analysis consists of:
  * GFS 0.25° archive forecasts from https://rda.ucar.edu
- * Synop reports from ground stations (ogimet.com, meteo.imgw.pl, meteomodel.pl)
- * Satelite images (pl.sat24.com, probably some more sources in the future)
+ * Synop reports from ground stations (https://danepubliczne.imgw.pl/)
+ * (not yet) Satelite images (pl.sat24.com, probably some more sources in the future)
 
 The flow of getting GFS archive data is described in gfs-archive-0-25 module.
 
