@@ -21,7 +21,7 @@ class MultiChannelSpatialSubregionDataset(torch.utils.data.Dataset):
         self.train_parameters = process_config(config.experiment.train_parameters_config_file)
         self.target_param = config.experiment.target_parameter
         self.synop_file = config.experiment.synop_file
-        self.labels, self.label_mean, self.label_std = prepare_synop_dataset(self.synop_file, [self.target_param],
+        self.labels, _, _ = prepare_synop_dataset(self.synop_file, [self.target_param],
                                                                              dataset_dir=SYNOP_DATASETS_DIRECTORY)
         self.subregion_coords = Coords(config.experiment.subregion_nlat,
                                        config.experiment.subregion_slat,
@@ -45,9 +45,11 @@ class MultiChannelSpatialSubregionDataset(torch.utils.data.Dataset):
         self.normalize = normalize
         if normalize:
             if config.experiment.normalization_type == NormalizationType.STANDARD:
-                self.mean, self.std = initialize_mean_and_std(self.list_IDs, self.train_parameters, self.dim)
+                self.mean, self.std = initialize_mean_and_std(self.list_IDs, self.train_parameters, self.dim, self.subregion_coords)
+                print(self.mean, self.std)
             else:
-                self.min, self.max = initialize_min_max(self.list_IDs, self.train_parameters)
+                self.min, self.max = initialize_min_max(self.list_IDs, self.train_parameters, self.subregion_coords)
+                print(self.min, self.max)
 
     def __len__(self):
         'Denotes the total number of samples'

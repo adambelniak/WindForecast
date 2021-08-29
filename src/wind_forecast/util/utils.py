@@ -51,8 +51,8 @@ def date_from_gfs_np_file(filename):
     year = int(date_from_filename[:4])
     month = int(date_from_filename[5:7])
     day = int(date_from_filename[8:10])
-    run = int(date_matcher.group(2))
-    offset = int(date_matcher.group(3))
+    run = int(date_matcher.group(5))
+    offset = int(date_matcher.group(6))
     forecast_date = utc_to_local(datetime(year, month, day) + timedelta(hours=run + offset))
     return forecast_date
 
@@ -62,7 +62,7 @@ def declination_of_earth(date):
     return 23.45 * np.sin(np.deg2rad(360.0 * (283.0 + day_of_year) / 365.0))
 
 
-def initialize_mean_and_std(list_IDs, train_parameters, dim):
+def initialize_mean_and_std(list_IDs, train_parameters, dim, subregion_coords=None):
     log.info("Calculating std and mean for a dataset")
     means = []
     stds = []
@@ -70,8 +70,10 @@ def initialize_mean_and_std(list_IDs, train_parameters, dim):
         sum, sqr_sum = 0, 0
         for id in list_IDs:
             values = np.load(os.path.join(GFS_DATASET_DIR, param['name'], param['level'], id))
+            if subregion_coords is not None:
+                values = get_subregion_from_GFS_slice_for_coords(values, subregion_coords)
             sum += np.sum(values)
-            sqr_sum += pow(sum, 2)
+            sqr_sum += pow(np.sum(values), 2)
 
         mean = sum / (len(list_IDs) * dim[0] * dim[1])
         means.append(mean)
@@ -80,7 +82,7 @@ def initialize_mean_and_std(list_IDs, train_parameters, dim):
     return means, stds
 
 
-def initialize_min_max(list_IDs, train_parameters):
+def initialize_min_max(list_IDs, train_parameters, subregion_coords=None):
     log.info("Calculating min and max for a dataset")
     mins = []
     maxes = []
@@ -88,6 +90,8 @@ def initialize_min_max(list_IDs, train_parameters):
         min, max = sys.float_info.max, sys.float_info.min
         for id in list_IDs:
             values = np.load(os.path.join(GFS_DATASET_DIR, param['name'], param['level'], id))
+            if subregion_coords is not None:
+                values = get_subregion_from_GFS_slice_for_coords(values, subregion_coords)
             min = min(values, min)
             max = max(values, max)
 

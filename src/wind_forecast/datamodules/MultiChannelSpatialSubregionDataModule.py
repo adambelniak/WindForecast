@@ -34,7 +34,7 @@ class MultiChannelSpatialSubregionDataModule(LightningDataModule):
 
     def setup(self, stage: Optional[str] = None):
         if stage in (None, 'fit'):
-            dataset = MultiChannelSpatialSubregionDataset(config=self.config, list_IDs=self.IDs, train=True, normalize=False)
+            dataset = MultiChannelSpatialSubregionDataset(config=self.config, list_IDs=self.IDs, train=True, normalize=True)
             length = len(dataset)
             self.dataset_train, self.dataset_val = random_split(dataset, [length - (int(length * self.val_split)), int(length * self.val_split)])
         elif stage == 'test':
