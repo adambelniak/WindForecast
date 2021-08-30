@@ -15,7 +15,7 @@ from wind_forecast.util.utils import GFS_DATASET_DIR, date_from_gfs_np_file, ini
 class MultiChannelSpatialSubregionDataset(torch.utils.data.Dataset):
     'Characterizes a dataset for PyTorch'
 
-    def __init__(self, config: Config, list_IDs, train=True, normalize=True):
+    def __init__(self, config: Config, list_IDs, train=True, normalize=True, sequence_length=1):
         'Initialization'
         self.list_IDs = list_IDs
         self.train_parameters = process_config(config.experiment.train_parameters_config_file)

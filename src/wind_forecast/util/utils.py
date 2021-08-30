@@ -19,7 +19,7 @@ from wind_forecast.preprocess.synop.consts import SYNOP_FEATURES
 from wind_forecast.util.logging import log
 from enum import Enum
 
-GFS_DATASET_DIR = "D:\\WindForecast\\output_np2"
+GFS_DATASET_DIR = os.environ['GFS_DATASET_DIR']
 
 
 def convert_wind(single_gfs, u_wind_label, v_wind_label):
@@ -62,7 +62,21 @@ def declination_of_earth(date):
     return 23.45 * np.sin(np.deg2rad(360.0 * (283.0 + day_of_year) / 365.0))
 
 
-def initialize_mean_and_std(list_IDs, train_parameters, dim, subregion_coords=None):
+def get_values_for_sequence(file_id, param, sequence_length, subregion_coords=None):
+    values = [np.load(os.path.join(GFS_DATASET_DIR, param['name'], param['level'], file_id))]
+    date_matcher = re.match(NETCDF_FILE_REGEX, file_id)
+    offset = int(date_matcher.group(6))
+    for frame in range(1, sequence_length):
+        new_id = file_id.replace(f"f{prep_zeros_if_needed(str(offset), 2)}",
+                                 f"f{prep_zeros_if_needed(str(offset + 3), 2)}")
+        val = np.load(os.path.join(GFS_DATASET_DIR, param['name'], param['level'], new_id))
+        if subregion_coords is not None:
+            val = get_subregion_from_GFS_slice_for_coords(val, subregion_coords)
+        values.append(val)
+    return values
+
+
+def initialize_mean_and_std(list_IDs, train_parameters, dim: (int, int), subregion_coords=None):
     log.info("Calculating std and mean for a dataset")
     means = []
     stds = []
@@ -82,7 +96,26 @@ def initialize_mean_and_std(list_IDs, train_parameters, dim, subregion_coords=No
     return means, stds
 
 
-def initialize_min_max(list_IDs, train_parameters, subregion_coords=None):
+def initialize_mean_and_std_for_sequence(list_IDs, train_parameters, dim: (int, int), sequence_length: int,
+                                         subregion_coords=None):
+    log.info("Calculating std and mean for a dataset")
+    means = []
+    stds = []
+    for param in tqdm(train_parameters):
+        sum, sqr_sum = 0, 0
+        for id in tqdm(list_IDs):
+            values = np.squeeze(get_values_for_sequence(id, param, sequence_length, subregion_coords))
+            sum += np.sum(values)
+            sqr_sum += np.sum(np.power(values, 2))
+
+        mean = sum / (len(list_IDs) * sequence_length * dim[0] * dim[1])
+        means.append(mean)
+        stds.append(math.sqrt(sqr_sum / (len(list_IDs) * sequence_length * dim[0] * dim[1]) - pow(mean, 2)))
+
+    return means, stds
+
+
+def initialize_min_max(list_IDs: [str], train_parameters, subregion_coords=None):
     log.info("Calculating min and max for a dataset")
     mins = []
     maxes = []
@@ -92,6 +125,23 @@ def initialize_min_max(list_IDs, train_parameters, subregion_coords=None):
             values = np.load(os.path.join(GFS_DATASET_DIR, param['name'], param['level'], id))
             if subregion_coords is not None:
                 values = get_subregion_from_GFS_slice_for_coords(values, subregion_coords)
+            min = min(values, min)
+            max = max(values, max)
+
+        mins.append(min)
+        maxes.append(max)
+
+    return mins, maxes
+
+
+def initialize_min_max_for_sequence(list_IDs: [str], train_parameters, sequence_length: int, subregion_coords=None):
+    log.info("Calculating min and max for a dataset")
+    mins = []
+    maxes = []
+    for param in tqdm(train_parameters):
+        min, max = sys.float_info.max, sys.float_info.min
+        for id in list_IDs:
+            values = np.squeeze(get_values_for_sequence(id, param, sequence_length, subregion_coords))
             min = min(values, min)
             max = max(values, max)
 
@@ -132,15 +182,18 @@ def get_point_from_GFS_slice_for_coords(gfs_data: np.ndarray, coords: Coords):
     lat_index = int((GFS_SPACE.nlat - lat) * 4)
     lon_index = int((GFS_SPACE.elon - lon) * 4)
 
-    return interpolate.interp2d(nearest_coords[0], nearest_coords[1], gfs_data[lat_index:lat_index + 2, lon_index:lon_index + 2])(
+    return interpolate.interp2d(nearest_coords[0], nearest_coords[1],
+                                gfs_data[lat_index:lat_index + 2, lon_index:lon_index + 2])(
         coords.nlat, coords.elon).item()
 
 
 def get_subregion_from_GFS_slice_for_coords(gfs_data: np.ndarray, coords: Coords) -> np.ndarray:
     nearest_coords_NW = get_nearest_coords(Coords(coords.nlat, coords.nlat, coords.wlon, coords.wlon))
     nearest_coords_SE = get_nearest_coords(Coords(coords.slat, coords.slat, coords.elon, coords.elon))
-    lat_NW, lon_NW = get_nearest_lat_lon_from_coords(nearest_coords_NW, Coords(coords.nlat, coords.nlat, coords.wlon, coords.wlon))
-    lat_SE, lon_SE = get_nearest_lat_lon_from_coords(nearest_coords_SE, Coords(coords.slat, coords.slat, coords.elon, coords.elon))
+    lat_NW, lon_NW = get_nearest_lat_lon_from_coords(nearest_coords_NW,
+                                                     Coords(coords.nlat, coords.nlat, coords.wlon, coords.wlon))
+    lat_SE, lon_SE = get_nearest_lat_lon_from_coords(nearest_coords_SE,
+                                                     Coords(coords.slat, coords.slat, coords.elon, coords.elon))
 
     lat_index_start = int((GFS_SPACE.nlat - lat_NW) * 4)
     lat_index_end = int((GFS_SPACE.nlat - lat_SE) * 4)
@@ -153,8 +206,10 @@ def get_subregion_from_GFS_slice_for_coords(gfs_data: np.ndarray, coords: Coords
 def get_dim_of_GFS_slice_for_coords(coords: Coords) -> (int, int):
     nearest_coords_NW = get_nearest_coords(Coords(coords.nlat, coords.nlat, coords.wlon, coords.wlon))
     nearest_coords_SE = get_nearest_coords(Coords(coords.slat, coords.slat, coords.elon, coords.elon))
-    lat_NW, lon_NW = get_nearest_lat_lon_from_coords(nearest_coords_NW, Coords(coords.nlat, coords.nlat, coords.wlon, coords.wlon))
-    lat_SE, lon_SE = get_nearest_lat_lon_from_coords(nearest_coords_SE, Coords(coords.slat, coords.slat, coords.elon, coords.elon))
+    lat_NW, lon_NW = get_nearest_lat_lon_from_coords(nearest_coords_NW,
+                                                     Coords(coords.nlat, coords.nlat, coords.wlon, coords.wlon))
+    lat_SE, lon_SE = get_nearest_lat_lon_from_coords(nearest_coords_SE,
+                                                     Coords(coords.slat, coords.slat, coords.elon, coords.elon))
 
     lat_index_start = int((GFS_SPACE.nlat - lat_NW) * 4)
     lat_index_end = int((GFS_SPACE.nlat - lat_SE) * 4)
@@ -206,7 +261,8 @@ def match_gfs_with_synop_sequence(features: Union[list, np.ndarray], targets: li
         gfs_filename = get_GFS_filename(date, prediction_offset, exact_date_match)
 
         # check if there are forecasts available
-        if all(os.path.exists(os.path.join(GFS_DATASET_DIR, param["name"], param["level"], gfs_filename)) for param in gfs_params):
+        if all(os.path.exists(os.path.join(GFS_DATASET_DIR, param["name"], param["level"], gfs_filename)) for param in
+               gfs_params):
             if return_GFS:
                 val = []
 
@@ -243,8 +299,9 @@ def get_GFS_filename(date, prediction_offset, exact_date_match):
         pred_offset = str((prediction_offset + 6) // 3 * 3)
 
     return FINAL_NUMPY_FILENAME_FORMAT.format(year, prep_zeros_if_needed(str(month), 1),
-                                                      prep_zeros_if_needed(str(day), 1), run,
-                                                      prep_zeros_if_needed(pred_offset, 2))
+                                              prep_zeros_if_needed(str(day), 1), run,
+                                              prep_zeros_if_needed(pred_offset, 2))
+
 
 class NormalizationType(Enum):
     STANDARD = 0

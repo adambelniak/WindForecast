@@ -181,7 +181,7 @@ def get_parser():
             type=str,
             required=False,
             metavar='<Request Index>',
-            help="Download data given a request id.")
+            help="Download data given a request file_id.")
     group.add_argument('-globus_download', '-gd',
             type=str,
             required=False,
@@ -308,7 +308,7 @@ def get_summary(ds):
     """Returns summary of dataset.
 
     Args:
-        ds (str): Datset id. e.g. 'ds083.2'
+        ds (str): Datset file_id. e.g. 'ds083.2'
 
     Returns:
         dict: JSON decoded result of the query.
@@ -326,7 +326,7 @@ def get_metadata(ds):
     """Return metadata of dataset.
 
     Args:
-        ds (str): Datset id. e.g. 'ds083.2'
+        ds (str): Datset file_id. e.g. 'ds083.2'
 
     Returns:
         dict: JSON decoded result of the query.
@@ -344,7 +344,7 @@ def get_param_summary(ds):
     """Return summary of parameters for a dataset.
 
     Args:
-        ds (str): Datset id. e.g. 'ds083.2'
+        ds (str): Datset file_id. e.g. 'ds083.2'
 
     Returns:
         dict: JSON decoded result of the query.
@@ -490,7 +490,7 @@ def get_control_file_template(ds):
     """Write a control file for use in subset requests.
 
     Args:
-        ds (str): datset id. e.g. 'ds083.2'
+        ds (str): datset file_id. e.g. 'ds083.2'
 
     Returns:
         dict: JSON decoded result of the query.
@@ -508,7 +508,7 @@ def write_control_file_template(ds, write_location='./'):
     """Write a control file for use in subset requests.
 
     Args:
-        ds (str): datset id. e.g. 'ds083.2'
+        ds (str): datset file_id. e.g. 'ds083.2'
         write_location (str, Optional): Directory in which to write.
                 Defaults to working directory
 
@@ -531,7 +531,7 @@ def purge_request(request_idx):
     """Write a control file for use in subset requests.
 
     Args:
-        ds (str): datset id. e.g. 'ds083.2'
+        ds (str): datset file_id. e.g. 'ds083.2'
         write_location (str, Optional): Directory in which to write.
                 Defaults to working directory
 

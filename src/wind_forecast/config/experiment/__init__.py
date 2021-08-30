@@ -76,9 +76,9 @@ class ExperimentSettings:
 
     cnn_input_size: Any = (33, 53)
 
-    cnn_ff_input_dim: List = field(default_factory=lambda: [800, 256])
+    cnn_ff_input_dim: List = field(default_factory=lambda: [1600, 256])
 
-    cnn_filters: List = field(default_factory=lambda: [32])
+    cnn_filters: List = field(default_factory=lambda: [32, 64])
 
     epochs: int = 100
 
@@ -90,13 +90,13 @@ class ExperimentSettings:
 
     tcn_channels: List = field(default_factory=lambda: [64])
 
-    subregion_nlat: float = 52.5
+    subregion_nlat: float = 53
 
-    subregion_slat: float = 51.5
+    subregion_slat: float = 51
 
-    subregion_elon: float = 21.5
+    subregion_elon: float = 22
 
-    subregion_wlon: float = 20.5
+    subregion_wlon: float = 20
 
     dropout: float = 0.1
 

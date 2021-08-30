@@ -9,7 +9,7 @@ from wind_forecast.util.config import process_config
 from wind_forecast.util.utils import get_available_numpy_files
 
 
-class MultiChannelSpatialDataModule(LightningDataModule):
+class MultiChannelSpatialSequenceDataModule(LightningDataModule):
 
     def __init__(
             self,
@@ -34,11 +34,11 @@ class MultiChannelSpatialDataModule(LightningDataModule):
 
     def setup(self, stage: Optional[str] = None):
         if stage in (None, 'fit'):
-            dataset = MultiChannelSpatialDataset(config=self.config, list_IDs=self.IDs, train=True)
+            dataset = MultiChannelSpatialDataset(config=self.config, list_IDs=self.IDs, train=True, sequence_length=self.config.experiment.sequence_length)
             length = len(dataset)
             self.dataset_train, self.dataset_val = random_split(dataset, [length - (int(length * self.val_split)), int(length * self.val_split)])
         elif stage == 'test':
-            self.dataset_test = MultiChannelSpatialDataset(config=self.config, list_IDs=self.IDs, train=False)
+            self.dataset_test = MultiChannelSpatialDataset(config=self.config, list_IDs=self.IDs, train=False, sequence_length=self.config.experiment.sequence_length)
 
     def train_dataloader(self):
         return DataLoader(self.dataset_train, batch_size=self.batch_size, shuffle=self.shuffle)
