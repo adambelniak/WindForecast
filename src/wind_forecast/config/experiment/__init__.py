@@ -90,6 +90,12 @@ class ExperimentSettings:
 
     tcn_channels: List = field(default_factory=lambda: [64])
 
+    tcn_kernel_size: int = 3
+
+    tcn_input_features: int = 1600
+
+    tcn_cnn_ff_input_dim: int = 1536
+
     subregion_nlat: float = 53
 
     subregion_slat: float = 51

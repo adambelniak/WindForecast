@@ -1,16 +1,15 @@
 import os
-import re
 from datetime import timedelta
 
 import torch
 import numpy as np
-from gfs_archive_0_25.utils import prep_zeros_if_needed
 from wind_forecast.config.register import Config
-from wind_forecast.consts import SYNOP_DATASETS_DIRECTORY, NETCDF_FILE_REGEX
+from wind_forecast.consts import SYNOP_DATASETS_DIRECTORY
 from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset
 from wind_forecast.util.config import process_config
 from wind_forecast.util.utils import GFS_DATASET_DIR, date_from_gfs_np_file, initialize_mean_and_std, NormalizationType, \
-    initialize_min_max, initialize_mean_and_std_for_sequence, initialize_min_max_for_sequence, get_values_for_sequence
+    initialize_min_max, initialize_mean_and_std_for_sequence, initialize_min_max_for_sequence, get_values_for_sequence, \
+    initialize_list_IDs_for_sequence
 
 
 class MultiChannelSpatialDataset(torch.utils.data.Dataset):
@@ -26,7 +25,7 @@ class MultiChannelSpatialDataset(torch.utils.data.Dataset):
         self.sequence_length = sequence_length
 
         if self.sequence_length > 1:
-            self.initialize_list_IDs_for_sequence(list_IDs)
+            self.list_IDs = initialize_list_IDs_for_sequence(list_IDs, self.labels, self.train_parameters[0], self.target_param, self.sequence_length)
         else:
             self.list_IDs = list_IDs
 
@@ -42,27 +41,6 @@ class MultiChannelSpatialDataset(torch.utils.data.Dataset):
         self.normalize = normalize
         if normalize:
             self.normalize_data(config.experiment.normalization_type)
-
-    def initialize_list_IDs_for_sequence(self, list_IDs: [str]):
-        # filter out files, which are not continued by sufficient number of consecutive forecasts
-        new_list = []
-        list_IDs = sorted(list_IDs)
-        param = self.train_parameters[0]
-        for id in list_IDs:
-            date_matcher = re.match(NETCDF_FILE_REGEX, id)
-            offset = int(date_matcher.group(6))
-            exists = True
-            for frame in range(1, self.sequence_length):
-                new_id = id.replace(f"f{prep_zeros_if_needed(str(offset), 2)}",
-                                    f"f{prep_zeros_if_needed(str(offset + 3), 2)}")
-                if not os.path.exists(os.path.join(GFS_DATASET_DIR, param['name'], param['level'], new_id)):
-                    exists = False
-                    break
-                offset = offset + 3
-            if exists:
-                new_list.append(id)
-
-        self.list_IDs = new_list
 
     def normalize_data(self, normalization_type: NormalizationType):
         if normalization_type == NormalizationType.STANDARD:

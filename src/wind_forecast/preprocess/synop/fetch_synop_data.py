@@ -51,8 +51,8 @@ def download_list_of_station(dir = None):
         opened_file.close()
 
 
-def get_localisation_id(localisation_name: str, code_fallback, dir=Path(__file__).parent):
-    loc_data = pd.read_csv(os.path.join(dir, 'wykaz_stacji.csv'), encoding="latin-1",
+def get_localisation_id(localisation_name: str, code_fallback, dir):
+    loc_data = pd.read_csv(os.path.join(dir if dir is not None else Path(__file__).parent, 'wykaz_stacji.csv'), encoding="latin-1",
                            names=['unknown', 'city_name', 'meteo_code'],  dtype='str')
     loc_data['meteo_code'] = loc_data['meteo_code'].astype(int)
     row = loc_data.loc[loc_data['city_name'] == localisation_name]
@@ -160,7 +160,7 @@ if __name__ == "__main__":
     parser.add_argument('--localisation_name', help='Localisation name for which to get data', default=None, type=str)
     parser.add_argument('--code_fallback', help='Localisation code as a fallback if name is not found', default=None, type=int)
     parser.add_argument('--start_year', help='Start date for fetching data', type=int, default=2001)
-    parser.add_argument('--end_year', help='End date for fetching data', type=int, default=2021)
+    parser.add_argument('--end_year', help='End date for fetching data', type=int, default=2022)
 
     parser.add_argument('--plot_box_year', help='Year fow which create box plot for each month', type=int, default=2019)
 

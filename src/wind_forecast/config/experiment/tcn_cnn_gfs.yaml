@@ -1,0 +1,23 @@
+# Specific experiments settings
+# (default settings inherited from configs.experiment.ExperimentSettings)
+
+defaults:
+  - schema_experiment
+
+_tags_:
+  - TCN_CNN_GFS
+
+resume_checkpoint: ~
+
+datamodule:
+  _target_: wind_forecast.datamodules.MultiChannelSpatialSubregionSequenceDataModule.MultiChannelSpatialSubregionSequenceDataModule
+
+model:
+  _target_: wind_forecast.models.TCNWithCNNModel.TCNWithCNNModel
+
+system:
+  _target_: wind_forecast.systems.Regressor.Regressor
+
+sequence_length: 8
+tcn_input_features: 1600
+tcn_cnn_ff_input_dim: 512

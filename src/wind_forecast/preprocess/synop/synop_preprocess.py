@@ -30,7 +30,8 @@ def split_features_into_arrays(data, train_split, past_len, future_offset, y_col
     return x_data, y_data
 
 
-def prepare_synop_dataset(synop_file_name, features, norm=True, dataset_dir=os.path.join(Path(__file__).parent, 'synop_data'), from_year=2001, to_year=2021, normalization_type: NormalizationType = NormalizationType.STANDARD):
+def prepare_synop_dataset(synop_file_name, features, norm=True, dataset_dir=os.path.join(Path(__file__).parent, 'synop_data'),
+                          from_year=2001, to_year=2021, normalization_type: NormalizationType = NormalizationType.STANDARD):
     synop_file_path = os.path.join(dataset_dir, synop_file_name)
     if not os.path.exists(synop_file_path):
         raise Exception(f"Dataset not found. Looked for {synop_file_path}")

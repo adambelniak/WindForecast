@@ -18,6 +18,7 @@ from wind_forecast.consts import NETCDF_FILE_REGEX
 from wind_forecast.preprocess.synop.consts import SYNOP_FEATURES
 from wind_forecast.util.logging import log
 from enum import Enum
+import pandas as pd
 
 GFS_DATASET_DIR = os.environ['GFS_DATASET_DIR']
 
@@ -63,7 +64,7 @@ def declination_of_earth(date):
 
 
 def get_values_for_sequence(file_id, param, sequence_length, subregion_coords=None):
-    values = [np.load(os.path.join(GFS_DATASET_DIR, param['name'], param['level'], file_id))]
+    values = [get_subregion_from_GFS_slice_for_coords(np.load(os.path.join(GFS_DATASET_DIR, param['name'], param['level'], file_id)), subregion_coords)]
     date_matcher = re.match(NETCDF_FILE_REGEX, file_id)
     offset = int(date_matcher.group(6))
     for frame in range(1, sequence_length):
@@ -165,6 +166,34 @@ def initialize_mean_and_std_for_wind_target(list_IDs, dim):
     mean = sum / (len(list_IDs) * dim[0] * dim[1])
 
     return mean, math.sqrt(sqr_sum / (len(list_IDs) * dim[0] * dim[1]) - pow(mean, 2))
+
+
+def initialize_list_IDs_for_sequence(list_IDs: [str], labels: pd.DataFrame, one_of_train_parameters, target_param: str, sequence_length: int):
+    # filter out files, which are not continued by sufficient number of consecutive forecasts
+    new_list = []
+    list_IDs = sorted(list_IDs)
+    param = one_of_train_parameters
+    for id in list_IDs:
+        date_matcher = re.match(NETCDF_FILE_REGEX, id)
+        offset = int(date_matcher.group(6))
+        exists = True
+        for frame in range(1, sequence_length):
+            new_id = id.replace(f"f{prep_zeros_if_needed(str(offset), 2)}",
+                                f"f{prep_zeros_if_needed(str(offset + 3), 2)}")
+            # check if gfs file exists
+            if not os.path.exists(os.path.join(GFS_DATASET_DIR, param['name'], param['level'], new_id)):
+                exists = False
+                break
+            # check if synop label exists
+            if len(labels[labels["date"] == date_from_gfs_np_file(id) + timedelta(hours=offset + 3)][target_param]) == 0:
+                exists = False
+                break
+
+            offset = offset + 3
+        if exists:
+            new_list.append(id)
+
+    return new_list
 
 
 def get_nearest_lat_lon_from_coords(gfs_coords: [[float]], original_coords: Coords):

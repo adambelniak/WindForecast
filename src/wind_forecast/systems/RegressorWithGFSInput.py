@@ -10,6 +10,7 @@ from hydra.utils import instantiate
 from pytorch_lightning import LightningModule
 from pytorch_lightning.loggers.base import LoggerCollection
 from pytorch_lightning.loggers.wandb import WandbLogger
+from pytorch_lightning.metrics import MeanAbsoluteError
 from torch.optim.lr_scheduler import _LRScheduler
 from pytorch_lightning.metrics.regression.mean_squared_error import MeanSquaredError
 from rich import print
@@ -37,8 +38,11 @@ class RegressorWithGFSInput(pl.LightningModule):
 
         # Metrics
         self.train_mse = MeanSquaredError()
+        self.train_mae = MeanAbsoluteError()
         self.val_mse = MeanSquaredError()
+        self.val_mae = MeanAbsoluteError()
         self.test_mse = MeanSquaredError()
+        self.test_mae = MeanAbsoluteError()
         self.test_results = []
 
     # -----------------------------------------------------------------------------------------------
@@ -160,6 +164,7 @@ class RegressorWithGFSInput(pl.LightningModule):
         outputs = self.forward(inputs, gfs_inputs)
         loss = self.calculate_loss(outputs, targets.float())
         self.train_mse(outputs, targets)
+        self.train_mae(outputs, targets)
 
         return {
             'loss': loss,
@@ -180,9 +185,11 @@ class RegressorWithGFSInput(pl.LightningModule):
         metrics = {
             'epoch': float(step),
             'train_rmse': math.sqrt(float(self.train_mse.compute().item())),
+            'train_mae': float(self.train_mae.compute().item())
         }
 
         self.train_mse.reset()
+        self.train_mae.reset()
 
         # Average additional metrics over all batches
         for key in outputs[0]:
@@ -216,6 +223,7 @@ class RegressorWithGFSInput(pl.LightningModule):
         outputs = self.forward(inputs, gfs_inputs)
 
         self.val_mse(outputs, targets.float())
+        self.val_mae(outputs, targets.float())
 
         return {
             # 'additional_metric': ...
@@ -236,9 +244,11 @@ class RegressorWithGFSInput(pl.LightningModule):
         metrics = {
             'epoch': float(step),
             'val_rmse': math.sqrt(float(self.val_mse.compute().item())),
+            'val_mae': float(self.val_mae.compute().item())
         }
 
         self.val_mse.reset()
+        self.val_mae.reset()
 
         # Average additional metrics over all batches
         for key in outputs[0]:
@@ -270,6 +280,7 @@ class RegressorWithGFSInput(pl.LightningModule):
         outputs = self.forward(inputs, gfs_inputs)
 
         self.test_mse(outputs, targets.float())
+        self.test_mae(outputs, targets.float())
 
         return {'labels': targets,
                 'output': outputs}
@@ -288,9 +299,11 @@ class RegressorWithGFSInput(pl.LightningModule):
         metrics = {
             'epoch': float(step),
             'test_rmse': math.sqrt(float(self.test_mse.compute().item())),
+            'test_mae': float(self.test_mae.compute().item())
         }
 
         self.test_mse.reset()
+        self.test_mae.reset()
 
         # Average additional metrics over all batches
         # for key in outputs[0]:

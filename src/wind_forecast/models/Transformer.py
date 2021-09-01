@@ -5,6 +5,7 @@ from pytorch_lightning import LightningModule
 from torch import nn
 
 from wind_forecast.config.register import Config
+from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 
 
 class Time2Vec(nn.Module):
@@ -32,27 +33,6 @@ class Time2Vec(nn.Module):
         ret = torch.cat([torch.unsqueeze(bias, -1), wgts], -1)
         ret = torch.reshape(ret, (-1, inputs.shape[1] * (self.time2vec_dim + 1)))
         return ret
-
-
-class TimeDistributed(nn.Module):
-    def __init__(self, module, batch_first=False):
-        super(TimeDistributed, self).__init__()
-        self.module = module
-        self.batch_first = batch_first
-
-    def forward(self, x):
-        if len(x.size()) <= 2:
-            return self.module(x)
-
-        # Squash samples and timesteps into a single axis
-        x_reshape = x.contiguous().view(-1, x.size(-1))  # (samples * timesteps, input_size)
-        y = self.module(x_reshape)
-        # We have to reshape Y
-        if self.batch_first:
-            y = y.contiguous().view(x.size(0), -1, y.size(-1))  # (samples, timesteps, output_size)
-        else:
-            y = y.view(-1, x.size(1), y.size(-1))  # (timesteps, samples, output_size)
-        return y
 
 
 class PositionalEncoding(nn.Module):
