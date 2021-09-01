@@ -5,15 +5,15 @@ defaults:
   - schema_experiment
 
 _tags_:
-  - TRANSFORMER_RESPECTING_GFS_DATES
+  - TRANSFORMER_ENCODER
 
 resume_checkpoint: ~
 
 datamodule:
-  _target_: wind_forecast.datamodules.SequenceLimitedToGFSDatesDataModule.SequenceLimitedToGFSDatesDataModule
+  _target_: wind_forecast.datamodules.SequenceDataModule.SequenceDataModule
 
 model:
-  _target_: wind_forecast.models.Transformer.Transformer
+  _target_: wind_forecast.models.TransformerEncoder.TransformerEncoder
 
 system:
   _target_: wind_forecast.systems.Regressor.Regressor

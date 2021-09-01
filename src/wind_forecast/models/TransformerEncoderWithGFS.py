@@ -3,7 +3,7 @@ from pytorch_lightning import LightningModule
 from torch import nn
 
 from wind_forecast.config.register import Config
-from wind_forecast.models.Transformer import Time2Vec, PositionalEncoding, AttentionBlock, TimeDistributed
+from wind_forecast.models.TransformerEncoder import Time2Vec, PositionalEncoding, TimeDistributed
 
 
 class Transformer(LightningModule):
@@ -12,15 +12,20 @@ class Transformer(LightningModule):
         embed_dim = len(config.experiment.synop_train_features) * (config.experiment.time2vec_embedding_size + 1)
         self.time2vec = Time2Vec(config)
         self.pos_encoder = PositionalEncoding(embed_dim, config.experiment.dropout, config.experiment.sequence_length)
-        self.attention_layers = nn.Sequential(*[AttentionBlock(config) for _ in range(config.experiment.transformer_attention_layers)])
+        features_len = len(config.experiment.synop_train_features)
+        d_model = features_len * (config.experiment.time2vec_embedding_size + 1)
+        encoder_layer = nn.TransformerEncoderLayer(d_model=d_model, nhead=config.experiment.transformer_attention_heads,
+                                                   dim_feedforward=config.experiment.transformer_ff_dim,
+                                                   dropout=config.experiment.dropout,
+                                                   batch_first=True)
+        self.encoder = nn.TransformerEncoder(encoder_layer, config.experiment.transformer_attention_layers)
         self.linear = nn.Linear(in_features=embed_dim * config.experiment.sequence_length + 1, out_features=1)
         self.flatten = nn.Flatten()
 
     def forward(self, synop_input, gfs_input):
         time_embedding = TimeDistributed(self.time2vec, batch_first=True)(synop_input)
         x = torch.cat([synop_input, time_embedding], -1)
-        x = self.attention_layers(x)
-
+        x = self.encoder(x)
         x = self.flatten(x)  # flat vector of features out
 
         return torch.squeeze(self.linear(torch.cat((x, gfs_input.unsqueeze(-1)), dim=1)))
