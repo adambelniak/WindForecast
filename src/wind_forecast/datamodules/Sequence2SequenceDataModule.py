@@ -4,10 +4,10 @@ from pytorch_lightning import LightningDataModule
 from torch.utils.data import random_split, DataLoader
 
 from wind_forecast.config.register import Config
-from wind_forecast.datasets.SequenceDataset import SequenceDataset
+from wind_forecast.datasets.Sequence2SequenceDataset import Sequence2SequenceDataset
 
 
-class SequenceDataModule(LightningDataModule):
+class Sequence2SequenceDataModule(LightningDataModule):
 
     def __init__(
             self,
@@ -27,11 +27,11 @@ class SequenceDataModule(LightningDataModule):
 
     def setup(self, stage: Optional[str] = None):
         if stage in (None, 'fit'):
-            dataset = SequenceDataset(config=self.config, train=True)
+            dataset = Sequence2SequenceDataset(config=self.config, train=True)
             length = len(dataset)
             self.dataset_train, self.dataset_val = random_split(dataset, [length - (int(length * self.val_split)), int(length * self.val_split)])
         elif stage == 'test':
-            self.dataset_test = SequenceDataset(config=self.config, train=False)
+            self.dataset_test = Sequence2SequenceDataset(config=self.config, train=False)
 
     def train_dataloader(self):
         return DataLoader(self.dataset_train, batch_size=self.batch_size, shuffle=self.shuffle)

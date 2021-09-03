@@ -4,10 +4,7 @@ from pytorch_lightning import LightningDataModule
 from torch.utils.data import random_split, DataLoader
 
 from wind_forecast.config.register import Config
-from wind_forecast.datasets.SequenceWithGFSDataset import SequenceWithGFSDataset
 from wind_forecast.datasets.SingleGFSPointDataset import SingleGFSPointDataset
-from wind_forecast.util.config import process_config
-from wind_forecast.util.utils import get_available_numpy_files, target_param_to_gfs_name_level
 
 
 class SingleGFSPointDataModule(LightningDataModule):

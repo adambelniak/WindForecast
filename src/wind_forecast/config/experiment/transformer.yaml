@@ -1,0 +1,19 @@
+# Specific experiments settings
+# (default settings inherited from configs.experiment.ExperimentSettings)
+
+defaults:
+  - schema_experiment
+
+_tags_:
+  - TRANSFORMER
+
+resume_checkpoint: ~
+
+datamodule:
+  _target_: wind_forecast.datamodules.Sequence2SequenceDataModule.Sequence2SequenceDataModule
+
+model:
+  _target_: wind_forecast.models.Transformer.Transformer
+
+system:
+  _target_: wind_forecast.systems.S2SRegressor.S2SRegressor

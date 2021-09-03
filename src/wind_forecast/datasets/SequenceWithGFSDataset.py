@@ -42,7 +42,7 @@ class SequenceWithGFSDataset(torch.utils.data.Dataset):
 
         targets = [labels[i + self.sequence_length + self.prediction_offset - 1] for i in
                    range(labels.shape[0] - self.sequence_length - self.prediction_offset + 1)]
-        features = np.array(features).reshape((len(features), self.sequence_length, len(self.train_params)))
+        features = np.transpose(np.array(features), (0, 2, 1))
 
         self.features, self.gfs_data, self.targets = match_gfs_with_synop_sequence(features, targets,
                                                                                    self.target_coords[0],

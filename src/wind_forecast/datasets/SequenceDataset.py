@@ -24,7 +24,7 @@ class SequenceDataset(torch.utils.data.Dataset):
                          range(features.shape[0] - self.sequence_length - self.prediction_offset + 1)]
         self.targets = [labels[i + self.sequence_length + self.prediction_offset - 1].T for i in
                         range(labels.shape[0] - self.sequence_length - self.prediction_offset + 1)]
-        self.features = np.array(self.features).reshape((len(self.features), self.sequence_length, len(self.train_params)))
+        self.features = np.transpose(np.array(self.features), (0, 2, 1))
         assert len(self.features) == len(self.targets)
         length = len(self.targets)
         training_data = np.array(list(zip(self.features, self.targets))[:int(length * 0.8)])

@@ -18,7 +18,9 @@ class Transformer(LightningModule):
                                                    dim_feedforward=config.experiment.transformer_ff_dim,
                                                    dropout=config.experiment.dropout,
                                                    batch_first=True)
-        self.encoder = nn.TransformerEncoder(encoder_layer, config.experiment.transformer_attention_layers)
+        encoder_norm = nn.LayerNorm(d_model)
+        self.encoder = nn.TransformerEncoder(encoder_layer, config.experiment.transformer_attention_layers,
+                                             encoder_norm)
         self.linear = nn.Linear(in_features=embed_dim * config.experiment.sequence_length + 1, out_features=1)
         self.flatten = nn.Flatten()
 

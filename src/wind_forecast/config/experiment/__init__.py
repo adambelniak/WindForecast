@@ -86,6 +86,8 @@ class ExperimentSettings:
 
     sequence_length: int = 24
 
+    future_sequence_length: int = 24
+
     target_coords: List = field(default_factory=lambda: [52.1831174, 20.9875259])
 
     tcn_channels: List = field(default_factory=lambda: [64])
@@ -113,7 +115,3 @@ class ExperimentSettings:
     transformer_attention_layers: int = 6
 
     transformer_attention_heads: int = 2
-
-    # transformer_attention_kdim: int = 26
-
-    # transformer_attention_vdim: int = 26
