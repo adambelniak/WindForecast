@@ -37,6 +37,7 @@ class Transformer(LightningModule):
         self.time2vec = Time2Vec(config)
         self.sequence_length = config.experiment.sequence_length
         self.teacher_forcing_epoch_num = config.experiment.teacher_forcing_epoch_num
+        self.gradual_teacher_forcing = config.experiment.gradual_teacher_forcing
         dropout = config.experiment.dropout
         n_heads = config.experiment.transformer_attention_heads
         ff_dim = config.experiment.transformer_ff_dim
@@ -62,23 +63,46 @@ class Transformer(LightningModule):
         # input_time_embedding = TimeDistributed(self.time2vec, batch_first=True)(inputs)
         # x = torch.cat([inputs, input_time_embedding], -1)
         x = self.pos_encoder(inputs)
+        memory = self.encoder(x)
+
         if epoch < self.teacher_forcing_epoch_num and stage in [None, 'fit']:
             # Teacher forcing - masked targets as decoder inputs
             # targets_time_embedding = TimeDistributed(self.time2vec, batch_first=True)(targets)
             # y = torch.cat([targets, targets_time_embedding], -1)
-            y = self.pos_encoder(targets)
-            targets_shifted = torch.cat([torch.zeros([y.size()[0], 1, self.embed_dim], device=self.device), y], 1)[:, :-1, ]
-            target_mask = self.generate_square_subsequent_mask(self.sequence_length).to(self.device)
-            memory = self.encoder(x)
-            output = self.decoder(targets_shifted, memory, tgt_mask=target_mask)
+
+            if self.gradual_teacher_forcing:
+                first_taught = math.floor(epoch / self.teacher_forcing_epoch_num * self.sequence_length)
+                decoder_input = torch.zeros(x.size(0), 1, self.embed_dim, device=self.device)  # SOS
+                pred = None
+                for frame in range(first_taught):  # do normal prediction for the beginning frames
+                    y = self.pos_encoder(decoder_input)
+                    next_pred = self.decoder(y, memory)
+                    decoder_input = next_pred
+                    pred = next_pred if pred is None else torch.cat([pred, next_pred], 1)
+
+                # then, do teacher forcing
+                targets_shifted = torch.cat([torch.zeros(x.size(0), 1, self.embed_dim, device=self.device), targets], 1)[:, :-1, ]
+                y = self.pos_encoder(targets_shifted[:, first_taught:, :])
+                target_mask = self.generate_square_subsequent_mask(self.sequence_length - first_taught).to(self.device)
+                next_pred = self.decoder(y, memory, tgt_mask=target_mask)
+                output = next_pred if pred is None else torch.cat([pred, next_pred], 1)
+
+            else:
+                # non-gradual, just basic teacher forcing
+                y = self.pos_encoder(targets)
+                targets_shifted = torch.cat([torch.zeros([y.size()[0], 1, self.embed_dim], device=self.device), y], 1)[:, :-1, ]
+                target_mask = self.generate_square_subsequent_mask(self.sequence_length).to(self.device)
+                output = self.decoder(targets_shifted, memory, tgt_mask=target_mask)
+
         else:
             # inference - pass only predictions to decoder
-            targets = torch.zeros(x.size(0), 1, self.embed_dim, device=self.device)
-            memory = self.encoder(x)
-            for frame in range(inputs.size(1) - 1):
-                y = self.pos_encoder(targets)
-                pred = self.decoder(y, memory)
-                targets = torch.cat((targets, pred[:, -1:, :]), 1)
-            output = targets
+            decoder_input = torch.zeros(x.size(0), 1, self.embed_dim, device=self.device)  # SOS
+            pred = None
+            for frame in range(inputs.size(1)):
+                y = self.pos_encoder(decoder_input)
+                next_pred = self.decoder(y, memory)
+                decoder_input = next_pred
+                pred = next_pred if pred is None else torch.cat([pred, next_pred], 1)
+            output = pred
 
         return torch.squeeze(TimeDistributed(self.linear, batch_first=True)(output))
