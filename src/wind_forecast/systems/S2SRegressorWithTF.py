@@ -21,7 +21,7 @@ from wandb.sdk.wandb_run import Run
 from wind_forecast.config.register import Config
 
 
-class S2SRegressor(pl.LightningModule):
+class S2SRegressorWithTF(pl.LightningModule):
     def __init__(self, cfg: Config) -> None:
         super().__init__()  # type: ignore
 
@@ -115,8 +115,8 @@ class S2SRegressor(pl.LightningModule):
     # ----------------------------------------------------------------------------------------------
     # Forward
     # ----------------------------------------------------------------------------------------------
-    def forward(self, x: torch.Tensor, targets: torch.Tensor, stage) -> torch.Tensor:
-        return self.model(x.float(), targets.float(), stage)
+    def forward(self, x: torch.Tensor, targets: torch.Tensor, epoch, stage) -> torch.Tensor:
+        return self.model(x.float(), targets.float(), epoch, stage)
 
     # ----------------------------------------------------------------------------------------------
     # Loss
@@ -161,7 +161,7 @@ class S2SRegressor(pl.LightningModule):
             Metric values for a given batch.
         """
         inputs, all_targets, targets = batch
-        outputs = self.forward(inputs, all_targets, 'fit')
+        outputs = self.forward(inputs, all_targets, self.current_epoch, 'fit')
         loss = self.calculate_loss(outputs, targets.float())
         self.train_mse(outputs, targets)
         self.train_mae(outputs, targets)
@@ -220,7 +220,7 @@ class S2SRegressor(pl.LightningModule):
             Metric values for a given batch.
         """
         inputs, all_targets, targets = batch
-        outputs = self.forward(inputs, all_targets, 'test')
+        outputs = self.forward(inputs, all_targets, self.current_epoch, 'test')
 
         self.val_mse(outputs, targets.float())
         self.val_mae(outputs, targets.float())
@@ -277,7 +277,7 @@ class S2SRegressor(pl.LightningModule):
             Metric values for a given batch.
         """
         inputs, all_targets, targets = batch
-        outputs = self.forward(inputs, all_targets, 'test')
+        outputs = self.forward(inputs, all_targets, self.current_epoch, 'test')
 
         self.test_mse(outputs, targets.float())
         self.test_mae(outputs, targets.float())

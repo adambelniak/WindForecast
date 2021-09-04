@@ -114,4 +114,4 @@ class ExperimentSettings:
 
     transformer_attention_layers: int = 6
 
-    transformer_attention_heads: int = 2
+    transformer_attention_heads: int = 1

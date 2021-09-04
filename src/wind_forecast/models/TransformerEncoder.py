@@ -35,33 +35,11 @@ class Time2Vec(nn.Module):
         return ret
 
 
-class PositionalEncoding(nn.Module):
-    def __init__(self, d_model: int, dropout: float = 0.1, sequence_length: int = 24):
-        super().__init__()
-        self.dropout = nn.Dropout(p=dropout)
-
-        position = torch.arange(sequence_length).unsqueeze(1)
-        div_term = torch.exp(torch.arange(0, d_model, 2) * (-math.log(10000.0) / d_model))
-        pe = torch.zeros(1, sequence_length, d_model)
-        pe[0, :, 0::2] = torch.sin(position * div_term)
-        pe[0, :, 1::2] = torch.cos(position * div_term)[:,:d_model // 2]
-        self.register_buffer('pe', pe)
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Args:
-            x: Tensor, shape [batch_size, seq_len, embedding_dim]
-        """
-        x = torch.cat((x, self.pe.expand(x.shape)), -1)
-        return self.dropout(x)
-
-
 class TransformerEncoder(LightningModule):
     def __init__(self, config: Config):
         super().__init__()
         embed_dim = len(config.experiment.synop_train_features) * (config.experiment.time2vec_embedding_size + 1)
         self.time2vec = Time2Vec(config)
-        self.pos_encoder = PositionalEncoding(embed_dim, config.experiment.dropout, config.experiment.sequence_length)
         features_len = len(config.experiment.synop_train_features)
         d_model = features_len * (config.experiment.time2vec_embedding_size + 1)
         encoder_layer = nn.TransformerEncoderLayer(d_model=d_model, nhead=config.experiment.transformer_attention_heads,
