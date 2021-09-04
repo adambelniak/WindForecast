@@ -9,7 +9,6 @@ class LSTMModel(LightningModule):
 
     def __init__(self, config: Config):
         super(LSTMModel, self).__init__()
-        self.config = config
         input_size = len(config.experiment.synop_train_features)
         self.lstm = nn.LSTM(input_size=input_size, hidden_size=4*input_size*input_size, batch_first=True, dropout=0.5)
         self.dense = nn.Sequential(

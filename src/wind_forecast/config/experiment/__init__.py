@@ -108,6 +108,10 @@ class ExperimentSettings:
 
     dropout: float = 0.1
 
+    teacher_forcing_epoch_num: int = 10
+
+    gradual_teacher_forcing: bool = True
+
     time2vec_embedding_size: int = 5
 
     transformer_ff_dim: int = 1024

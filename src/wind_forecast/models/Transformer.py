@@ -36,6 +36,7 @@ class Transformer(LightningModule):
         self.embed_dim = features_len # * (config.experiment.time2vec_embedding_size + 1)
         self.time2vec = Time2Vec(config)
         self.sequence_length = config.experiment.sequence_length
+        self.teacher_forcing_epoch_num = config.experiment.teacher_forcing_epoch_num
         dropout = config.experiment.dropout
         n_heads = config.experiment.transformer_attention_heads
         ff_dim = config.experiment.transformer_ff_dim
@@ -57,16 +58,16 @@ class Transformer(LightningModule):
         mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
         return mask
 
-    def forward(self, inputs, targets, epoch: int, stage=None):
+    def forward(self, inputs: torch.Tensor, targets: torch.Tensor, epoch: int, stage=None) -> torch.Tensor:
         # input_time_embedding = TimeDistributed(self.time2vec, batch_first=True)(inputs)
         # x = torch.cat([inputs, input_time_embedding], -1)
         x = self.pos_encoder(inputs)
-        if epoch < 1 and stage in [None, 'fit']:
+        if epoch < self.teacher_forcing_epoch_num and stage in [None, 'fit']:
             # Teacher forcing - masked targets as decoder inputs
             # targets_time_embedding = TimeDistributed(self.time2vec, batch_first=True)(targets)
             # y = torch.cat([targets, targets_time_embedding], -1)
             y = self.pos_encoder(targets)
-            targets_shifted = torch.cat([y, torch.zeros([y.size()[0], 1, self.embed_dim], device=self.device)], 1)[:, :-1, ]
+            targets_shifted = torch.cat([torch.zeros([y.size()[0], 1, self.embed_dim], device=self.device), y], 1)[:, :-1, ]
             target_mask = self.generate_square_subsequent_mask(self.sequence_length).to(self.device)
             memory = self.encoder(x)
             output = self.decoder(targets_shifted, memory, tgt_mask=target_mask)
@@ -77,7 +78,7 @@ class Transformer(LightningModule):
             for frame in range(inputs.size(1) - 1):
                 y = self.pos_encoder(targets)
                 pred = self.decoder(y, memory)
-                targets = torch.cat((targets, pred[:, -1, :].unsqueeze(1)), 1)
+                targets = torch.cat((targets, pred[:, -1:, :]), 1)
             output = targets
 
         return torch.squeeze(TimeDistributed(self.linear, batch_first=True)(output))
