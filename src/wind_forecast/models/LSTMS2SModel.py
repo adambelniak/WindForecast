@@ -32,17 +32,17 @@ class LSTMS2SModel(LightningModule):
             # Teacher forcing
             pred = output[:, -1:, :] # first in pred sequence
             if self.gradual_teacher_forcing:
-                targets_shifted = targets[:, :-1, ]
-                first_taught = math.floor(epoch / self.teacher_forcing_epoch_num * self.sequence_length)
-                for frame in range(first_taught - 1): # do normal prediction for the beginning frames
+                targets_shifted = torch.cat([pred, targets[:, :-1, ]], 1)[:, :-1, :]
+                last_taught = math.floor((self.teacher_forcing_epoch_num - 1) / self.teacher_forcing_epoch_num * self.sequence_length)
+                # first, do teacher forcing
+                next_pred, _ = self.lstm1(targets_shifted[:, :last_taught, :])
+                next_pred, _ = self.lstm2(next_pred)
+                pred = torch.cat([pred, next_pred], 1)
+
+                for frame in range(last_taught, self.sequence_length - 1): # do normal prediction for the tail frames
                     next_pred, _ = self.lstm1(pred[:, -1:, :])
                     next_pred, _ = self.lstm2(next_pred)
                     pred = torch.cat([pred, next_pred], 1)
-
-                # then, do teacher forcing
-                next_pred, _ = self.lstm1(targets_shifted[:, first_taught:, :])
-                next_pred, _ = self.lstm2(next_pred)
-                pred = torch.cat([pred, next_pred], 1)
 
             else: # non-gradual, just basic teacher forcing
                 targets_shifted = torch.cat([pred, targets], 1)[:, :-1, ]
