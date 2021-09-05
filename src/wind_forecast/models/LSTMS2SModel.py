@@ -33,7 +33,7 @@ class LSTMS2SModel(LightningModule):
             pred = output[:, -1:, :] # first in pred sequence
             if self.gradual_teacher_forcing:
                 targets_shifted = torch.cat([pred, targets[:, :-1, ]], 1)[:, :-1, :]
-                last_taught = math.floor((self.teacher_forcing_epoch_num - 1) / self.teacher_forcing_epoch_num * self.sequence_length)
+                last_taught = math.floor((self.teacher_forcing_epoch_num - epoch) / self.teacher_forcing_epoch_num * self.sequence_length)
                 # first, do teacher forcing
                 next_pred, _ = self.lstm1(targets_shifted[:, :last_taught, :])
                 next_pred, _ = self.lstm2(next_pred)
