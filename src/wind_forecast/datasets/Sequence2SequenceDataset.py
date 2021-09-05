@@ -43,7 +43,7 @@ class Sequence2SequenceDataset(torch.utils.data.Dataset):
 
         length = len(self.all_targets)
         training_data = list(zip(zip(self.features, self.all_targets), self.targets))[:int(length * 0.8)]
-        test_data = list(zip(zip(self.features, self.all_targets), self.targets))[int(length * 0.8):]
+        test_data = list(zip(zip(self.features, self.all_targets), self.targets))[int(length * 0.8) + self.sequence_length - 1:]  # do not use any frame from train set in test set
         if train:
             data = training_data
         else:

@@ -33,7 +33,7 @@ class Transformer(LightningModule):
     def __init__(self, config: Config):
         super().__init__()
         features_len = len(config.experiment.synop_train_features)
-        self.embed_dim = features_len # * (config.experiment.time2vec_embedding_size + 1)
+        self.embed_dim = features_len * (config.experiment.time2vec_embedding_size + 1)
         self.time2vec = Time2Vec(config)
         self.sequence_length = config.experiment.sequence_length
         self.teacher_forcing_epoch_num = config.experiment.teacher_forcing_epoch_num
@@ -60,16 +60,13 @@ class Transformer(LightningModule):
         return mask
 
     def forward(self, inputs: torch.Tensor, targets: torch.Tensor, epoch: int, stage=None) -> torch.Tensor:
-        # input_time_embedding = TimeDistributed(self.time2vec, batch_first=True)(inputs)
-        # x = torch.cat([inputs, input_time_embedding], -1)
-        x = self.pos_encoder(inputs)
+        input_time_embedding = TimeDistributed(self.time2vec, batch_first=True)(inputs)
+        x = torch.cat([inputs, input_time_embedding], -1)
+        # x = self.pos_encoder(inputs)
         memory = self.encoder(x)
 
         if epoch < self.teacher_forcing_epoch_num and stage in [None, 'fit']:
             # Teacher forcing - masked targets as decoder inputs
-            # targets_time_embedding = TimeDistributed(self.time2vec, batch_first=True)(targets)
-            # y = torch.cat([targets, targets_time_embedding], -1)
-
             if self.gradual_teacher_forcing:
                 first_taught = math.floor(epoch / self.teacher_forcing_epoch_num * self.sequence_length)
                 decoder_input = torch.zeros(x.size(0), 1, self.embed_dim, device=self.device)  # SOS
@@ -81,26 +78,30 @@ class Transformer(LightningModule):
                     pred = next_pred if pred is None else torch.cat([pred, next_pred], 1)
 
                 # then, do teacher forcing
-                targets_shifted = torch.cat([torch.zeros(x.size(0), 1, self.embed_dim, device=self.device), targets], 1)[:, :-1, ]
-                y = self.pos_encoder(targets_shifted[:, first_taught:, :])
+                targets_time_embedding = TimeDistributed(self.time2vec, batch_first=True)(targets)
+                targets = torch.cat([targets, targets_time_embedding], -1)
+                y = torch.cat([torch.zeros(x.size(0), 1, self.embed_dim, device=self.device), targets], 1)[:, first_taught:-1, ]
+                # y = self.pos_encoder(targets_shifted[:, first_taught:, :])
                 target_mask = self.generate_square_subsequent_mask(self.sequence_length - first_taught).to(self.device)
                 next_pred = self.decoder(y, memory, tgt_mask=target_mask)
                 output = next_pred if pred is None else torch.cat([pred, next_pred], 1)
 
             else:
                 # non-gradual, just basic teacher forcing
-                y = self.pos_encoder(targets)
-                targets_shifted = torch.cat([torch.zeros([y.size()[0], 1, self.embed_dim], device=self.device), y], 1)[:, :-1, ]
+                # y = self.pos_encoder(targets)
+                targets_time_embedding = TimeDistributed(self.time2vec, batch_first=True)(targets)
+                targets = torch.cat([targets, targets_time_embedding], -1)
+                y = torch.cat([torch.zeros(x.size(0), 1, self.embed_dim, device=self.device), targets], 1)[:, :-1, ]
                 target_mask = self.generate_square_subsequent_mask(self.sequence_length).to(self.device)
-                output = self.decoder(targets_shifted, memory, tgt_mask=target_mask)
+                output = self.decoder(y, memory, tgt_mask=target_mask)
 
         else:
             # inference - pass only predictions to decoder
             decoder_input = torch.zeros(x.size(0), 1, self.embed_dim, device=self.device)  # SOS
             pred = None
             for frame in range(inputs.size(1)):
-                y = self.pos_encoder(decoder_input)
-                next_pred = self.decoder(y, memory)
+                # y = self.pos_encoder(decoder_input)
+                next_pred = self.decoder(decoder_input, memory)
                 decoder_input = next_pred
                 pred = next_pred if pred is None else torch.cat([pred, next_pred], 1)
             output = pred
