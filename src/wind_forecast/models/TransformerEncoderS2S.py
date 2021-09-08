@@ -21,14 +21,14 @@ class TransformerEncoderS2S(LightningModule):
                                                    batch_first=True)
         encoder_norm = nn.LayerNorm(d_model)
         self.encoder = nn.TransformerEncoder(encoder_layer, config.experiment.transformer_attention_layers, encoder_norm)
-        self.linear = nn.Linear(in_features=embed_dim * config.experiment.sequence_length, out_features=config.experiment.sequence_length)
+        self.linear = nn.Linear(in_features=embed_dim, out_features=1)
         self.flatten = nn.Flatten()
 
     def forward(self, inputs, targets: torch.Tensor, epoch: int, stage=None):
         time_embedding = TimeDistributed(self.time2vec, batch_first=True)(inputs)
         x = torch.cat([inputs, time_embedding], -1)
         x = self.encoder(x)
-        x = self.flatten(x)  # flat vector of features out
+        # x = self.flatten(x)  # flat vector of features out
 
-        return torch.squeeze(self.linear(x))
+        return torch.squeeze(TimeDistributed(self.linear, batch_first=True)(x))
 
