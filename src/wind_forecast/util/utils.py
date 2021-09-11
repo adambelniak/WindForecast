@@ -271,13 +271,14 @@ def initialize_CMAX_list_IDs_and_synop_dates_for_sequence(cmax_IDs: [str], label
     return new_list_IDs, synop_dates
 
 
-def get_correct_dates_for_sequence(labels: pd.DataFrame, sequence_length: int, future_sequence_length: int):
+def get_correct_dates_for_sequence(labels: pd.DataFrame, sequence_length: int, future_sequence_length: int, prediction_offset: int):
     """
     Takes DataFrame of synop observations and extracts these dates, which have consecutive sequence of length sequence_length + future_sequence_length
     :param labels:
     :param sequence_length:
     :param future_sequence_length:
     :param target_param:
+    :param prediction_offset:
     :return:
     """
     synop_dates = []
@@ -290,7 +291,7 @@ def get_correct_dates_for_sequence(labels: pd.DataFrame, sequence_length: int, f
             synop_dates.append(date)
         else:
             # there is no next frame, so the sequence is broken. Remove past frames
-            for frame in range(1, sequence_length + future_sequence_length):
+            for frame in range(1, sequence_length + future_sequence_length + prediction_offset):
                 hours = timedelta(hours=frame)
                 local_date_to_remove = date - hours
                 synop_dates.remove(local_date_to_remove)

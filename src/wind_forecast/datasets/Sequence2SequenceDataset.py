@@ -17,9 +17,8 @@ class Sequence2SequenceDataset(torch.utils.data.Dataset):
         synop_data_indices = self.synop_data[self.synop_data["date"].isin(dates)].index
         target_param_index = [x[1] for x in self.train_params].index(self.target_param)
 
-        self.features = [
-            self.synop_data.iloc[index:index + self.sequence_length][list(list(zip(*self.train_params))[1])].to_numpy()
-            for index in tqdm(synop_data_indices)]
+        self.features = [self.synop_data.iloc[index:index + self.sequence_length][list(list(zip(*self.train_params))[1])].to_numpy()
+                                for index in tqdm(synop_data_indices)]
 
         self.all_targets = [self.synop_data.iloc[
                             index + self.sequence_length + self.prediction_offset:index + self.sequence_length + self.prediction_offset + self.future_sequence_length][

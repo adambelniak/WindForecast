@@ -7,6 +7,7 @@ from wind_forecast.config.register import Config
 from wind_forecast.consts import SYNOP_DATASETS_DIRECTORY
 from wind_forecast.datasets.SequenceDataset import SequenceDataset
 from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset
+from wind_forecast.util.utils import get_correct_dates_for_sequence
 
 
 class SequenceDataModule(LightningDataModule):
@@ -26,24 +27,30 @@ class SequenceDataModule(LightningDataModule):
         self.synop_file = config.experiment.synop_file
         self.train_params = config.experiment.synop_train_features
         self.target_param = config.experiment.target_parameter
-        self.labels, self.label_mean, self.label_std = prepare_synop_dataset(self.synop_file,
-                                                                             list(list(zip(*self.train_params))[1]),
-                                                                             dataset_dir=SYNOP_DATASETS_DIRECTORY)
+        self.sequence_length = config.experiment.sequence_length
+        self.future_sequence_length = config.experiment.future_sequence_length
+        self.labels, synop_feature_1, synop_feature_2 = prepare_synop_dataset(self.synop_file,
+                                                                              list(list(zip(*self.train_params))[1]),
+                                                                              dataset_dir=SYNOP_DATASETS_DIRECTORY,
+                                                                              from_year=config.experiment.synop_from_year)
+
+        self.dates = get_correct_dates_for_sequence(self.labels, self.sequence_length, 1,
+                                                    config.experiment.prediction_offset)
 
         target_param_index = [x[1] for x in self.train_params].index(self.target_param)
-        print(self.label_mean[target_param_index])
-        print(self.label_std[target_param_index])
+        print(synop_feature_1[target_param_index])
+        print(synop_feature_2[target_param_index])
 
     def prepare_data(self, *args, **kwargs):
         pass
 
     def setup(self, stage: Optional[str] = None):
         if stage in (None, 'fit'):
-            dataset = SequenceDataset(config=self.config, labels=self.labels, train=True)
+            dataset = SequenceDataset(config=self.config, synop_data=self.labels, dates=self.dates, train=True)
             length = len(dataset)
             self.dataset_train, self.dataset_val = random_split(dataset, [length - (int(length * self.val_split)), int(length * self.val_split)])
         elif stage == 'test':
-            self.dataset_test = SequenceDataset(config=self.config, labels=self.labels, train=False)
+            self.dataset_test = SequenceDataset(config=self.config, synop_data=self.labels, dates=self.dates, train=False)
 
     def train_dataloader(self):
         return DataLoader(self.dataset_train, batch_size=self.batch_size, shuffle=self.shuffle)
