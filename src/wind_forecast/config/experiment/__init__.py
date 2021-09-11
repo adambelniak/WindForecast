@@ -119,3 +119,5 @@ class ExperimentSettings:
     transformer_attention_layers: int = 6
 
     transformer_attention_heads: int = 1
+
+    cmax_sample_size: (int, int) = (900, 900)

@@ -4,30 +4,22 @@ from datetime import timedelta
 import torch
 import numpy as np
 from wind_forecast.config.register import Config
-from wind_forecast.consts import SYNOP_DATASETS_DIRECTORY
-from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset
 from wind_forecast.util.config import process_config
 from wind_forecast.util.utils import GFS_DATASET_DIR, date_from_gfs_np_file, initialize_mean_and_std, NormalizationType, \
-    initialize_min_max, initialize_mean_and_std_for_sequence, initialize_min_max_for_sequence, get_values_for_sequence, \
-    initialize_list_IDs_for_sequence
+    initialize_min_max, initialize_mean_and_std_for_sequence, initialize_min_max_for_sequence, get_values_for_sequence
 
 
 class MultiChannelSpatialDataset(torch.utils.data.Dataset):
     'Characterizes a dataset for PyTorch'
-    def __init__(self, config: Config, list_IDs, train=True, normalize=True, sequence_length=1):
+    def __init__(self, config: Config, train_IDs, labels, train=True, normalize=True):
         self.train_parameters = process_config(config.experiment.train_parameters_config_file)
         self.target_param = config.experiment.target_parameter
-        self.synop_file = config.experiment.synop_file
-        self.labels, self.label_mean, self.label_std = prepare_synop_dataset(self.synop_file, [self.target_param], dataset_dir=SYNOP_DATASETS_DIRECTORY)
+        self.labels = labels
         self.dim = config.experiment.cnn_input_size
         self.channels = len(self.train_parameters)
         self.normalization_type = config.experiment.normalization_type
-        self.sequence_length = sequence_length
-
-        if self.sequence_length > 1:
-            self.list_IDs = initialize_list_IDs_for_sequence(list_IDs, self.labels, self.train_parameters[0], self.target_param, self.sequence_length)
-        else:
-            self.list_IDs = list_IDs
+        self.sequence_length = config.experiment.sequence_length
+        self.list_IDs = train_IDs
 
         length = len(self.list_IDs)
         training_data, test_data = self.list_IDs[:int(length * 0.8)], self.list_IDs[int(length * 0.8):]

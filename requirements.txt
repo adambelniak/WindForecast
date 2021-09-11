@@ -29,3 +29,4 @@ pytorch-lightning==1.2.8
 rich
 hydra-configs-pytorch-lightning
 setproctitle
+h5py

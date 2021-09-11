@@ -4,9 +4,11 @@ from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader, random_split
 
 from wind_forecast.config.register import Config
+from wind_forecast.consts import SYNOP_DATASETS_DIRECTORY
 from wind_forecast.datasets.MultiChannelSpatialDataset import MultiChannelSpatialDataset
+from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset
 from wind_forecast.util.config import process_config
-from wind_forecast.util.utils import get_available_numpy_files
+from wind_forecast.util.utils import get_available_numpy_files, initialize_GFS_list_IDs_for_sequence
 
 
 class MultiChannelSpatialSequenceDataModule(LightningDataModule):
@@ -26,19 +28,27 @@ class MultiChannelSpatialSequenceDataModule(LightningDataModule):
         self.train_parameters = process_config(config.experiment.train_parameters_config_file)
         self.prediction_offset = config.experiment.prediction_offset
         self.gfs_dataset_dir = config.experiment.gfs_dataset_dir
-
-        self.IDs = get_available_numpy_files(self.train_parameters, self.prediction_offset, self.gfs_dataset_dir)
+        self.synop_file = config.experiment.synop_file
+        self.target_param = config.experiment.target_parameter
+        self.sequence_length = config.experiment.sequence_length
+        self.labels, self.label_mean, self.label_std = prepare_synop_dataset(self.synop_file, [self.target_param],
+                                                                             dataset_dir=SYNOP_DATASETS_DIRECTORY)
+        available_ids = get_available_numpy_files(self.train_parameters, self.prediction_offset, self.gfs_dataset_dir)
+        self.IDs = initialize_GFS_list_IDs_for_sequence(available_ids, self.labels, self.train_parameters[0],
+                                                        self.target_param,
+                                                        self.sequence_length)
 
     def prepare_data(self, *args, **kwargs):
         pass
 
     def setup(self, stage: Optional[str] = None):
         if stage in (None, 'fit'):
-            dataset = MultiChannelSpatialDataset(config=self.config, list_IDs=self.IDs, train=True, sequence_length=self.config.experiment.sequence_length)
+            dataset = MultiChannelSpatialDataset(config=self.config, train_IDs=self.IDs, labels=self.labels, train=True)
             length = len(dataset)
-            self.dataset_train, self.dataset_val = random_split(dataset, [length - (int(length * self.val_split)), int(length * self.val_split)])
+            self.dataset_train, self.dataset_val = random_split(dataset, [length - (int(length * self.val_split)),
+                                                                          int(length * self.val_split)])
         elif stage == 'test':
-            self.dataset_test = MultiChannelSpatialDataset(config=self.config, list_IDs=self.IDs, train=False, sequence_length=self.config.experiment.sequence_length)
+            self.dataset_test = MultiChannelSpatialDataset(config=self.config, train_IDs=self.IDs, labels=self.labels, train=False)
 
     def train_dataloader(self):
         return DataLoader(self.dataset_train, batch_size=self.batch_size, shuffle=self.shuffle)
@@ -48,4 +58,3 @@ class MultiChannelSpatialSequenceDataModule(LightningDataModule):
 
     def test_dataloader(self):
         return DataLoader(self.dataset_test, batch_size=self.batch_size)
-

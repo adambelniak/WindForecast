@@ -21,6 +21,8 @@ from enum import Enum
 import pandas as pd
 
 GFS_DATASET_DIR = os.environ['GFS_DATASET_DIR']
+CMAX_DATASET_DIR = os.environ['CMAX_DATASET_DIR']
+CMAX_DATASET_DIR = 'data' if CMAX_DATASET_DIR is None else CMAX_DATASET_DIR
 
 
 def convert_wind(single_gfs, u_wind_label, v_wind_label):
@@ -43,6 +45,11 @@ def get_available_numpy_files(features, offset, directory):
         result = np.intersect1d(result, np.array(files)) if result is not None else np.array(files)
 
     return result.tolist()
+
+
+def get_available_hdf_files_cmax():
+    matcher = re.compile(rf"\d{12,}dBZ\.cmax\.h5")
+    return [f.name for f in os.scandir(CMAX_DATASET_DIR) if matcher.match(f.name)]
 
 
 def date_from_gfs_np_file(filename):
@@ -75,6 +82,32 @@ def get_values_for_sequence(file_id, param, sequence_length, subregion_coords=No
             val = get_subregion_from_GFS_slice_for_coords(val, subregion_coords)
         values.append(val)
     return values
+
+
+def initialize_mean_and_std_cmax(list_IDs, dim: (int, int)):
+    log.info("Calculating std and mean for a dataset")
+    sum, sqr_sum = 0, 0
+    for id in tqdm(list_IDs):
+        values = np.load(os.path.join(CMAX_DATASET_DIR, id))
+        sum += np.sum(values)
+        sqr_sum += np.sum(np.power(values, 2))
+
+    mean = sum / (len(list_IDs) * dim[0] * dim[1])
+    std = math.sqrt(sqr_sum / (len(list_IDs) * dim[0] * dim[1]) - pow(mean, 2))
+
+    return mean, std
+
+
+def initialize_min_max_cmax(list_IDs: [str]):
+    log.info("Calculating min and max for a dataset")
+
+    min, max = sys.float_info.max, sys.float_info.min
+    for id in list_IDs:
+        values = np.load(os.path.join(CMAX_DATASET_DIR, id))
+        min = min(values, min)
+        max = max(values, max)
+
+    return min, max
 
 
 def initialize_mean_and_std(list_IDs, train_parameters, dim: (int, int), subregion_coords=None):
@@ -168,7 +201,7 @@ def initialize_mean_and_std_for_wind_target(list_IDs, dim):
     return mean, math.sqrt(sqr_sum / (len(list_IDs) * dim[0] * dim[1]) - pow(mean, 2))
 
 
-def initialize_list_IDs_for_sequence(list_IDs: [str], labels: pd.DataFrame, one_of_train_parameters, target_param: str, sequence_length: int):
+def initialize_GFS_list_IDs_for_sequence(list_IDs: [str], labels: pd.DataFrame, one_of_train_parameters, target_param: str, sequence_length: int):
     # filter out files, which are not continued by sufficient number of consecutive forecasts
     new_list = []
     list_IDs = sorted(list_IDs)
@@ -194,6 +227,11 @@ def initialize_list_IDs_for_sequence(list_IDs: [str], labels: pd.DataFrame, one_
             new_list.append(id)
 
     return new_list
+
+
+def initialize_CMAX_list_IDs_for_sequence(list_IDs: [str], labels: pd.DataFrame, target_param: str, sequence_length: int):
+    # TODO
+    pass
 
 
 def get_nearest_lat_lon_from_coords(gfs_coords: [[float]], original_coords: Coords):
