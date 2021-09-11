@@ -14,7 +14,7 @@ from gfs_archive_0_25.gfs_processor.Coords import Coords
 from gfs_archive_0_25.gfs_processor.consts import FINAL_NUMPY_FILENAME_FORMAT
 from gfs_archive_0_25.utils import prep_zeros_if_needed, get_nearest_coords
 from gfs_common.common import GFS_SPACE
-from wind_forecast.consts import NETCDF_FILE_REGEX
+from wind_forecast.consts import NETCDF_FILE_REGEX, CMAX_FILENAME_FORMAT
 from wind_forecast.preprocess.synop.consts import SYNOP_FEATURES
 from wind_forecast.util.logging import log
 from enum import Enum
@@ -34,6 +34,11 @@ def convert_wind(single_gfs, u_wind_label, v_wind_label):
 
 def utc_to_local(date):
     return date.replace(tzinfo=pytz.utc).astimezone(pytz.timezone('Europe/Warsaw')).replace(tzinfo=None)
+
+
+def local_to_utc(date):
+    timestamp = float(date.astimezone(pytz.timezone('Europe/Warsaw')).strftime("%s"))
+    return datetime.utcfromtimestamp(timestamp)
 
 
 def get_available_numpy_files(features, offset, directory):
@@ -229,9 +234,68 @@ def initialize_GFS_list_IDs_for_sequence(list_IDs: [str], labels: pd.DataFrame, 
     return new_list
 
 
-def initialize_CMAX_list_IDs_for_sequence(list_IDs: [str], labels: pd.DataFrame, target_param: str, sequence_length: int):
-    # TODO
-    pass
+def get_cmax_filename(date: datetime):
+    return CMAX_FILENAME_FORMAT.format(date.year, prep_zeros_if_needed(str(date.month), 1),
+                                                prep_zeros_if_needed(str(date.day), 1),
+                                                prep_zeros_if_needed(str(date.hour), 1),
+                                                prep_zeros_if_needed(str(date.minute), 1))
+
+
+def initialize_CMAX_list_IDs_and_synop_dates_for_sequence(cmax_IDs: [str], labels: pd.DataFrame, target_param: str, sequence_length: int, future_seq_length: int):
+    new_list_IDs = []
+    synop_dates = []
+    one_hour = timedelta(hours=1)
+    for date in labels["date"]:
+        utc_date = local_to_utc(date)
+        cmax_filename = get_cmax_filename(utc_date)
+
+        if cmax_filename in cmax_IDs:
+            next_utc_date = utc_date + one_hour
+            next_local_date = date + one_hour
+            next_cmax_filename = get_cmax_filename(next_utc_date)
+
+            if len(labels[labels["date"] == next_local_date][target_param]) > 0 and next_cmax_filename in cmax_IDs:
+                # next frame exists, so the sequence is continued
+                new_list_IDs.append(cmax_filename)
+                synop_dates.append(date)
+            else:
+                # there is no next frame, so the sequence is broken. Remove past frames
+                for frame in range(1, sequence_length + future_seq_length):
+                    hours = timedelta(hours=frame)
+                    utc_date_to_remove = utc_date - hours
+                    cmax_filename_to_remove = get_cmax_filename(utc_date_to_remove)
+                    new_list_IDs.remove(new_list_IDs.index(cmax_filename_to_remove))
+                    local_date_to_remove = date - hours
+                    synop_dates.remove(local_date_to_remove)
+
+    return new_list_IDs, synop_dates
+
+
+def get_correct_dates_for_sequence(labels: pd.DataFrame, sequence_length: int, future_sequence_length: int):
+    """
+    Takes DataFrame of synop observations and extracts these dates, which have consecutive sequence of length sequence_length + future_sequence_length
+    :param labels:
+    :param sequence_length:
+    :param future_sequence_length:
+    :param target_param:
+    :return:
+    """
+    synop_dates = []
+    one_hour = timedelta(hours=1)
+    for date in tqdm(labels["date"]):
+        next_local_date = date + one_hour
+
+        if len(labels[labels["date"] == next_local_date]) > 0:
+            # next frame exists, so the sequence is continued
+            synop_dates.append(date)
+        else:
+            # there is no next frame, so the sequence is broken. Remove past frames
+            for frame in range(1, sequence_length + future_sequence_length):
+                hours = timedelta(hours=frame)
+                local_date_to_remove = date - hours
+                synop_dates.remove(local_date_to_remove)
+
+    return synop_dates
 
 
 def get_nearest_lat_lon_from_coords(gfs_coords: [[float]], original_coords: Coords):

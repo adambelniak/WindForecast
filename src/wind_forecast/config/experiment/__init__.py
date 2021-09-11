@@ -64,6 +64,8 @@ class ExperimentSettings:
 
     synop_file: str = "KOZIENICE_488_data.csv"
 
+    synop_from_year: int = 2019
+
     target_parameter: str = "temperature"
 
     prediction_offset: int = 3
@@ -120,4 +122,4 @@ class ExperimentSettings:
 
     transformer_attention_heads: int = 1
 
-    cmax_sample_size: (int, int) = (900, 900)
+    cmax_sample_size: Any = (900, 900)
