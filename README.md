@@ -6,6 +6,7 @@ using LSTM, ResNet etc. and some data analysis tools.
 Seed for the analysis consists of:
  * GFS 0.25° archive forecasts from https://rda.ucar.edu
  * Synop reports from ground stations (https://danepubliczne.imgw.pl/)
+ * Maximum Reflectivity images (CMAX) (https://danepubliczne.imgw.pl/datastore) 
  * (not yet) Satelite images (pl.sat24.com, probably some more sources in the future)
 
 The flow of getting GFS archive data is described in gfs-archive-0-25 module.
