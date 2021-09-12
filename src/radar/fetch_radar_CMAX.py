@@ -59,7 +59,7 @@ def extract_zip(date: datetime.datetime):
 
 
 def get_all_zips():
-    date = datetime.datetime(2019, 2, 17)
+    date = datetime.datetime(2019, 11, 17)
 
     while date != datetime.datetime(2021, 9, 5):
         print(f"Fetching zip for date {date.strftime('%Y-%m-%d')}")

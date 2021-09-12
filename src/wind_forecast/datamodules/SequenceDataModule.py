@@ -29,17 +29,13 @@ class SequenceDataModule(LightningDataModule):
         self.target_param = config.experiment.target_parameter
         self.sequence_length = config.experiment.sequence_length
         self.future_sequence_length = config.experiment.future_sequence_length
-        self.labels, synop_feature_1, synop_feature_2 = prepare_synop_dataset(self.synop_file,
-                                                                              list(list(zip(*self.train_params))[1]),
-                                                                              dataset_dir=SYNOP_DATASETS_DIRECTORY,
-                                                                              from_year=config.experiment.synop_from_year)
+        self.labels, _, _ = prepare_synop_dataset(self.synop_file, list(list(zip(*self.train_params))[1]),
+                                                  dataset_dir=SYNOP_DATASETS_DIRECTORY,
+                                                  from_year=config.experiment.synop_from_year,
+                                                  norm=False)
 
         self.dates = get_correct_dates_for_sequence(self.labels, self.sequence_length, 1,
                                                     config.experiment.prediction_offset)
-
-        target_param_index = [x[1] for x in self.train_params].index(self.target_param)
-        print(synop_feature_1[target_param_index])
-        print(synop_feature_2[target_param_index])
 
     def prepare_data(self, *args, **kwargs):
         pass
@@ -48,9 +44,11 @@ class SequenceDataModule(LightningDataModule):
         if stage in (None, 'fit'):
             dataset = SequenceDataset(config=self.config, synop_data=self.labels, dates=self.dates, train=True)
             length = len(dataset)
-            self.dataset_train, self.dataset_val = random_split(dataset, [length - (int(length * self.val_split)), int(length * self.val_split)])
+            self.dataset_train, self.dataset_val = random_split(dataset, [length - (int(length * self.val_split)),
+                                                                          int(length * self.val_split)])
         elif stage == 'test':
-            self.dataset_test = SequenceDataset(config=self.config, synop_data=self.labels, dates=self.dates, train=False)
+            self.dataset_test = SequenceDataset(config=self.config, synop_data=self.labels, dates=self.dates,
+                                                train=False)
 
     def train_dataloader(self):
         return DataLoader(self.dataset_train, batch_size=self.batch_size, shuffle=self.shuffle)

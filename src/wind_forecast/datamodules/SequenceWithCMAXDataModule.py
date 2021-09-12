@@ -9,7 +9,8 @@ from wind_forecast.datasets.CMAXDataset import CMAXDataset
 from wind_forecast.datasets.ConcatDatasets import ConcatDatasets
 from wind_forecast.datasets.SequenceDataset import SequenceDataset
 from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset
-from wind_forecast.util.utils import get_available_hdf_files_cmax, initialize_CMAX_list_IDs_and_synop_dates_for_sequence
+from wind_forecast.util.utils import get_available_hdf_files_cmax, \
+    initialize_CMAX_list_IDs_and_synop_dates_for_sequence, get_correct_dates_for_sequence
 
 
 class SequenceWithCMAXDataModule(LightningDataModule):
@@ -27,29 +28,31 @@ class SequenceWithCMAXDataModule(LightningDataModule):
         self.dataset_val = ...
         self.dataset_test = ...
 
-        self.target_param = config.experiment.target_parameter
         self.sequence_length = config.experiment.sequence_length
         self.synop_file = config.experiment.synop_file
         self.train_params = config.experiment.synop_train_features
-        self.labels, self.label_mean, self.label_std = prepare_synop_dataset(self.synop_file, list(list(zip(*self.train_params))[1]), dataset_dir=SYNOP_DATASETS_DIRECTORY, from_year=config.experiment.synop_from_year)
+        self.labels, _, _ = prepare_synop_dataset(self.synop_file, list(list(zip(*self.train_params))[1]),
+                                                                              dataset_dir=SYNOP_DATASETS_DIRECTORY,
+                                                                              from_year=config.experiment.synop_from_year,
+                                                                              norm=False)
 
-        target_param_index = [x[1] for x in self.train_params].index(self.target_param)
-        print(self.label_mean[target_param_index])
-        print(self.label_std[target_param_index])
+        self.dates = get_correct_dates_for_sequence(self.labels, self.sequence_length, 1,
+                                                    config.experiment.prediction_offset)
+
         available_ids = get_available_hdf_files_cmax()
-        self.cmax_IDs, self.dates = initialize_CMAX_list_IDs_and_synop_dates_for_sequence(available_ids, self.labels, self.target_param, self.sequence_length, config.experiment.future_sequence_length)
+        self.cmax_IDs, self.dates = initialize_CMAX_list_IDs_and_synop_dates_for_sequence(available_ids, self.dates, self.sequence_length, config.experiment.future_sequence_length)
 
     def prepare_data(self, *args, **kwargs):
         pass
 
     def setup(self, stage: Optional[str] = None):
         if stage in (None, 'fit'):
-            dataset = ConcatDatasets(SequenceDataset(config=self.config, labels=self.labels, train=True), CMAXDataset(config=self.config, train_IDs=self.cmax_IDs, train=True, normalize=True))
+            dataset = ConcatDatasets(SequenceDataset(config=self.config, synop_data=self.labels, dates=self.dates, train=True), CMAXDataset(config=self.config, train_IDs=self.cmax_IDs, train=True, normalize=True))
             length = len(dataset)
             self.dataset_train, self.dataset_val = random_split(dataset, [length - (int(length * self.val_split)),
                                                                           int(length * self.val_split)])
         elif stage == 'test':
-            self.dataset_test = ConcatDatasets(SequenceDataset(config=self.config, labels=self.labels, train=False), CMAXDataset(config=self.config, train_IDs=self.cmax_IDs, train=False, normalize=True))
+            self.dataset_test = ConcatDatasets(SequenceDataset(config=self.config, synop_data=self.labels, dates=self.dates, train=False), CMAXDataset(config=self.config, train_IDs=self.cmax_IDs, train=False, normalize=True))
 
     def train_dataloader(self):
         return DataLoader(self.dataset_train, batch_size=self.batch_size, shuffle=self.shuffle)

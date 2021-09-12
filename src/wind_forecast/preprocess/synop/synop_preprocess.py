@@ -52,5 +52,17 @@ def prepare_synop_dataset(synop_file_name, features, norm=True, dataset_dir=os.p
     return data, 0, 0
 
 
+def normalize_synop_data(all_synop_data: pd.DataFrame, synop_data_indices: [int], features, length_of_sequence, normalization_type: NormalizationType = NormalizationType.STANDARD):
+    all_indices = set([item for sublist in [[index + frame for frame in range(0, length_of_sequence)] for index in synop_data_indices] for item in sublist])
+    all_relevant_labels = all_synop_data.take(list(all_indices))
+    _, mean_or_min, std_or_max = normalize(all_relevant_labels[features].values, normalization_type)
+    if normalization_type == NormalizationType.STANDARD:
+        all_synop_data[features] = (all_synop_data[features].values - mean_or_min) / std_or_max
+        return all_synop_data, mean_or_min, std_or_max
+    else:
+        all_synop_data[features] = (all_synop_data[features].values - mean_or_min) / (std_or_max - mean_or_min)
+        return all_synop_data, mean_or_min, std_or_max
+
+
 def filter_for_dates(dataset, init_date, end_date):
     return dataset[(dataset["date"] > init_date) & (dataset["date"] < end_date)]

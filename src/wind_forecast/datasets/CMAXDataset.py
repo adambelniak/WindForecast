@@ -61,6 +61,7 @@ class CMAXDataset(torch.utils.data.Dataset):
 
     def __data_generation(self, ID):
         # Initialization
+        # TODO reading a sequence
         # if self.sequence_length > 1:
         #     x = np.empty((self.sequence_length, self.channels, *self.dim))
         #     y = np.empty(self.sequence_length)
@@ -82,6 +83,7 @@ class CMAXDataset(torch.utils.data.Dataset):
         x = np.empty((1, *self.dim))
 
         # Generate data
+        # TODO Load .h5 files, subtract mask, normalize
         x[0, ] = np.load(os.path.join(CMAX_DATASET_DIR, ID))
         if self.normalize:
             if self.normalization_type == NormalizationType.STANDARD:

@@ -241,23 +241,23 @@ def get_cmax_filename(date: datetime):
                                                 prep_zeros_if_needed(str(date.minute), 1))
 
 
-def initialize_CMAX_list_IDs_and_synop_dates_for_sequence(cmax_IDs: [str], labels: pd.DataFrame, target_param: str, sequence_length: int, future_seq_length: int):
+def initialize_CMAX_list_IDs_and_synop_dates_for_sequence(cmax_IDs: [str], synop_dates: [pd.Timestamp], sequence_length: int, future_seq_length: int):
+    # TODO Use synop dates instead of labels
     new_list_IDs = []
-    synop_dates = []
+    new_synop_dates = []
     one_hour = timedelta(hours=1)
-    for date in labels["date"]:
+    for date in synop_dates:
         utc_date = local_to_utc(date)
         cmax_filename = get_cmax_filename(utc_date)
 
         if cmax_filename in cmax_IDs:
             next_utc_date = utc_date + one_hour
-            next_local_date = date + one_hour
             next_cmax_filename = get_cmax_filename(next_utc_date)
 
-            if len(labels[labels["date"] == next_local_date][target_param]) > 0 and next_cmax_filename in cmax_IDs:
+            if next_cmax_filename in cmax_IDs:
                 # next frame exists, so the sequence is continued
                 new_list_IDs.append(cmax_filename)
-                synop_dates.append(date)
+                new_synop_dates.append(date)
             else:
                 # there is no next frame, so the sequence is broken. Remove past frames
                 for frame in range(1, sequence_length + future_seq_length):
@@ -266,14 +266,14 @@ def initialize_CMAX_list_IDs_and_synop_dates_for_sequence(cmax_IDs: [str], label
                     cmax_filename_to_remove = get_cmax_filename(utc_date_to_remove)
                     new_list_IDs.remove(new_list_IDs.index(cmax_filename_to_remove))
                     local_date_to_remove = date - hours
-                    synop_dates.remove(local_date_to_remove)
+                    new_synop_dates.remove(local_date_to_remove)
 
-    return new_list_IDs, synop_dates
+    return new_list_IDs, new_synop_dates
 
 
 def get_correct_dates_for_sequence(labels: pd.DataFrame, sequence_length: int, future_sequence_length: int, prediction_offset: int):
     """
-    Takes DataFrame of synop observations and extracts these dates, which have consecutive sequence of length sequence_length + future_sequence_length
+    Takes DataFrame of synop observations and extracts these dates, which have consecutive sequence of length sequence_length + prediction_offset + future_sequence_length
     :param labels:
     :param sequence_length:
     :param future_sequence_length:
