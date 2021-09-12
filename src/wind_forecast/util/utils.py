@@ -20,8 +20,8 @@ from wind_forecast.util.logging import log
 from enum import Enum
 import pandas as pd
 
-GFS_DATASET_DIR = os.environ['GFS_DATASET_DIR']
-CMAX_DATASET_DIR = os.environ['CMAX_DATASET_DIR']
+GFS_DATASET_DIR = os.environ.get('GFS_DATASET_DIR')
+CMAX_DATASET_DIR = os.environ.get('CMAX_DATASET_DIR')
 CMAX_DATASET_DIR = 'data' if CMAX_DATASET_DIR is None else CMAX_DATASET_DIR
 
 
