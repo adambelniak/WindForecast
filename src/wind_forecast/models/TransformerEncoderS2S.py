@@ -5,6 +5,7 @@ from pytorch_lightning import LightningModule
 from torch import nn
 
 from wind_forecast.config.register import Config
+from wind_forecast.models.Transformer import PositionalEncoding
 from wind_forecast.models.TransformerEncoder import Time2Vec
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 
@@ -16,6 +17,7 @@ class TransformerEncoderS2S(LightningModule):
         self.time2vec = Time2Vec(config)
         features_len = len(config.experiment.synop_train_features)
         d_model = features_len * (config.experiment.time2vec_embedding_size + 1)
+        self.pos_encoder = PositionalEncoding(self.embed_dim, dropout, self.sequence_length)
         encoder_layer = nn.TransformerEncoderLayer(d_model=d_model, nhead=config.experiment.transformer_attention_heads,
                                                    dim_feedforward=config.experiment.transformer_ff_dim, dropout=config.experiment.dropout,
                                                    batch_first=True)
@@ -27,6 +29,7 @@ class TransformerEncoderS2S(LightningModule):
     def forward(self, inputs, targets: torch.Tensor, epoch: int, stage=None):
         time_embedding = TimeDistributed(self.time2vec, batch_first=True)(inputs)
         x = torch.cat([inputs, time_embedding], -1)
+        x = self.pos_encoder(x)
         x = self.encoder(x)
         # x = self.flatten(x)  # flat vector of features out
 
