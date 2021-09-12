@@ -4,6 +4,7 @@ from tqdm import tqdm
 
 from wind_forecast.config.register import Config
 from wind_forecast.preprocess.synop.synop_preprocess import normalize_synop_data
+from wind_forecast.util.utils import add_param_to_train_params
 
 
 class SequenceDataset(torch.utils.data.Dataset):
@@ -15,13 +16,17 @@ class SequenceDataset(torch.utils.data.Dataset):
         self.sequence_length = config.experiment.sequence_length
         self.prediction_offset = config.experiment.prediction_offset
         self.synop_data = synop_data.reset_index()
+        # Get indices which correspond to 'dates' - 'dates' are the ones, which start a proper sequence without breaks
         synop_data_indices = self.synop_data[self.synop_data["date"].isin(dates)].index
+        params = add_param_to_train_params(self.train_params, self.target_param)
+        feature_names = list(list(zip(*params))[1])
         if normalize_synop:
             # data was not normalized, so take all frames which will be used, compute std and mean and normalize data
             self.synop_data, synop_mean, synop_std = normalize_synop_data(self.synop_data, synop_data_indices,
-                                                                          list(list(zip(*self.train_params))[1]),
-                                                                          self.sequence_length + self.prediction_offset)
-            target_param_index = [x[1] for x in self.train_params].index(self.target_param)
+                                                                          feature_names,
+                                                                          self.sequence_length + self.prediction_offset,
+                                                                          config.experiment.normalization_type)
+            target_param_index = [x[1] for x in feature_names].index(self.target_param)
             print(synop_mean[target_param_index])
             print(synop_std[target_param_index])
 
@@ -32,7 +37,9 @@ class SequenceDataset(torch.utils.data.Dataset):
                         for index in tqdm(synop_data_indices)]
 
         assert len(self.features) == len(self.targets)
+
         length = len(self.targets)
+
         training_data = np.array(list(zip(self.features, self.targets))[:int(length * 0.8)])
         test_data = np.array(list(zip(self.features, self.targets))[int(length * 0.8) + self.sequence_length - 1:])
         if train:

@@ -64,7 +64,7 @@ class ExperimentSettings:
 
     synop_file: str = "KOZIENICE_488_data.csv"
 
-    synop_from_year: int = 2019
+    synop_from_year: int = 2015
 
     target_parameter: str = "temperature"
 

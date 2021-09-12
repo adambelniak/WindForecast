@@ -15,6 +15,7 @@ class Sequence2SequenceDataset(torch.utils.data.Dataset):
         self.future_sequence_length = config.experiment.future_sequence_length
         self.prediction_offset = config.experiment.prediction_offset
         self.synop_data = synop_data.reset_index()
+        # Get indices which correspond to 'dates' - 'dates' are the ones, which start a proper sequence without breaks
         synop_data_indices = self.synop_data[self.synop_data["date"].isin(dates)].index
         target_param_index = [x[1] for x in self.train_params].index(self.target_param)
 
@@ -22,7 +23,9 @@ class Sequence2SequenceDataset(torch.utils.data.Dataset):
             # data was not normalized, so take all frames which will be used, compute std and mean and normalize data
             self.synop_data, synop_mean, synop_std = normalize_synop_data(self.synop_data, synop_data_indices,
                                                                           list(list(zip(*self.train_params))[1]),
-                                                                          self.sequence_length + self.prediction_offset + self.future_sequence_length)
+                                                                          self.sequence_length + self.prediction_offset
+                                                                          + self.future_sequence_length,
+                                                                          config.experiment.normalization_type)
             print(synop_mean[target_param_index])
             print(synop_std[target_param_index])
 

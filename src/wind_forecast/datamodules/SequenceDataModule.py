@@ -28,7 +28,6 @@ class SequenceDataModule(LightningDataModule):
         self.train_params = config.experiment.synop_train_features
         self.target_param = config.experiment.target_parameter
         self.sequence_length = config.experiment.sequence_length
-        self.future_sequence_length = config.experiment.future_sequence_length
         self.labels, _, _ = prepare_synop_dataset(self.synop_file, list(list(zip(*self.train_params))[1]),
                                                   dataset_dir=SYNOP_DATASETS_DIRECTORY,
                                                   from_year=config.experiment.synop_from_year,

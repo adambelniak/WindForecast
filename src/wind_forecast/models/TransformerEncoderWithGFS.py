@@ -3,7 +3,8 @@ from pytorch_lightning import LightningModule
 from torch import nn
 
 from wind_forecast.config.register import Config
-from wind_forecast.models.TransformerEncoder import Time2Vec, PositionalEncoding, TimeDistributed
+from wind_forecast.models.Transformer import PositionalEncoding
+from wind_forecast.models.TransformerEncoder import Time2Vec, TimeDistributed
 
 
 class Transformer(LightningModule):
