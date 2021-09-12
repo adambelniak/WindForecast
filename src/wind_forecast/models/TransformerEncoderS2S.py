@@ -17,7 +17,7 @@ class TransformerEncoderS2S(LightningModule):
         self.time2vec = Time2Vec(config)
         features_len = len(config.experiment.synop_train_features)
         d_model = features_len * (config.experiment.time2vec_embedding_size + 1)
-        self.pos_encoder = PositionalEncoding(self.embed_dim, dropout, self.sequence_length)
+        self.pos_encoder = PositionalEncoding(embed_dim, config.experiment.dropout, config.experiment.sequence_length)
         encoder_layer = nn.TransformerEncoderLayer(d_model=d_model, nhead=config.experiment.transformer_attention_heads,
                                                    dim_feedforward=config.experiment.transformer_ff_dim, dropout=config.experiment.dropout,
                                                    batch_first=True)
