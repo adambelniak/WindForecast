@@ -44,12 +44,12 @@ class SequenceWithGFSDataset(torch.utils.data.Dataset):
         # labels and dates - dates are needed for matching the labels against GFS dates
         labels = pd.concat([synop_data_dates, self.synop_data[self.target_param]], axis=1)
 
-        self.features = [
-            self.synop_data.iloc[index:index + self.sequence_length][list(list(zip(*self.train_params))[1])].to_numpy()
-            for index in tqdm(synop_data_indices)]
-
-        targets = [labels.iloc[index + self.sequence_length + self.prediction_offset]
-                   for index in tqdm(synop_data_indices)]
+        self.features = []
+        targets = []
+        train_params = list(list(zip(*self.train_params))[1])
+        for index in tqdm(synop_data_indices):
+            self.features.append(self.synop_data.iloc[index:index + self.sequence_length][train_params].to_numpy())
+            targets.append(labels.iloc[index + self.sequence_length + self.prediction_offset])
 
         self.features, self.gfs_data, self.targets = match_gfs_with_synop_sequence(self.features, targets,
                                                                                    self.target_coords[0],
@@ -72,7 +72,8 @@ class SequenceWithGFSDataset(torch.utils.data.Dataset):
         assert len(self.features) == len(self.gfs_data)
         length = len(self.targets)
         training_data = list(zip(zip(self.features, self.gfs_data), self.targets))[:int(length * 0.8)]
-        test_data = list(zip(zip(self.features, self.gfs_data), self.targets))[int(length * 0.8):]
+        # do not use any frame from train set in test set
+        test_data = list(zip(zip(self.features, self.gfs_data), self.targets))[int(length * 0.8) + self.sequence_length - 1:]
 
         if train:
             data = training_data

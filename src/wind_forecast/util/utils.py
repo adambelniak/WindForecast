@@ -413,6 +413,51 @@ def match_gfs_with_synop_sequence(features: Union[list, np.ndarray], targets: li
     return np.array(new_features), np.array(new_targets)
 
 
+def match_gfs_with_synop_sequence2sequence(features: Union[list, np.ndarray], targets: list, lat: float, lon: float,
+                                  prediction_offset: int, gfs_params: list, exact_date_match=False, return_GFS=True):
+    gfs_values = []
+    new_targets = []
+    new_features = []
+    gfs_values_cache = {}
+    for index, value in tqdm(enumerate(targets)):
+        dates = value.loc[:, 'date']
+        next_gfs_values = []
+        exists = True
+        for date in dates:
+            cache_key = datetime.strftime(date, "%Y%m%d%H%H%M%M")
+            gfs_filename = get_GFS_filename(date, prediction_offset, exact_date_match)
+
+            # check if there are forecasts available
+            if all(os.path.exists(os.path.join(GFS_DATASET_DIR, param["name"], param["level"], gfs_filename)) for param in gfs_params):
+                if return_GFS:
+                    if gfs_values_cache.get(cache_key) is not None:
+                        next_gfs_values.append(gfs_values_cache.get(cache_key))
+                    else:
+                        val = []
+
+                        for param in gfs_params:
+                            val.append(get_point_from_GFS_slice_for_coords(
+                                np.load(
+                                    os.path.join(GFS_DATASET_DIR, param['name'], param['level'], gfs_filename)),
+                                Coords(lat, lat, lon, lon)))
+
+                        next_gfs_values.append(val)
+                        gfs_values_cache[cache_key] = val
+
+            else:
+                exists = False
+                break
+        if exists:  # all gfs forecasts are available
+            gfs_values.append(next_gfs_values)
+            new_features.append(features[index])
+            new_targets.append(value.loc[:, value.columns != 'date'])
+            gfs_values_cache[datetime.strftime(dates.iloc[0], "%Y%m%d%H%H%M%M")] = None
+
+    if return_GFS:
+        return np.array(new_features), np.array(gfs_values), np.array(new_targets)
+    return np.array(new_features), np.array(new_targets)
+
+
 def get_GFS_filename(date, prediction_offset, exact_date_match):
     # value = [date, target_param]
     last_date_in_sequence = date - timedelta(

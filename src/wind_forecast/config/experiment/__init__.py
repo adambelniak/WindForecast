@@ -64,9 +64,11 @@ class ExperimentSettings:
 
     synop_file: str = "KOZIENICE_488_data.csv"
 
-    synop_from_year: int = 2015
+    synop_from_year: int = 2019
 
     target_parameter: str = "temperature"
+
+    use_gfs_data: bool = False
 
     prediction_offset: int = 3
 
