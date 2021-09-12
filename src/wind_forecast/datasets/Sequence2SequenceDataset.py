@@ -2,6 +2,7 @@ import torch
 from tqdm import tqdm
 from wind_forecast.config.register import Config
 from wind_forecast.preprocess.synop.synop_preprocess import normalize_synop_data
+from wind_forecast.util.utils import add_param_to_train_params
 
 
 class Sequence2SequenceDataset(torch.utils.data.Dataset):
@@ -17,24 +18,27 @@ class Sequence2SequenceDataset(torch.utils.data.Dataset):
         self.synop_data = synop_data.reset_index()
         # Get indices which correspond to 'dates' - 'dates' are the ones, which start a proper sequence without breaks
         synop_data_indices = self.synop_data[self.synop_data["date"].isin(dates)].index
-        target_param_index = [x[1] for x in self.train_params].index(self.target_param)
-
+        params = add_param_to_train_params(self.train_params, self.target_param)
+        feature_names = list(list(zip(*params))[1])
         if normalize_synop:
             # data was not normalized, so take all frames which will be used, compute std and mean and normalize data
             self.synop_data, synop_mean, synop_std = normalize_synop_data(self.synop_data, synop_data_indices,
-                                                                          list(list(zip(*self.train_params))[1]),
+                                                                          feature_names,
                                                                           self.sequence_length + self.prediction_offset
                                                                           + self.future_sequence_length,
                                                                           config.experiment.normalization_type)
+            target_param_index = [x for x in feature_names].index(self.target_param)
             print(synop_mean[target_param_index])
             print(synop_std[target_param_index])
 
-        self.features = [self.synop_data.iloc[index:index + self.sequence_length][list(list(zip(*self.train_params))[1])].to_numpy()
-                                for index in tqdm(synop_data_indices)]
-
-        self.all_targets = [self.synop_data.iloc[
+        self.features = []
+        self.all_targets = []
+        train_params = list(list(zip(*self.train_params))[1])
+        for index in tqdm(synop_data_indices):
+            self.features.append(self.synop_data.iloc[index:index + self.sequence_length][train_params].to_numpy())
+            self.all_targets.append(self.synop_data.iloc[
                             index + self.sequence_length + self.prediction_offset:index + self.sequence_length + self.prediction_offset + self.future_sequence_length][
-                                list(list(zip(*self.train_params))[1])].to_numpy() for index in tqdm(synop_data_indices)]
+                                train_params].to_numpy())
 
         self.targets = [target[:,target_param_index] for target in self.all_targets]
 

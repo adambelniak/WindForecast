@@ -26,15 +26,15 @@ class SequenceDataset(torch.utils.data.Dataset):
                                                                           feature_names,
                                                                           self.sequence_length + self.prediction_offset,
                                                                           config.experiment.normalization_type)
-            target_param_index = [x[1] for x in feature_names].index(self.target_param)
+            target_param_index = [x for x in feature_names].index(self.target_param)
             print(synop_mean[target_param_index])
             print(synop_std[target_param_index])
 
-        self.features = [self.synop_data.iloc[index:index + self.sequence_length][list(list(zip(*self.train_params))[1])].to_numpy()
-                         for index in tqdm(synop_data_indices)]
-
-        self.targets = [self.synop_data.iloc[index + self.sequence_length + self.prediction_offset][self.target_param]
-                        for index in tqdm(synop_data_indices)]
+        self.features = []
+        self.targets = []
+        for index in tqdm(synop_data_indices):
+            self.features.append(self.synop_data.iloc[index:index + self.sequence_length][list(list(zip(*self.train_params))[1])].to_numpy())
+            self.targets.append(self.synop_data.iloc[index + self.sequence_length + self.prediction_offset][self.target_param])
 
         assert len(self.features) == len(self.targets)
 
