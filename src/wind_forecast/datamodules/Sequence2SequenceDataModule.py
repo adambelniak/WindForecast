@@ -8,7 +8,7 @@ from wind_forecast.consts import SYNOP_DATASETS_DIRECTORY
 from wind_forecast.datasets.Sequence2SequenceDataset import Sequence2SequenceDataset
 from wind_forecast.datasets.Sequence2SequenceWithGFSDataset import Sequence2SequenceWithGFSDataset
 from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset
-from wind_forecast.util.utils import get_correct_dates_for_sequence
+from wind_forecast.util.synop_util import get_correct_dates_for_sequence
 
 
 class Sequence2SequenceDataModule(LightningDataModule):

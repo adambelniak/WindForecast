@@ -6,9 +6,9 @@ import numpy as np
 from wind_forecast.config.register import Config
 from wind_forecast.consts import SYNOP_DATASETS_DIRECTORY
 from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset
+from wind_forecast.util.common_util import NormalizationType, declination_of_earth
 from wind_forecast.util.config import process_config
-from wind_forecast.util.utils import GFS_DATASET_DIR, date_from_gfs_np_file, initialize_mean_and_std, NormalizationType, \
-    initialize_min_max, declination_of_earth
+from wind_forecast.util.gfs_util import GFS_DATASET_DIR, date_from_gfs_np_file, initialize_mean_and_std, initialize_min_max
 
 
 class MultiChannelSpatialDatasetWithEarthDeclination(torch.utils.data.Dataset):

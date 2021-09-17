@@ -9,6 +9,7 @@ from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning import LightningDataModule, LightningModule
 from pytorch_lightning.loggers import WandbLogger
 from wandb.sdk.wandb_run import Run
+import numpy as np
 
 from wind_forecast.config.register import Config, register_configs, get_tags
 from wind_forecast.util.logging import log
@@ -59,6 +60,24 @@ def main(cfg: Config):
 
     trainer.fit(system, datamodule=datamodule)
     trainer.test(system, datamodule=datamodule)
+
+    wandb_logger.log_metrics({
+        'target_mean': datamodule.dataset_test.mean,
+        'target_std': datamodule.dataset_test.std
+    }, step=system.current_epoch)
+
+    # if cfg.experiment.view_test_result:
+    #     results = system.test_results
+    #     mean = datamodule.dataset_test.mean
+    #     std = datamodule.dataset_test.std
+    #
+    #     results['output'] = np.array([x.cpu() for x in results['output']]) * std + mean
+    #     results['labels'] = np.array([x.cpu() for x in results['labels']]) * std + mean
+    #
+    #     wandb_logger.log_metrics({
+    #         'output': results['output'].tolist(),
+    #         'labels': results['labels'].tolist()
+    #     }, step=system.current_epoch)
 
     if trainer.interrupted:  # type: ignore
         log.info(f'[bold red]>>> Training interrupted.')

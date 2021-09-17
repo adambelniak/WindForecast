@@ -4,11 +4,11 @@ import sys
 from pathlib import Path
 from zipfile import ZipFile, BadZipFile
 import numpy as np
-import matplotlib.pyplot as plt
 
 import h5py
 import requests
-import seaborn
+from skimage.measure import block_reduce
+from sklearn.utils import resample
 
 from gfs_archive_0_25.utils import prep_zeros_if_needed
 
@@ -59,7 +59,7 @@ def extract_zip(date: datetime.datetime):
 
 
 def get_all_zips():
-    date = datetime.datetime(2020, 12, 15)
+    date = datetime.datetime(2021, 6, 19)
 
     while date != datetime.datetime(2021, 9, 5):
         print(f"Fetching zip for date {date.strftime('%Y-%m-%d')}")
@@ -71,14 +71,8 @@ def get_all_zips():
 if __name__ == "__main__":
     get_all_zips()
 
-
-
-
-
-#h5_filepath = "D:\\WindForecast\\cmax\\2017\\2017010100000000dBZ.cmax.h5"
-    # with h5py.File(h5_filepath, 'r') as hdf:
+    # with h5py.File(os.path.join(CMAX_DATASET_DIR, '2018010100000000dBZ.cmax.h5'), 'r') as hdf:
     #     data = np.array(hdf.get('dataset1').get('data1').get('data'))
-    #     data[np.abs(data) < 255] = 0
-    #     np.save("D:\\WindForecast\\cmax\\mask.npy", data)
-    #     seaborn.heatmap(data)
-    #     plt.show()
+    #     mask = np.load(os.path.join(CMAX_DATASET_DIR, 'mask.npy'))
+    #     values = data - mask
+    #     resampled = block_reduce(values, block_size=(2, 2), func=np.mean)

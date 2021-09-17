@@ -8,7 +8,7 @@ from omegaconf.omegaconf import MISSING
 
 # Experiment settings validation schema & default values
 from wind_forecast.preprocess.synop.consts import SYNOP_TRAIN_FEATURES
-from wind_forecast.util.utils import NormalizationType
+from wind_forecast.util.common_util import NormalizationType
 
 
 @dataclass
@@ -62,7 +62,7 @@ class ExperimentSettings:
 
     gfs_dataset_dir: str = os.path.join("D:\\WindForecast", "output_np2")
 
-    synop_file: str = "KOZIENICE_488_data.csv"
+    synop_file: str = "WARSZAWA-OKECIE_375_data.csv"
 
     synop_from_year: int = 2015
 
@@ -125,3 +125,5 @@ class ExperimentSettings:
     transformer_attention_heads: int = 1
 
     cmax_sample_size: Any = (900, 900)
+
+    view_test_result: bool = True

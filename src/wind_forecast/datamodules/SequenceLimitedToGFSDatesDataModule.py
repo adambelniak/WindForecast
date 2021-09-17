@@ -7,7 +7,7 @@ from wind_forecast.config.register import Config
 from wind_forecast.consts import SYNOP_DATASETS_DIRECTORY
 from wind_forecast.datasets.SequenceLimitedToGFSDatesDataset import SequenceLimitedToGFSDatesDataset
 from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset
-from wind_forecast.util.utils import get_correct_dates_for_sequence
+from wind_forecast.util.synop_util import get_correct_dates_for_sequence
 
 
 class SequenceLimitedToGFSDatesDataModule(LightningDataModule):

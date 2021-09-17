@@ -8,7 +8,7 @@ from wind_forecast.consts import SYNOP_DATASETS_DIRECTORY
 from wind_forecast.datasets.MultiChannelSpatialDataset import MultiChannelSpatialDataset
 from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset
 from wind_forecast.util.config import process_config
-from wind_forecast.util.utils import get_available_numpy_files, initialize_GFS_list_IDs_for_sequence
+from wind_forecast.util.gfs_util import get_available_numpy_files, initialize_GFS_list_IDs_for_sequence
 
 
 class MultiChannelSpatialSequenceDataModule(LightningDataModule):

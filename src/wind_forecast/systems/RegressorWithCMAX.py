@@ -21,7 +21,7 @@ from wandb.sdk.wandb_run import Run
 from wind_forecast.config.register import Config
 
 
-class S2SRegressorWithTF(pl.LightningModule):
+class RegressorWithCMAX(pl.LightningModule):
     def __init__(self, cfg: Config) -> None:
         super().__init__()  # type: ignore
 
@@ -115,8 +115,8 @@ class S2SRegressorWithTF(pl.LightningModule):
     # ----------------------------------------------------------------------------------------------
     # Forward
     # ----------------------------------------------------------------------------------------------
-    def forward(self, x: torch.Tensor, targets: torch.Tensor, epoch, stage) -> torch.Tensor:
-        return self.model(x.float(), targets.float(), epoch, stage)
+    def forward(self, x: torch.Tensor, cmax_input: torch.Tensor) -> torch.Tensor:
+        return self.model(x.float(), cmax_input.float())
 
     # ----------------------------------------------------------------------------------------------
     # Loss
@@ -139,7 +139,7 @@ class S2SRegressorWithTF(pl.LightningModule):
         torch.Tensor
             Loss value.
         """
-        return self.criterion(outputs, targets)
+        return self.criterion(outputs, targets.float())
 
     # ----------------------------------------------------------------------------------------------
     # Training
@@ -160,8 +160,8 @@ class S2SRegressorWithTF(pl.LightningModule):
         dict[str, torch.Tensor]
             Metric values for a given batch.
         """
-        inputs, all_targets, targets = batch
-        outputs = self.forward(inputs, all_targets, self.current_epoch, 'fit')
+        inputs, targets, cmax_inputs = (*batch[0], batch[1])
+        outputs = self.forward(inputs, cmax_inputs)
         loss = self.calculate_loss(outputs, targets.float())
         self.train_mse(outputs, targets)
         self.train_mae(outputs, targets)
@@ -219,8 +219,8 @@ class S2SRegressorWithTF(pl.LightningModule):
         dict[str, torch.Tensor]
             Metric values for a given batch.
         """
-        inputs, all_targets, targets = batch
-        outputs = self.forward(inputs, all_targets, self.current_epoch, 'test')
+        inputs, targets, cmax_inputs = (*batch[0], batch[1])
+        outputs = self.forward(inputs, cmax_inputs)
 
         self.val_mse(outputs, targets.float())
         self.val_mae(outputs, targets.float())
@@ -276,8 +276,8 @@ class S2SRegressorWithTF(pl.LightningModule):
         dict[str, torch.Tensor]
             Metric values for a given batch.
         """
-        inputs, all_targets, targets = batch
-        outputs = self.forward(inputs, all_targets, self.current_epoch, 'test')
+        inputs, targets, cmax_inputs = (*batch[0], batch[1])
+        outputs = self.forward(inputs, cmax_inputs)
 
         self.test_mse(outputs, targets.float())
         self.test_mae(outputs, targets.float())
@@ -304,6 +304,10 @@ class S2SRegressorWithTF(pl.LightningModule):
 
         self.test_mse.reset()
         self.test_mae.reset()
+
+        # Average additional metrics over all batches
+        # for key in outputs[0]:
+        #     metrics[key] = float(self._reduce(outputs, key).item())
 
         self.logger.log_metrics(metrics, step=step)
 

@@ -1,0 +1,21 @@
+# Specific experiments settings
+# (default settings inherited from configs.experiment.ExperimentSettings)
+
+defaults:
+  - schema_experiment
+
+_tags_:
+  - TRANSFORMER_ENCODER
+
+resume_checkpoint: ~
+
+datamodule:
+  _target_: wind_forecast.datamodules.SequenceWithCMAXDataModule.SequenceWithCMAXDataModule
+
+model:
+  _target_: wind_forecast.models.TransformerEncoderCMAX.TransformerEncoderCMAX
+
+system:
+  _target_: wind_forecast.systems.RegressorWithCMAX.RegressorWithCMAX
+
+synop_from_year: 2020

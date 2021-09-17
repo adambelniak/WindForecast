@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from wind_forecast.util.utils import NormalizationType
+from wind_forecast.util.common_util import NormalizationType
 
 
 def normalize(data: pd.DataFrame, normalization_type: NormalizationType = NormalizationType.STANDARD):
@@ -40,7 +40,7 @@ def prepare_synop_dataset(synop_file_name, features, norm=True, dataset_dir=os.p
 
     data["date"] = pd.to_datetime(data[['year', 'month', 'day', 'hour']])
 
-    first_date = datetime.datetime(year=from_year, month=12, day=1)
+    first_date = datetime.datetime(year=from_year, month=1, day=1)
     last_date = datetime.datetime(year=to_year, month=1, day=1)
 
     data = data[(data['date'] >= first_date) & (data['date'] < last_date)]
@@ -53,6 +53,7 @@ def prepare_synop_dataset(synop_file_name, features, norm=True, dataset_dir=os.p
 
 
 def normalize_synop_data(all_synop_data: pd.DataFrame, synop_data_indices: [int], features, length_of_sequence, normalization_type: NormalizationType = NormalizationType.STANDARD):
+    # Bear in mind that synop_data_indices are indices of FIRST synop in the sequence. Not all synop data exist in synop_data_indices because of that fact.
     all_indices = set([item for sublist in [[index + frame for frame in range(0, length_of_sequence)] for index in synop_data_indices] for item in sublist])
     all_relevant_labels = all_synop_data.take(list(all_indices))
     _, mean_or_min, std_or_max = normalize(all_relevant_labels[features].values, normalization_type)

@@ -9,8 +9,8 @@ from wind_forecast.datasets.CMAXDataset import CMAXDataset
 from wind_forecast.datasets.ConcatDatasets import ConcatDatasets
 from wind_forecast.datasets.SequenceDataset import SequenceDataset
 from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset
-from wind_forecast.util.utils import get_available_hdf_files_cmax, \
-    initialize_CMAX_list_IDs_and_synop_dates_for_sequence, get_correct_dates_for_sequence
+from wind_forecast.util.cmax_util import get_available_hdf_files_cmax_hours, \
+    initialize_CMAX_list_IDs_and_synop_dates_for_sequence
 
 
 class SequenceWithCMAXDataModule(LightningDataModule):
@@ -36,13 +36,11 @@ class SequenceWithCMAXDataModule(LightningDataModule):
                                                   from_year=config.experiment.synop_from_year,
                                                   norm=False)
 
-        self.dates = get_correct_dates_for_sequence(self.labels, self.sequence_length, 1,
-                                                    config.experiment.prediction_offset)
-
-        available_ids = get_available_hdf_files_cmax()
-        self.cmax_IDs, self.dates = initialize_CMAX_list_IDs_and_synop_dates_for_sequence(available_ids, self.dates,
+        available_ids = get_available_hdf_files_cmax_hours()
+        self.cmax_IDs, self.dates = initialize_CMAX_list_IDs_and_synop_dates_for_sequence(available_ids, self.labels,
                                                                                           self.sequence_length,
-                                                                                          config.experiment.future_sequence_length)
+                                                                                          config.experiment.future_sequence_length,
+                                                                                          config.experiment.prediction_offset)
 
     def prepare_data(self, *args, **kwargs):
         pass

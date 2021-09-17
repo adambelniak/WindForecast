@@ -3,10 +3,10 @@ import os
 import torch
 import numpy as np
 from wind_forecast.config.register import Config
+from wind_forecast.util.cmax_util import CMAX_DATASET_DIR, initialize_mean_and_std_cmax, initialize_min_max_cmax, \
+    get_cmax_values_for_sequence, get_hdf
+from wind_forecast.util.common_util import NormalizationType
 from wind_forecast.util.config import process_config
-from wind_forecast.util.utils import NormalizationType, \
-    initialize_mean_and_std_for_sequence, initialize_min_max_for_sequence, get_values_for_sequence, \
-    initialize_GFS_list_IDs_for_sequence, CMAX_DATASET_DIR, initialize_mean_and_std_cmax, initialize_min_max_cmax
 
 
 class CMAXDataset(torch.utils.data.Dataset):
@@ -34,17 +34,13 @@ class CMAXDataset(torch.utils.data.Dataset):
         if normalize:
             self.normalize_data(config.experiment.normalization_type)
 
+        self.np_mask_for_cmax = np.load(os.path.join(CMAX_DATASET_DIR, "mask.npy"))
+
     def normalize_data(self, normalization_type: NormalizationType):
         if normalization_type == NormalizationType.STANDARD:
-            # if self.sequence_length > 1:
-            #     self.mean, self.std = initialize_mean_and_std_for_sequence(self.train_IDs, self.train_parameters, self.dim, self.sequence_length)
-            # else:
-            self.mean, self.std = initialize_mean_and_std_cmax(self.list_IDs, self.dim)
+            self.mean, self.std = initialize_mean_and_std_cmax(self.list_IDs, self.dim, self.sequence_length)
         else:
-            # if self.sequence_length > 1:
-            #     self.min, self.max = initialize_min_max_for_sequence(self.train_IDs, self.train_parameters, self.sequence_length)
-            # else:
-            self.min, self.max = initialize_min_max_cmax(self.list_IDs)
+            self.min, self.max = initialize_min_max_cmax(self.list_IDs, self.sequence_length)
 
     def __len__(self):
         'Denotes the total number of samples'
@@ -61,33 +57,26 @@ class CMAXDataset(torch.utils.data.Dataset):
 
     def __data_generation(self, ID):
         # Initialization
-        # TODO reading a sequence
-        # if self.sequence_length > 1:
-        #     x = np.empty((self.sequence_length, self.channels, *self.dim))
-        #     y = np.empty(self.sequence_length)
-        #
-        #     # Generate data
-        #     for j, param in enumerate(self.train_parameters):
-        #         # Store sample
-        #         x[:, j, ] = get_values_for_sequence(ID, param, self.sequence_length)
-        #         if self.normalize:
-        #             if self.normalization_type == NormalizationType.STANDARD:
-        #                 x[:, j, ] = (x[:, j, ] - self.mean[j]) / self.std[j]
-        #             else:
-        #                 x[:, j,] = (x[:, j,] - self.min[j]) / (self.max[j] - self.min[j])
-        #
-        #     first_forecast_date = date_from_gfs_np_file(ID)
-        #     labels = [self.labels[self.labels["date"] == first_forecast_date + timedelta(hours=offset * 3)][self.target_param].values[0] for offset in range(0, self.sequence_length)]
-        #     y[:] = labels
-        # else:
-        x = np.empty((1, *self.dim))
+        if self.sequence_length > 1:
+            x = np.empty((self.sequence_length, *self.dim))
 
-        # Generate data
-        # TODO Load .h5 files, subtract mask, normalize
-        x[0, ] = np.load(os.path.join(CMAX_DATASET_DIR, ID))
-        if self.normalize:
-            if self.normalization_type == NormalizationType.STANDARD:
-                x[0, ] = (x[0, ] - self.mean) / self.std
-            else:
-                x[0, ] = (x[0, ] - self.min) / (self.max - self.min)
+            # Generate data
+            x[:, ] = get_cmax_values_for_sequence(ID, self.sequence_length)
+            if self.normalize:
+                if self.normalization_type == NormalizationType.STANDARD:
+                    x[:, ] = (x[:, ] - self.mean) / self.std
+                else:
+                    x[:, ] = (x[:, ] - self.min) / (self.max - self.min)
+
+        else:
+            x = np.empty((1, *self.dim))
+
+            # Generate data
+            x[0, ] = get_hdf(ID, self.np_mask_for_cmax)
+
+            if self.normalize:
+                if self.normalization_type == NormalizationType.STANDARD:
+                    x[0, ] = (x[0, ] - self.mean) / self.std
+                else:
+                    x[0, ] = (x[0, ] - self.min) / (self.max - self.min)
         return x

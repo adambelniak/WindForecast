@@ -5,8 +5,9 @@ import math
 
 from wind_forecast.config.register import Config
 from wind_forecast.preprocess.synop.synop_preprocess import normalize_synop_data
-from wind_forecast.util.utils import add_param_to_train_params, match_gfs_with_synop_sequence, \
-    target_param_to_gfs_name_level, NormalizationType, match_gfs_with_synop_sequence2sequence
+from wind_forecast.util.common_util import NormalizationType
+from wind_forecast.util.gfs_util import add_param_to_train_params, \
+    target_param_to_gfs_name_level, match_gfs_with_synop_sequence2sequence
 import pandas as pd
 
 
@@ -73,17 +74,16 @@ class Sequence2SequenceWithGFSDataset(torch.utils.data.Dataset):
         assert len(self.features) == len(self.all_targets)
         assert len(self.features) == len(self.gfs_data)
         length = len(self.targets)
+        print(length)
 
         training_data = list(zip(zip(self.features, self.gfs_data, self.all_targets), self.targets))[:int(length * 0.8)]
         # do not use any frame from train set in test set
         test_data = list(zip(zip(self.features, self.gfs_data, self.all_targets), self.targets))[int(length * 0.8) + self.sequence_length - 1:]
 
         if train:
-            data = training_data
+            self.data = training_data
         else:
-            data = test_data
-
-        self.data = data
+            self.data = test_data
 
     def __len__(self):
         'Denotes the total number of samples'

@@ -7,8 +7,9 @@ from tqdm import tqdm
 
 from wind_forecast.config.register import Config
 from wind_forecast.preprocess.synop.synop_preprocess import normalize_synop_data
-from wind_forecast.util.utils import add_param_to_train_params, match_gfs_with_synop_sequence, \
-    target_param_to_gfs_name_level, NormalizationType
+from wind_forecast.util.common_util import NormalizationType
+from wind_forecast.util.gfs_util import add_param_to_train_params, match_gfs_with_synop_sequence, \
+    target_param_to_gfs_name_level
 
 
 class SequenceWithGFSDataset(torch.utils.data.Dataset):

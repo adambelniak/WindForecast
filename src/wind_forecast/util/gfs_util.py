@@ -3,26 +3,23 @@ import os
 import re
 import sys
 from datetime import datetime, timedelta
-from typing import Union
 
 import numpy as np
-import pytz
-from scipy.interpolate import interpolate
+import pandas as pd
 from tqdm import tqdm
 
+from wind_forecast.preprocess.synop.consts import SYNOP_FEATURES
+from gfs_common.common import GFS_SPACE
+from typing import Union
+from scipy.interpolate import interpolate
 from gfs_archive_0_25.gfs_processor.Coords import Coords
 from gfs_archive_0_25.gfs_processor.consts import FINAL_NUMPY_FILENAME_FORMAT
-from gfs_archive_0_25.utils import prep_zeros_if_needed, get_nearest_coords
-from gfs_common.common import GFS_SPACE
-from wind_forecast.consts import NETCDF_FILE_REGEX, CMAX_FILENAME_FORMAT
-from wind_forecast.preprocess.synop.consts import SYNOP_FEATURES
+from wind_forecast.consts import NETCDF_FILE_REGEX
+from gfs_archive_0_25.utils import get_nearest_coords
+from wind_forecast.util.common_util import prep_zeros_if_needed
 from wind_forecast.util.logging import log
-from enum import Enum
-import pandas as pd
 
 GFS_DATASET_DIR = os.environ.get('GFS_DATASET_DIR')
-CMAX_DATASET_DIR = os.environ.get('CMAX_DATASET_DIR')
-CMAX_DATASET_DIR = 'data' if CMAX_DATASET_DIR is None else CMAX_DATASET_DIR
 
 
 def convert_wind(single_gfs, u_wind_label, v_wind_label):
@@ -30,15 +27,6 @@ def convert_wind(single_gfs, u_wind_label, v_wind_label):
     single_gfs = single_gfs.drop([u_wind_label, v_wind_label], axis=1)
 
     return single_gfs
-
-
-def utc_to_local(date):
-    return date.replace(tzinfo=pytz.utc).astimezone(pytz.timezone('Europe/Warsaw')).replace(tzinfo=None)
-
-
-def local_to_utc(date):
-    timestamp = float(date.astimezone(pytz.timezone('Europe/Warsaw')).strftime("%s"))
-    return datetime.utcfromtimestamp(timestamp)
 
 
 def get_available_numpy_files(features, offset, directory):
@@ -52,11 +40,6 @@ def get_available_numpy_files(features, offset, directory):
     return result.tolist()
 
 
-def get_available_hdf_files_cmax():
-    matcher = re.compile(rf"\d{12,}dBZ\.cmax\.h5")
-    return [f.name for f in os.scandir(CMAX_DATASET_DIR) if matcher.match(f.name)]
-
-
 def date_from_gfs_np_file(filename):
     date_matcher = re.match(NETCDF_FILE_REGEX, filename)
 
@@ -66,17 +49,13 @@ def date_from_gfs_np_file(filename):
     day = int(date_from_filename[8:10])
     run = int(date_matcher.group(5))
     offset = int(date_matcher.group(6))
-    forecast_date = utc_to_local(datetime(year, month, day) + timedelta(hours=run + offset))
+    forecast_date = datetime(year, month, day) + timedelta(hours=run + offset)
     return forecast_date
 
 
-def declination_of_earth(date):
-    day_of_year = date.timetuple().tm_yday
-    return 23.45 * np.sin(np.deg2rad(360.0 * (283.0 + day_of_year) / 365.0))
-
-
-def get_values_for_sequence(file_id, param, sequence_length, subregion_coords=None):
-    values = [get_subregion_from_GFS_slice_for_coords(np.load(os.path.join(GFS_DATASET_DIR, param['name'], param['level'], file_id)), subregion_coords)]
+def get_GFS_values_for_sequence(file_id, param, sequence_length, subregion_coords=None):
+    values = [get_subregion_from_GFS_slice_for_coords(
+        np.load(os.path.join(GFS_DATASET_DIR, param['name'], param['level'], file_id)), subregion_coords)]
     date_matcher = re.match(NETCDF_FILE_REGEX, file_id)
     offset = int(date_matcher.group(6))
     for frame in range(1, sequence_length):
@@ -87,32 +66,6 @@ def get_values_for_sequence(file_id, param, sequence_length, subregion_coords=No
             val = get_subregion_from_GFS_slice_for_coords(val, subregion_coords)
         values.append(val)
     return values
-
-
-def initialize_mean_and_std_cmax(list_IDs, dim: (int, int)):
-    log.info("Calculating std and mean for a dataset")
-    sum, sqr_sum = 0, 0
-    for id in tqdm(list_IDs):
-        values = np.load(os.path.join(CMAX_DATASET_DIR, id))
-        sum += np.sum(values)
-        sqr_sum += np.sum(np.power(values, 2))
-
-    mean = sum / (len(list_IDs) * dim[0] * dim[1])
-    std = math.sqrt(sqr_sum / (len(list_IDs) * dim[0] * dim[1]) - pow(mean, 2))
-
-    return mean, std
-
-
-def initialize_min_max_cmax(list_IDs: [str]):
-    log.info("Calculating min and max for a dataset")
-
-    min, max = sys.float_info.max, sys.float_info.min
-    for id in list_IDs:
-        values = np.load(os.path.join(CMAX_DATASET_DIR, id))
-        min = min(values, min)
-        max = max(values, max)
-
-    return min, max
 
 
 def initialize_mean_and_std(list_IDs, train_parameters, dim: (int, int), subregion_coords=None):
@@ -143,7 +96,7 @@ def initialize_mean_and_std_for_sequence(list_IDs, train_parameters, dim: (int, 
     for param in tqdm(train_parameters):
         sum, sqr_sum = 0, 0
         for id in tqdm(list_IDs):
-            values = np.squeeze(get_values_for_sequence(id, param, sequence_length, subregion_coords))
+            values = np.squeeze(get_GFS_values_for_sequence(id, param, sequence_length, subregion_coords))
             sum += np.sum(values)
             sqr_sum += np.sum(np.power(values, 2))
 
@@ -180,7 +133,7 @@ def initialize_min_max_for_sequence(list_IDs: [str], train_parameters, sequence_
     for param in tqdm(train_parameters):
         min, max = sys.float_info.max, sys.float_info.min
         for id in list_IDs:
-            values = np.squeeze(get_values_for_sequence(id, param, sequence_length, subregion_coords))
+            values = np.squeeze(get_GFS_values_for_sequence(id, param, sequence_length, subregion_coords))
             min = min(values, min)
             max = max(values, max)
 
@@ -206,7 +159,8 @@ def initialize_mean_and_std_for_wind_target(list_IDs, dim):
     return mean, math.sqrt(sqr_sum / (len(list_IDs) * dim[0] * dim[1]) - pow(mean, 2))
 
 
-def initialize_GFS_list_IDs_for_sequence(list_IDs: [str], labels: pd.DataFrame, one_of_train_parameters, target_param: str, sequence_length: int):
+def initialize_GFS_list_IDs_for_sequence(list_IDs: [str], labels: pd.DataFrame, one_of_train_parameters,
+                                         target_param: str, sequence_length: int):
     # filter out files, which are not continued by sufficient number of consecutive forecasts
     new_list = []
     list_IDs = sorted(list_IDs)
@@ -223,7 +177,8 @@ def initialize_GFS_list_IDs_for_sequence(list_IDs: [str], labels: pd.DataFrame, 
                 exists = False
                 break
             # check if synop label exists
-            if len(labels[labels["date"] == date_from_gfs_np_file(id) + timedelta(hours=offset + 3)][target_param]) == 0:
+            if len(labels[labels["date"] == date_from_gfs_np_file(id) + timedelta(hours=offset + 3)][
+                       target_param]) == 0:
                 exists = False
                 break
 
@@ -232,71 +187,6 @@ def initialize_GFS_list_IDs_for_sequence(list_IDs: [str], labels: pd.DataFrame, 
             new_list.append(id)
 
     return new_list
-
-
-def get_cmax_filename(date: datetime):
-    return CMAX_FILENAME_FORMAT.format(date.year, prep_zeros_if_needed(str(date.month), 1),
-                                                prep_zeros_if_needed(str(date.day), 1),
-                                                prep_zeros_if_needed(str(date.hour), 1),
-                                                prep_zeros_if_needed(str(date.minute), 1))
-
-
-def initialize_CMAX_list_IDs_and_synop_dates_for_sequence(cmax_IDs: [str], synop_dates: [pd.Timestamp], sequence_length: int, future_seq_length: int):
-    # TODO Use synop dates instead of labels
-    new_list_IDs = []
-    new_synop_dates = []
-    one_hour = timedelta(hours=1)
-    for date in synop_dates:
-        utc_date = local_to_utc(date)
-        cmax_filename = get_cmax_filename(utc_date)
-
-        if cmax_filename in cmax_IDs:
-            next_utc_date = utc_date + one_hour
-            next_cmax_filename = get_cmax_filename(next_utc_date)
-
-            if next_cmax_filename in cmax_IDs:
-                # next frame exists, so the sequence is continued
-                new_list_IDs.append(cmax_filename)
-                new_synop_dates.append(date)
-            else:
-                # there is no next frame, so the sequence is broken. Remove past frames
-                for frame in range(1, sequence_length + future_seq_length):
-                    hours = timedelta(hours=frame)
-                    utc_date_to_remove = utc_date - hours
-                    cmax_filename_to_remove = get_cmax_filename(utc_date_to_remove)
-                    new_list_IDs.remove(new_list_IDs.index(cmax_filename_to_remove))
-                    local_date_to_remove = date - hours
-                    new_synop_dates.remove(local_date_to_remove)
-
-    return new_list_IDs, new_synop_dates
-
-
-def get_correct_dates_for_sequence(labels: pd.DataFrame, sequence_length: int, future_sequence_length: int, prediction_offset: int):
-    """
-    Takes DataFrame of synop observations and extracts these dates, which have consecutive sequence of length sequence_length + prediction_offset + future_sequence_length
-    :param labels:
-    :param sequence_length:
-    :param future_sequence_length:
-    :param target_param:
-    :param prediction_offset:
-    :return:
-    """
-    synop_dates = []
-    one_hour = timedelta(hours=1)
-    for date in tqdm(labels["date"]):
-        next_local_date = date + one_hour
-
-        if len(labels[labels["date"] == next_local_date]) > 0:
-            # next frame exists, so the sequence is continued
-            synop_dates.append(date)
-        else:
-            # there is no next frame, so the sequence is broken. Remove past frames
-            for frame in range(1, sequence_length + future_sequence_length + prediction_offset):
-                hours = timedelta(hours=frame)
-                local_date_to_remove = date - hours
-                synop_dates.remove(local_date_to_remove)
-
-    return synop_dates
 
 
 def get_nearest_lat_lon_from_coords(gfs_coords: [[float]], original_coords: Coords):
@@ -382,6 +272,28 @@ def add_param_to_train_params(train_params: list, param: str):
     return params
 
 
+def get_GFS_filename(date, prediction_offset, exact_date_match):
+    # value = [date, target_param]
+    last_date_in_sequence = date - timedelta(
+        hours=prediction_offset + (7 if date.month < 10 or date.month > 4 else 6))  # 00 run is available at 6 UTC
+    day = last_date_in_sequence.day
+    month = last_date_in_sequence.month
+    year = last_date_in_sequence.year
+    hour = int(last_date_in_sequence.hour)
+    run = ['00', '06', '12', '18'][(hour // 6)]
+
+    if exact_date_match:
+        run_hour = int(run)
+        prediction_hour = date.hour if date.hour > run_hour else date.hour + 24
+        pred_offset = str(prediction_hour - run_hour)
+    else:
+        pred_offset = str((prediction_offset + 6) // 3 * 3)
+
+    return FINAL_NUMPY_FILENAME_FORMAT.format(year, prep_zeros_if_needed(str(month), 1),
+                                              prep_zeros_if_needed(str(day), 1), run,
+                                              prep_zeros_if_needed(pred_offset, 2))
+
+
 def match_gfs_with_synop_sequence(features: Union[list, np.ndarray], targets: list, lat: float, lon: float,
                                   prediction_offset: int, gfs_params: list, exact_date_match=False, return_GFS=True):
     gfs_values = []
@@ -414,7 +326,8 @@ def match_gfs_with_synop_sequence(features: Union[list, np.ndarray], targets: li
 
 
 def match_gfs_with_synop_sequence2sequence(features: Union[list, np.ndarray], targets: list, lat: float, lon: float,
-                                  prediction_offset: int, gfs_params: list, exact_date_match=False, return_GFS=True):
+                                           prediction_offset: int, gfs_params: list, exact_date_match=False,
+                                           return_GFS=True):
     gfs_values = []
     new_targets = []
     new_features = []
@@ -428,7 +341,8 @@ def match_gfs_with_synop_sequence2sequence(features: Union[list, np.ndarray], ta
             gfs_filename = get_GFS_filename(date, prediction_offset, exact_date_match)
 
             # check if there are forecasts available
-            if all(os.path.exists(os.path.join(GFS_DATASET_DIR, param["name"], param["level"], gfs_filename)) for param in gfs_params):
+            if all(os.path.exists(os.path.join(GFS_DATASET_DIR, param["name"], param["level"], gfs_filename)) for param
+                   in gfs_params):
                 if return_GFS:
                     if gfs_values_cache.get(cache_key) is not None:
                         next_gfs_values.append(gfs_values_cache.get(cache_key))
@@ -456,30 +370,3 @@ def match_gfs_with_synop_sequence2sequence(features: Union[list, np.ndarray], ta
     if return_GFS:
         return np.array(new_features), np.array(gfs_values), np.array(new_targets)
     return np.array(new_features), np.array(new_targets)
-
-
-def get_GFS_filename(date, prediction_offset, exact_date_match):
-    # value = [date, target_param]
-    last_date_in_sequence = date - timedelta(
-        hours=prediction_offset + (7 if date.month < 10 or date.month > 4 else 6))  # 00 run is available at 6 UTC
-    day = last_date_in_sequence.day
-    month = last_date_in_sequence.month
-    year = last_date_in_sequence.year
-    hour = int(last_date_in_sequence.hour)
-    run = ['00', '06', '12', '18'][(hour // 6)]
-
-    if exact_date_match:
-        run_hour = int(run)
-        prediction_hour = date.hour if date.hour > run_hour else date.hour + 24
-        pred_offset = str(prediction_hour - run_hour)
-    else:
-        pred_offset = str((prediction_offset + 6) // 3 * 3)
-
-    return FINAL_NUMPY_FILENAME_FORMAT.format(year, prep_zeros_if_needed(str(month), 1),
-                                              prep_zeros_if_needed(str(day), 1), run,
-                                              prep_zeros_if_needed(pred_offset, 2))
-
-
-class NormalizationType(Enum):
-    STANDARD = 0
-    MINMAX = 1

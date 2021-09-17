@@ -3,11 +3,10 @@ import os
 import re
 
 from tqdm import tqdm
-import datetime
 from gfs_archive_0_25.gfs_processor.Coords import Coords
 from wind_forecast.consts import SYNOP_DATASETS_DIRECTORY, NETCDF_FILE_REGEX
 from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset
-from wind_forecast.util.utils import target_param_to_gfs_name_level, \
+from wind_forecast.util.gfs_util import target_param_to_gfs_name_level, \
     get_available_numpy_files, GFS_DATASET_DIR, date_from_gfs_np_file, get_point_from_GFS_slice_for_coords
 import numpy as np
 

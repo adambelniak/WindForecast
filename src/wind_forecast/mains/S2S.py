@@ -12,7 +12,7 @@ from wind_forecast.models.S2SModel import create_model
 from wind_forecast.preprocess.gfs.gfs_preprocess_csv import prepare_gfs_sequence_dataset
 from wind_forecast.preprocess.synop import consts
 from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset, normalize
-from wind_forecast.util.utils import convert_wind
+from wind_forecast.util.gfs_util import convert_wind
 
 warnings.filterwarnings('ignore')
 

@@ -4,7 +4,7 @@ from tqdm import tqdm
 
 from wind_forecast.config.register import Config
 from wind_forecast.preprocess.synop.synop_preprocess import normalize_synop_data
-from wind_forecast.util.utils import add_param_to_train_params, match_gfs_with_synop_sequence, \
+from wind_forecast.util.gfs_util import add_param_to_train_params, match_gfs_with_synop_sequence, \
     target_param_to_gfs_name_level
 
 
@@ -58,7 +58,7 @@ class SequenceLimitedToGFSDatesDataset(torch.utils.data.Dataset):
 
         length = len(self.targets)
         training_data = list(zip(self.features, self.targets))[:int(length * 0.8)]
-        test_data = list(zip(self.features, self.targets))[int(length * 0.8):]
+        test_data = list(zip(self.features, self.targets))[int(length * 0.8) + self.sequence_length - 1:]
 
         if train:
             data = training_data

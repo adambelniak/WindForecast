@@ -4,9 +4,10 @@ from datetime import timedelta
 import torch
 import numpy as np
 from wind_forecast.config.register import Config
+from wind_forecast.util.common_util import NormalizationType
 from wind_forecast.util.config import process_config
-from wind_forecast.util.utils import GFS_DATASET_DIR, date_from_gfs_np_file, initialize_mean_and_std, NormalizationType, \
-    initialize_min_max, initialize_mean_and_std_for_sequence, initialize_min_max_for_sequence, get_values_for_sequence
+from wind_forecast.util.gfs_util import GFS_DATASET_DIR, date_from_gfs_np_file, initialize_mean_and_std,\
+    initialize_min_max, initialize_mean_and_std_for_sequence, initialize_min_max_for_sequence, get_GFS_values_for_sequence
 
 
 class MultiChannelSpatialDataset(torch.utils.data.Dataset):
@@ -68,7 +69,7 @@ class MultiChannelSpatialDataset(torch.utils.data.Dataset):
             # Generate data
             for j, param in enumerate(self.train_parameters):
                 # Store sample
-                x[:, j, ] = get_values_for_sequence(ID, param, self.sequence_length)
+                x[:, j, ] = get_GFS_values_for_sequence(ID, param, self.sequence_length)
                 if self.normalize:
                     if self.normalization_type == NormalizationType.STANDARD:
                         x[:, j, ] = (x[:, j, ] - self.mean[j]) / self.std[j]

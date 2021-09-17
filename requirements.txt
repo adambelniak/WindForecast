@@ -30,3 +30,4 @@ rich
 hydra-configs-pytorch-lightning
 setproctitle
 h5py
+scikit-image

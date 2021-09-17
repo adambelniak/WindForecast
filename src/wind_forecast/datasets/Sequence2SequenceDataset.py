@@ -2,7 +2,7 @@ import torch
 from tqdm import tqdm
 from wind_forecast.config.register import Config
 from wind_forecast.preprocess.synop.synop_preprocess import normalize_synop_data
-from wind_forecast.util.utils import add_param_to_train_params
+from wind_forecast.util.gfs_util import add_param_to_train_params
 
 
 class Sequence2SequenceDataset(torch.utils.data.Dataset):
@@ -16,6 +16,8 @@ class Sequence2SequenceDataset(torch.utils.data.Dataset):
         self.future_sequence_length = config.experiment.future_sequence_length
         self.prediction_offset = config.experiment.prediction_offset
         self.synop_data = synop_data.reset_index()
+        self.mean = ...
+        self.std = ...
         # Get indices which correspond to 'dates' - 'dates' are the ones, which start a proper sequence without breaks
         synop_data_indices = self.synop_data[self.synop_data["date"].isin(dates)].index
         params = add_param_to_train_params(self.train_params, self.target_param)
@@ -28,6 +30,9 @@ class Sequence2SequenceDataset(torch.utils.data.Dataset):
                                                                           self.sequence_length + self.prediction_offset
                                                                           + self.future_sequence_length,
                                                                           config.experiment.normalization_type)
+            self.mean = synop_mean[target_param_index]
+            self.std = synop_std[target_param_index]
+            # if data was already normalized we don't know the mean and std, but it's YANGNI now
             print(synop_mean[target_param_index])
             print(synop_std[target_param_index])
 
@@ -51,11 +56,9 @@ class Sequence2SequenceDataset(torch.utils.data.Dataset):
         test_data = list(zip(zip(self.features, self.all_targets), self.targets))[int(length * 0.8) + self.sequence_length - 1:]
 
         if train:
-            data = training_data
+            self.data = training_data
         else:
-            data = test_data
-
-        self.data = data
+            self.data = test_data
 
     def __len__(self):
         'Denotes the total number of samples'

@@ -4,7 +4,7 @@ from tqdm import tqdm
 
 from wind_forecast.config.register import Config
 from wind_forecast.preprocess.synop.synop_preprocess import normalize_synop_data
-from wind_forecast.util.utils import add_param_to_train_params
+from wind_forecast.util.gfs_util import add_param_to_train_params
 
 
 class SequenceDataset(torch.utils.data.Dataset):
@@ -43,11 +43,9 @@ class SequenceDataset(torch.utils.data.Dataset):
         training_data = np.array(list(zip(self.features, self.targets))[:int(length * 0.8)])
         test_data = np.array(list(zip(self.features, self.targets))[int(length * 0.8) + self.sequence_length - 1:])
         if train:
-            data = training_data
+            self.data = training_data
         else:
-            data = test_data
-
-        self.data = data
+            self.data = test_data
 
     def __len__(self):
         'Denotes the total number of samples'

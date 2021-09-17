@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 import numpy as np
 
 from wind_forecast.consts import SYNOP_DATASETS_DIRECTORY
-from wind_forecast.util.utils import utc_to_local
+from wind_forecast.util.common_util import utc_to_local
 from wind_forecast.preprocess.gfs.gfs_preprocess_netCDF import get_forecasts_for_year_offset_param_from_npy_file
 from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset, filter_for_dates
 

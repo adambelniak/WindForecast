@@ -15,7 +15,7 @@ from wind_forecast.preprocess.synop.consts import SYNOP_FEATURES
 from wind_forecast.preprocess.synop.fetch_synop_data import download_list_of_station, get_localisation_id, \
     process_all_data
 from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset
-from wind_forecast.util.utils import get_available_numpy_files
+from wind_forecast.util.gfs_util import get_available_numpy_files
 from gfs_archive_0_25.utils import prep_zeros_if_needed
 
 gfs_dataset_dir = os.path.join("D:\\WindForecast", "output_np2")
