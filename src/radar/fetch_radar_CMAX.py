@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 from zipfile import ZipFile, BadZipFile
 import numpy as np
+from shutil import copyfile
 
 import h5py
 import requests
@@ -11,8 +12,10 @@ from skimage.measure import block_reduce
 from sklearn.utils import resample
 import seaborn as sns
 import matplotlib.pyplot as plt
+from tqdm import tqdm
 
 from gfs_archive_0_25.utils import prep_zeros_if_needed
+from wind_forecast.util.cmax_util import get_available_hdf_files_cmax_hours
 
 DATA_URL = "https://danepubliczne.imgw.pl/datastore/getfiledown/Arch/Polrad/Produkty/POLCOMP/COMPO_CMAX_250.comp.cmax"
 CMAX_DATASET_DIR = os.environ['CMAX_DATASET_DIR']
@@ -71,7 +74,13 @@ def get_all_zips():
 
 
 if __name__ == "__main__":
-    get_all_zips()
+    # get_all_zips()
+
+    os.makedirs(os.path.join(CMAX_DATASET_DIR, 'hours'), exist_ok=True)
+
+    for file in tqdm(get_available_hdf_files_cmax_hours()):
+        if not os.path.exists(os.path.join(CMAX_DATASET_DIR, 'hours', file)):
+            copyfile(os.path.join(CMAX_DATASET_DIR, file), os.path.join(CMAX_DATASET_DIR, 'hours', file))
 
     # with h5py.File(os.path.join(CMAX_DATASET_DIR, '2020083017100000dBZ.cmax.h5'), 'r') as hdf:
     #     data = np.array(hdf.get('dataset1').get('data1').get('data'))

@@ -4,7 +4,7 @@ import os
 import torch
 import numpy as np
 from wind_forecast.config.register import Config
-from wind_forecast.util.cmax_util import CMAX_DATASET_DIR, initialize_mean_and_std_cmax, initialize_min_max_cmax, \
+from wind_forecast.util.cmax_util import CMAX_DATASET_DIR, initialize_mean_and_std_cmax, get_min_max_cmax, \
     get_cmax_values_for_sequence, get_cmax_filename_from_offset
 from wind_forecast.util.common_util import NormalizationType
 from wind_forecast.util.config import process_config
@@ -41,21 +41,20 @@ class CMAXDataset(torch.utils.data.Dataset):
         if normalize:
             self.normalize_data(self.normalization_type)
 
-        self.np_mask_for_cmax = np.load(os.path.join(CMAX_DATASET_DIR, "mask.npy"))
-
     def normalize_data(self, normalization_type: NormalizationType):
         if normalization_type == NormalizationType.STANDARD:
             if self.use_future_cmax:
                 self.mean, self.std = initialize_mean_and_std_cmax(self.list_IDs, self.dim, self.sequence_length,
+                                                                   self.config.experiment.cmax_scaling_factor,
                                                                    self.future_sequence_length, self.prediction_offset)
             else:
-                self.mean, self.std = initialize_mean_and_std_cmax(self.list_IDs, self.dim, self.sequence_length)
+                self.mean, self.std = initialize_mean_and_std_cmax(self.list_IDs, self.dim, self.sequence_length,
+                                                                   self.config.experiment.cmax_scaling_factor)
         else:
             if self.use_future_cmax:
-                self.min, self.max = initialize_min_max_cmax(self.list_IDs, self.sequence_length,
-                                                             self.future_sequence_length, self.prediction_offset)
+                self.min, self.max = get_min_max_cmax()
             else:
-                self.min, self.max = initialize_min_max_cmax(self.list_IDs, self.sequence_length)
+                self.min, self.max = get_min_max_cmax()
 
     def __len__(self):
         'Denotes the total number of samples'

@@ -5,7 +5,7 @@ defaults:
   - schema_experiment
 
 _tags_:
-  - TRANSFORMER_ENCODER
+  - TRANSFORMER_ENCODER_CMAX
 
 resume_checkpoint: ~
 

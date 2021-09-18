@@ -127,7 +127,7 @@ def initialize_min_max(list_IDs: [str], train_parameters, subregion_coords=None)
 
 
 def initialize_min_max_for_sequence(list_IDs: [str], train_parameters, sequence_length: int, subregion_coords=None):
-    log.info("Calculating min and max for a dataset")
+    log.info("Calculating min and max for the GFS dataset")
     mins = []
     maxes = []
     for param in tqdm(train_parameters):
@@ -144,7 +144,7 @@ def initialize_min_max_for_sequence(list_IDs: [str], train_parameters, sequence_
 
 
 def initialize_mean_and_std_for_wind_target(list_IDs, dim):
-    log.info("Calculating std and mean for a dataset")
+    log.info("Calculating std and mean for the GFS dataset")
 
     sum, sqr_sum = 0, 0
     for id in list_IDs:
