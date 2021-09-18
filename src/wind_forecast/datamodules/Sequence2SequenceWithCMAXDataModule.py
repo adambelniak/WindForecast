@@ -13,7 +13,7 @@ from wind_forecast.util.cmax_util import get_available_hdf_files_cmax_hours, \
     initialize_CMAX_list_IDs_and_synop_dates_for_sequence
 
 
-class SequenceWithCMAXDataModule(LightningDataModule):
+class Sequence2SequenceWithCMAXDataModule(LightningDataModule):
     def __init__(
             self,
             config: Config
@@ -23,6 +23,7 @@ class SequenceWithCMAXDataModule(LightningDataModule):
         self.val_split = config.experiment.val_split
         self.batch_size = config.experiment.batch_size
         self.shuffle = config.experiment.shuffle
+        self.use_future_cmax = config.experiment.use_future_cmax
         self.dataset_train = ...
         self.dataset_val = ...
         self.dataset_test = ...
@@ -37,8 +38,10 @@ class SequenceWithCMAXDataModule(LightningDataModule):
 
         available_ids = get_available_hdf_files_cmax_hours()
         self.cmax_IDs, self.dates = initialize_CMAX_list_IDs_and_synop_dates_for_sequence(available_ids, self.labels,
-                                                                                          self.sequence_length, 1,
-                                                                                          config.experiment.prediction_offset)
+                                                                                          self.sequence_length,
+                                                                                          config.experiment.future_sequence_length,
+                                                                                          config.experiment.prediction_offset,
+                                                                                          config.experiment.use_future_cmax)
 
     def prepare_data(self, *args, **kwargs):
         pass

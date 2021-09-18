@@ -117,8 +117,8 @@ def initialize_min_max(list_IDs: [str], train_parameters, subregion_coords=None)
             values = np.load(os.path.join(GFS_DATASET_DIR, param['name'], param['level'], id))
             if subregion_coords is not None:
                 values = get_subregion_from_GFS_slice_for_coords(values, subregion_coords)
-            min = min(values, min)
-            max = max(values, max)
+            min = min(np.min(values), min)
+            max = max(np.max(values), max)
 
         mins.append(min)
         maxes.append(max)

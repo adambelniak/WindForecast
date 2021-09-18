@@ -9,6 +9,8 @@ import h5py
 import requests
 from skimage.measure import block_reduce
 from sklearn.utils import resample
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 from gfs_archive_0_25.utils import prep_zeros_if_needed
 
@@ -71,8 +73,12 @@ def get_all_zips():
 if __name__ == "__main__":
     get_all_zips()
 
-    # with h5py.File(os.path.join(CMAX_DATASET_DIR, '2018010100000000dBZ.cmax.h5'), 'r') as hdf:
+    # with h5py.File(os.path.join(CMAX_DATASET_DIR, '2020083017100000dBZ.cmax.h5'), 'r') as hdf:
     #     data = np.array(hdf.get('dataset1').get('data1').get('data'))
-    #     mask = np.load(os.path.join(CMAX_DATASET_DIR, 'mask.npy'))
-    #     values = data - mask
-    #     resampled = block_reduce(values, block_size=(2, 2), func=np.mean)
+    #     # mask = np.load(os.path.join(CMAX_DATASET_DIR, 'mask.npy'))
+    #     # values = data - mask
+    #     mask = np.where(data == 255)
+    #     data[mask] = data[mask] - 255
+    #     resampled = block_reduce(data, block_size=(1, 1), func=np.mean)
+    #     sns.heatmap(resampled)
+    #     plt.show()

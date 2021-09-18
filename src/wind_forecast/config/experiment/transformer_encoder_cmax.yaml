@@ -18,4 +18,4 @@ model:
 system:
   _target_: wind_forecast.systems.RegressorWithCMAX.RegressorWithCMAX
 
-synop_from_year: 2020
+batch_size: 5

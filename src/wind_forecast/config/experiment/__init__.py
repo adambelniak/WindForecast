@@ -58,6 +58,8 @@ class ExperimentSettings:
 
     normalization_type: NormalizationType = NormalizationType.STANDARD
 
+    cmax_normalization_type: NormalizationType = NormalizationType.MINMAX
+
     val_split: float = .2
 
     gfs_dataset_dir: str = os.path.join("D:\\WindForecast", "output_np2")
@@ -125,5 +127,9 @@ class ExperimentSettings:
     transformer_attention_heads: int = 1
 
     cmax_sample_size: Any = (900, 900)
+
+    cmax_scaling_factor: int = 8
+
+    use_future_cmax: bool = False
 
     view_test_result: bool = True

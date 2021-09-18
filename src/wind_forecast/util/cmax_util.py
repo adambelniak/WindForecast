@@ -8,12 +8,12 @@ import numpy as np
 from datetime import datetime, timedelta
 
 import pandas as pd
+from skimage.measure import block_reduce
 from tqdm import tqdm
 
 from wind_forecast.util.common_util import prep_zeros_if_needed
 from wind_forecast.consts import CMAX_FILENAME_FORMAT, CMAX_FILE_REGEX
 from wind_forecast.util.logging import log
-
 
 CMAX_DATASET_DIR = os.environ.get('CMAX_DATASET_DIR')
 CMAX_DATASET_DIR = 'data' if CMAX_DATASET_DIR is None else CMAX_DATASET_DIR
@@ -37,39 +37,42 @@ def date_from_cmax_file(filename):
     return date
 
 
-def get_cmax_values_for_sequence(id, sequence_length):
+def get_cmax_values_for_sequence(id, sequence_length, scaling_factor):
     date = date_from_cmax_file(id)
     values = []
-    np_mask_for_cmax = np.load(os.path.join(CMAX_DATASET_DIR, "mask.npy"))
-    with h5py.File(os.path.join(CMAX_DATASET_DIR, id), 'r') as hdf:
-        data = np.array(hdf.get('dataset1').get('data1').get('data'))
-        values.append(data - np_mask_for_cmax)
 
-    for frame in range(1, sequence_length):
+    for frame in range(0, sequence_length):
+        values.append(get_hdf(id, scaling_factor))
         date = date + timedelta(hours=1)
-        values.append(get_hdf(id, np_mask_for_cmax))
+        id = get_cmax_filename(date)
 
     return values
 
 
-def get_hdf(id, mask):
+def get_hdf(id, scaling_factor):
     with h5py.File(os.path.join(CMAX_DATASET_DIR, id), 'r') as hdf:
         data = np.array(hdf.get('dataset1').get('data1').get('data'))
-        values = data - mask
+        mask = np.where(data == 255)
+        data[mask] = data[mask] - 255
+        values = block_reduce(data, block_size=(scaling_factor, scaling_factor), func=np.mean)
     return values
 
 
-def initialize_mean_and_std_cmax(list_IDs: [str], dim: (int, int), sequence_length: int):
+def initialize_mean_and_std_cmax(list_IDs: [str], dim: (int, int), sequence_length: int,
+                                 future_sequence_length: int = 0, prediction_offset: int = 0):
     # Bear in mind that list_IDs are indices of FIRST frame in the sequence. Not all frames exist in list_IDs because of that fact.
     log.info("Calculating std and mean for a CMAX dataset")
-    all_ids = set([item for sublist in [[get_cmax_filename_from_offset(id, offset) for offset in range(0, sequence_length)] for id in list_IDs] for item in sublist])
+    all_ids = set([item for sublist in [[get_cmax_filename_from_offset(id, offset) for offset in
+                                         range(0, sequence_length + future_sequence_length + prediction_offset)] for id
+                                        in list_IDs] for item in sublist])
     mean, sqr_mean = 0, 0
     np_mask_for_cmax = np.load(os.path.join(CMAX_DATASET_DIR, "mask.npy"))
-    denom = len(all_ids) * dim[0] * dim[1]
+    denom = len(all_ids) * dim[0] * dim[1] / 4
     for id in tqdm(all_ids):
         with h5py.File(os.path.join(CMAX_DATASET_DIR, id), 'r') as hdf:
             data = np.array(hdf.get('dataset1').get('data1').get('data'), dtype=float)
             values = data - np_mask_for_cmax
+            values = block_reduce(values, block_size=(2, 2), func=np.mean)
             mean += np.sum(values) / denom
             sqr_mean += np.sum(np.power(values, 2)) / denom
 
@@ -84,19 +87,24 @@ def get_cmax_filename_from_offset(id: str, offset: int) -> str:
     return get_cmax_filename(date)
 
 
-def initialize_min_max_cmax(list_IDs: [str], sequence_length: int):
+def initialize_min_max_cmax(list_IDs: [str], sequence_length: int, future_sequence_length: int = 0,
+                            prediction_offset: int = 0):
     # Bear in mind that list_IDs are indices of FIRST frame in the sequence. Not all frames exist in list_IDs because of that fact.
     log.info("Calculating min and max for CMAX a dataset")
-    all_ids = set([item for sublist in [[get_cmax_filename_from_offset(id, offset) for offset in range(0, sequence_length)] for id in list_IDs] for item in sublist])
+    all_ids = set([item for sublist in [[get_cmax_filename_from_offset(id, offset)
+                                         for offset in
+                                         range(0, sequence_length + future_sequence_length + prediction_offset)]
+                                        for id in list_IDs] for item in sublist])
     min_val, max_val = sys.float_info.max, sys.float_info.min
     np_mask_for_cmax = np.load(os.path.join(CMAX_DATASET_DIR, "mask.npy"))
 
-    for id in all_ids:
+    for id in tqdm(all_ids):
         with h5py.File(os.path.join(CMAX_DATASET_DIR, id), 'r') as hdf:
             data = np.array(hdf.get('dataset1').get('data1').get('data'), dtype=float)
             values = data - np_mask_for_cmax
-            min_val = min_val(values, min_val)
-            max_val = max_val(values, max_val)
+            values = block_reduce(values, block_size=(2, 2), func=np.mean)
+            min_val = min(np.min(values), min_val)
+            max_val = max(np.max(values), max_val)
 
     return min_val, max_val
 
@@ -109,7 +117,8 @@ def get_cmax_filename(date: datetime):
 
 
 def initialize_CMAX_list_IDs_and_synop_dates_for_sequence(cmax_IDs: [str], labels: pd.DataFrame, sequence_length: int,
-                                                          future_seq_length: int, prediction_offset: int):
+                                                          future_seq_length: int, prediction_offset: int,
+                                                          use_future_cmax: bool = False):
     new_list_IDs = []
     synop_dates = []
     one_hour = timedelta(hours=1)
@@ -119,13 +128,15 @@ def initialize_CMAX_list_IDs_and_synop_dates_for_sequence(cmax_IDs: [str], label
         if cmax_filename in cmax_IDs:
             next_date = date + one_hour
             next_cmax_filename = get_cmax_filename(next_date)
-            if len(labels[labels["date"] == next_date]) > 0 and next_cmax_filename in cmax_IDs and os.path.getsize(os.path.join(CMAX_DATASET_DIR, cmax_filename)) > 0:
+            if len(labels[labels["date"] == next_date]) > 0 and next_cmax_filename in cmax_IDs and os.path.getsize(
+                    os.path.join(CMAX_DATASET_DIR, cmax_filename)) > 0:
                 # next frame exists, so the sequence is continued
                 synop_dates.append(date)
                 new_list_IDs.append(cmax_filename)
             elif len(labels[labels["date"] == next_date]) > 0:
-                # there is no next frame for CMAX, so the sequence is broken. Remove past frames of sequence_length
-                for frame in range(1, sequence_length):
+                # there is no next frame for CMAX, so the sequence is broken. Remove past frames of sequence_length (and future_length if use_future_cmax)
+                for frame in range(1, sequence_length + (
+                0 if not use_future_cmax else prediction_offset + future_seq_length)):
                     hours = timedelta(hours=frame)
                     date_to_remove = date - hours
                     if date_to_remove in synop_dates:
