@@ -96,7 +96,7 @@ class ExperimentSettings:
 
     target_coords: List = field(default_factory=lambda: [52.1831174, 20.9875259])
 
-    tcn_channels: List = field(default_factory=lambda: [64])
+    tcn_channels: List = field(default_factory=lambda: [64, 64])
 
     tcn_kernel_size: int = 3
 
@@ -128,7 +128,7 @@ class ExperimentSettings:
 
     cmax_sample_size: Any = (900, 900)
 
-    cmax_scaling_factor: int = 8
+    cmax_scaling_factor: int = 4
 
     use_future_cmax: bool = False
 

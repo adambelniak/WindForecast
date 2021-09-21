@@ -115,8 +115,11 @@ class S2SRegressorWithTFWithCMAX(pl.LightningModule):
     # ----------------------------------------------------------------------------------------------
     # Forward
     # ----------------------------------------------------------------------------------------------
-    def forward(self, x: torch.Tensor, cmax_inputs: torch.Tensor, targets: torch.Tensor, cmax_targets: torch.Tensor, epoch, stage) -> torch.Tensor:
-        return self.model(x.float(), cmax_inputs.float(), targets.float(), cmax_targets.float(), epoch, stage)
+    def forward(self, x: torch.Tensor, cmax_inputs: torch.Tensor, targets: torch.Tensor, epoch, stage, cmax_targets: torch.Tensor = None) -> torch.Tensor:
+        if cmax_targets is None:
+            return self.model(x.float(), cmax_inputs.float(), targets.float(), epoch, stage)
+        else:
+            return self.model(x.float(), cmax_inputs.float(), targets.float(), cmax_targets.float(), epoch, stage)
 
     # ----------------------------------------------------------------------------------------------
     # Loss
@@ -162,8 +165,14 @@ class S2SRegressorWithTFWithCMAX(pl.LightningModule):
         """
 
         inputs, synop_targets, targets = batch[0]
-        cmax_inputs, cmax_targets = batch[1]
-        outputs = self.forward(inputs, cmax_inputs, synop_targets, cmax_targets, self.current_epoch, 'fit')
+        if self.cfg.experiment.use_future_cmax:
+            cmax_inputs, cmax_targets = batch[1]
+            outputs = self.forward(inputs, cmax_inputs, synop_targets, self.current_epoch, 'fit', cmax_targets)
+
+        else:
+            cmax_inputs = batch[1]
+            outputs = self.forward(inputs, cmax_inputs, synop_targets, self.current_epoch, 'fit')
+
         loss = self.calculate_loss(outputs, targets.float())
         self.train_mse(outputs, targets)
         self.train_mae(outputs, targets)
@@ -221,8 +230,16 @@ class S2SRegressorWithTFWithCMAX(pl.LightningModule):
         dict[str, torch.Tensor]
             Metric values for a given batch.
         """
-        inputs, synop_targets, targets, cmax_inputs, cmax_targets = (*batch[0], *batch[1])
-        outputs = self.forward(inputs, cmax_inputs, synop_targets, cmax_targets, self.current_epoch, 'test')
+
+        inputs, synop_targets, targets = batch[0]
+
+        if self.cfg.experiment.use_future_cmax:
+            cmax_inputs, cmax_targets = batch[1]
+            outputs = self.forward(inputs, cmax_inputs, synop_targets, self.current_epoch, 'test', cmax_targets)
+
+        else:
+            cmax_inputs = batch[1]
+            outputs = self.forward(inputs, cmax_inputs, synop_targets, self.current_epoch, 'test')
 
         self.val_mse(outputs, targets.float())
         self.val_mae(outputs, targets.float())
@@ -278,8 +295,15 @@ class S2SRegressorWithTFWithCMAX(pl.LightningModule):
         dict[str, torch.Tensor]
             Metric values for a given batch.
         """
-        inputs, synop_targets, targets, cmax_inputs, cmax_targets = (*batch[0], *batch[1])
-        outputs = self.forward(inputs, cmax_inputs, synop_targets, cmax_targets, self.current_epoch, 'test')
+        inputs, synop_targets, targets = batch[0]
+
+        if self.cfg.experiment.use_future_cmax:
+            cmax_inputs, cmax_targets = batch[1]
+            outputs = self.forward(inputs, cmax_inputs, synop_targets, self.current_epoch, 'test', cmax_targets)
+
+        else:
+            cmax_inputs = batch[1]
+            outputs = self.forward(inputs, cmax_inputs, synop_targets, self.current_epoch, 'test')
 
         self.test_mse(outputs, targets.float())
         self.test_mae(outputs, targets.float())

@@ -22,9 +22,9 @@ CMAX_MIN = 0
 
 
 def get_available_hdf_files_cmax_hours():
-    matcher = re.compile(r"\d{10}000000dBZ\.cmax\.h5")
+    matcher = re.compile(r"\d{10}000000dBZ\.cmax\.h5\.npy")
     print(f"Scanning {CMAX_DATASET_DIR} looking for HDF files.")
-    return [f.name for f in tqdm(os.scandir(CMAX_DATASET_DIR)) if matcher.match(f.name)]
+    return [f.name for f in tqdm(os.scandir(os.path.join(CMAX_DATASET_DIR))) if matcher.match(f.name)]
 
 
 def date_from_cmax_file(filename):
@@ -39,28 +39,24 @@ def date_from_cmax_file(filename):
     return date
 
 
-def get_cmax_values_for_sequence(id, sequence_length, scaling_factor):
+def get_cmax_values_for_sequence(id, sequence_length):
     date = date_from_cmax_file(id)
     values = []
 
     for frame in range(0, sequence_length):
-        values.append(get_hdf(id, scaling_factor))
+        values.append(get_hdf(id))
         date = date + timedelta(hours=1)
         id = get_cmax_filename(date)
 
     return values
 
 
-def get_hdf(id, scaling_factor):
-    with h5py.File(os.path.join(CMAX_DATASET_DIR, id), 'r') as hdf:
-        data = np.array(hdf.get('dataset1').get('data1').get('data'))
-        mask = np.where(data == 255)
-        data[mask] = data[mask] - 255
-        values = block_reduce(data, block_size=(scaling_factor, scaling_factor), func=np.mean)
+def get_hdf(id):
+    values = np.load(os.path.join(CMAX_DATASET_DIR, 'npy', id))
     return values
 
 
-def initialize_mean_and_std_cmax(list_IDs: [str], dim: (int, int), sequence_length: int, scaling_factor,
+def initialize_mean_and_std_cmax(list_IDs: [str], dim: (int, int), sequence_length: int,
                                  future_sequence_length: int = 0, prediction_offset: int = 0):
     # Bear in mind that list_IDs are indices of FIRST frame in the sequence. Not all frames exist in list_IDs because of that fact.
     log.info("Calculating std and mean for the CMAX dataset")
@@ -70,7 +66,7 @@ def initialize_mean_and_std_cmax(list_IDs: [str], dim: (int, int), sequence_leng
     mean, sqr_mean = 0, 0
     denom = len(all_ids) * dim[0] * dim[1] / 4
     for id in tqdm(all_ids):
-        values = get_hdf(id, scaling_factor)
+        values = get_hdf(id)
         mean += np.sum(values) / denom
         sqr_mean += np.sum(np.power(values, 2)) / denom
 
@@ -109,7 +105,7 @@ def initialize_CMAX_list_IDs_and_synop_dates_for_sequence(cmax_IDs: [str], label
             next_date = date + one_hour
             next_cmax_filename = get_cmax_filename(next_date)
             if len(labels[labels["date"] == next_date]) > 0 and next_cmax_filename in cmax_IDs and os.path.getsize(
-                    os.path.join(CMAX_DATASET_DIR, cmax_filename)) > 0:
+                    os.path.join(CMAX_DATASET_DIR, 'npy', cmax_filename)) > 0:
                 # next frame exists, so the sequence is continued
                 synop_dates.append(date)
                 new_list_IDs.append(cmax_filename)

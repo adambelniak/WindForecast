@@ -19,4 +19,5 @@ system:
   _target_: wind_forecast.systems.S2SRegressorWithTFWithCMAX.S2SRegressorWithTFWithCMAX
 
 batch_size: 5
-use_future_cmax: True
+use_future_cmax: False
+synop_from_year: 2019
