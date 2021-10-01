@@ -1,0 +1,19 @@
+# Specific experiments settings
+# (default settings inherited from configs.experiment.ExperimentSettings)
+
+defaults:
+  - schema_experiment
+
+_tags_:
+  - CMAX_AUTOENCODER
+
+resume_checkpoint: ~
+
+datamodule:
+  _target_: wind_forecast.datamodules.CMAXDataModule.CMAXDataModule
+
+model:
+  _target_: wind_forecast.models.CMAXAutoencoder.CMAXAutoencoder
+
+system:
+  _target_: wind_forecast.systems.AutoencoderSystem.AutoencoderSystem

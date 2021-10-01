@@ -13,7 +13,7 @@ class TransformerEncoderS2SCMAX(LightningModule):
     def __init__(self, config: Config):
         super().__init__()
         features_len = len(config.experiment.synop_train_features)
-        embed_dim = features_len * (config.experiment.time2vec_embedding_size + 1) + 128 + 1024
+        embed_dim = features_len * (config.experiment.time2vec_embedding_size + 1) + 128 #+ 1024
         self.conv = nn.Sequential(nn.Conv2d(in_channels=1, out_channels=16, kernel_size=(3, 3), stride=(2, 2)),
                                   nn.ReLU(),
                                   nn.BatchNorm2d(num_features=16),
@@ -34,6 +34,9 @@ class TransformerEncoderS2SCMAX(LightningModule):
                                   nn.ReLU(),
                                   nn.BatchNorm2d(num_features=32),
                                   # nn.MaxPool2d(kernel_size=(2, 2), padding=(1, 1)),
+                                  nn.Conv2d(in_channels=32, out_channels=32, kernel_size=(3, 3), stride=(2, 2)),
+                                  nn.ReLU(),
+                                  nn.BatchNorm2d(num_features=32),
                                   nn.Flatten()
                                   )
 

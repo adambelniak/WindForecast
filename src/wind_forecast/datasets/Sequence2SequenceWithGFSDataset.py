@@ -22,7 +22,8 @@ class Sequence2SequenceWithGFSDataset(torch.utils.data.Dataset):
         self.sequence_length = config.experiment.sequence_length
         self.future_sequence_length = config.experiment.future_sequence_length
         self.prediction_offset = config.experiment.prediction_offset
-
+        self.mean = ...
+        self.std = ...
         synop_data = synop_data.reset_index()
 
         # Get indices which correspond to 'dates' - 'dates' are the ones, which start a proper sequence without breaks
@@ -38,6 +39,8 @@ class Sequence2SequenceWithGFSDataset(torch.utils.data.Dataset):
                                                                           self.sequence_length + self.prediction_offset
                                                                           + self.future_sequence_length,
                                                                           config.experiment.normalization_type)
+            self.mean = synop_mean[target_param_index]
+            self.std = synop_std[target_param_index]
             print(synop_mean[target_param_index])
             print(synop_std[target_param_index])
 

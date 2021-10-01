@@ -5,7 +5,7 @@ defaults:
   - schema_experiment
 
 _tags_:
-  - TRANSFORMER_ENCODER_S2S
+  - TRANSFORMER_ENCODER_S2S_GFS
 
 resume_checkpoint: ~
 

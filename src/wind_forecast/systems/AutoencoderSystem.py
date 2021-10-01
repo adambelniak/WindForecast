@@ -10,7 +10,6 @@ from hydra.utils import instantiate
 from pytorch_lightning import LightningModule
 from pytorch_lightning.loggers.base import LoggerCollection
 from pytorch_lightning.loggers.wandb import WandbLogger
-from pytorch_lightning.metrics import MeanAbsoluteError
 from torch.optim.lr_scheduler import _LRScheduler
 from pytorch_lightning.metrics.regression.mean_squared_error import MeanSquaredError
 from rich import print
@@ -21,7 +20,7 @@ from wandb.sdk.wandb_run import Run
 from wind_forecast.config.register import Config
 
 
-class S2SRegressorWithTFWithGFSInput(pl.LightningModule):
+class AutoencoderSystem(pl.LightningModule):
     def __init__(self, cfg: Config) -> None:
         super().__init__()  # type: ignore
 
@@ -38,11 +37,8 @@ class S2SRegressorWithTFWithGFSInput(pl.LightningModule):
 
         # Metrics
         self.train_mse = MeanSquaredError()
-        self.train_mae = MeanAbsoluteError()
         self.val_mse = MeanSquaredError()
-        self.val_mae = MeanAbsoluteError()
         self.test_mse = MeanSquaredError()
-        self.test_mae = MeanAbsoluteError()
         self.test_results = []
 
     # -----------------------------------------------------------------------------------------------
@@ -115,8 +111,8 @@ class S2SRegressorWithTFWithGFSInput(pl.LightningModule):
     # ----------------------------------------------------------------------------------------------
     # Forward
     # ----------------------------------------------------------------------------------------------
-    def forward(self, x: torch.Tensor, gfs_inputs: torch.Tensor, targets: torch.Tensor, epoch, stage) -> torch.Tensor:
-        return self.model(x.float(), gfs_inputs.float(), targets.float(), epoch, stage)
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.model(x)
 
     # ----------------------------------------------------------------------------------------------
     # Loss
@@ -139,12 +135,12 @@ class S2SRegressorWithTFWithGFSInput(pl.LightningModule):
         torch.Tensor
             Loss value.
         """
-        return self.criterion(outputs, targets)
+        return self.criterion(outputs, targets.float())
 
     # ----------------------------------------------------------------------------------------------
     # Training
     # ----------------------------------------------------------------------------------------------
-    def training_step(self, batch: list[torch.Tensor], batch_idx: int) -> dict[str, torch.Tensor]:  # type: ignore
+    def training_step(self, batch: torch.Tensor, batch_idx: int) -> dict[str, torch.Tensor]:  # type: ignore
         """
         Train on a single batch with loss defined by `self.criterion`.
 
@@ -160,11 +156,10 @@ class S2SRegressorWithTFWithGFSInput(pl.LightningModule):
         dict[str, torch.Tensor]
             Metric values for a given batch.
         """
-        inputs, gfs_inputs, all_targets, targets = batch
-        outputs = self.forward(inputs, gfs_inputs, all_targets, self.current_epoch, 'fit')
-        loss = self.calculate_loss(outputs, targets.float())
-        self.train_mse(outputs, targets)
-        self.train_mae(outputs, targets)
+        inputs = batch.float()
+        outputs = self.forward(inputs)
+        loss = self.calculate_loss(outputs, inputs)
+        self.train_mse(outputs, inputs)
 
         return {
             'loss': loss,
@@ -185,11 +180,9 @@ class S2SRegressorWithTFWithGFSInput(pl.LightningModule):
         metrics = {
             'epoch': float(step),
             'train_rmse': math.sqrt(float(self.train_mse.compute().item())),
-            'train_mae': float(self.train_mae.compute().item())
         }
 
         self.train_mse.reset()
-        self.train_mae.reset()
 
         # Average additional metrics over all batches
         for key in outputs[0]:
@@ -203,7 +196,7 @@ class S2SRegressorWithTFWithGFSInput(pl.LightningModule):
     # ----------------------------------------------------------------------------------------------
     # Validation
     # ----------------------------------------------------------------------------------------------
-    def validation_step(self, batch: list[torch.Tensor], batch_idx: int) -> dict[str, torch.Tensor]:  # type: ignore
+    def validation_step(self, batch: torch.Tensor, batch_idx: int) -> dict[str, torch.Tensor]:  # type: ignore
         """
         Compute validation metrics.
 
@@ -219,11 +212,10 @@ class S2SRegressorWithTFWithGFSInput(pl.LightningModule):
         dict[str, torch.Tensor]
             Metric values for a given batch.
         """
-        inputs, gfs_inputs, all_targets, targets = batch
-        outputs = self.forward(inputs, gfs_inputs, all_targets, self.current_epoch, 'test')
+        inputs = batch.float()
+        outputs = self.forward(inputs)
 
-        self.val_mse(outputs.squeeze(), targets.float().squeeze())
-        self.val_mae(outputs.squeeze(), targets.float().squeeze())
+        self.val_mse(outputs, inputs)
 
         return {
             # 'additional_metric': ...
@@ -244,11 +236,9 @@ class S2SRegressorWithTFWithGFSInput(pl.LightningModule):
         metrics = {
             'epoch': float(step),
             'val_rmse': math.sqrt(float(self.val_mse.compute().item())),
-            'val_mae': float(self.val_mae.compute().item())
         }
 
         self.val_mse.reset()
-        self.val_mae.reset()
 
         # Average additional metrics over all batches
         for key in outputs[0]:
@@ -260,7 +250,7 @@ class S2SRegressorWithTFWithGFSInput(pl.LightningModule):
     # ----------------------------------------------------------------------------------------------
     # Test
     # ----------------------------------------------------------------------------------------------
-    def test_step(self, batch: list[torch.Tensor], batch_idx: int) -> dict[str, torch.Tensor]:  # type: ignore
+    def test_step(self, batch: torch.Tensor, batch_idx: int) -> dict[str, torch.Tensor]:  # type: ignore
         """
         Compute test metrics.
 
@@ -276,14 +266,12 @@ class S2SRegressorWithTFWithGFSInput(pl.LightningModule):
         dict[str, torch.Tensor]
             Metric values for a given batch.
         """
-        inputs, gfs_inputs, all_targets, targets = batch
-        outputs = self.forward(inputs, gfs_inputs, all_targets, self.current_epoch, 'test')
+        inputs = batch.float()
+        outputs = self.forward(inputs)
 
-        self.test_mse(outputs.squeeze(), targets.float().squeeze())
-        self.test_mae(outputs.squeeze(), targets.float().squeeze())
+        self.test_mse(outputs, inputs)
 
-        return {'labels': targets,
-                'output': outputs}
+        return {}
 
     def test_epoch_end(self, outputs: list[Any]) -> dict[str, Any]:
         """
@@ -299,11 +287,9 @@ class S2SRegressorWithTFWithGFSInput(pl.LightningModule):
         metrics = {
             'epoch': float(step),
             'test_rmse': math.sqrt(float(self.test_mse.compute().item())),
-            'test_mae': float(self.test_mae.compute().item())
         }
 
         self.test_mse.reset()
-        self.test_mae.reset()
 
         # Average additional metrics over all batches
         # for key in outputs[0]:

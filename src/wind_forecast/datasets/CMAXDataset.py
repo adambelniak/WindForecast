@@ -3,7 +3,7 @@ import math
 import torch
 import numpy as np
 from wind_forecast.config.register import Config
-from wind_forecast.util.cmax_util import initialize_mean_and_std_cmax, get_min_max_cmax, \
+from wind_forecast.util.cmax_util import get_mean_and_std_cmax, get_min_max_cmax, \
     get_cmax_values_for_sequence, get_cmax_filename_from_offset
 from wind_forecast.util.common_util import NormalizationType
 from wind_forecast.util.config import process_config
@@ -27,6 +27,27 @@ class CMAXDataset(torch.utils.data.Dataset):
         self.list_IDs = train_IDs
 
         length = len(self.list_IDs)
+        self.mean, self.std, self.min, self.max = [], [], 0, 0
+        self.cmax_values = {}
+
+        if self.normalization_type == NormalizationType.STANDARD:
+            if self.use_future_cmax:
+                self.cmax_values, self.mean, self.std = get_mean_and_std_cmax(self.list_IDs, self.dim,
+                                                                              self.sequence_length,
+                                                                              self.future_sequence_length,
+                                                                              self.prediction_offset)
+            else:
+                self.cmax_values, self.mean, self.std = get_mean_and_std_cmax(self.list_IDs, self.dim,
+                                                                              self.sequence_length)
+
+        else:
+            if self.use_future_cmax:
+                self.cmax_values, self.min, self.max = get_min_max_cmax(self.list_IDs, self.sequence_length,
+                                                                        self.future_sequence_length,
+                                                                        self.prediction_offset)
+            else:
+                self.cmax_values, self.min, self.max = get_min_max_cmax(self.list_IDs, self.sequence_length)
+
         training_data, test_data = self.list_IDs[:int(length * 0.8)], \
                                    self.list_IDs[
                                    int(length * 0.8) + (self.sequence_length if self.use_future_cmax else 0):]
@@ -35,23 +56,7 @@ class CMAXDataset(torch.utils.data.Dataset):
         else:
             self.data = test_data
 
-        self.mean, self.std, self.min, self.max = [], [], 0, 0
         self.normalize = normalize
-        if normalize:
-            self.normalize_data(self.normalization_type)
-
-    def normalize_data(self, normalization_type: NormalizationType):
-        if normalization_type == NormalizationType.STANDARD:
-            if self.use_future_cmax:
-                self.mean, self.std = initialize_mean_and_std_cmax(self.list_IDs, self.dim, self.sequence_length,
-                                                                   self.future_sequence_length, self.prediction_offset)
-            else:
-                self.mean, self.std = initialize_mean_and_std_cmax(self.list_IDs, self.dim, self.sequence_length)
-        else:
-            if self.use_future_cmax:
-                self.min, self.max = get_min_max_cmax()
-            else:
-                self.min, self.max = get_min_max_cmax()
 
     def __len__(self):
         'Denotes the total number of samples'
@@ -77,9 +82,9 @@ class CMAXDataset(torch.utils.data.Dataset):
                  math.ceil(self.dim[1] / self.config.experiment.cmax_scaling_factor)))
 
             # Generate data
-            x[:, ] = get_cmax_values_for_sequence(ID, self.sequence_length)
+            x[:, ] = get_cmax_values_for_sequence(ID, self.cmax_values, self.sequence_length)
             first_future_id = get_cmax_filename_from_offset(ID, self.sequence_length + self.prediction_offset)
-            y[:, ] = get_cmax_values_for_sequence(first_future_id, self.future_sequence_length)
+            y[:, ] = get_cmax_values_for_sequence(first_future_id, self.cmax_values, self.future_sequence_length)
 
             if self.normalize:
                 if self.normalization_type == NormalizationType.STANDARD:
@@ -95,7 +100,7 @@ class CMAXDataset(torch.utils.data.Dataset):
                           math.ceil(self.dim[1] / self.config.experiment.cmax_scaling_factor)))
 
             # Generate data
-            x[:, ] = get_cmax_values_for_sequence(ID, self.sequence_length)
+            x[:, ] = get_cmax_values_for_sequence(ID, self.cmax_values, self.sequence_length)
             if self.normalize:
                 if self.normalization_type == NormalizationType.STANDARD:
                     x[:, ] = (x[:, ] - self.mean) / self.std

@@ -1,14 +1,14 @@
 import math
 import os
 import re
-import sys
+# import sys
 
-import h5py
+# import h5py
 import numpy as np
 from datetime import datetime, timedelta
 
 import pandas as pd
-from skimage.measure import block_reduce
+# from skimage.measure import block_reduce
 from tqdm import tqdm
 
 from wind_forecast.util.common_util import prep_zeros_if_needed
@@ -23,8 +23,8 @@ CMAX_MIN = 0
 
 def get_available_hdf_files_cmax_hours():
     matcher = re.compile(r"\d{10}000000dBZ\.cmax\.h5\.npy")
-    print(f"Scanning {CMAX_DATASET_DIR} looking for HDF files.")
-    return [f.name for f in tqdm(os.scandir(os.path.join(CMAX_DATASET_DIR))) if matcher.match(f.name)]
+    print(f"Scanning {CMAX_DATASET_DIR} looking for CMAX files.")
+    return [f.name for f in tqdm(os.scandir(os.path.join(CMAX_DATASET_DIR, 'npy'))) if matcher.match(f.name)]
 
 
 def date_from_cmax_file(filename):
@@ -39,40 +39,43 @@ def date_from_cmax_file(filename):
     return date
 
 
-def get_cmax_values_for_sequence(id, sequence_length):
+def get_cmax_values_for_sequence(id, cmax_values, sequence_length):
     date = date_from_cmax_file(id)
     values = []
 
     for frame in range(0, sequence_length):
-        values.append(get_hdf(id))
+        values.append(cmax_values[id])
         date = date + timedelta(hours=1)
         id = get_cmax_filename(date)
 
     return values
 
 
-def get_hdf(id):
+def get_cmax(id):
     values = np.load(os.path.join(CMAX_DATASET_DIR, 'npy', id))
     return values
 
 
-def initialize_mean_and_std_cmax(list_IDs: [str], dim: (int, int), sequence_length: int,
-                                 future_sequence_length: int = 0, prediction_offset: int = 0):
+# Also return a dictionary of values to have them all read into the runtime
+def get_mean_and_std_cmax(list_IDs: [str], dim: (int, int), sequence_length: int,
+                          future_sequence_length: int = 0, prediction_offset: int = 0):
     # Bear in mind that list_IDs are indices of FIRST frame in the sequence. Not all frames exist in list_IDs because of that fact.
     log.info("Calculating std and mean for the CMAX dataset")
     all_ids = set([item for sublist in [[get_cmax_filename_from_offset(id, offset) for offset in
                                          range(0, sequence_length + future_sequence_length + prediction_offset)] for id
                                         in list_IDs] for item in sublist])
     mean, sqr_mean = 0, 0
+    values_map = {}
     denom = len(all_ids) * dim[0] * dim[1] / 4
     for id in tqdm(all_ids):
-        values = get_hdf(id)
+        values = get_cmax(id)
         mean += np.sum(values) / denom
         sqr_mean += np.sum(np.power(values, 2)) / denom
+        values_map[id] = values
 
     std = math.sqrt(sqr_mean - pow(mean, 2))
 
-    return mean, std
+    return values_map, mean, std
 
 
 def get_cmax_filename_from_offset(id: str, offset: int) -> str:
@@ -81,8 +84,16 @@ def get_cmax_filename_from_offset(id: str, offset: int) -> str:
     return get_cmax_filename(date)
 
 
-def get_min_max_cmax():
-    return CMAX_MIN, CMAX_MAX  # We know them upfront, let's not waste time :)
+def get_min_max_cmax(list_IDs: [str], sequence_length: int, future_sequence_length: int = 0, prediction_offset: int = 0):
+    all_ids = set([item for sublist in [[get_cmax_filename_from_offset(id, offset) for offset in
+                                         range(0, sequence_length + future_sequence_length + prediction_offset)] for id
+                                        in list_IDs] for item in sublist])
+    values_map = {}
+    log.info("Loading CMAX files into the runtime.")
+    for id in tqdm(all_ids):
+        values_map[id] = get_cmax(id)
+
+    return values_map, CMAX_MIN, CMAX_MAX  # We know max and min upfront, let's not waste time :)
 
 
 def get_cmax_filename(date: datetime):
@@ -98,7 +109,7 @@ def initialize_CMAX_list_IDs_and_synop_dates_for_sequence(cmax_IDs: [str], label
     new_list_IDs = []
     synop_dates = []
     one_hour = timedelta(hours=1)
-    print("Preparing sequences of synop and HDF files.")
+    print("Preparing sequences of synop and CMAX files.")
     for date in tqdm(labels["date"]):
         cmax_filename = get_cmax_filename(date)
         if cmax_filename in cmax_IDs:
