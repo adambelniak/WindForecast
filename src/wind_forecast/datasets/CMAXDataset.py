@@ -12,7 +12,7 @@ from wind_forecast.util.config import process_config
 class CMAXDataset(torch.utils.data.Dataset):
     'Characterizes a dataset for PyTorch'
 
-    def __init__(self, config: Config, train_IDs, normalize=True):
+    def __init__(self, config: Config, train_IDs, train=True, normalize=True):
         self.config = config
         self.train_parameters = process_config(config.experiment.train_parameters_config_file)
         self.target_param = config.experiment.target_parameter
@@ -26,6 +26,7 @@ class CMAXDataset(torch.utils.data.Dataset):
 
         self.list_IDs = train_IDs
 
+        length = len(self.list_IDs)
         self.mean, self.std, self.min, self.max = [], [], 0, 0
         self.cmax_values = {}
 
@@ -47,7 +48,14 @@ class CMAXDataset(torch.utils.data.Dataset):
             else:
                 self.cmax_values, self.min, self.max = get_min_max_cmax(self.list_IDs, self.sequence_length)
 
-        self.data = self.list_IDs
+        training_data, test_data = self.list_IDs[:int(length * 0.8)], \
+                                   self.list_IDs[
+                                   int(length * 0.8) + (self.sequence_length if self.use_future_cmax else 0):]
+        if train:
+            self.data = training_data
+        else:
+            self.data = test_data
+
         self.normalize = normalize
 
     def __len__(self):

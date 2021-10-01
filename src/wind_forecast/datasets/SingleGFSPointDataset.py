@@ -13,7 +13,7 @@ from wind_forecast.util.gfs_util import match_gfs_with_synop_sequence
 class SingleGFSPointDataset(torch.utils.data.Dataset):
     """Characterizes a dataset for PyTorch"""
 
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, train=True):
         """Initialization"""
         self.train_parameters = process_config(config.experiment.train_parameters_config_file)
         self.target_param = config.experiment.target_parameter
@@ -42,8 +42,16 @@ class SingleGFSPointDataset(torch.utils.data.Dataset):
             self.gfs_data = (self.gfs_data - np.min(self.gfs_data, axis=0)) / (np.max(self.gfs_data, axis=0) - np.min(self.gfs_data, axis=0))
 
         assert len(self.gfs_data) == len(self.targets)
-        self.data = list(zip(self.gfs_data, self.targets))
+        length = len(self.targets)
+        training_data = list(zip(self.gfs_data, self.targets))[:int(length * 0.8)]
+        test_data = list(zip(self.gfs_data, self.targets))[int(length * 0.8):]
 
+        if train:
+            data = training_data
+        else:
+            data = test_data
+
+        self.data = data
         print(synop_mean)
         print(synop_std)
 

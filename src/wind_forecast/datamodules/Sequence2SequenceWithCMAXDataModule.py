@@ -49,19 +49,35 @@ class Sequence2SequenceWithCMAXDataModule(LightningDataModule):
         pass
 
     def setup(self, stage: Optional[str] = None):
-        if self.config.experiment.use_gfs_data:
-            dataset = ConcatDatasets(
-                Sequence2SequenceWithGFSDataset(config=self.config, synop_data=self.labels, dates=self.dates),
-                CMAXDataset(config=self.config, train_IDs=self.cmax_IDs, normalize=True))
-        else:
-            dataset = ConcatDatasets(
-                Sequence2SequenceDataset(config=self.config, synop_data=self.labels, dates=self.dates),
-                CMAXDataset(config=self.config, train_IDs=self.cmax_IDs, normalize=True))
-        length = len(dataset)
-        self.dataset_train, self.dataset_val = random_split(dataset, [length - (int(length * self.val_split)),
-                                                                      int(length * self.val_split)])
+        if stage in (None, 'fit'):
+            if self.config.experiment.use_gfs_data:
+                dataset = ConcatDatasets(
+                    Sequence2SequenceWithGFSDataset(config=self.config, synop_data=self.labels, dates=self.dates,
+                                                    train=True),
+                    CMAXDataset(config=self.config, train_IDs=self.cmax_IDs, train=True, normalize=True))
+            else:
+                dataset = ConcatDatasets(
+                    Sequence2SequenceDataset(config=self.config, synop_data=self.labels, dates=self.dates,
+                                             train=True),
+                    CMAXDataset(config=self.config, train_IDs=self.cmax_IDs, train=True, normalize=True))
+            length = len(dataset)
+            self.dataset_train, self.dataset_val = random_split(dataset, [length - (int(length * self.val_split)),
+                                                                          int(length * self.val_split)])
+        elif stage == 'test':
+            if self.config.experiment.use_gfs_data:
+                self.dataset_test = \
+                    ConcatDatasets(
+                        Sequence2SequenceWithGFSDataset(config=self.config, synop_data=self.labels,
+                                                        dates=self.dates,
+                                                        train=False),
+                        CMAXDataset(config=self.config, train_IDs=self.cmax_IDs, train=False, normalize=True))
 
-        self.dataset_test = self.dataset_val
+            else:
+                self.dataset_test = ConcatDatasets(
+                    Sequence2SequenceDataset(config=self.config, synop_data=self.labels,
+                                             dates=self.dates,
+                                             train=False),
+                    CMAXDataset(config=self.config, train_IDs=self.cmax_IDs, train=False, normalize=True))
 
     def train_dataloader(self):
         return DataLoader(self.dataset_train, batch_size=self.batch_size, shuffle=self.shuffle)

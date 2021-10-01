@@ -12,7 +12,7 @@ from wind_forecast.util.gfs_util import GFS_DATASET_DIR, date_from_gfs_np_file, 
 
 class MultiChannelSpatialDataset(torch.utils.data.Dataset):
     'Characterizes a dataset for PyTorch'
-    def __init__(self, config: Config, train_IDs, labels, normalize=True):
+    def __init__(self, config: Config, train_IDs, labels, train=True, normalize=True):
         self.train_parameters = process_config(config.experiment.train_parameters_config_file)
         self.target_param = config.experiment.target_parameter
         self.labels = labels
@@ -22,7 +22,14 @@ class MultiChannelSpatialDataset(torch.utils.data.Dataset):
         self.sequence_length = config.experiment.sequence_length
         self.list_IDs = train_IDs
 
-        self.data = self.list_IDs
+        length = len(self.list_IDs)
+        training_data, test_data = self.list_IDs[:int(length * 0.8)], self.list_IDs[int(length * 0.8):]
+        if train:
+            data = training_data
+        else:
+            data = test_data
+
+        self.data = data
         self.mean, self.std = [], []
         self.normalize = normalize
         if normalize:
