@@ -11,7 +11,7 @@ from wind_forecast.util.gfs_util import add_param_to_train_params, match_gfs_wit
 class SequenceLimitedToGFSDatesDataset(torch.utils.data.Dataset):
     """Characterizes a dataset for PyTorch"""
 
-    def __init__(self, config: Config, synop_data, dates, train=True, normalize_synop=True):
+    def __init__(self, config: Config, synop_data, dates, normalize_synop=True):
         """Initialization"""
         self.target_param = config.experiment.target_parameter
         self.train_params = config.experiment.synop_train_features
@@ -56,16 +56,7 @@ class SequenceLimitedToGFSDatesDataset(torch.utils.data.Dataset):
                                                                     target_param_to_gfs_name_level(self.target_param),
                                                                     return_GFS=False)
 
-        length = len(self.targets)
-        training_data = list(zip(self.features, self.targets))[:int(length * 0.8)]
-        test_data = list(zip(self.features, self.targets))[int(length * 0.8) + self.sequence_length - 1:]
-
-        if train:
-            data = training_data
-        else:
-            data = test_data
-
-        self.data = data
+        self.data = list(zip(self.features, self.targets))
 
     def __len__(self):
         """Denotes the total number of samples"""

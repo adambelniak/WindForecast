@@ -9,7 +9,7 @@ from wind_forecast.util.gfs_util import add_param_to_train_params
 
 class SequenceDataset(torch.utils.data.Dataset):
     'Characterizes a dataset for PyTorch'
-    def __init__(self, config: Config, synop_data, dates, train=True, normalize_synop=True):
+    def __init__(self, config: Config, synop_data, dates, normalize_synop=True):
         'Initialization'
         self.target_param = config.experiment.target_parameter
         self.train_params = config.experiment.synop_train_features
@@ -38,14 +38,7 @@ class SequenceDataset(torch.utils.data.Dataset):
 
         assert len(self.features) == len(self.targets)
 
-        length = len(self.targets)
-
-        training_data = np.array(list(zip(self.features, self.targets))[:int(length * 0.8)])
-        test_data = np.array(list(zip(self.features, self.targets))[int(length * 0.8) + self.sequence_length - 1:])
-        if train:
-            self.data = training_data
-        else:
-            self.data = test_data
+        self.data = np.array(list(zip(self.features, self.targets)))
 
     def __len__(self):
         'Denotes the total number of samples'

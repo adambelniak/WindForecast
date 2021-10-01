@@ -17,3 +17,5 @@ model:
 
 system:
   _target_: wind_forecast.systems.Regressor.Regressor
+
+sequence_length: 1

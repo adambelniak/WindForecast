@@ -25,3 +25,5 @@ cnn_ff_input_dim:
 cnn_filters:
   - 32
   - 64
+
+sequence_length: 1

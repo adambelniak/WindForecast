@@ -8,7 +8,7 @@ from wind_forecast.util.gfs_util import add_param_to_train_params
 class Sequence2SequenceDataset(torch.utils.data.Dataset):
     'Characterizes a dataset for PyTorch'
 
-    def __init__(self, config: Config, synop_data, dates, train=True,  normalize_synop=True):
+    def __init__(self, config: Config, synop_data, dates, normalize_synop=True):
         'Initialization'
         self.target_param = config.experiment.target_parameter
         self.train_params = config.experiment.synop_train_features
@@ -50,15 +50,7 @@ class Sequence2SequenceDataset(torch.utils.data.Dataset):
         assert len(self.features) == len(self.all_targets)
         assert len(self.features) == len(self.targets)
 
-        length = len(self.features)
-        training_data = list(zip(zip(self.features, self.all_targets), self.targets))[:int(length * 0.8)]
-        # do not use any frame from train set in test set
-        test_data = list(zip(zip(self.features, self.all_targets), self.targets))[int(length * 0.8) + self.sequence_length - 1:]
-
-        if train:
-            self.data = training_data
-        else:
-            self.data = test_data
+        self.data = list(zip(zip(self.features, self.all_targets), self.targets))
 
     def __len__(self):
         'Denotes the total number of samples'
