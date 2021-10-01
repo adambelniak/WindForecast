@@ -13,30 +13,30 @@ class TransformerEncoderS2SCMAX(LightningModule):
     def __init__(self, config: Config):
         super().__init__()
         features_len = len(config.experiment.synop_train_features)
-        embed_dim = features_len * (config.experiment.time2vec_embedding_size + 1) + 128 #+ 1024
-        self.conv = nn.Sequential(nn.Conv2d(in_channels=1, out_channels=16, kernel_size=(3, 3), stride=(2, 2)),
+        embed_dim = features_len * (config.experiment.time2vec_embedding_size + 1) + 256 #+ 1024
+        self.conv = nn.Sequential(nn.Conv2d(in_channels=1, out_channels=16, kernel_size=(3, 3), stride=(2, 2), padding=1),
                                   nn.ReLU(),
                                   nn.BatchNorm2d(num_features=16),
                                   # nn.MaxPool2d(kernel_size=(2, 2), padding=(1, 1)),
-                                  nn.Conv2d(in_channels=16, out_channels=32, kernel_size=(3, 3), stride=(2, 2)),
+                                  nn.Conv2d(in_channels=16, out_channels=32, kernel_size=(3, 3), stride=(2, 2), padding=1),
                                   nn.ReLU(),
                                   nn.BatchNorm2d(num_features=32),
                                   # nn.MaxPool2d(kernel_size=(2, 2), padding=(1, 1)),
-                                  nn.Conv2d(in_channels=32, out_channels=32, kernel_size=(3, 3), stride=(2, 2)),
+                                  nn.Conv2d(in_channels=32, out_channels=32, kernel_size=(3, 3), stride=(2, 2), padding=1),
                                   nn.ReLU(),
                                   nn.BatchNorm2d(num_features=32),
                                   # nn.MaxPool2d(kernel_size=(2, 2), padding=(1, 1)),
-                                  nn.Conv2d(in_channels=32, out_channels=32, kernel_size=(3, 3), stride=(2, 2)),
+                                  nn.Conv2d(in_channels=32, out_channels=32, kernel_size=(3, 3), stride=(2, 2), padding=1),
                                   nn.ReLU(),
                                   nn.BatchNorm2d(num_features=32),
                                   # nn.MaxPool2d(kernel_size=(2, 2), padding=(1, 1)),
-                                  nn.Conv2d(in_channels=32, out_channels=32, kernel_size=(3, 3), stride=(2, 2)),
+                                  nn.Conv2d(in_channels=32, out_channels=32, kernel_size=(3, 3), stride=(2, 2), padding=1),
                                   nn.ReLU(),
                                   nn.BatchNorm2d(num_features=32),
                                   # nn.MaxPool2d(kernel_size=(2, 2), padding=(1, 1)),
-                                  nn.Conv2d(in_channels=32, out_channels=32, kernel_size=(3, 3), stride=(2, 2)),
+                                  nn.Conv2d(in_channels=32, out_channels=16, kernel_size=(3, 3), stride=(2, 2), padding=1),
                                   nn.ReLU(),
-                                  nn.BatchNorm2d(num_features=32),
+                                  nn.BatchNorm2d(num_features=16),
                                   nn.Flatten()
                                   )
 
@@ -59,5 +59,5 @@ class TransformerEncoderS2SCMAX(LightningModule):
         x = torch.cat([inputs, time_embedding, cmax_embeddings], -1)
         x = self.encoder(x)
 
-        return torch.squeeze(self.linear_time_distributed(x))
+        return torch.squeeze(self.linear_time_distributed(x), dim=-1)
 

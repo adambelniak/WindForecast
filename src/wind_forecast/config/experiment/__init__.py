@@ -62,8 +62,6 @@ class ExperimentSettings:
 
     val_split: float = .2
 
-    gfs_dataset_dir: str = os.path.join("D:\\WindForecast", "output_np2")
-
     synop_file: str = "WARSZAWA-OKECIE_375_data.csv"
 
     synop_from_year: int = 2015

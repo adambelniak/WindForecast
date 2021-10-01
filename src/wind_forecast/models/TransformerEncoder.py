@@ -56,5 +56,5 @@ class TransformerEncoder(LightningModule):
         x = self.encoder(x)
         x = self.flatten(x)  # flat vector of features out
 
-        return torch.squeeze(self.linear(x))
+        return torch.squeeze(self.linear(x), dim=-1)
 

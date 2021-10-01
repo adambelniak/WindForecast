@@ -8,7 +8,7 @@ from wind_forecast.consts import SYNOP_DATASETS_DIRECTORY
 from wind_forecast.datasets.MultiChannelSpatialDataset import MultiChannelSpatialDataset
 from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset
 from wind_forecast.util.config import process_config
-from wind_forecast.util.gfs_util import get_available_numpy_files, initialize_GFS_list_IDs_for_sequence
+from wind_forecast.util.gfs_util import get_available_numpy_files, initialize_GFS_list_IDs_for_sequence, GFS_DATASET_DIR
 
 
 class MultiChannelSpatialSequenceDataModule(LightningDataModule):
@@ -27,7 +27,7 @@ class MultiChannelSpatialSequenceDataModule(LightningDataModule):
         self.dataset_test = ...
         self.train_parameters = process_config(config.experiment.train_parameters_config_file)
         self.prediction_offset = config.experiment.prediction_offset
-        self.gfs_dataset_dir = config.experiment.gfs_dataset_dir
+        self.gfs_dataset_dir = GFS_DATASET_DIR
         self.synop_file = config.experiment.synop_file
         self.target_param = config.experiment.target_parameter
         self.sequence_length = config.experiment.sequence_length

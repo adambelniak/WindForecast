@@ -106,4 +106,4 @@ class Transformer(LightningModule):
                 pred = next_pred if pred is None else torch.cat([pred, next_pred], 1)
             output = pred
 
-        return torch.squeeze(TimeDistributed(self.linear, batch_first=True)(output))
+        return torch.squeeze(TimeDistributed(self.linear, batch_first=True)(output), dim=-1)

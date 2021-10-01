@@ -25,4 +25,4 @@ class StackedLSTMWithGFSModel(LightningModule):
         lstm_out, _ = self.lstm2(lstm_out)
         combined = torch.cat((lstm_out[:, -1, :], torch.unsqueeze(gfs_input, -1)), dim=1)
         out = self.dense(combined)
-        return torch.squeeze(out)
+        return torch.squeeze(out, dim=-1)

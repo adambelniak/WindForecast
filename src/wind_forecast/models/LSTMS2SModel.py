@@ -57,4 +57,4 @@ class LSTMS2SModel(LightningModule):
                 next_pred, _ = self.lstm2(next_pred)
                 pred = torch.cat([pred, next_pred], 1)
 
-        return torch.squeeze(TimeDistributed(self.dense, batch_first=True)(pred))
+        return torch.squeeze(TimeDistributed(self.dense, batch_first=True)(pred), dim=-1)

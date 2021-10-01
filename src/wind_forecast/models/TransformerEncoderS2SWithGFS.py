@@ -33,5 +33,5 @@ class TransformerEncoderS2SWithGFS(LightningModule):
         x = self.encoder(x)
         # x = self.flatten(x)  # flat vector of features out
 
-        return torch.squeeze(TimeDistributed(self.linear, batch_first=True)(torch.cat([x, gfs_input], dim=-1)))
+        return torch.squeeze(TimeDistributed(self.linear, batch_first=True)(torch.cat([x, gfs_input], dim=-1)), dim=-1)
 
