@@ -17,3 +17,8 @@ model:
 
 system:
   _target_: wind_forecast.systems.AutoencoderSystem.AutoencoderSystem
+
+cmax_from_year: 2020
+batch_size: 1
+sequence_length: 1
+use_future_cmax: False
