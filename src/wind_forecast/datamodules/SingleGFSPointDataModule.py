@@ -26,13 +26,11 @@ class SingleGFSPointDataModule(LightningDataModule):
         pass
 
     def setup(self, stage: Optional[str] = None):
-        if stage in (None, 'fit'):
-            dataset = SingleGFSPointDataset(config=self.config, train=True)
-            length = len(dataset)
-            self.dataset_train, self.dataset_val = random_split(dataset, [length - (int(length * self.val_split)),
-                                                                          int(length * self.val_split)])
-        elif stage == 'test':
-            self.dataset_test = SingleGFSPointDataset(config=self.config, train=False)
+        dataset = SingleGFSPointDataset(config=self.config)
+        length = len(dataset)
+        self.dataset_train, self.dataset_val = random_split(dataset, [length - (int(length * self.val_split)),
+                                                                      int(length * self.val_split)])
+        self.dataset_test = self.dataset_val
 
     def train_dataloader(self):
         return DataLoader(self.dataset_train, batch_size=self.batch_size, shuffle=self.shuffle)

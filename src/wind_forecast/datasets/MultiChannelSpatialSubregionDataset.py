@@ -15,7 +15,7 @@ from wind_forecast.util.gfs_util import date_from_gfs_np_file, initialize_mean_a
 class MultiChannelSpatialSubregionDataset(torch.utils.data.Dataset):
     'Characterizes a dataset for PyTorch'
 
-    def __init__(self, config: Config, train_IDs, labels, train=True, normalize=True):
+    def __init__(self, config: Config, train_IDs, labels, normalize=True):
         self.train_parameters = process_config(config.experiment.train_parameters_config_file)
         self.target_param = config.experiment.target_parameter
         self.synop_file = config.experiment.synop_file
@@ -33,14 +33,8 @@ class MultiChannelSpatialSubregionDataset(torch.utils.data.Dataset):
 
         self.list_IDs = train_IDs
 
-        length = len(self.list_IDs)
-        training_data, test_data = self.list_IDs[:int(length * 0.8)], self.list_IDs[int(length * 0.8):]
-        if train:
-            data = training_data
-        else:
-            data = test_data
+        self.data = self.list_IDs
 
-        self.data = data
         self.mean, self.std = [], []
         self.normalize = normalize
         if normalize:
