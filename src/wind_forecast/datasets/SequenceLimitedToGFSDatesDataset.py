@@ -1,5 +1,5 @@
-import torch
 import pandas as pd
+import torch
 from tqdm import tqdm
 
 from wind_forecast.config.register import Config
@@ -42,14 +42,12 @@ class SequenceLimitedToGFSDatesDataset(torch.utils.data.Dataset):
         # labels and dates - dates are needed for matching the labels against GFS dates
         labels = pd.concat([synop_data_dates, self.synop_data[self.target_param]], axis=1)
 
-        self.features = [
-            self.synop_data.iloc[index:index + self.sequence_length][list(list(zip(*self.train_params))[1])].to_numpy()
-            for index in tqdm(synop_data_indices)]
+        print("Preparing the dataset")
+        for index in tqdm(synop_data_indices):
+            self.features.append(self.synop_data.iloc[index:index + self.sequence_length][list(list(zip(*self.train_params))[1])].to_numpy())
+            self.targets.append(labels.iloc[index + self.sequence_length + self.prediction_offset])
 
-        targets = [labels.iloc[index + self.sequence_length + self.prediction_offset]
-                   for index in tqdm(synop_data_indices)]
-
-        self.features, self.targets = match_gfs_with_synop_sequence(self.features, targets,
+        self.features, self.targets = match_gfs_with_synop_sequence(self.features, self.targets,
                                                                     self.target_coords[0],
                                                                     self.target_coords[1],
                                                                     self.prediction_offset,

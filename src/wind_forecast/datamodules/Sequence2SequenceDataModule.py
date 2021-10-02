@@ -1,13 +1,13 @@
 from typing import Optional
 
 from pytorch_lightning import LightningDataModule
-from torch.utils.data import DataLoader, Subset
-import numpy as np
+from torch.utils.data import DataLoader
 from wind_forecast.config.register import Config
 from wind_forecast.consts import SYNOP_DATASETS_DIRECTORY
 from wind_forecast.datasets.Sequence2SequenceDataset import Sequence2SequenceDataset
 from wind_forecast.datasets.Sequence2SequenceWithGFSDataset import Sequence2SequenceWithGFSDataset
 from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset
+from wind_forecast.util.common_util import split_dataset
 from wind_forecast.util.synop_util import get_correct_dates_for_sequence
 
 
@@ -47,14 +47,8 @@ class Sequence2SequenceDataModule(LightningDataModule):
             dataset = Sequence2SequenceWithGFSDataset(config=self.config, synop_data=self.labels, dates=self.dates)
         else:
             dataset = Sequence2SequenceDataset(config=self.config, synop_data=self.labels, dates=self.dates)
-        length = len(dataset)
-        seq_length = self.config.experiment.sequence_length
-        fut_seq_length = self.config.experiment.future_sequence_length
-        skip_number_of_frames = (seq_length if seq_length > 1 else 0) + (
-            fut_seq_length if self.config.experiment.future_sequence_length > 1 else 0)
-        self.dataset_train, self.dataset_val = Subset(dataset, np.arange(length - (int(length * self.val_split)))), \
-                                               Subset(dataset, np.arange(
-                                                   length - (int(length * self.val_split)) + skip_number_of_frames, length))
+        self.dataset_train, self.dataset_val = split_dataset(dataset, self.config.experiment.val_split,
+                                                             sequence_length=self.sequence_length if self.sequence_length > 1 else None)
         self.dataset_test = self.dataset_val
 
     def train_dataloader(self):

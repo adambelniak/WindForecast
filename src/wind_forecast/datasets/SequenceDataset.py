@@ -1,5 +1,5 @@
-import torch
 import numpy as np
+import torch
 from tqdm import tqdm
 
 from wind_forecast.config.register import Config
@@ -32,6 +32,8 @@ class SequenceDataset(torch.utils.data.Dataset):
 
         self.features = []
         self.targets = []
+
+        print("Preparing the dataset")
         for index in tqdm(synop_data_indices):
             self.features.append(self.synop_data.iloc[index:index + self.sequence_length][list(list(zip(*self.train_params))[1])].to_numpy())
             self.targets.append(self.synop_data.iloc[index + self.sequence_length + self.prediction_offset][self.target_param])

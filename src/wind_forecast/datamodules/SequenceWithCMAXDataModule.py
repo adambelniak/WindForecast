@@ -1,8 +1,8 @@
 from typing import Optional
 
 from pytorch_lightning import LightningDataModule
-from torch.utils.data import DataLoader, Subset
-import numpy as np
+from torch.utils.data import DataLoader
+
 from wind_forecast.config.register import Config
 from wind_forecast.consts import SYNOP_DATASETS_DIRECTORY
 from wind_forecast.datasets.CMAXDataset import CMAXDataset
@@ -11,6 +11,7 @@ from wind_forecast.datasets.SequenceDataset import SequenceDataset
 from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset
 from wind_forecast.util.cmax_util import get_available_hdf_files_cmax_hours, \
     initialize_CMAX_list_IDs_and_synop_dates_for_sequence
+from wind_forecast.util.common_util import split_dataset
 
 
 class SequenceWithCMAXDataModule(LightningDataModule):
@@ -47,13 +48,8 @@ class SequenceWithCMAXDataModule(LightningDataModule):
         dataset = ConcatDatasets(
             SequenceDataset(config=self.config, synop_data=self.labels, dates=self.dates),
             CMAXDataset(config=self.config, train_IDs=self.cmax_IDs, normalize=True))
-        length = len(dataset)
-        seq_length = self.config.experiment.sequence_length
-        skip_number_of_frames = (seq_length if seq_length > 1 else 0)
-        self.dataset_train, self.dataset_val = Subset(dataset, np.arange(length - (int(length * self.val_split)))), \
-                                               Subset(dataset, np.arange(
-                                                   length - (int(length * self.val_split)) + skip_number_of_frames,
-                                                   int(length * self.val_split)))
+        self.dataset_train, self.dataset_val = split_dataset(dataset, self.config.experiment.val_split,
+                                                             sequence_length=self.sequence_length if self.sequence_length > 1 else None)
         self.dataset_test = self.dataset_val
 
     def train_dataloader(self):

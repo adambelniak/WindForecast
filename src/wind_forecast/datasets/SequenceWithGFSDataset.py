@@ -1,8 +1,8 @@
 import math
 
-import torch
 import numpy as np
 import pandas as pd
+import torch
 from tqdm import tqdm
 
 from wind_forecast.config.register import Config
@@ -48,6 +48,8 @@ class SequenceWithGFSDataset(torch.utils.data.Dataset):
         self.features = []
         targets = []
         train_params = list(list(zip(*self.train_params))[1])
+
+        print("Preparing the dataset")
         for index in tqdm(synop_data_indices):
             self.features.append(self.synop_data.iloc[index:index + self.sequence_length][train_params].to_numpy())
             targets.append(labels.iloc[index + self.sequence_length + self.prediction_offset])

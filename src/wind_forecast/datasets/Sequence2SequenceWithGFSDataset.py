@@ -1,14 +1,15 @@
+import math
+
+import numpy as np
+import pandas as pd
 import torch
 from tqdm import tqdm
-import numpy as np
-import math
 
 from wind_forecast.config.register import Config
 from wind_forecast.preprocess.synop.synop_preprocess import normalize_synop_data
 from wind_forecast.util.common_util import NormalizationType
 from wind_forecast.util.gfs_util import add_param_to_train_params, \
     target_param_to_gfs_name_level, match_gfs_with_synop_sequence2sequence
-import pandas as pd
 
 
 class Sequence2SequenceWithGFSDataset(torch.utils.data.Dataset):
@@ -51,6 +52,8 @@ class Sequence2SequenceWithGFSDataset(torch.utils.data.Dataset):
         all_targets = []
         train_params = list(list(zip(*self.train_params))[1])
         all_targets_and_labels = pd.concat([synop_data_dates, synop_data[train_params]], axis=1)
+
+        print("Preparing the dataset")
         for index in tqdm(synop_data_indices):
             self.features.append(synop_data.iloc[index:index + self.sequence_length][train_params].to_numpy())
             all_targets.append(all_targets_and_labels.iloc[

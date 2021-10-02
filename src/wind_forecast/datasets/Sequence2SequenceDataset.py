@@ -1,5 +1,6 @@
 import torch
 from tqdm import tqdm
+
 from wind_forecast.config.register import Config
 from wind_forecast.preprocess.synop.synop_preprocess import normalize_synop_data
 from wind_forecast.util.gfs_util import add_param_to_train_params
@@ -39,6 +40,7 @@ class Sequence2SequenceDataset(torch.utils.data.Dataset):
         self.features = []
         self.all_targets = []
         train_params = list(list(zip(*self.train_params))[1])
+        print("Preparing the dataset")
         for index in tqdm(synop_data_indices):
             self.features.append(self.synop_data.iloc[index:index + self.sequence_length][train_params].to_numpy())
             self.all_targets.append(self.synop_data.iloc[

@@ -1,10 +1,11 @@
 from typing import Optional
 
 from pytorch_lightning import LightningDataModule
-from torch.utils.data import DataLoader, Subset
-import numpy as np
+from torch.utils.data import DataLoader
+
 from wind_forecast.config.register import Config
 from wind_forecast.datasets.SingleGFSPointDataset import SingleGFSPointDataset
+from wind_forecast.util.common_util import split_dataset
 
 
 class SingleGFSPointDataModule(LightningDataModule):
@@ -27,15 +28,7 @@ class SingleGFSPointDataModule(LightningDataModule):
 
     def setup(self, stage: Optional[str] = None):
         dataset = SingleGFSPointDataset(config=self.config)
-        length = len(dataset)
-        seq_length = self.config.experiment.sequence_length
-        fut_seq_length = self.config.experiment.future_sequence_length
-        skip_number_of_frames = (seq_length if seq_length > 1 else 0) + (
-            fut_seq_length if self.config.experiment.future_sequence_length > 1 else 0)
-        self.dataset_train, self.dataset_val = Subset(dataset, np.arange(length - (int(length * self.val_split)))), \
-                                               Subset(dataset, np.arange(
-                                                   length - (int(length * self.val_split)) + skip_number_of_frames,
-                                                   int(length * self.val_split)))
+        self.dataset_train, self.dataset_val = split_dataset(dataset, self.config.experiment.val_split)
         self.dataset_test = self.dataset_val
 
     def train_dataloader(self):

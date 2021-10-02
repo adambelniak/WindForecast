@@ -17,3 +17,5 @@ model:
 
 system:
   _target_: wind_forecast.systems.S2SRegressorWithTF.S2SRegressorWithTF
+
+synop_from_year: 2020
