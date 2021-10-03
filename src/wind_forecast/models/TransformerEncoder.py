@@ -9,16 +9,16 @@ from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 
 
 class Time2Vec(nn.Module):
-    def __init__(self, config: Config):
+    def __init__(self, num_features: int, embedding_size: int):
         super().__init__()
-        self.time2vec_dim = config.experiment.time2vec_embedding_size - 1
+        self.time2vec_dim = embedding_size - 1
         # trend
-        self.wb = nn.Parameter(data=torch.empty(size=(len(config.experiment.synop_train_features),)), requires_grad=True)
-        self.bb = nn.Parameter(data=torch.empty(size=(len(config.experiment.synop_train_features),)), requires_grad=True)
+        self.wb = nn.Parameter(data=torch.empty(size=(num_features,)), requires_grad=True)
+        self.bb = nn.Parameter(data=torch.empty(size=(num_features,)), requires_grad=True)
 
         # periodic
-        self.wa = nn.Parameter(data=torch.empty(size=(1, len(config.experiment.synop_train_features), self.time2vec_dim)), requires_grad=True)
-        self.ba = nn.Parameter(data=torch.empty(size=(1, len(config.experiment.synop_train_features), self.time2vec_dim)), requires_grad=True)
+        self.wa = nn.Parameter(data=torch.empty(size=(1, num_features, self.time2vec_dim)), requires_grad=True)
+        self.ba = nn.Parameter(data=torch.empty(size=(1, num_features, self.time2vec_dim)), requires_grad=True)
 
         self.wb.data.uniform_(-1, 1)
         self.bb.data.uniform_(-1, 1)
@@ -39,7 +39,7 @@ class TransformerEncoder(LightningModule):
     def __init__(self, config: Config):
         super().__init__()
         embed_dim = len(config.experiment.synop_train_features) * (config.experiment.time2vec_embedding_size + 1)
-        self.time2vec = Time2Vec(config)
+        self.time2vec = Time2Vec(len(config.experiment.synop_train_features), config.experiment.time2vec_embedding_size)
         features_len = len(config.experiment.synop_train_features)
         d_model = features_len * (config.experiment.time2vec_embedding_size + 1)
         encoder_layer = nn.TransformerEncoderLayer(d_model=d_model, nhead=config.experiment.transformer_attention_heads,

@@ -4,7 +4,7 @@ import re
 
 from tqdm import tqdm
 from gfs_archive_0_25.gfs_processor.Coords import Coords
-from wind_forecast.consts import SYNOP_DATASETS_DIRECTORY, NETCDF_FILE_REGEX
+from wind_forecast.consts import SYNOP_DATASETS_DIRECTORY, NETCDF_FILE_REGEX, STATION_META
 from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset
 from wind_forecast.util.gfs_util import target_param_to_gfs_name_level, \
     get_available_numpy_files, GFS_DATASET_DIR, date_from_gfs_np_file, get_point_from_GFS_slice_for_coords
@@ -40,7 +40,8 @@ def compare_gfs_with_synop(labels, gfs_ids, lat, lon, target_param):
     print(max_diff)
 
 
-def main(lat: float, lon: float, target_param: str, synop_file: str, prediction_offset: int, sequence_length: int, from_year: int = 2019):
+def main(station: str, target_param: str, prediction_offset: int, sequence_length: int, from_year: int):
+    synop_file = STATION_META[station]['synop_file']
     synop_data, _, _ = prepare_synop_dataset(synop_file, [target_param], norm=False,
                                              dataset_dir=SYNOP_DATASETS_DIRECTORY, from_year=from_year)
 
@@ -57,17 +58,14 @@ def main(lat: float, lon: float, target_param: str, synop_file: str, prediction_
         available_gfs = [item for sublist in available_gfs for item in sublist]
 
     available_gfs = list(filter(lambda item: int(re.match(NETCDF_FILE_REGEX, item).group(1)[:4]) >= from_year, available_gfs))
-    compare_gfs_with_synop(labels, available_gfs, lat, lon, target_param)
+    compare_gfs_with_synop(labels, available_gfs, STATION_META[station]['lat'], STATION_META[station]['lon'], target_param)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--lat", help="Latitude", type=float, default=52.1831174)
-    parser.add_argument("--lon", help="Longitude", type=float, default=20.9875259)
+    parser.add_argument("--station", help="Name of synoptic station", type=str, default='Warsaw')
     parser.add_argument("--target_param", help="Target parameter", type=str, default="temperature")
-    parser.add_argument("--synop_file", help="File with synop observations", type=str,
-                        default="WARSZAWA-OKECIE_375_data.csv")
     parser.add_argument("--prediction_offset", help="Prediction offset", type=int, default=3)
     parser.add_argument("--sequence_length", help="Length of predicted sequence", type=int, default=8)
     parser.add_argument("--from_year", help="Include dates from this year forward", type=int, default=2018)

@@ -13,7 +13,7 @@ class TransformerEncoderS2S(LightningModule):
     def __init__(self, config: Config):
         super().__init__()
         embed_dim = len(config.experiment.synop_train_features) * (config.experiment.time2vec_embedding_size + 1)
-        self.time2vec = Time2Vec(config)
+        self.time2vec = Time2Vec(len(config.experiment.synop_train_features), config.experiment.time2vec_embedding_size)
         features_len = len(config.experiment.synop_train_features)
         d_model = features_len * (config.experiment.time2vec_embedding_size + 1)
         encoder_layer = nn.TransformerEncoderLayer(d_model=d_model, nhead=config.experiment.transformer_attention_heads,

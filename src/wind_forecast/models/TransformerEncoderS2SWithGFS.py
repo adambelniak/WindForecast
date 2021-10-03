@@ -14,7 +14,7 @@ class TransformerEncoderS2SWithGFS(LightningModule):
     def __init__(self, config: Config):
         super().__init__()
         embed_dim = len(config.experiment.synop_train_features) * (config.experiment.time2vec_embedding_size + 1)
-        self.time2vec = Time2Vec(config)
+        self.time2vec = Time2Vec(len(config.experiment.synop_train_features), config.experiment.time2vec_embedding_size)
         features_len = len(config.experiment.synop_train_features)
         d_model = features_len * (config.experiment.time2vec_embedding_size + 1)
         self.pos_encoder = PositionalEncoding(embed_dim, config.experiment.dropout, config.experiment.sequence_length)

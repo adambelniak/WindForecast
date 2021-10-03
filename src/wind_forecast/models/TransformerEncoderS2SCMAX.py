@@ -35,7 +35,7 @@ class TransformerEncoderS2SCMAX(LightningModule):
 
         self.conv_time_distributed = TimeDistributed(self.conv)
 
-        self.time2vec = Time2Vec(config)
+        self.time2vec = Time2Vec(len(config.experiment.synop_train_features), config.experiment.time2vec_embedding_size)
         self.time2vec_time_distributed = TimeDistributed(self.time2vec, batch_first=True)
         encoder_layer = nn.TransformerEncoderLayer(d_model=embed_dim, nhead=config.experiment.transformer_attention_heads,
                                                    dim_feedforward=config.experiment.transformer_ff_dim, dropout=config.experiment.dropout,

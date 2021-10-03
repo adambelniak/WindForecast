@@ -1,14 +1,10 @@
 import math
 import os
 import re
-# import sys
-
-# import h5py
 import numpy as np
 from datetime import datetime, timedelta
 
 import pandas as pd
-# from skimage.measure import block_reduce
 from tqdm import tqdm
 
 from wind_forecast.util.common_util import prep_zeros_if_needed
@@ -106,7 +102,7 @@ def get_cmax_filename(date: datetime):
 def initialize_CMAX_list_IDs_and_synop_dates_for_sequence(cmax_IDs: [str], labels: pd.DataFrame, sequence_length: int,
                                                           future_seq_length: int, prediction_offset: int,
                                                           use_future_cmax: bool = False):
-    new_list_IDs = []
+    new_cmax_IDs = []
     synop_dates = []
     one_hour = timedelta(hours=1)
     print("Preparing sequences of synop and CMAX files.")
@@ -115,22 +111,26 @@ def initialize_CMAX_list_IDs_and_synop_dates_for_sequence(cmax_IDs: [str], label
         if cmax_filename in cmax_IDs:
             next_date = date + one_hour
             next_cmax_filename = get_cmax_filename(next_date)
+
             if len(labels[labels["date"] == next_date]) > 0 and next_cmax_filename in cmax_IDs and os.path.getsize(
                     os.path.join(CMAX_DATASET_DIR, 'npy', cmax_filename)) > 0:
                 # next frame exists, so the sequence is continued
                 synop_dates.append(date)
-                new_list_IDs.append(cmax_filename)
+                new_cmax_IDs.append(cmax_filename)
+
             elif len(labels[labels["date"] == next_date]) > 0:
                 # there is no next frame for CMAX, so the sequence is broken. Remove past frames of sequence_length (and future_length if use_future_cmax)
                 for frame in range(1, sequence_length + (
                         0 if not use_future_cmax else prediction_offset + future_seq_length)):
                     hours = timedelta(hours=frame)
                     date_to_remove = date - hours
+
                     if date_to_remove in synop_dates:
                         synop_dates.remove(date_to_remove)
+
                     cmax_filename_to_remove = get_cmax_filename(date_to_remove)
-                    if cmax_filename_to_remove in new_list_IDs:
-                        new_list_IDs.remove(cmax_filename_to_remove)
+                    if cmax_filename_to_remove in new_cmax_IDs:
+                        new_cmax_IDs.remove(cmax_filename_to_remove)
             else:
                 # there is no next frame for synop and/or CMAX , so the sequence is broken. Remove past frames of sequence_length AND future_seq_length
                 for frame in range(1, sequence_length + future_seq_length + prediction_offset):
@@ -139,8 +139,8 @@ def initialize_CMAX_list_IDs_and_synop_dates_for_sequence(cmax_IDs: [str], label
                     if date_to_remove in synop_dates:
                         synop_dates.remove(date_to_remove)
                     cmax_filename_to_remove = get_cmax_filename(date_to_remove)
-                    if cmax_filename_to_remove in new_list_IDs:
-                        new_list_IDs.remove(cmax_filename_to_remove)
+                    if cmax_filename_to_remove in new_cmax_IDs:
+                        new_cmax_IDs.remove(cmax_filename_to_remove)
 
-    assert len(new_list_IDs) == len(synop_dates)
-    return new_list_IDs, synop_dates
+    assert len(new_cmax_IDs) == len(synop_dates)
+    return new_cmax_IDs, synop_dates

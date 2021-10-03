@@ -12,7 +12,7 @@ from wind_forecast.util.config import process_config
 class CMAXDataset(torch.utils.data.Dataset):
     'Characterizes a dataset for PyTorch'
 
-    def __init__(self, config: Config, train_IDs, normalize=True):
+    def __init__(self, config: Config, IDs, normalize=True):
         self.config = config
         self.train_parameters = process_config(config.experiment.train_parameters_config_file)
         self.target_param = config.experiment.target_parameter
@@ -24,30 +24,28 @@ class CMAXDataset(torch.utils.data.Dataset):
         self.prediction_offset = config.experiment.prediction_offset
         self.use_future_cmax = config.experiment.use_future_cmax
 
-        self.list_IDs = train_IDs
-
         self.mean, self.std, self.min, self.max = [], [], 0, 0
         self.cmax_values = {}
 
         if self.normalization_type == NormalizationType.STANDARD:
             if self.use_future_cmax:
-                self.cmax_values, self.mean, self.std = get_mean_and_std_cmax(self.list_IDs, self.dim,
+                self.cmax_values, self.mean, self.std = get_mean_and_std_cmax(IDs, self.dim,
                                                                               self.sequence_length,
                                                                               self.future_sequence_length,
                                                                               self.prediction_offset)
             else:
-                self.cmax_values, self.mean, self.std = get_mean_and_std_cmax(self.list_IDs, self.dim,
+                self.cmax_values, self.mean, self.std = get_mean_and_std_cmax(IDs, self.dim,
                                                                               self.sequence_length)
 
         else:
             if self.use_future_cmax:
-                self.cmax_values, self.min, self.max = get_min_max_cmax(self.list_IDs, self.sequence_length,
+                self.cmax_values, self.min, self.max = get_min_max_cmax(IDs, self.sequence_length,
                                                                         self.future_sequence_length,
                                                                         self.prediction_offset)
             else:
-                self.cmax_values, self.min, self.max = get_min_max_cmax(self.list_IDs, self.sequence_length)
+                self.cmax_values, self.min, self.max = get_min_max_cmax(IDs, self.sequence_length)
 
-        self.data = self.list_IDs
+        self.data = IDs
         self.normalize = normalize
 
     def __len__(self):

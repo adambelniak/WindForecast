@@ -34,7 +34,7 @@ class Transformer(LightningModule):
         super().__init__()
         features_len = len(config.experiment.synop_train_features)
         self.embed_dim = features_len * (config.experiment.time2vec_embedding_size + 1)
-        self.time2vec = Time2Vec(config)
+        self.time2vec = Time2Vec(len(config.experiment.synop_train_features), config.experiment.time2vec_embedding_size)
         self.sequence_length = config.experiment.sequence_length
         self.teacher_forcing_epoch_num = config.experiment.teacher_forcing_epoch_num
         self.gradual_teacher_forcing = config.experiment.gradual_teacher_forcing

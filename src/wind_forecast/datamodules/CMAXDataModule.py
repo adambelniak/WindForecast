@@ -30,7 +30,7 @@ class CMAXDataModule(LightningDataModule):
         pass
 
     def setup(self, stage: Optional[str] = None):
-        dataset = CMAXDataset(config=self.config, train_IDs=self.cmax_IDs, normalize=True)
+        dataset = CMAXDataset(config=self.config, IDs=self.cmax_IDs, normalize=True)
         self.dataset_train, self.dataset_val = split_dataset(dataset, self.config.experiment.val_split, sequence_length=self.sequence_length if self.sequence_length > 1 else None)
         self.dataset_test = self.dataset_val
 

@@ -52,11 +52,11 @@ class Sequence2SequenceWithCMAXDataModule(LightningDataModule):
         if self.config.experiment.use_gfs_data:
             dataset = ConcatDatasets(
                 Sequence2SequenceWithGFSDataset(config=self.config, synop_data=self.labels, dates=self.dates),
-                CMAXDataset(config=self.config, train_IDs=self.cmax_IDs, normalize=True))
+                CMAXDataset(config=self.config, IDs=self.cmax_IDs, normalize=True))
         else:
             dataset = ConcatDatasets(
                 Sequence2SequenceDataset(config=self.config, synop_data=self.labels, dates=self.dates),
-                CMAXDataset(config=self.config, train_IDs=self.cmax_IDs, normalize=True))
+                CMAXDataset(config=self.config, IDs=self.cmax_IDs, normalize=True))
 
         self.dataset_train, self.dataset_val = split_dataset(dataset, self.config.experiment.val_split,
                                                              sequence_length=self.sequence_length if self.sequence_length > 1 else None)
