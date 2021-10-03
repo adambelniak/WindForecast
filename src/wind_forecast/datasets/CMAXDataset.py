@@ -26,7 +26,6 @@ class CMAXDataset(torch.utils.data.Dataset):
 
         self.list_IDs = train_IDs
 
-        length = len(self.list_IDs)
         self.mean, self.std, self.min, self.max = [], [], 0, 0
         self.cmax_values = {}
 

@@ -70,7 +70,7 @@ if __name__ == "__main__":
                         default="WARSZAWA-OKECIE_375_data.csv")
     parser.add_argument("--prediction_offset", help="Prediction offset", type=int, default=3)
     parser.add_argument("--sequence_length", help="Length of predicted sequence", type=int, default=8)
-    parser.add_argument("--from_year", help="Include dates from this year forward", type=int, default=2019)
+    parser.add_argument("--from_year", help="Include dates from this year forward", type=int, default=2018)
 
     args = parser.parse_args()
 

@@ -4,6 +4,7 @@ from enum import Enum
 import numpy as np
 import pytz
 from torch.utils.data import Subset, random_split
+from tqdm import tqdm
 
 
 def prep_zeros_if_needed(value: str, number_of_zeros: int):
@@ -45,7 +46,7 @@ def split_dataset(dataset, val_split=0.2, chunk_length=10, sequence_length=None)
         train_indexes = [i for i in train_indexes if i not in chosen_indexes]
         return train_indexes, val_indexes
 
-    for ran in range(val_ranges):
+    for _ in tqdm(range(val_ranges)):
         train_indexes, val_indexes = do_random_choice(train_indexes, val_indexes, chunk_length)
 
     if rest > 0:
