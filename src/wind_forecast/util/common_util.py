@@ -43,11 +43,18 @@ def split_dataset(dataset, val_split=0.2, chunk_length=20, sequence_length=None)
 
     def do_random_choice(train_indexes, val_indexes, val_indexes_to_choose_from, choice_length):
         index = np.random.choice(val_indexes_to_choose_from)
+
+        # save indexes that will be included in a validation set
         chosen_indexes = np.arange(index, index + choice_length).tolist()
         val_indexes.extend(chosen_indexes)
-        val_indexes_to_choose_from = [i for i in val_indexes_to_choose_from if i not in chosen_indexes]
-        chosen_indexes.extend(np.arange(chosen_indexes[-1] + 1, chosen_indexes[-1] + sequence_length))
+
+        # save indexes which can still be chosen
+        val_indexes_to_choose_from = [i for i in val_indexes_to_choose_from if i not in chosen_indexes and
+                                      i not in np.arange(chosen_indexes[0] - chunk_length, chosen_indexes[0] - 1)]
+
+        # remove indexes from train dataset
         chosen_indexes.extend(np.arange(chosen_indexes[0] - sequence_length, chosen_indexes[0] - 1))
+        chosen_indexes.extend(np.arange(chosen_indexes[-1] + 1, chosen_indexes[-1] + sequence_length))
         train_indexes = [i for i in train_indexes if i not in chosen_indexes]
         return train_indexes, val_indexes, val_indexes_to_choose_from
 
