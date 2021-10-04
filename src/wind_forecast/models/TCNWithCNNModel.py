@@ -18,7 +18,7 @@ class TCNWithCNNModel(LightningModule):
 
         for index, filters in enumerate(cfg.experiment.cnn_filters):
             cnn_layers.append(
-                nn.Conv2d(in_channels=cnn_channels, out_channels=filters, kernel_size=(3, 3), padding=(1, 1)), )
+                nn.Conv2d(in_channels=cnn_channels, out_channels=filters, kernel_size=(3, 3), padding=(1, 1)))
             cnn_layers.append(nn.ReLU())
             cnn_layers.append(nn.BatchNorm2d(num_features=filters))
             if index != len(cfg.experiment.cnn_filters) - 1:

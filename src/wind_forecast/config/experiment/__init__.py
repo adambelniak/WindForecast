@@ -97,6 +97,8 @@ class ExperimentSettings:
 
     tcn_channels: List = field(default_factory=lambda: [64, 64])
 
+    cnn_lin_tcn_in_features: int = 2048
+
     tcn_kernel_size: int = 3
 
     tcn_input_features: int = 1600
