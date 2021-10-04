@@ -64,11 +64,10 @@ def split_dataset(dataset, val_split=0.2, chunk_length=20, sequence_length=None)
     if rest > 0:
         train_indexes, val_indexes, val_indexes_to_choose_from = do_random_choice(train_indexes, val_indexes, val_indexes_to_choose_from, rest)
 
-    if len(train_indexes) in train_indexes:
-        print("Train indexes")
-    elif len(val_indexes) in val_indexes:
-        print("Val indexes")
-
+    wrong_indices = [i for i in train_indexes if i >= len(train_indexes)]
+    print(wrong_indices)
+    wrong_indices.extend([i for i in val_indexes if i >= len(val_indexes)])
+    print(wrong_indices)
     return Subset(dataset, train_indexes), Subset(dataset, val_indexes)
 
 
