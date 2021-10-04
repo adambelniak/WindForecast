@@ -57,9 +57,7 @@ class CMAXDataset(torch.utils.data.Dataset):
         # Select sample
         ID = self.data[index]
 
-        x = self.__data_generation(ID)
-
-        return x
+        return self.__data_generation(ID)
 
     def __data_generation(self, ID):
         # Initialization

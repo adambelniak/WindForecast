@@ -46,9 +46,10 @@ class Sequence2SequenceDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, index):
         'Generates one sample of data'
-        inputs = self.synop_data.iloc[index:index + self.sequence_length][self.train_params].to_numpy()
+        synop_index = self.data[index]
+        inputs = self.synop_data.iloc[synop_index:synop_index + self.sequence_length][self.train_params].to_numpy()
         all_targets = self.synop_data.iloc[
-                            index + self.sequence_length + self.prediction_offset:index + self.sequence_length + self.prediction_offset + self.future_sequence_length][
+                      synop_index + self.sequence_length + self.prediction_offset:synop_index + self.sequence_length + self.prediction_offset + self.future_sequence_length][
                                 self.train_params].to_numpy()
-        y = all_targets[:,self.target_param_index]
+        y = all_targets[:, self.target_param_index]
         return inputs, all_targets, y

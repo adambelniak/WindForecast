@@ -37,7 +37,8 @@ class SequenceDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, index):
         'Generates one sample of data'
-        x = self.synop_data.iloc[index:index + self.sequence_length][self.train_params].to_numpy()
-        y = self.synop_data.iloc[index + self.sequence_length + self.prediction_offset][self.target_param]
+        synop_index = self.data[index]
+        x = self.synop_data.iloc[synop_index:synop_index + self.sequence_length][self.train_params].to_numpy()
+        y = self.synop_data.iloc[synop_index + self.sequence_length + self.prediction_offset][self.target_param]
 
         return x, y

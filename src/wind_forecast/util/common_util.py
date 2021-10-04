@@ -23,9 +23,9 @@ def declination_of_earth(date):
 
 
 def split_dataset(dataset, val_split=0.2, chunk_length=20, sequence_length=None):
-    """ This method splits dataset in a random manner and ensures, that for sequential processing
+    """ Splits dataset in a random manner and ensures, that for sequential processing
         there will be no frames from a training dataset in a validation dataset by choosing chunk_length consecutive samples
-        from validation dataset and removing sequence_length next samples from training dataset.
+        from validation dataset and removing sequence_length following and previous samples from training dataset.
     """
     length = len(dataset)
     if sequence_length is None:
