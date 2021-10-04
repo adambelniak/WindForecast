@@ -38,7 +38,7 @@ def split_dataset(dataset, val_split=0.2, chunk_length=20, sequence_length=None)
     val_ranges = val_length // chunk_length
     rest = val_length - val_ranges * chunk_length
     train_indexes = np.arange(length).tolist()
-    val_indexes_to_choose_from = train_indexes
+    val_indexes_to_choose_from = [i for i in train_indexes if i <= len(train_indexes) - chunk_length]
     val_indexes = []
 
     def do_random_choice(train_indexes, val_indexes, val_indexes_to_choose_from, choice_length):
@@ -64,10 +64,6 @@ def split_dataset(dataset, val_split=0.2, chunk_length=20, sequence_length=None)
     if rest > 0:
         train_indexes, val_indexes, val_indexes_to_choose_from = do_random_choice(train_indexes, val_indexes, val_indexes_to_choose_from, rest)
 
-    wrong_indices = [i for i in train_indexes if i >= len(dataset)]
-    print(wrong_indices)
-    wrong_indices.extend([i for i in val_indexes if i >= len(dataset)])
-    print(wrong_indices)
     return Subset(dataset, train_indexes), Subset(dataset, val_indexes)
 
 
