@@ -47,7 +47,7 @@ def split_dataset(dataset, val_split=0.2, chunk_length=20, sequence_length=None)
         val_indexes.extend(chosen_indexes)
         val_indexes_to_choose_from = [i for i in val_indexes_to_choose_from if i not in chosen_indexes]
         chosen_indexes.extend(np.arange(chosen_indexes[-1] + 1, chosen_indexes[-1] + sequence_length))
-        chosen_indexes.extend(np.arange(chosen_indexes[0] - 1, chosen_indexes[0] - sequence_length))
+        chosen_indexes.extend(np.arange(chosen_indexes[0] - sequence_length, chosen_indexes[0] - 1))
         train_indexes = [i for i in train_indexes if i not in chosen_indexes]
         return train_indexes, val_indexes, val_indexes_to_choose_from
 
