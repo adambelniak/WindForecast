@@ -38,10 +38,12 @@ class Sequence2SequenceDataset(torch.utils.data.Dataset):
 
         self.train_params = list(list(zip(*train_params))[1])
 
+        print(len(synop_data_indices))
         self.data = synop_data_indices
 
     def __len__(self):
         'Denotes the total number of samples'
+        print(len(self.data))
         return len(self.data)
 
     def __getitem__(self, index):
