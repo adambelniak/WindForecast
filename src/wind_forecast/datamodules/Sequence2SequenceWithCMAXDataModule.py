@@ -38,7 +38,7 @@ class Sequence2SequenceWithCMAXDataModule(LightningDataModule):
                                                   from_year=config.experiment.synop_from_year,
                                                   norm=False)
 
-        available_ids = get_available_hdf_files_cmax_hours()
+        available_ids = get_available_hdf_files_cmax_hours(from_year=config.experiment.cmax_from_year)
         self.cmax_IDs, self.dates = initialize_CMAX_list_IDs_and_synop_dates_for_sequence(available_ids, self.labels,
                                                                                           self.sequence_length,
                                                                                           config.experiment.future_sequence_length,

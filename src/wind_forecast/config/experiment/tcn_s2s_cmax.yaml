@@ -21,6 +21,7 @@ system:
 batch_size: 5
 use_future_cmax: False
 synop_from_year: 2020
+cmax_from_year: 2020
 cnn_filters:
   - 16
   - 32
