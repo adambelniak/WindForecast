@@ -1,9 +1,11 @@
 import math
 from enum import Enum
+from typing import Sequence
 
 import numpy as np
 import pytz
-from torch.utils.data import Subset, random_split
+from torch.utils.data import Subset, random_split, Dataset
+from torch.utils.data.dataset import T_co
 from tqdm import tqdm
 
 
@@ -20,6 +22,15 @@ def utc_to_local(date):
 def declination_of_earth(date):
     day_of_year = date.timetuple().tm_yday
     return 23.45 * np.sin(np.deg2rad(360.0 * (283.0 + day_of_year) / 365.0))
+
+
+class CustomSubset(Subset):
+
+    def __init__(self, dataset: Dataset[T_co], indices: Sequence[int]) -> None:
+        super().__init__(dataset, indices)
+        self.mean = dataset.mean
+        self.std = dataset.std
+
 
 
 def split_dataset(dataset, val_split=0.2, chunk_length=20, sequence_length=None):
@@ -64,7 +75,7 @@ def split_dataset(dataset, val_split=0.2, chunk_length=20, sequence_length=None)
     if rest > 0:
         train_indexes, val_indexes, val_indexes_to_choose_from = do_random_choice(train_indexes, val_indexes, val_indexes_to_choose_from, rest)
 
-    return Subset(dataset, train_indexes), Subset(dataset, val_indexes)
+    return CustomSubset(dataset, train_indexes), CustomSubset(dataset, val_indexes)
 
 
 class NormalizationType(Enum):
