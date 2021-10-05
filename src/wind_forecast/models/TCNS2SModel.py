@@ -29,5 +29,5 @@ class TemporalConvNetS2S(LightningModule):
         self.linear_time_distributed = TimeDistributed(linear, batch_first=True)
 
     def forward(self, inputs: torch.Tensor, targets: torch.Tensor, epoch: int, stage=None) -> torch.Tensor:
-        x = self.tcn(inputs.permute(0, 2, 1)).squeeze()
-        return self.linear_time_distributed(x.permute(0, 2, 1)).squeeze()
+        x = self.tcn(inputs.permute(0, 2, 1))
+        return self.linear_time_distributed(x.permute(0, 2, 1)).squeeze(-1)
