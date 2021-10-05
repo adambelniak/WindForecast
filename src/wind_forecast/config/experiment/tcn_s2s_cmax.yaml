@@ -5,7 +5,7 @@ defaults:
   - schema_experiment
 
 _tags_:
-  - TCN_S2S
+  - TCN_S2S_CMAX
 
 resume_checkpoint: ~
 

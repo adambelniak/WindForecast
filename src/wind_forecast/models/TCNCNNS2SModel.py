@@ -61,5 +61,5 @@ class TCNCNNS2S(LightningModule):
         x = self.cnn(cnn_inputs.unsqueeze(2))
         x = self.cnn_lin_tcn(x)
         x = torch.cat([x, inputs], dim=-1)
-        x = self.tcn(x.permute(0, 2, 1)).squeeze()
-        return self.linear(x.permute(0, 2, 1)).squeeze()
+        x = self.tcn(x.permute(0, 2, 1))
+        return self.linear(x.permute(0, 2, 1)).squeeze(-1)
