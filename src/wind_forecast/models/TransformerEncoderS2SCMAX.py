@@ -1,3 +1,5 @@
+import math
+
 import torch
 from pytorch_lightning import LightningModule
 from torch import nn
@@ -11,30 +13,25 @@ class TransformerEncoderS2SCMAX(LightningModule):
     def __init__(self, config: Config):
         super().__init__()
         features_len = len(config.experiment.synop_train_features)
-        embed_dim = features_len * (config.experiment.time2vec_embedding_size + 1) + 256 #+ 1024
-        self.conv = nn.Sequential(nn.Conv2d(in_channels=1, out_channels=16, kernel_size=(3, 3), stride=(2, 2), padding=1),
-                                  nn.ReLU(),
-                                  nn.BatchNorm2d(num_features=16),
-                                  nn.Conv2d(in_channels=16, out_channels=32, kernel_size=(3, 3), stride=(2, 2), padding=1),
-                                  nn.ReLU(),
-                                  nn.BatchNorm2d(num_features=32),
-                                  nn.Conv2d(in_channels=32, out_channels=32, kernel_size=(3, 3), stride=(2, 2), padding=1),
-                                  nn.ReLU(),
-                                  nn.BatchNorm2d(num_features=32),
-                                  nn.Conv2d(in_channels=32, out_channels=32, kernel_size=(3, 3), stride=(2, 2), padding=1),
-                                  nn.ReLU(),
-                                  nn.BatchNorm2d(num_features=32),
-                                  nn.Conv2d(in_channels=32, out_channels=32, kernel_size=(3, 3), stride=(2, 2), padding=1),
-                                  nn.ReLU(),
-                                  nn.BatchNorm2d(num_features=32),
-                                  nn.Conv2d(in_channels=32, out_channels=16, kernel_size=(3, 3), stride=(2, 2), padding=1),
-                                  nn.ReLU(),
-                                  nn.BatchNorm2d(num_features=16),
-                                  nn.Flatten()
-                                  )
+        conv_H = config.experiment.cmax_h
+        conv_W = config.experiment.cmax_w
+        conv_layers = []
+        in_channels = 1
+        for filters in config.experiment.cnn_filters:
+            out_channels = filters
+            conv_layers.extend([
+                nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=(3, 3), stride=(2, 2), padding=1),
+                nn.ReLU(),
+                nn.BatchNorm2d(num_features=out_channels),
+            ])
+            conv_W = math.ceil(conv_W / 2)
+            conv_H = math.ceil(conv_H / 2)
+            in_channels = out_channels
+
+        self.conv = nn.Sequential(*conv_layers, nn.Flatten())
 
         self.conv_time_distributed = TimeDistributed(self.conv)
-
+        embed_dim = features_len * (config.experiment.time2vec_embedding_size + 1) + conv_W * conv_H * out_channels
         self.time2vec = Time2Vec(len(config.experiment.synop_train_features), config.experiment.time2vec_embedding_size)
         self.time2vec_time_distributed = TimeDistributed(self.time2vec, batch_first=True)
         encoder_layer = nn.TransformerEncoderLayer(d_model=embed_dim, nhead=config.experiment.transformer_attention_heads,

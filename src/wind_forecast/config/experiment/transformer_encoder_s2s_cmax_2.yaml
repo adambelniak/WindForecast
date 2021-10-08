@@ -18,9 +18,15 @@ model:
 system:
   _target_: wind_forecast.systems.S2SRegressorWithTFWithCMAX.S2SRegressorWithTFWithCMAX
 
-batch_size: 5
+batch_size: 1
 use_future_cmax: False
 synop_from_year: 2020
 cmax_from_year: 2020
 time2vec_embedding_size: 18
 epochs: 40
+cnn_filters:
+  - 16
+  - 32
+  - 32
+  - 32
+  - 32

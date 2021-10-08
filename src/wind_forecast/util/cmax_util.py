@@ -22,8 +22,8 @@ def get_available_hdf_files_cmax_hours(from_year: int = 2015):
     print(f"Scanning {CMAX_DATASET_DIR} looking for CMAX files.")
     files = [f.name for f in tqdm(os.scandir(os.path.join(CMAX_DATASET_DIR, 'npy'))) if matcher.match(f.name) and int(matcher.match(f.name).group(1)) >= from_year]
     files.sort()
-    for file in files:
-        print(file)
+    # for file in files:
+    #     print(file)
     return files
 
 
