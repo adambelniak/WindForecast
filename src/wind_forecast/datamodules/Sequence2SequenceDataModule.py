@@ -34,6 +34,7 @@ class Sequence2SequenceDataModule(LightningDataModule):
                                                   list(list(zip(*self.train_params))[1]),
                                                   dataset_dir=SYNOP_DATASETS_DIRECTORY,
                                                   from_year=config.experiment.synop_from_year,
+                                                  to_year=config.experiment.synop_to_year,
                                                   norm=False)
 
         self.dates = get_correct_dates_for_sequence(self.labels, self.sequence_length, self.future_sequence_length,

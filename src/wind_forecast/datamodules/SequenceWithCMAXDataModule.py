@@ -34,9 +34,10 @@ class SequenceWithCMAXDataModule(LightningDataModule):
         self.labels, _, _ = prepare_synop_dataset(self.synop_file, list(list(zip(*self.train_params))[1]),
                                                   dataset_dir=SYNOP_DATASETS_DIRECTORY,
                                                   from_year=config.experiment.synop_from_year,
+                                                  to_year=config.experiment.synop_to_year,
                                                   norm=False)
 
-        available_ids = get_available_hdf_files_cmax_hours(from_year=config.experiment.cmax_from_year)
+        available_ids = get_available_hdf_files_cmax_hours(from_year=config.experiment.cmax_from_year, to_year=config.experiment.cmax_to_year)
         self.cmax_IDs, self.dates = initialize_CMAX_list_IDs_and_synop_dates_for_sequence(available_ids, self.labels,
                                                                                           self.sequence_length, 1,
                                                                                           config.experiment.prediction_offset)

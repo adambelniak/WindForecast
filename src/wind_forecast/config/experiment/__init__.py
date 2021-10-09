@@ -67,6 +67,10 @@ class ExperimentSettings:
 
     cmax_from_year: int = 2015
 
+    synop_to_year: int = 2022
+
+    cmax_to_year: int = 2022
+
     target_parameter: str = "temperature"
 
     use_gfs_data: bool = False

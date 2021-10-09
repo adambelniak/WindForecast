@@ -32,7 +32,9 @@ class MultiChannelSpatialDataModule(LightningDataModule):
         self.synop_file = config.experiment.synop_file
         self.target_param = config.experiment.target_parameter
         self.labels, self.label_mean, self.label_std = prepare_synop_dataset(self.synop_file, [self.target_param],
-                                                                             dataset_dir=SYNOP_DATASETS_DIRECTORY)
+                                                                             dataset_dir=SYNOP_DATASETS_DIRECTORY,
+                                                                             from_year=config.experiment.synop_from_year,
+                                                                             to_year=config.experiment.synop_to_year)
         self.IDs = get_available_numpy_files(self.train_parameters, self.prediction_offset, self.gfs_dataset_dir)
 
     def prepare_data(self, *args, **kwargs):

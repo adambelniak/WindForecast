@@ -32,7 +32,9 @@ class MultiChannelSpatialSequenceDataModule(LightningDataModule):
         self.target_param = config.experiment.target_parameter
         self.sequence_length = config.experiment.sequence_length
         self.labels, self.label_mean, self.label_std = prepare_synop_dataset(self.synop_file, [self.target_param],
-                                                                             dataset_dir=SYNOP_DATASETS_DIRECTORY)
+                                                                             dataset_dir=SYNOP_DATASETS_DIRECTORY,
+                                                                             from_year=config.experiment.synop_from_year,
+                                                                             to_year=config.experiment.synop_to_year)
         available_ids = get_available_numpy_files(self.train_parameters, self.prediction_offset, self.gfs_dataset_dir)
         self.IDs = initialize_GFS_list_IDs_for_sequence(available_ids, self.labels, self.train_parameters[0],
                                                         self.target_param,

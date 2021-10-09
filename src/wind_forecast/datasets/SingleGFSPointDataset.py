@@ -23,7 +23,8 @@ class SingleGFSPointDataset(torch.utils.data.Dataset):
 
         synop_data, synop_mean, synop_std = prepare_synop_dataset(self.synop_file, [self.target_param],
                                                                   dataset_dir=SYNOP_DATASETS_DIRECTORY,
-                                                                  from_year=config.experiment.synop_from_year)
+                                                                  from_year=config.experiment.synop_from_year,
+                                                                  to_year=config.experiment.synop_to_year)
 
         synop_data_dates = synop_data['date']
         labels = pd.concat([synop_data_dates, synop_data[self.target_param]], axis=1).to_numpy().tolist()

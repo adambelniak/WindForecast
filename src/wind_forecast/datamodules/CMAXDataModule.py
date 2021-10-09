@@ -24,7 +24,7 @@ class CMAXDataModule(LightningDataModule):
         self.dataset_val = ...
         self.dataset_test = ...
 
-        self.cmax_IDs = get_available_hdf_files_cmax_hours(from_year=config.experiment.cmax_from_year)
+        self.cmax_IDs = get_available_hdf_files_cmax_hours(from_year=config.experiment.cmax_from_year, to_year=config.experiment.cmax_to_year)
 
     def prepare_data(self, *args, **kwargs):
         pass

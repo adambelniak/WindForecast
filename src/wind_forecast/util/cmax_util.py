@@ -17,13 +17,14 @@ CMAX_MAX = 255
 CMAX_MIN = 0
 
 
-def get_available_hdf_files_cmax_hours(from_year: int = 2015):
+def get_available_hdf_files_cmax_hours(from_year: int = 2015, to_year: int = 2022):
     matcher = re.compile(r"(\d{4})\d{6}000000dBZ\.cmax\.h5\.npy")
     print(f"Scanning {CMAX_DATASET_DIR} looking for CMAX files.")
-    files = [f.name for f in tqdm(os.scandir(os.path.join(CMAX_DATASET_DIR, 'npy'))) if matcher.match(f.name) and int(matcher.match(f.name).group(1)) >= from_year]
+    files = [f.name for f in tqdm(os.scandir(os.path.join(CMAX_DATASET_DIR, 'npy'))) if matcher.match(f.name)
+             and from_year <= int(matcher.match(f.name).group(1)) < to_year]
     files.sort()
-    # for file in files:
-    #     print(file)
+    for file in files:
+        print(file)
     return files
 
 
