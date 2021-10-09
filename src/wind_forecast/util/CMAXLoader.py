@@ -1,5 +1,9 @@
 import os
-import pickle
+import sys
+if sys.version_info <= (3, 8, 2):
+    import pickle5 as pickle
+else:
+    import pickle
 from datetime import datetime
 import numpy as np
 

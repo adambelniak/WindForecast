@@ -1,11 +1,11 @@
-# if sys.version_info <= (3, 7):
+import sys
+# if sys.version_info <= (3, 8, 2):
 #     import pickle5 as pickle
 # else:
 #     import pickle
 from datetime import datetime, timedelta
 import os
 import re
-import sys
 # import time
 from pathlib import Path
 from zipfile import ZipFile, BadZipFile
