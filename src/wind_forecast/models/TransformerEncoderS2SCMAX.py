@@ -17,13 +17,15 @@ class TransformerEncoderS2SCMAX(LightningModule):
         conv_W = config.experiment.cmax_w
         conv_layers = []
         in_channels = 1
-        for filters in config.experiment.cnn_filters:
+        for index, filters in enumerate(config.experiment.cnn_filters):
             out_channels = filters
             conv_layers.extend([
                 nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=(3, 3), stride=(2, 2), padding=1),
                 nn.ReLU(),
                 nn.BatchNorm2d(num_features=out_channels),
             ])
+            if index != len(config.experiment.cnn_filters) - 1:
+                conv_layers.append(nn.Dropout(config.experiment.dropout))
             conv_W = math.ceil(conv_W / 2)
             conv_H = math.ceil(conv_H / 2)
             in_channels = out_channels
