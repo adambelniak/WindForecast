@@ -1,4 +1,7 @@
-import pickle
+# if sys.version_info <= (3, 7):
+#     import pickle5 as pickle
+# else:
+#     import pickle
 from datetime import datetime, timedelta
 import os
 import re

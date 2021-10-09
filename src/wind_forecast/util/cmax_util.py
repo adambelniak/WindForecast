@@ -1,6 +1,10 @@
 import math
 import os
-import pickle
+import sys
+if sys.version_info <= (3, 7):
+    import pickle5 as pickle
+else:
+    import pickle
 import re
 import numpy as np
 from datetime import datetime, timedelta
