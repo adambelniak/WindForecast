@@ -4,7 +4,7 @@ from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader
 from wind_forecast.config.register import Config
 from wind_forecast.datasets.CMAXDataset import CMAXDataset
-from wind_forecast.util.cmax_util import get_available_hdf_files_cmax_hours
+from wind_forecast.util.cmax_util import get_available_cmax_hours
 from wind_forecast.util.common_util import split_dataset
 
 
@@ -24,7 +24,7 @@ class CMAXDataModule(LightningDataModule):
         self.dataset_val = ...
         self.dataset_test = ...
 
-        self.cmax_IDs = get_available_hdf_files_cmax_hours(from_year=config.experiment.cmax_from_year, to_year=config.experiment.cmax_to_year)
+        self.cmax_IDs = get_available_cmax_hours(from_year=config.experiment.cmax_from_year, to_year=config.experiment.cmax_to_year)
 
     def prepare_data(self, *args, **kwargs):
         pass

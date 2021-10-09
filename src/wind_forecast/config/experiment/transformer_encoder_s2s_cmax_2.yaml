@@ -18,7 +18,7 @@ model:
 system:
   _target_: wind_forecast.systems.S2SRegressorWithTFWithCMAX.S2SRegressorWithTFWithCMAX
 
-batch_size: 1
+batch_size: 5
 use_future_cmax: False
 synop_from_year: 2020
 cmax_from_year: 2020
@@ -30,3 +30,4 @@ cnn_filters:
   - 32
   - 32
   - 32
+  - 16

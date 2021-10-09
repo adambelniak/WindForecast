@@ -4,7 +4,7 @@ import torch
 import numpy as np
 from wind_forecast.config.register import Config
 from wind_forecast.util.cmax_util import get_mean_and_std_cmax, get_min_max_cmax, \
-    get_cmax_values_for_sequence, get_cmax_filename_from_offset
+    get_cmax_values_for_sequence, get_cmax_datekey_from_offset
 from wind_forecast.util.common_util import NormalizationType
 from wind_forecast.util.config import process_config
 
@@ -71,7 +71,7 @@ class CMAXDataset(torch.utils.data.Dataset):
 
             # Generate data
             x[:, ] = get_cmax_values_for_sequence(ID, self.cmax_values, self.sequence_length)
-            first_future_id = get_cmax_filename_from_offset(ID, self.sequence_length + self.prediction_offset)
+            first_future_id = get_cmax_datekey_from_offset(ID, self.sequence_length + self.prediction_offset)
             y[:, ] = get_cmax_values_for_sequence(first_future_id, self.cmax_values, self.future_sequence_length)
 
             if self.normalize:
