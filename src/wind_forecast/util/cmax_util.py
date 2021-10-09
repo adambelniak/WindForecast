@@ -33,7 +33,7 @@ def get_available_cmax_hours(from_year: int = 2015, to_year: int = 2022):
     date_keys.sort()
     # for file in files:
     #     print(file)
-    return set(date_keys)
+    return list(set(date_keys))
 
 
 def date_from_cmax_npy_file(filename):
