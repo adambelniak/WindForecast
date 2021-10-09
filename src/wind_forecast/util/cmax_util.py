@@ -1,7 +1,7 @@
 import math
 import os
 import sys
-if sys.version_info <= (3, 7):
+if sys.version_info <= (3, 8, 2):
     import pickle5 as pickle
 else:
     import pickle
