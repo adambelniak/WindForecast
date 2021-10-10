@@ -179,7 +179,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--mode', help='CSV or NPY - output format to which save the data. ', default="NPY")
-    parser.add_argument('--output_dir', help='Output directory for the result files.', default="D:\\WindForecast\\output_np2")
+    parser.add_argument('--output_dir', help='Output directory for the result files.', default="D:\\WindForecast\\gfs")
     args = parser.parse_args()
 
     if args.mode == "CSV":

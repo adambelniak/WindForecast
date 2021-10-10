@@ -139,6 +139,8 @@ class ExperimentSettings:
 
     cmax_w: int = 225
 
+    STD_scaling_factor: int = 5
+
     use_future_cmax: bool = False
 
     view_test_result: bool = True

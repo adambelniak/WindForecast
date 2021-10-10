@@ -18,7 +18,7 @@ from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_datase
 from wind_forecast.util.gfs_util import get_available_numpy_files
 from gfs_archive_0_25.utils import prep_zeros_if_needed
 
-gfs_dataset_dir = os.path.join("D:\\WindForecast", "output_np2")
+gfs_dataset_dir = os.path.join("D:\\WindForecast", "gfs")
 GFS_PARAMETERS = [
     {
         "name": "T CDC",
