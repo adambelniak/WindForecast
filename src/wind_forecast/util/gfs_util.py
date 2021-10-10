@@ -332,6 +332,7 @@ def match_gfs_with_synop_sequence2sequence(features: Union[list, np.ndarray], ta
     new_targets = []
     new_features = []
     gfs_values_cache = {}
+    print("Matching GFS with synop data")
     for index, value in tqdm(enumerate(targets)):
         dates = value.loc[:, 'date']
         next_gfs_values = []

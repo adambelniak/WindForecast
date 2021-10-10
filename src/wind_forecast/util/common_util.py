@@ -69,6 +69,7 @@ def split_dataset(dataset, val_split=0.2, chunk_length=20, sequence_length=None)
         train_indexes = [i for i in train_indexes if i not in chosen_indexes]
         return train_indexes, val_indexes, val_indexes_to_choose_from
 
+    print("Splitting dataset into train and val datasets")
     for _ in tqdm(range(val_ranges)):
         train_indexes, val_indexes, val_indexes_to_choose_from = do_random_choice(train_indexes, val_indexes, val_indexes_to_choose_from, chunk_length)
 

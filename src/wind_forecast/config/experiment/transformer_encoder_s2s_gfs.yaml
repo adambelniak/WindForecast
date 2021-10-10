@@ -19,3 +19,5 @@ model:
 
 system:
   _target_: wind_forecast.systems.S2SRegressorWithTFWithGFSInput.S2SRegressorWithTFWithGFSInput
+
+synop_from_year: 2017
