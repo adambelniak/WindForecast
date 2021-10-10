@@ -1,5 +1,8 @@
 import os
 import sys
+
+from wind_forecast.loaders.Singleton import Singleton
+
 if sys.version_info <= (3, 8, 2):
     import pickle5 as pickle
 else:
@@ -9,14 +12,6 @@ import numpy as np
 
 CMAX_DATASET_DIR = os.environ.get('CMAX_DATASET_DIR')
 CMAX_DATASET_DIR = 'data' if CMAX_DATASET_DIR is None else CMAX_DATASET_DIR
-
-
-class Singleton(type):
-    _instances = {}
-    def __call__(cls, *args, **kwargs):
-        if cls not in cls._instances:
-            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
-        return cls._instances[cls]
 
 
 class CMAXLoader(metaclass=Singleton):
@@ -36,7 +31,7 @@ class CMAXLoader(metaclass=Singleton):
             with open(os.path.join(self.pickle_dir, pickle_filename + ".pkl"), 'rb') as f:
                 self.cmax_images.update(pickle.load(f))
 
-        return np.array(self.cmax_images[date_key])
+        return np.array(self.cmax_images[date_key]) if date_key in self.cmax_images else None
 
     def get_all_loaded_cmax_images(self):
         return self.cmax_images

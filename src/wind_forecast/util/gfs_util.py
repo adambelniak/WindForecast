@@ -2,24 +2,30 @@ import math
 import os
 import re
 import sys
+from typing import Union
+
+if sys.version_info <= (3, 8, 2):
+    import pickle5 as pickle
+else:
+    import pickle
 from datetime import datetime, timedelta
 
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
+from wind_forecast.loaders.GFSLoader import GFSLoader
 from wind_forecast.preprocess.synop.consts import SYNOP_FEATURES
 from gfs_common.common import GFS_SPACE
-from typing import Union
 from scipy.interpolate import interpolate
 from gfs_archive_0_25.gfs_processor.Coords import Coords
-from gfs_archive_0_25.gfs_processor.consts import FINAL_NUMPY_FILENAME_FORMAT
-from wind_forecast.consts import NETCDF_FILE_REGEX
+from wind_forecast.consts import NETCDF_FILE_REGEX, DATE_KEY_REGEX
 from gfs_archive_0_25.utils import get_nearest_coords
-from wind_forecast.util.common_util import prep_zeros_if_needed
+from wind_forecast.util.common_util import prep_zeros_if_needed, local_to_utc
 from wind_forecast.util.logging import log
 
 GFS_DATASET_DIR = os.environ.get('GFS_DATASET_DIR')
+GFS_DATASET_DIR = 'gfs_data' if GFS_DATASET_DIR is None else GFS_DATASET_DIR
 
 
 def convert_wind(single_gfs, u_wind_label, v_wind_label):
@@ -29,15 +35,36 @@ def convert_wind(single_gfs, u_wind_label, v_wind_label):
     return single_gfs
 
 
-def get_available_numpy_files(features, offset, directory):
+def get_available_numpy_files(features, offset):
     result = None
     matcher = re.compile(rf".*f{prep_zeros_if_needed(str(offset), 2)}.*")
     for feature in tqdm(features):
-        files = [f.name for f in os.scandir(os.path.join(directory, feature['name'], feature['level'])) if
+        files = [f.name for f in os.scandir(os.path.join(GFS_DATASET_DIR, feature['name'], feature['level'])) if
                  matcher.match(f.name)]
         result = np.intersect1d(result, np.array(files)) if result is not None else np.array(files)
 
     return result.tolist()
+
+
+def get_available_gfs_date_keys(features, prediction_offset: int, sequence_length: int, from_year: int = 2015):
+    result = {}
+    for feature in tqdm(features):
+        for offset in range(prediction_offset, prediction_offset + sequence_length * 3, 3):
+            meta_files_matcher = re.compile(rf"{feature['name']}_{feature['level']}_{prep_zeros_if_needed(str(offset), 2)}_meta\.pkl")
+            pickle_dir = os.path.join(GFS_DATASET_DIR, 'pkl')
+            print(f"Scanning {[pickle_dir]} looking for CMAX meta files.")
+            meta_files = [f.name for f in tqdm(os.scandir(pickle_dir)) if meta_files_matcher.match(f.name)]
+            date_keys = []
+            for meta_file in meta_files:
+                with open(os.path.join(pickle_dir, meta_file), 'rb') as f:
+                    date_keys.extend(pickle.load(f))
+
+            date_keys.sort()
+            date_keys = filter(lambda item: int(item[:4]) >= from_year, list(set(date_keys)))
+            result[str(offset)] = np.intersect1d(result[str(offset)], np.array(date_keys)) if str(offset) in result \
+                else np.array(date_keys)
+
+    return result
 
 
 def date_from_gfs_np_file(filename):
@@ -53,68 +80,79 @@ def date_from_gfs_np_file(filename):
     return forecast_date
 
 
-def get_GFS_values_for_sequence(file_id, param, sequence_length, subregion_coords=None):
-    values = [get_subregion_from_GFS_slice_for_coords(
-        np.load(os.path.join(GFS_DATASET_DIR, param['name'], param['level'], file_id)), subregion_coords)]
-    date_matcher = re.match(NETCDF_FILE_REGEX, file_id)
-    offset = int(date_matcher.group(6))
+def date_from_gfs_date_key(date_key):
+    date_matcher = re.match(DATE_KEY_REGEX, date_key)
+
+    year = int(date_matcher.group(1))
+    month = int(date_matcher.group(2))
+    day = int(date_matcher.group(3))
+    hour = int(date_matcher.group(4))
+    date = datetime(year, month, day, hour)
+    return date
+
+
+def get_GFS_values_for_sequence(date_key, param, sequence_length: int, prediction_offset: int, subregion_coords: Coords = None):
+    gfs_loader = GFSLoader()
+    values = [get_subregion_from_GFS_slice_for_coords(gfs_loader.get_gfs_image(date_key, param, prediction_offset), subregion_coords)]
     for frame in range(1, sequence_length):
-        new_id = file_id.replace(f"f{prep_zeros_if_needed(str(offset), 2)}",
-                                 f"f{prep_zeros_if_needed(str(offset + 3), 2)}")
-        val = np.load(os.path.join(GFS_DATASET_DIR, param['name'], param['level'], new_id))
+        new_date_key = GFSLoader.get_date_key(date_from_gfs_date_key(date_key) + timedelta(hours=3 * frame))
+        val = gfs_loader.get_gfs_image(new_date_key, param, prediction_offset + 3 * frame)
         if subregion_coords is not None:
             val = get_subregion_from_GFS_slice_for_coords(val, subregion_coords)
         values.append(val)
+
     return values
 
 
-def initialize_mean_and_std(list_IDs, train_parameters, dim: (int, int), subregion_coords=None):
+def initialize_mean_and_std(date_keys, train_parameters, dim: (int, int), prediction_offset: int, subregion_coords=None):
     log.info("Calculating std and mean for a dataset")
     means = []
     stds = []
+    gfs_loader = GFSLoader()
     for param in tqdm(train_parameters):
         sum, sqr_sum = 0, 0
-        for id in tqdm(list_IDs):
-            values = np.load(os.path.join(GFS_DATASET_DIR, param['name'], param['level'], id))
+        for date_key in tqdm(date_keys):
+            values = gfs_loader.get_gfs_image(date_key, param, prediction_offset)
             if subregion_coords is not None:
                 values = get_subregion_from_GFS_slice_for_coords(values, subregion_coords)
             sum += np.sum(values)
             sqr_sum += np.sum(np.power(values, 2))
 
-        mean = sum / (len(list_IDs) * dim[0] * dim[1])
+        mean = sum / (len(date_keys) * dim[0] * dim[1])
         means.append(mean)
-        stds.append(math.sqrt(sqr_sum / (len(list_IDs) * dim[0] * dim[1]) - pow(mean, 2)))
+        stds.append(math.sqrt(sqr_sum / (len(date_keys) * dim[0] * dim[1]) - pow(mean, 2)))
 
     return means, stds
 
 
-def initialize_mean_and_std_for_sequence(list_IDs, train_parameters, dim: (int, int), sequence_length: int,
-                                         subregion_coords=None):
+def initialize_mean_and_std_for_sequence(date_keys: dict, train_parameters, dim: (int, int), sequence_length: int, prediction_offset: int,
+                                         subregion_coords: Coords = None):
     log.info("Calculating std and mean for a dataset")
     means = []
     stds = []
     for param in tqdm(train_parameters):
         sum, sqr_sum = 0, 0
-        for id in tqdm(list_IDs):
-            values = np.squeeze(get_GFS_values_for_sequence(id, param, sequence_length, subregion_coords))
+        for id in tqdm(date_keys[prediction_offset]):
+            values = np.squeeze(get_GFS_values_for_sequence(id, param, sequence_length, prediction_offset, subregion_coords))
             sum += np.sum(values)
             sqr_sum += np.sum(np.power(values, 2))
 
-        mean = sum / (len(list_IDs) * sequence_length * dim[0] * dim[1])
+        mean = sum / (len(date_keys) * sequence_length * dim[0] * dim[1])
         means.append(mean)
-        stds.append(math.sqrt(sqr_sum / (len(list_IDs) * sequence_length * dim[0] * dim[1]) - pow(mean, 2)))
+        stds.append(math.sqrt(sqr_sum / (len(date_keys) * sequence_length * dim[0] * dim[1]) - pow(mean, 2)))
 
     return means, stds
 
 
-def initialize_min_max(list_IDs: [str], train_parameters, subregion_coords=None):
+def initialize_min_max(date_keys: [str], train_parameters, prediction_offset: int, subregion_coords=None):
     log.info("Calculating min and max for a dataset")
     mins = []
     maxes = []
+    gfs_loader = GFSLoader()
     for param in tqdm(train_parameters):
         min, max = sys.float_info.max, sys.float_info.min
-        for id in list_IDs:
-            values = np.load(os.path.join(GFS_DATASET_DIR, param['name'], param['level'], id))
+        for date_key in date_keys:
+            values = gfs_loader.get_gfs_image(date_key, param, prediction_offset)
             if subregion_coords is not None:
                 values = get_subregion_from_GFS_slice_for_coords(values, subregion_coords)
             min = min(np.min(values), min)
@@ -126,14 +164,14 @@ def initialize_min_max(list_IDs: [str], train_parameters, subregion_coords=None)
     return mins, maxes
 
 
-def initialize_min_max_for_sequence(list_IDs: [str], train_parameters, sequence_length: int, subregion_coords=None):
+def initialize_min_max_for_sequence(list_IDs: [str], train_parameters, sequence_length: int, prediction_offset: int, subregion_coords=None):
     log.info("Calculating min and max for the GFS dataset")
     mins = []
     maxes = []
     for param in tqdm(train_parameters):
         min, max = sys.float_info.max, sys.float_info.min
         for id in list_IDs:
-            values = np.squeeze(get_GFS_values_for_sequence(id, param, sequence_length, subregion_coords))
+            values = np.squeeze(get_GFS_values_for_sequence(id, param, sequence_length, prediction_offset, subregion_coords))
             min = min(values, min)
             max = max(values, max)
 
@@ -143,48 +181,30 @@ def initialize_min_max_for_sequence(list_IDs: [str], train_parameters, sequence_
     return mins, maxes
 
 
-def initialize_mean_and_std_for_wind_target(list_IDs, dim):
-    log.info("Calculating std and mean for the GFS dataset")
-
-    sum, sqr_sum = 0, 0
-    for id in list_IDs:
-        values_v = np.load(os.path.join(GFS_DATASET_DIR, 'V GRD', 'HTGL_10', id))
-        values_u = np.load(os.path.join(GFS_DATASET_DIR, 'U GRD', 'HTGL_10', id))
-        velocity = math.sqrt(values_v ** 2 + values_u ** 2)
-        sum += np.sum(velocity)
-        sqr_sum += pow(sum, 2)
-
-    mean = sum / (len(list_IDs) * dim[0] * dim[1])
-
-    return mean, math.sqrt(sqr_sum / (len(list_IDs) * dim[0] * dim[1]) - pow(mean, 2))
-
-
-def initialize_GFS_list_IDs_for_sequence(list_IDs: [str], labels: pd.DataFrame, one_of_train_parameters,
-                                         target_param: str, sequence_length: int):
-    # filter out files, which are not continued by sufficient number of consecutive forecasts
+def initialize_GFS_date_keys_for_sequence(date_keys: [str], labels: pd.DataFrame, train_params: [dict], target_param: str, sequence_length: int):
+    # filter out date_keys, which are not continued by sufficient number of consecutive forecasts
     new_list = []
-    list_IDs = sorted(list_IDs)
-    param = one_of_train_parameters
-    for id in list_IDs:
-        date_matcher = re.match(NETCDF_FILE_REGEX, id)
-        offset = int(date_matcher.group(6))
+    date_keys = sorted(date_keys)
+    gfs_loader = GFSLoader()
+    for date_key in date_keys:
+        date_matcher = re.match(NETCDF_FILE_REGEX, date_key)
+        offset = int(date_matcher.group(6)) + 3
         exists = True
         for frame in range(1, sequence_length):
-            new_id = id.replace(f"f{prep_zeros_if_needed(str(offset), 2)}",
-                                f"f{prep_zeros_if_needed(str(offset + 3), 2)}")
+            new_date_key = GFSLoader.get_date_key(date_from_gfs_date_key(date_key) + timedelta(hours=offset))
             # check if gfs file exists
-            if not os.path.exists(os.path.join(GFS_DATASET_DIR, param['name'], param['level'], new_id)):
+            if not all(gfs_loader.get_gfs_image(new_date_key, param, offset) is not None for param in train_params):
                 exists = False
                 break
             # check if synop label exists
-            if len(labels[labels["date"] == date_from_gfs_np_file(id) + timedelta(hours=offset + 3)][
-                       target_param]) == 0:
+            if len(labels[labels["date"] == date_from_gfs_date_key(date_key)
+                          + timedelta(hours=offset)][target_param]) == 0:
                 exists = False
                 break
 
             offset = offset + 3
         if exists:
-            new_list.append(id)
+            new_list.append(date_key)
 
     return new_list
 
@@ -209,7 +229,7 @@ def get_point_from_GFS_slice_for_coords(gfs_data: np.ndarray, coords: Coords):
         coords.nlat, coords.elon).item()
 
 
-def get_subregion_from_GFS_slice_for_coords(gfs_data: np.ndarray, coords: Coords) -> np.ndarray:
+def get_indices_of_GFS_slice_for_coords(coords: Coords):
     nearest_coords_NW = get_nearest_coords(Coords(coords.nlat, coords.nlat, coords.wlon, coords.wlon))
     nearest_coords_SE = get_nearest_coords(Coords(coords.slat, coords.slat, coords.elon, coords.elon))
     lat_NW, lon_NW = get_nearest_lat_lon_from_coords(nearest_coords_NW,
@@ -221,22 +241,18 @@ def get_subregion_from_GFS_slice_for_coords(gfs_data: np.ndarray, coords: Coords
     lat_index_end = int((GFS_SPACE.nlat - lat_SE) * 4)
     lon_index_start = int((GFS_SPACE.elon - lon_SE) * 4)
     lon_index_end = int((GFS_SPACE.elon - lon_NW) * 4)
+
+    return lat_index_start, lat_index_end, lon_index_start, lon_index_end
+
+
+def get_subregion_from_GFS_slice_for_coords(gfs_data: np.ndarray, coords: Coords) -> np.ndarray:
+    lat_index_start, lat_index_end, lon_index_start, lon_index_end = get_indices_of_GFS_slice_for_coords(coords)
 
     return gfs_data[lat_index_start:lat_index_end + 1, lon_index_start:lon_index_end + 1]
 
 
 def get_dim_of_GFS_slice_for_coords(coords: Coords) -> (int, int):
-    nearest_coords_NW = get_nearest_coords(Coords(coords.nlat, coords.nlat, coords.wlon, coords.wlon))
-    nearest_coords_SE = get_nearest_coords(Coords(coords.slat, coords.slat, coords.elon, coords.elon))
-    lat_NW, lon_NW = get_nearest_lat_lon_from_coords(nearest_coords_NW,
-                                                     Coords(coords.nlat, coords.nlat, coords.wlon, coords.wlon))
-    lat_SE, lon_SE = get_nearest_lat_lon_from_coords(nearest_coords_SE,
-                                                     Coords(coords.slat, coords.slat, coords.elon, coords.elon))
-
-    lat_index_start = int((GFS_SPACE.nlat - lat_NW) * 4)
-    lat_index_end = int((GFS_SPACE.nlat - lat_SE) * 4)
-    lon_index_start = int((GFS_SPACE.elon - lon_SE) * 4)
-    lon_index_end = int((GFS_SPACE.elon - lon_NW) * 4)
+    lat_index_start, lat_index_end, lon_index_start, lon_index_end = get_indices_of_GFS_slice_for_coords(coords)
 
     return lat_index_end - lat_index_start + 1, lon_index_end - lon_index_start + 1
 
@@ -272,26 +288,14 @@ def add_param_to_train_params(train_params: list, param: str):
     return params
 
 
-def get_GFS_filename(date, prediction_offset, exact_date_match):
-    # value = [date, target_param]
-    last_date_in_sequence = date - timedelta(
-        hours=prediction_offset + (7 if date.month < 10 or date.month > 4 else 6))  # 00 run is available at 6 UTC
-    day = last_date_in_sequence.day
-    month = last_date_in_sequence.month
-    year = last_date_in_sequence.year
-    hour = int(last_date_in_sequence.hour)
-    run = ['00', '06', '12', '18'][(hour // 6)]
+def get_forecast_date_and_offset_for_prediction_date(date, prediction_offset):
+    utc_date = local_to_utc(date)
+    forecast_start_date = utc_date - timedelta(hours=prediction_offset + 5)  # 00 run is available at 5 UTC
+    hour = int(forecast_start_date.hour)
+    forecast_start_date = forecast_start_date - timedelta(hours=hour % 6)
 
-    if exact_date_match:
-        run_hour = int(run)
-        prediction_hour = date.hour if date.hour > run_hour else date.hour + 24
-        pred_offset = str(prediction_hour - run_hour)
-    else:
-        pred_offset = str((prediction_offset + 6) // 3 * 3)
-
-    return FINAL_NUMPY_FILENAME_FORMAT.format(year, prep_zeros_if_needed(str(month), 1),
-                                              prep_zeros_if_needed(str(day), 1), run,
-                                              prep_zeros_if_needed(pred_offset, 2))
+    pred_offset = (prediction_offset + 6) // 3 * 3
+    return forecast_start_date + timedelta(hours=pred_offset), pred_offset
 
 
 def match_gfs_with_synop_sequence(features: Union[list, np.ndarray], targets: list, lat: float, lon: float,
@@ -299,22 +303,22 @@ def match_gfs_with_synop_sequence(features: Union[list, np.ndarray], targets: li
     gfs_values = []
     new_targets = []
     new_features = []
-
+    gfs_loader = GFSLoader()
     for index, value in tqdm(enumerate(targets)):
         date = value[0]
-        gfs_filename = get_GFS_filename(date, prediction_offset, exact_date_match)
+        gfs_date, gfs_offset = get_forecast_date_and_offset_for_prediction_date(date, prediction_offset,
+                                                                                exact_date_match)
+        gfs_date_key = gfs_loader.get_date_key(gfs_date)
 
         # check if there are forecasts available
-        if all(os.path.exists(os.path.join(GFS_DATASET_DIR, param["name"], param["level"], gfs_filename)) for param in
-               gfs_params):
+        if all(gfs_loader.get_gfs_image(gfs_date_key, param, gfs_offset) is not None for param in gfs_params):
             if return_GFS:
                 val = []
 
                 for param in gfs_params:
-                    val.append(get_point_from_GFS_slice_for_coords(
-                        np.load(
-                            os.path.join(GFS_DATASET_DIR, param['name'], param['level'], gfs_filename)),
-                        Coords(lat, lat, lon, lon)))
+                    val.append(
+                        get_point_from_GFS_slice_for_coords(gfs_loader.get_gfs_image(gfs_date_key, param, gfs_offset),
+                                                            Coords(lat, lat, lon, lon)))
 
                 gfs_values.append(val)
             new_targets.append(value[1])
@@ -326,38 +330,29 @@ def match_gfs_with_synop_sequence(features: Union[list, np.ndarray], targets: li
 
 
 def match_gfs_with_synop_sequence2sequence(features: Union[list, np.ndarray], targets: list, lat: float, lon: float,
-                                           prediction_offset: int, gfs_params: list, exact_date_match=False,
-                                           return_GFS=True):
+                                           prediction_offset: int, gfs_params: list, return_GFS=True):
     gfs_values = []
     new_targets = []
     new_features = []
-    gfs_values_cache = {}
+    gfs_loader = GFSLoader()
     print("Matching GFS with synop data")
     for index, value in tqdm(enumerate(targets)):
         dates = value.loc[:, 'date']
         next_gfs_values = []
         exists = True
         for date in dates:
-            cache_key = datetime.strftime(date, "%Y%m%d%H%H%M%M")
-            gfs_filename = get_GFS_filename(date, prediction_offset, exact_date_match)
-
+            gfs_date, gfs_offset = get_forecast_date_and_offset_for_prediction_date(date, prediction_offset)
+            gfs_date_key = gfs_loader.get_date_key(gfs_date)
             # check if there are forecasts available
-            if all(os.path.exists(os.path.join(GFS_DATASET_DIR, param["name"], param["level"], gfs_filename)) for param
-                   in gfs_params):
+            if all(gfs_loader.get_gfs_image(gfs_date_key, param, gfs_offset) is not None for param in gfs_params):
                 if return_GFS:
-                    if gfs_values_cache.get(cache_key) is not None:
-                        next_gfs_values.append(gfs_values_cache.get(cache_key))
-                    else:
-                        val = []
-
-                        for param in gfs_params:
-                            val.append(get_point_from_GFS_slice_for_coords(
-                                np.load(
-                                    os.path.join(GFS_DATASET_DIR, param['name'], param['level'], gfs_filename)),
-                                Coords(lat, lat, lon, lon)))
+                    val = []
+                    for param in gfs_params:
+                        val.append(get_point_from_GFS_slice_for_coords(
+                            gfs_loader.get_gfs_image(gfs_date_key, param, gfs_offset),
+                            Coords(lat, lat, lon, lon)))
 
                         next_gfs_values.append(val)
-                        gfs_values_cache[cache_key] = val
 
             else:
                 exists = False
@@ -366,7 +361,6 @@ def match_gfs_with_synop_sequence2sequence(features: Union[list, np.ndarray], ta
             gfs_values.append(next_gfs_values)
             new_features.append(features[index])
             new_targets.append(value.loc[:, value.columns != 'date'])
-            gfs_values_cache[datetime.strftime(dates.iloc[0], "%Y%m%d%H%H%M%M")] = None
 
     if return_GFS:
         return np.array(new_features), np.array(gfs_values), np.array(new_targets)

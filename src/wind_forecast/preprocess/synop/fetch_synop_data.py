@@ -51,7 +51,7 @@ def download_list_of_station(dir = None):
         opened_file.close()
 
 
-def get_localisation_id(localisation_name: str, code_fallback, dir):
+def get_localisation_id(localisation_name: str, code_fallback, dir=None):
     loc_data = pd.read_csv(os.path.join(dir if dir is not None else Path(__file__).parent, 'wykaz_stacji.csv'), encoding="latin-1",
                            names=['unknown', 'city_name', 'meteo_code'],  dtype='str')
     loc_data['meteo_code'] = loc_data['meteo_code'].astype(int)

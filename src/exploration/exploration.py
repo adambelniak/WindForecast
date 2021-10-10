@@ -3,22 +3,21 @@ import os
 import re
 from pathlib import Path
 
-from tqdm import tqdm
-import numpy as np
-import seaborn as sns
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
+import seaborn as sns
+from tqdm import tqdm
 
 from gfs_archive_0_25.gfs_processor.own_logger import get_logger
+from gfs_archive_0_25.utils import prep_zeros_if_needed
 from wind_forecast.consts import SYNOP_DATASETS_DIRECTORY
 from wind_forecast.preprocess.synop.consts import SYNOP_FEATURES
 from wind_forecast.preprocess.synop.fetch_synop_data import download_list_of_station, get_localisation_id, \
     process_all_data
 from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset
-from wind_forecast.util.gfs_util import get_available_numpy_files
-from gfs_archive_0_25.utils import prep_zeros_if_needed
+from wind_forecast.util.gfs_util import GFS_DATASET_DIR, get_available_numpy_files
 
-gfs_dataset_dir = os.path.join("D:\\WindForecast", "gfs")
 GFS_PARAMETERS = [
     {
         "name": "T CDC",
@@ -98,7 +97,7 @@ GFS_PARAMETERS = [
 def explore_data_for_each_param():
     logger = get_logger(os.path.join("explore_results", 'logs.log'))
     for parameter in tqdm(GFS_PARAMETERS):
-        param_dir = os.path.join(gfs_dataset_dir, parameter['name'], parameter['level'])
+        param_dir = os.path.join(GFS_DATASET_DIR, parameter['name'], parameter['level'])
         if os.path.exists(param_dir):
             for offset in tqdm(range(3, 120, 3)):
                 plot_dir = os.path.join('plots', parameter['name'], parameter['level'], str(offset))
@@ -127,9 +126,9 @@ def explore_gfs_correlations():
 
     offset = 3
     df = pd.DataFrame()
-    files = get_available_numpy_files(GFS_PARAMETERS, offset, gfs_dataset_dir)
+    files = get_available_numpy_files(GFS_PARAMETERS, offset)
     for parameter in tqdm(GFS_PARAMETERS):
-        param_dir = os.path.join(gfs_dataset_dir, parameter['name'], parameter['level'])
+        param_dir = os.path.join(GFS_DATASET_DIR, parameter['name'], parameter['level'])
         values = np.empty((len(files), 33, 53))
         for index, file in tqdm(enumerate(files)):
             values[index] = np.load(os.path.join(param_dir, file))
@@ -141,7 +140,7 @@ def explore_gfs_correlations():
     plt.close()
 
 
-def prepare_synop_csv(localisation_name, code_fallback, features):
+def prepare_synop_csv(localisation_name: str, code_fallback: int, features: (int, str)):
     download_list_of_station()
     localisation_code, name = get_localisation_id(localisation_name, code_fallback)
     localisation_code = localisation_code
@@ -151,7 +150,7 @@ def prepare_synop_csv(localisation_name, code_fallback, features):
     process_all_data(2001, 2021, str(localisation_code), localisation_name, output_dir=SYNOP_DATASETS_DIRECTORY, columns=features)
 
 
-def explore_synop_correlations(data, features, localisation_name):
+def explore_synop_correlations(data: pd.DataFrame, features: (int, str), localisation_name: str):
     if os.path.exists(os.path.join(Path(__file__).parent, f"synop_{localisation_name}_heatmap.png")):
         return
     data = data[list(list(zip(*features))[1])]
@@ -161,7 +160,7 @@ def explore_synop_correlations(data, features, localisation_name):
     plt.close()
 
 
-def explore_synop_patterns(data, relevant_features, localisation_name):
+def explore_synop_patterns(data: pd.DataFrame, relevant_features: (int, str), localisation_name: str):
     features_with_nans = []
     for feature in relevant_features:
         plot_dir = os.path.join('plots-synop', localisation_name, feature[1])
@@ -178,7 +177,7 @@ def explore_synop_patterns(data, relevant_features, localisation_name):
         logger.info(f"Nans in features:\n {[f'{feature}, ' for feature in features_with_nans]}")
 
 
-def explore_synop(localisation_name, code_fallback):
+def explore_synop(localisation_name: str, code_fallback: int):
     relevant_features = [f for f in SYNOP_FEATURES if f[1] not in ['year', 'month', 'day', 'hour']]
     synop_file = f"{localisation_name}_{code_fallback}_data.csv"
     if not os.path.exists(os.path.join(SYNOP_DATASETS_DIRECTORY, synop_file)):

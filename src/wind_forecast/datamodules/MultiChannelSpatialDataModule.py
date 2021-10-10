@@ -9,7 +9,7 @@ from wind_forecast.datasets.MultiChannelSpatialDataset import MultiChannelSpatia
 from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset
 from wind_forecast.util.common_util import split_dataset
 from wind_forecast.util.config import process_config
-from wind_forecast.util.gfs_util import get_available_numpy_files, GFS_DATASET_DIR
+from wind_forecast.util.gfs_util import get_available_gfs_date_keys, GFS_DATASET_DIR
 
 
 class MultiChannelSpatialDataModule(LightningDataModule):
@@ -28,14 +28,13 @@ class MultiChannelSpatialDataModule(LightningDataModule):
         self.dataset_test = ...
         self.train_parameters = process_config(config.experiment.train_parameters_config_file)
         self.prediction_offset = config.experiment.prediction_offset
-        self.gfs_dataset_dir = GFS_DATASET_DIR
         self.synop_file = config.experiment.synop_file
         self.target_param = config.experiment.target_parameter
         self.labels, self.label_mean, self.label_std = prepare_synop_dataset(self.synop_file, [self.target_param],
                                                                              dataset_dir=SYNOP_DATASETS_DIRECTORY,
                                                                              from_year=config.experiment.synop_from_year,
                                                                              to_year=config.experiment.synop_to_year)
-        self.IDs = get_available_numpy_files(self.train_parameters, self.prediction_offset, self.gfs_dataset_dir)
+        self.IDs = get_available_gfs_date_keys(self.train_parameters, self.prediction_offset, 1)[str(self.prediction_offset)]
 
     def prepare_data(self, *args, **kwargs):
         pass

@@ -1,6 +1,9 @@
 import math
 import os
 import sys
+
+from wind_forecast.loaders.CMAXLoader import CMAXLoader
+
 if sys.version_info <= (3, 8, 2):
     import pickle5 as pickle
 else:
@@ -12,9 +15,8 @@ from datetime import datetime, timedelta
 import pandas as pd
 from tqdm import tqdm
 
-from wind_forecast.util.CMAXLoader import CMAXLoader
 from wind_forecast.util.common_util import prep_zeros_if_needed
-from wind_forecast.consts import CMAX_NPY_FILENAME_FORMAT, CMAX_NPY_FILE_REGEX, CMAX_PKL_REGEX
+from wind_forecast.consts import CMAX_NPY_FILENAME_FORMAT, CMAX_NPY_FILE_REGEX, DATE_KEY_REGEX
 from wind_forecast.util.logging import log
 
 CMAX_DATASET_DIR = os.environ.get('CMAX_DATASET_DIR')
@@ -52,8 +54,8 @@ def date_from_cmax_npy_file(filename):
     return date
 
 
-def date_from_cmax_pkl(filename):
-    date_matcher = re.match(CMAX_PKL_REGEX, filename)
+def date_from_cmax_date_key(date_key):
+    date_matcher = re.match(DATE_KEY_REGEX, date_key)
 
     year = int(date_matcher.group(1))
     month = int(date_matcher.group(2))
@@ -63,13 +65,13 @@ def date_from_cmax_pkl(filename):
     return date
 
 
-def get_cmax_values_for_sequence(id, cmax_values, sequence_length):
-    date = date_from_cmax_pkl(id)
+def get_cmax_values_for_sequence(date_key, cmax_values, sequence_length):
+    date = date_from_cmax_date_key(date_key)
     values = []
     for frame in range(0, sequence_length):
-        values.append(np.array(cmax_values[id]))
+        values.append(np.array(cmax_values[date_key]))
         date = date + timedelta(hours=1)
-        id = CMAXLoader.get_date_key(date)
+        date_key = CMAXLoader.get_date_key(date)
 
     return values
 
@@ -88,7 +90,7 @@ def get_cmax_npy(id):
 # Also return a dictionary of values to have them all read into the runtime
 def get_mean_and_std_cmax(list_IDs: [str], dim: (int, int), sequence_length: int,
                           future_sequence_length: int = 0, prediction_offset: int = 0):
-    # Bear in mind that list_IDs are indices of FIRST frame in the sequence. Not all frames exist in list_IDs because of that fact.
+    # Bear in mind that date_keys are indices of FIRST frame in the sequence. Not all frames exist in date_keys because of that fact.
     log.info("Calculating std and mean for the CMAX dataset")
     all_ids = set([item for sublist in [[get_cmax_datekey_from_offset(id, offset) for offset in
                                          range(0, sequence_length + future_sequence_length + prediction_offset)] for id
@@ -107,7 +109,7 @@ def get_mean_and_std_cmax(list_IDs: [str], dim: (int, int), sequence_length: int
 
 
 def get_cmax_datekey_from_offset(id: str, offset: int) -> str:
-    date = date_from_cmax_pkl(id)
+    date = date_from_cmax_date_key(id)
     date = date + timedelta(hours=offset)
     return CMAXLoader.get_date_key(date)
 

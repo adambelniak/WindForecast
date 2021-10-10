@@ -1,37 +1,44 @@
 import argparse
-import os
-import re
 
+import numpy as np
 from tqdm import tqdm
+
 from gfs_archive_0_25.gfs_processor.Coords import Coords
-from wind_forecast.consts import SYNOP_DATASETS_DIRECTORY, NETCDF_FILE_REGEX, STATION_META
+from wind_forecast.consts import SYNOP_DATASETS_DIRECTORY, STATION_META
+from wind_forecast.loaders.GFSLoader import GFSLoader
 from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset
 from wind_forecast.util.gfs_util import target_param_to_gfs_name_level, \
-    get_available_numpy_files, GFS_DATASET_DIR, date_from_gfs_np_file, get_point_from_GFS_slice_for_coords
-import numpy as np
+    get_available_gfs_date_keys, get_point_from_GFS_slice_for_coords, date_from_gfs_date_key
 
 
-def get_gfs_values_and_targets_for_gfs_ids(available_gfs, labels, target_param, lat, lon):
+def get_gfs_values_and_targets_for_gfs_ids(gfs_date_keys, labels, target_param, lat: float, lon: float, offset: int):
     targets = []
     gfs_values = []
     coords = Coords(lat, lat, lon, lon)
+    gfs_loader = GFSLoader()
     param = target_param_to_gfs_name_level(target_param)[0]
-    for id in tqdm(available_gfs):
-        date = date_from_gfs_np_file(id)
+    for date_key in tqdm(gfs_date_keys):
+        date = date_from_gfs_date_key(date_key)
         label = labels[labels["date"] == date]
         if len(label) > 0:
             targets.append(label[target_param].to_numpy())
-            gfs_values.append(get_point_from_GFS_slice_for_coords(
-                np.load(os.path.join(GFS_DATASET_DIR, param['name'], param['level'], id)), coords))
+            gfs_values.append(
+                get_point_from_GFS_slice_for_coords(gfs_loader.get_gfs_image(date_key, param, offset), coords))
 
     return np.array(gfs_values), np.array(targets).squeeze()
 
 
-def compare_gfs_with_synop(labels, gfs_ids, lat, lon, target_param):
-    gfs_data, targets = get_gfs_values_and_targets_for_gfs_ids(gfs_ids, labels, target_param, lat, lon)
+def compare_gfs_with_synop(labels, gfs_date_keys, target_param, lat: float, lon: float, prediction_offset: int,
+                           sequence_length: int):
+    gfs_data, targets = np.array([]), np.array([])
+    for offset in range(prediction_offset, prediction_offset + 3 * sequence_length, 3):
+        next_gfs_data, next_targets = get_gfs_values_and_targets_for_gfs_ids(gfs_date_keys[str(offset)], labels,
+                                                                             target_param, lat, lon, offset)
+        if target_param == 'temperature':
+            next_gfs_data = next_gfs_data - 273.15  # gfs_data is in Kelvins
 
-    if target_param == 'temperature':
-        gfs_data = gfs_data - 273.15  # gfs_data is in Kelvins
+        gfs_data = np.append(gfs_data, next_gfs_data)
+        targets = np.append(targets, next_targets)
 
     diffs = abs(targets - gfs_data)
     mean_diff = diffs.mean()
@@ -47,18 +54,11 @@ def main(station: str, target_param: str, prediction_offset: int, sequence_lengt
 
     labels = synop_data[['date', target_param]]
 
-    if sequence_length == 1:
-        available_gfs = get_available_numpy_files(target_param_to_gfs_name_level(target_param), prediction_offset,
-                                                  GFS_DATASET_DIR)
-    else:
-        available_gfs = []
-        for offset in range(prediction_offset, prediction_offset + 3 * sequence_length, 3):
-            available_gfs.append(get_available_numpy_files(target_param_to_gfs_name_level(target_param), offset,
-                                                           GFS_DATASET_DIR))
-        available_gfs = [item for sublist in available_gfs for item in sublist]
+    available_gfs_date_keys = get_available_gfs_date_keys(target_param_to_gfs_name_level(target_param),
+                                                          prediction_offset, sequence_length, from_year)
 
-    available_gfs = list(filter(lambda item: int(re.match(NETCDF_FILE_REGEX, item).group(1)[:4]) >= from_year, available_gfs))
-    compare_gfs_with_synop(labels, available_gfs, STATION_META[station]['lat'], STATION_META[station]['lon'], target_param)
+    compare_gfs_with_synop(labels, available_gfs_date_keys, target_param, STATION_META[station]['lat'],
+                           STATION_META[station]['lon'], prediction_offset, sequence_length)
 
 
 if __name__ == "__main__":

@@ -19,6 +19,11 @@ def utc_to_local(date):
     return date.replace(tzinfo=pytz.utc).astimezone(pytz.timezone('Europe/Warsaw')).replace(tzinfo=None)
 
 
+def local_to_utc(date):
+    tz = pytz.timezone('Europe/Warsaw')
+    return tz.normalize(tz.localize(date)).astimezone(pytz.utc)
+
+
 def declination_of_earth(date):
     day_of_year = date.timetuple().tm_yday
     return 23.45 * np.sin(np.deg2rad(360.0 * (283.0 + day_of_year) / 365.0))
