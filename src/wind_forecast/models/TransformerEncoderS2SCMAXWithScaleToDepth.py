@@ -30,6 +30,8 @@ class TransformerEncoderS2SCMAXWithScaleToDepth(TransformerBaseProps):
 
         self.conv = nn.Sequential(*conv_layers, nn.Flatten())
         self.conv_time_distributed = TimeDistributed(self.conv)
+        self.embed_dim = self.features_len * (config.experiment.time2vec_embedding_size + 1) + conv_W * conv_H * out_channels
+
         encoder_layer = nn.TransformerEncoderLayer(d_model=self.embed_dim, nhead=config.experiment.transformer_attention_heads,
                                                    dim_feedforward=config.experiment.transformer_ff_dim, dropout=self.dropout,
                                                    batch_first=True)

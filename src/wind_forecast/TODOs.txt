@@ -1,2 +1,1 @@
-convGRU, convLSTM, GAN, transformer + convolution on input to create embeddings, maybe better autoencoder for cmax,
-TCN with cmax data IMPORTANT
+convGRU, convLSTM, GAN, maybe better autoencoder for cmax

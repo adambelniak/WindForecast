@@ -1,0 +1,32 @@
+# Specific experiments settings
+# (default settings inherited from configs.experiment.ExperimentSettings)
+
+defaults:
+  - schema_experiment
+
+_tags_:
+  - TRANSFORMER_CMAX
+
+resume_checkpoint: ~
+
+datamodule:
+  _target_: wind_forecast.datamodules.Sequence2SequenceWithCMAXDataModule.Sequence2SequenceWithCMAXDataModule
+
+model:
+  _target_: wind_forecast.models.TransformerCMAX.TransformerCMAX
+
+system:
+  _target_: wind_forecast.systems.S2SRegressorWithTFWithCMAX.S2SRegressorWithTFWithCMAX
+
+synop_from_year: 2017
+cmax_from_year: 2017
+use_future_cmax: True
+batch_size: 5
+time2vec_embedding_size: 18
+cnn_filters:
+  - 16
+  - 32
+  - 32
+  - 32
+  - 32
+  - 16
