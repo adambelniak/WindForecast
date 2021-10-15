@@ -131,6 +131,8 @@ class ExperimentSettings:
 
     transformer_attention_heads: int = 1
 
+    use_pos_encoding: bool = False
+
     cmax_sample_size: Any = (900, 900)
 
     cmax_scaling_factor: int = 4

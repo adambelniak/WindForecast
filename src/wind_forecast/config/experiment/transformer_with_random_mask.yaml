@@ -5,7 +5,7 @@ defaults:
   - schema_experiment
 
 _tags_:
-  - TRANSFORMER_ENCODER_S2S
+  - TRANSFORMER_WITH_RANDOM_MASK
 
 resume_checkpoint: ~
 
@@ -13,10 +13,9 @@ datamodule:
   _target_: wind_forecast.datamodules.Sequence2SequenceDataModule.Sequence2SequenceDataModule
 
 model:
-  _target_: wind_forecast.models.TransformerEncoderS2S.TransformerEncoderS2S
+  _target_: wind_forecast.models.TransformerRandomMask.TransformerRandomMask
 
 system:
   _target_: wind_forecast.systems.S2SRegressorWithTF.S2SRegressorWithTF
 
 synop_from_year: 2017
-use_pos_encoder: False

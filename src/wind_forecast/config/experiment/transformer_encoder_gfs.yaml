@@ -19,3 +19,5 @@ model:
 
 system:
   _target_: wind_forecast.systems.RegressorWithGFSInput.RegressorWithGFSInput
+
+use_pos_encoder: False
