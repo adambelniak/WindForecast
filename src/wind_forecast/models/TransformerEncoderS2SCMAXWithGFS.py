@@ -44,7 +44,7 @@ class TransformerEncoderS2SCMAXWithGFS(TransformerBaseProps):
 
     def forward(self, inputs, gfs_input, cmax_inputs, targets: torch.Tensor, epoch: int, stage=None):
         cmax_embeddings = self.conv_time_distributed(cmax_inputs.unsqueeze(2))
-        time_embedding = self.time2vec_time_distributed(inputs)
+        time_embedding = self.time_2_vec_time_distributed(inputs)
         x = torch.cat([inputs, time_embedding, cmax_embeddings], -1)
         x = self.pos_encoder(x) if self.use_pos_encoding else x
         x = self.encoder(x)

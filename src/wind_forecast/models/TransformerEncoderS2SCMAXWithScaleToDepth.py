@@ -48,7 +48,7 @@ class TransformerEncoderS2SCMAXWithScaleToDepth(TransformerBaseProps):
         cmax = cmax.contiguous().view(cmax_inputs.size(0), cmax_inputs.size(1), *cmax.size()[1:])
 
         cmax_embeddings = self.conv_time_distributed(cmax)
-        time_embedding = self.time2vec_time_distributed(inputs)
+        time_embedding = self.time_2_vec_time_distributed(inputs)
         x = torch.cat([inputs, time_embedding, cmax_embeddings], -1)
         x = self.pos_encoder(x) if self.use_pos_encoding else x
         x = self.encoder(x)
