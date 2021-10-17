@@ -18,11 +18,11 @@ class TransformerEncoder(TransformerBaseProps):
         self.flatten = nn.Flatten()
 
     def forward(self, inputs):
-        time_embedding = TimeDistributed(self.time2vec, batch_first=True)(inputs)
+        time_embedding = self.time_2_vec_time_distributed(inputs)
         x = torch.cat([inputs, time_embedding], -1)
         x = self.pos_encoder(x) if self.use_pos_encoding else x
         x = self.encoder(x)
-        x = self.flatten(x)  # flat vector of features out
+        x = self.flatten(x)  # flat vector of synop_features out
 
         return torch.squeeze(self.linear(x), dim=-1)
 

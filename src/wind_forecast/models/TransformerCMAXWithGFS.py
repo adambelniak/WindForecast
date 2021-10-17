@@ -6,8 +6,8 @@ from wind_forecast.config.register import Config
 from wind_forecast.models.Transformer import TransformerBaseProps, PositionalEncoding
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 
-
-class TransformerCMAX(TransformerBaseProps):
+#TODO
+class TransformerCMAXWithGFS(TransformerBaseProps):
     def __init__(self, config: Config):
         super().__init__(config)
         self.teacher_forcing_epoch_num = config.experiment.teacher_forcing_epoch_num

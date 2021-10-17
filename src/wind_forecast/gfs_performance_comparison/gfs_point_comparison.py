@@ -49,7 +49,7 @@ def compare_gfs_with_synop(labels, gfs_date_keys, target_param, lat: float, lon:
 
 def main(station: str, target_param: str, prediction_offset: int, sequence_length: int, from_year: int):
     synop_file = STATION_META[station]['synop_file']
-    synop_data, _, _ = prepare_synop_dataset(synop_file, [target_param], norm=False,
+    synop_data = prepare_synop_dataset(synop_file, [target_param], norm=False,
                                              dataset_dir=SYNOP_DATASETS_DIRECTORY, from_year=from_year)
 
     labels = synop_data[['date', target_param]]

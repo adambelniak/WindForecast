@@ -63,9 +63,9 @@ class ExperimentSettings:
 
     synop_file: str = "WARSZAWA-OKECIE_375_data.csv"
 
-    synop_from_year: int = 2015
+    synop_from_year: int = 2017
 
-    cmax_from_year: int = 2015
+    cmax_from_year: int = 2017
 
     synop_to_year: int = 2022
 
@@ -74,6 +74,8 @@ class ExperimentSettings:
     target_parameter: str = "temperature"
 
     use_gfs_data: bool = False
+
+    use_all_gfs_as_input: bool = False
 
     prediction_offset: int = 3
 
@@ -131,7 +133,7 @@ class ExperimentSettings:
 
     transformer_attention_heads: int = 1
 
-    use_pos_encoding: bool = False
+    use_pos_encoding: bool = True
 
     cmax_sample_size: Any = (900, 900)
 

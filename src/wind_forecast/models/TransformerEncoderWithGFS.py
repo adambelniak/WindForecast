@@ -23,7 +23,7 @@ class Transformer(TransformerBaseProps):
         x = torch.cat([synop_input, time_embedding], -1)
         x = self.pos_encoder(x) if self.use_pos_encoding else x
         x = self.encoder(x)
-        x = self.flatten(x)  # flat vector of features out
+        x = self.flatten(x)  # flat vector of synop_features out
 
         return torch.squeeze(self.linear(torch.cat((x, gfs_input.unsqueeze(-1)), dim=1)))
 

@@ -5,7 +5,7 @@ defaults:
   - schema_experiment
 
 _tags_:
-  - TRANSFORMER_CMAX
+  - TRANSFORMER_ENCODER_S2S_CMAX_ALL_GFS
 
 resume_checkpoint: ~
 
@@ -13,15 +13,19 @@ datamodule:
   _target_: wind_forecast.datamodules.Sequence2SequenceWithCMAXDataModule.Sequence2SequenceWithCMAXDataModule
 
 model:
-  _target_: wind_forecast.models.TransformerCMAX.TransformerCMAX
+  _target_: wind_forecast.models.TransformerEncoderS2SCMAXWithGFS.TransformerEncoderS2SCMAXWithGFS
 
 system:
-  _target_: wind_forecast.systems.S2SRegressorWithTFWithCMAX.S2SRegressorWithTFWithCMAX
+  _target_: wind_forecast.systems.S2SRegressorWithTFWithCMAXWithGFS.S2SRegressorWithTFWithCMAXWithGFS
 
+batch_size: 5
+use_gfs_data: True
+use_future_cmax: False
 synop_from_year: 2017
 cmax_from_year: 2017
-use_future_cmax: True
-batch_size: 5
+use_all_gfs_as_input: True
+train_parameters_config_file: TransformerConfig.json
+epochs: 40
 time2vec_embedding_size: 5
 cnn_filters:
   - 16

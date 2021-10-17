@@ -29,7 +29,7 @@ class SequenceLimitedToGFSDatesDataModule(LightningDataModule):
         self.train_params = config.experiment.synop_train_features
         self.target_param = config.experiment.target_parameter
         self.sequence_length = config.experiment.sequence_length
-        self.labels, _, _ = prepare_synop_dataset(self.synop_file, list(list(zip(*self.train_params))[1]),
+        self.labels = prepare_synop_dataset(self.synop_file, list(list(zip(*self.train_params))[1]),
                                                   dataset_dir=SYNOP_DATASETS_DIRECTORY,
                                                   from_year=config.experiment.synop_from_year,
                                                   to_year=config.experiment.synop_to_year,

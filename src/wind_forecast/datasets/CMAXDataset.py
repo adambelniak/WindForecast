@@ -1,22 +1,20 @@
 import math
 
-import torch
 import numpy as np
+
 from wind_forecast.config.register import Config
+from wind_forecast.datasets.BaseDataset import BaseDataset
 from wind_forecast.util.cmax_util import get_mean_and_std_cmax, get_min_max_cmax, \
     get_cmax_values_for_sequence, get_cmax_datekey_from_offset
 from wind_forecast.util.common_util import NormalizationType
-from wind_forecast.util.config import process_config
 
 
-class CMAXDataset(torch.utils.data.Dataset):
+class CMAXDataset(BaseDataset):
     'Characterizes a dataset for PyTorch'
 
     def __init__(self, config: Config, IDs, normalize=True):
+        super().__init__()
         self.config = config
-        self.train_parameters = process_config(config.experiment.train_parameters_config_file)
-        self.target_param = config.experiment.target_parameter
-        self.synop_file = config.experiment.synop_file
         self.dim = config.experiment.cmax_sample_size
         self.normalization_type = config.experiment.cmax_normalization_type
         self.sequence_length = config.experiment.sequence_length
@@ -24,7 +22,7 @@ class CMAXDataset(torch.utils.data.Dataset):
         self.prediction_offset = config.experiment.prediction_offset
         self.use_future_cmax = config.experiment.use_future_cmax
 
-        self.mean, self.std, self.min, self.max = [], [], 0, 0
+        self.min, self.max = 0, 0
         self.cmax_values = {}
 
         if self.normalization_type == NormalizationType.STANDARD:

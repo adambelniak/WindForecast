@@ -18,4 +18,4 @@ model:
 system:
   _target_: wind_forecast.systems.Regressor.Regressor
 
-use_pos_encoder: False
+use_pos_encoding: False

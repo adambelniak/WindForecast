@@ -4,7 +4,7 @@ import torch
 from torch import nn
 
 from wind_forecast.config.register import Config
-from wind_forecast.models.Transformer import TransformerBaseProps
+from wind_forecast.models.Transformer import TransformerBaseProps, PositionalEncoding
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 
 
@@ -28,10 +28,12 @@ class TransformerEncoderS2SCMAXWithGFS(TransformerBaseProps):
             conv_H = math.ceil(conv_H / 2)
             in_channels = out_channels
 
-        self.conv = nn.Sequential(*conv_layers, nn.Flatten())
+        self.conv = nn.Sequential(*conv_layers, nn.Flatten(),
+                                  nn.Linear(in_features=conv_W * conv_H * out_channels, out_features=conv_W * conv_H * out_channels))
         self.conv_time_distributed = TimeDistributed(self.conv)
 
         self.embed_dim = self.features_len * (config.experiment.time2vec_embedding_size + 1) + conv_W * conv_H * out_channels
+        self.pos_encoder = PositionalEncoding(self.embed_dim, self.dropout, self.sequence_length)
 
         encoder_layer = nn.TransformerEncoderLayer(d_model=self.embed_dim, nhead=config.experiment.transformer_attention_heads,
                                                    dim_feedforward=config.experiment.transformer_ff_dim, dropout=config.experiment.dropout,

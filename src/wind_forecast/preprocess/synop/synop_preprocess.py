@@ -49,7 +49,7 @@ def prepare_synop_dataset(synop_file_name, features, norm=True, dataset_dir=os.p
         data[features], mean_or_min, std_or_max = normalize(data[features].values, normalization_type)
         return data, mean_or_min, std_or_max
 
-    return data, 0, 0
+    return data
 
 
 def normalize_synop_data(all_synop_data: pd.DataFrame, synop_data_indices: [int], features, length_of_sequence, normalization_type: NormalizationType = NormalizationType.STANDARD):

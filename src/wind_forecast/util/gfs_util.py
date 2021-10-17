@@ -21,7 +21,7 @@ from scipy.interpolate import interpolate
 from gfs_archive_0_25.gfs_processor.Coords import Coords
 from wind_forecast.consts import NETCDF_FILE_REGEX, DATE_KEY_REGEX
 from gfs_archive_0_25.utils import get_nearest_coords
-from wind_forecast.util.common_util import prep_zeros_if_needed, local_to_utc
+from wind_forecast.util.common_util import prep_zeros_if_needed, local_to_utc, NormalizationType
 from wind_forecast.util.logging import log
 
 GFS_DATASET_DIR = os.environ.get('GFS_DATASET_DIR')
@@ -209,6 +209,14 @@ def initialize_GFS_date_keys_for_sequence(date_keys: [str], labels: pd.DataFrame
     return new_list
 
 
+def normalize_gfs_data(gfs_data: np.ndarray, normalization_type: NormalizationType):
+    if normalization_type == NormalizationType.STANDARD:
+        return (gfs_data - np.mean(gfs_data)) / np.std(gfs_data)
+    else:
+        return (gfs_data - np.min(gfs_data)) / (
+                    np.max(gfs_data) - np.min(gfs_data))
+
+
 def get_nearest_lat_lon_from_coords(gfs_coords: [[float]], original_coords: Coords):
     lat = gfs_coords[0][0] if abs(original_coords.nlat - gfs_coords[0][0]) <= abs(
         original_coords.nlat - gfs_coords[0][1]) else gfs_coords[0][1]
@@ -304,6 +312,9 @@ def match_gfs_with_synop_sequence(features: Union[list, np.ndarray], targets: li
     new_targets = []
     new_features = []
     gfs_loader = GFSLoader()
+    removed_indices = []
+    print("Matching GFS with synop data")
+
     for index, value in tqdm(enumerate(targets)):
         date = value[0]
         gfs_date, gfs_offset = get_forecast_date_and_offset_for_prediction_date(date, prediction_offset,
@@ -323,17 +334,21 @@ def match_gfs_with_synop_sequence(features: Union[list, np.ndarray], targets: li
                 gfs_values.append(val)
             new_targets.append(value[1])
             new_features.append(features[index])
+        else:
+            removed_indices.append(index)
 
     if return_GFS:
-        return np.array(new_features), np.array(gfs_values), np.array(new_targets)
-    return np.array(new_features), np.array(new_targets)
+        return np.array(new_features), np.array(gfs_values), np.array(new_targets), removed_indices
+    return np.array(new_features), np.array(new_targets), removed_indices
 
 
-def match_gfs_with_synop_sequence2sequence(features: Union[list, np.ndarray], targets: list, lat: float, lon: float,
-                                           prediction_offset: int, gfs_params: list, return_GFS=True):
+def match_gfs_with_synop_sequence2sequence(synop_features: Union[list, np.ndarray], targets: list, lat: float, lon: float,
+                                           prediction_offset: int, gfs_params: list,
+                                           return_GFS=True):
     gfs_values = []
     new_targets = []
     new_features = []
+    removed_indices = []
     gfs_loader = GFSLoader()
     print("Matching GFS with synop data")
     for index, value in tqdm(enumerate(targets)):
@@ -355,13 +370,14 @@ def match_gfs_with_synop_sequence2sequence(features: Union[list, np.ndarray], ta
                         next_gfs_values.append(val)
 
             else:
+                removed_indices.append(index)
                 exists = False
                 break
         if exists:  # all gfs forecasts are available
             gfs_values.append(next_gfs_values)
-            new_features.append(features[index])
+            new_features.append(synop_features[index])
             new_targets.append(value.loc[:, value.columns != 'date'])
 
     if return_GFS:
-        return np.array(new_features), np.array(gfs_values), np.array(new_targets)
-    return np.array(new_features), np.array(new_targets)
+        return np.array(new_features), np.array(gfs_values), np.array(new_targets), removed_indices
+    return np.array(new_features), np.array(new_targets), removed_indices

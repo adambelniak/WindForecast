@@ -80,8 +80,8 @@ GFS_PARAMETERS = [
         "level": "ISBL_700"
     },
     {
-      "name": "R H",
-      "level": "ISBL_500"
+        "name": "R H",
+        "level": "ISBL_500"
     },
     {
         "name": "DPT",
@@ -117,7 +117,8 @@ def explore_data_for_each_param():
                     plt.savefig(os.path.join(plot_dir, 'plot.png'))
                     plt.close()
                     if len(files_with_nan) > 0:
-                        logger.info(f"Nans in files:\n {[f'{os.path.join(param_dir, file.name)}, ' for file in files_with_nan]}")
+                        logger.info(
+                            f"Nans in files:\n {[f'{os.path.join(param_dir, file.name)}, ' for file in files_with_nan]}")
 
 
 def explore_gfs_correlations():
@@ -147,7 +148,8 @@ def prepare_synop_csv(localisation_name: str, code_fallback: int, features: (int
     localisation_name = args.localisation_name
     if localisation_name is None:
         localisation_name = name
-    process_all_data(2001, 2021, str(localisation_code), localisation_name, output_dir=SYNOP_DATASETS_DIRECTORY, columns=features)
+    process_all_data(2001, 2021, str(localisation_code), localisation_name, output_dir=SYNOP_DATASETS_DIRECTORY,
+                     columns=features)
 
 
 def explore_synop_correlations(data: pd.DataFrame, features: (int, str), localisation_name: str):
@@ -183,8 +185,8 @@ def explore_synop(localisation_name: str, code_fallback: int):
     if not os.path.exists(os.path.join(SYNOP_DATASETS_DIRECTORY, synop_file)):
         prepare_synop_csv(localisation_name, code_fallback, SYNOP_FEATURES)
 
-    data, _, _ = prepare_synop_dataset(synop_file, list(list(zip(*relevant_features))[1]), norm=False,
-                                       dataset_dir=SYNOP_DATASETS_DIRECTORY)
+    data = prepare_synop_dataset(synop_file, list(list(zip(*relevant_features))[1]), norm=False,
+                                 dataset_dir=SYNOP_DATASETS_DIRECTORY)
 
     explore_synop_correlations(data, relevant_features, localisation_name)
     explore_synop_patterns(data, relevant_features, localisation_name)
@@ -193,7 +195,8 @@ def explore_synop(localisation_name: str, code_fallback: int):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--localisation_name', help='Localisation name for which to get data', default="WARSZAWA-OKECIE", type=str)
+    parser.add_argument('--localisation_name', help='Localisation name for which to get data',
+                        default="WARSZAWA-OKECIE", type=str)
     parser.add_argument('--code_fallback', help='Localisation code as a fallback if name is not found', default=375,
                         type=int)
 

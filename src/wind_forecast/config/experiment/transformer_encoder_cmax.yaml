@@ -18,11 +18,12 @@ model:
 system:
   _target_: wind_forecast.systems.RegressorWithCMAX.RegressorWithCMAX
 
-use_pos_encoder: False
+use_pos_encoding: False
 batch_size: 5
 cnn_filters:
+  - 16
   - 32
-  - 64
-  - 64
-  - 64
-  - 64
+  - 32
+  - 32
+  - 32
+  - 16

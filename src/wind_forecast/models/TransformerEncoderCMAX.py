@@ -4,7 +4,7 @@ import torch
 from torch import nn
 
 from wind_forecast.config.register import Config
-from wind_forecast.models.Transformer import TransformerBaseProps
+from wind_forecast.models.Transformer import TransformerBaseProps, PositionalEncoding
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 
 
@@ -16,21 +16,24 @@ class TransformerEncoderCMAX(TransformerBaseProps):
 
         conv_layers = []
         in_channels = 1
-        for filters in config.experiment.cnn_filters:
+        for index, filters in enumerate(config.experiment.cnn_filters):
             out_channels = filters
             conv_layers.extend([
-                nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=(3, 3)),
+                nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=(3, 3), stride=(2, 2), padding=1),
                 nn.ReLU(),
                 nn.BatchNorm2d(num_features=out_channels),
-                nn.MaxPool2d(kernel_size=(2, 2), padding=(1, 1))
             ])
+            if index != len(config.experiment.cnn_filters) - 1:
+                conv_layers.append(nn.Dropout(config.experiment.dropout))
             conv_W = math.ceil(conv_W / 2)
             conv_H = math.ceil(conv_H / 2)
             in_channels = out_channels
 
-        self.conv = nn.Sequential(*conv_layers, nn.Flatten())
+        self.conv = nn.Sequential(*conv_layers, nn.Flatten(),
+                                  nn.Linear(in_features=conv_W * conv_H * out_channels, out_features=conv_W * conv_H * out_channels))
         self.conv_time_distributed = TimeDistributed(self.conv)
         self.embed_dim = self.features_len * (config.experiment.time2vec_embedding_size + 1) + conv_W * conv_H * out_channels
+        self.pos_encoder = PositionalEncoding(self.embed_dim, self.dropout, self.sequence_length)
 
         encoder_layer = nn.TransformerEncoderLayer(d_model=self.embed_dim, nhead=config.experiment.transformer_attention_heads,
                                                    dim_feedforward=config.experiment.transformer_ff_dim, dropout=self.dropout,
@@ -42,11 +45,11 @@ class TransformerEncoderCMAX(TransformerBaseProps):
 
     def forward(self, inputs, cmax_inputs):
         cmax_embeddings = self.conv_time_distributed(cmax_inputs.unsqueeze(2))
-        time_embedding = self.time2vec_time_distributed(inputs)
+        time_embedding = self.time_2_vec_time_distributed(inputs)
         x = torch.cat([inputs, time_embedding, cmax_embeddings], -1)
         x = self.pos_encoder(x) if self.use_pos_encoding else x
         x = self.encoder(x)
-        x = self.flatten(x)  # flat vector of features out
+        x = self.flatten(x)  # flat vector of synop_features out
 
         return torch.squeeze(self.linear(x), dim=-1)
 

@@ -1,11 +1,22 @@
-import torch
+from wind_forecast.datasets.BaseDataset import BaseDataset
 
 
-class ConcatDatasets(torch.utils.data.Dataset):
+class ConcatDatasets(BaseDataset):
     def __init__(self, *datasets):
+        super().__init__()
         self.datasets = datasets
-        self.mean = [dataset.mean for dataset in datasets]
-        self.std = [dataset.std for dataset in datasets]
+
+    def set_mean(self, mean):
+        assert len(mean) == len(self.datasets)
+        for index, dataset in enumerate(self.datasets):
+            dataset.set_mean(mean[index])
+        self.mean = mean
+
+    def set_std(self, std):
+        assert len(std) == len(self.datasets)
+        for index, dataset in enumerate(self.datasets):
+            dataset.set_std(std[index])
+        self.std = std
 
     def __getitem__(self, i):
         return tuple(d[i] for d in self.datasets)
