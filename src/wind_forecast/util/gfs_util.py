@@ -342,12 +342,12 @@ def match_gfs_with_synop_sequence(features: Union[list, np.ndarray], targets: li
     return np.array(new_features), np.array(new_targets), removed_indices
 
 
-def match_gfs_with_synop_sequence2sequence(synop_features: Union[list, np.ndarray], targets: list, lat: float, lon: float,
+def match_gfs_with_synop_sequence2sequence(synop_features: list, targets: list, lat: float, lon: float,
                                            prediction_offset: int, gfs_params: list,
                                            return_GFS=True):
     gfs_values = []
     new_targets = []
-    new_features = []
+    new_synop_features = []
     removed_indices = []
     gfs_loader = GFSLoader()
     print("Matching GFS with synop data")
@@ -367,7 +367,7 @@ def match_gfs_with_synop_sequence2sequence(synop_features: Union[list, np.ndarra
                             gfs_loader.get_gfs_image(gfs_date_key, param, gfs_offset),
                             Coords(lat, lat, lon, lon)))
 
-                        next_gfs_values.append(val)
+                    next_gfs_values.append(val)
 
             else:
                 removed_indices.append(index)
@@ -375,9 +375,9 @@ def match_gfs_with_synop_sequence2sequence(synop_features: Union[list, np.ndarra
                 break
         if exists:  # all gfs forecasts are available
             gfs_values.append(next_gfs_values)
-            new_features.append(synop_features[index])
-            new_targets.append(value.loc[:, value.columns != 'date'])
+            new_synop_features.append(synop_features[index])
+            new_targets.append(value)
 
     if return_GFS:
-        return np.array(new_features), np.array(gfs_values), np.array(new_targets), removed_indices
-    return np.array(new_features), np.array(new_targets), removed_indices
+        return new_synop_features, np.array(gfs_values), new_targets, removed_indices
+    return new_synop_features, new_targets, removed_indices

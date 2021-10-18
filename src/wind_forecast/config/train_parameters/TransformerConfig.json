@@ -35,30 +35,12 @@
         "name": "PRES",
         "level": "SFC_0"
       },
-      {
-        "name": "HGT",
-        "level": "ISBL_850"
-      },
-      {
-        "name": "HGT",
-        "level": "ISBL_500"
-      },
+
       {
         "name": "R H",
         "level": "HTGL_2"
       },
-      {
-        "name": "R H",
-        "level": "ISBL_900"
-      },
-      {
-        "name": "R H",
-        "level": "ISBL_800"
-      },
-      {
-        "name": "R H",
-        "level": "ISBL_700"
-      },
+
       {
         "name": "DPT",
         "level": "HTGL_2"

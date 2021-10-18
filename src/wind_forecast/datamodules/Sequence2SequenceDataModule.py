@@ -118,6 +118,7 @@ class Sequence2SequenceDataModule(LightningDataModule):
                                                                                                           self.gfs_train_params)
             all_synop_targets = [item for index, item in enumerate(all_synop_targets) if
                                  index not in removed_indices]
+            self.removed_dataset_indices = removed_indices
 
         # Then, get GFS data for forecast frames (matching future frames)
         synop_inputs, gfs_target_data, all_synop_targets, next_removed_indices = match_gfs_with_synop_sequence2sequence(
@@ -134,7 +135,9 @@ class Sequence2SequenceDataModule(LightningDataModule):
             all_gfs_input_data = [item for index, item in enumerate(all_gfs_input_data) if
                                   index not in next_removed_indices]
 
-        synop_targets = [target[:, self.target_param_index] for target in all_synop_targets]
+        synop_inputs = [inputs.loc[:, inputs.columns != 'date'].to_numpy() for inputs in synop_inputs]
+        synop_targets = [target.loc[:, self.target_param].to_numpy() for target in all_synop_targets]
+        all_synop_targets = [target.loc[:, target.columns != 'date'].to_numpy() for target in all_synop_targets]
 
         if self.target_param == "wind_velocity":
             gfs_target_data = np.array([math.sqrt(velocity[0] ** 2 + velocity[1] ** 2) for velocity in gfs_target_data])
@@ -161,7 +164,7 @@ class Sequence2SequenceDataModule(LightningDataModule):
 
         for index in tqdm(self.synop_data_indices):
             synop_inputs.append(
-                self.synop_data.iloc[index:index + self.sequence_length][train_params].to_numpy())
+                self.synop_data.iloc[index:index + self.sequence_length][[*train_params, 'date']])
             all_synop_targets.append(all_targets_and_labels.iloc[
                                      index + self.sequence_length + self.prediction_offset:index + self.sequence_length + self.prediction_offset + self.future_sequence_length])
 

@@ -4,8 +4,9 @@ import torch
 from torch import nn
 
 from wind_forecast.config.register import Config
-from wind_forecast.models.Transformer import TransformerBaseProps, PositionalEncoding
+from wind_forecast.models.Transformer import TransformerBaseProps, PositionalEncoding, Time2Vec
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
+from wind_forecast.util.config import process_config
 
 
 class TransformerEncoderS2SCMAXWithGFS(TransformerBaseProps):
@@ -33,6 +34,13 @@ class TransformerEncoderS2SCMAXWithGFS(TransformerBaseProps):
         self.conv_time_distributed = TimeDistributed(self.conv)
 
         self.embed_dim = self.features_len * (config.experiment.time2vec_embedding_size + 1) + conv_W * conv_H * out_channels
+        if config.experiment.use_all_gfs_as_input:
+            self.time_2_vec_time_distributed = TimeDistributed(Time2Vec(self.features_len + len(process_config(config.experiment.train_parameters_config_file)),
+                                                                        config.experiment.time2vec_embedding_size), batch_first=True)
+
+        if config.experiment.use_all_gfs_as_input:
+            self.embed_dim += len(process_config(config.experiment.train_parameters_config_file)) * (config.experiment.time2vec_embedding_size + 1)
+
         self.pos_encoder = PositionalEncoding(self.embed_dim, self.dropout, self.sequence_length)
 
         encoder_layer = nn.TransformerEncoderLayer(d_model=self.embed_dim, nhead=config.experiment.transformer_attention_heads,
@@ -44,12 +52,17 @@ class TransformerEncoderS2SCMAXWithGFS(TransformerBaseProps):
         self.linear_time_distributed = TimeDistributed(self.linear, batch_first=True)
         self.flatten = nn.Flatten()
 
-    def forward(self, inputs, gfs_input, cmax_inputs, targets: torch.Tensor, epoch: int, stage=None):
+    def forward(self, inputs, gfs_inputs, gfs_targets, cmax_inputs, targets: torch.Tensor, epoch: int, stage=None):
         cmax_embeddings = self.conv_time_distributed(cmax_inputs.unsqueeze(2))
-        time_embedding = self.time_2_vec_time_distributed(inputs)
-        x = torch.cat([inputs, time_embedding, cmax_embeddings], -1)
+        if gfs_inputs is None:
+            time_embedding = torch.cat([inputs, self.time_2_vec_time_distributed(inputs)], dim=-1)
+        else:
+            time_embedding = torch.cat([inputs, gfs_inputs,
+                                        self.time_2_vec_time_distributed(torch.cat([inputs, gfs_inputs], dim=-1))], dim=-1)
+
+        x = torch.cat([time_embedding, cmax_embeddings], -1)
         x = self.pos_encoder(x) if self.use_pos_encoding else x
         x = self.encoder(x)
 
-        return torch.squeeze(self.linear_time_distributed(torch.cat([x, gfs_input], dim=-1)), dim=-1)
+        return torch.squeeze(self.linear_time_distributed(torch.cat([x, gfs_targets], dim=-1)), dim=-1)
 
