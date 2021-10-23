@@ -40,7 +40,14 @@ class TransformerEncoderCMAX(TransformerBaseProps):
                                                    batch_first=True)
         encoder_norm = nn.LayerNorm(self.embed_dim)
         self.encoder = nn.TransformerEncoder(encoder_layer, config.experiment.transformer_attention_layers, encoder_norm)
-        self.linear = nn.Linear(in_features=self.embed_dim * config.experiment.sequence_length, out_features=1)
+
+        dense_layers = []
+        features = self.embed_dim * config.experiment.sequence_length
+        for neurons in config.experiment.transformer_head_dims:
+            dense_layers.append(nn.Linear(in_features=features, out_features=neurons))
+            features = neurons
+        dense_layers.append(nn.Linear(in_features=features, out_features=1))
+        self.classification_head = nn.Sequential(*dense_layers)
         self.flatten = nn.Flatten()
 
     def forward(self, inputs, cmax_inputs):
@@ -51,5 +58,5 @@ class TransformerEncoderCMAX(TransformerBaseProps):
         x = self.encoder(x)
         x = self.flatten(x)  # flat vector of synop_features out
 
-        return torch.squeeze(self.linear(x), dim=-1)
+        return torch.squeeze(self.classification_head(x), dim=-1)
 

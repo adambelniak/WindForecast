@@ -2,7 +2,6 @@ import torch
 
 from wind_forecast.config.register import Config
 from wind_forecast.models.Transformer import Transformer
-from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 
 
 class TransformerRandomMask(Transformer):
@@ -40,4 +39,4 @@ class TransformerRandomMask(Transformer):
                 pred = next_pred if pred is None else torch.cat([pred, next_pred], 1)
             output = pred
 
-        return torch.squeeze(TimeDistributed(self.linear, batch_first=True)(output), dim=-1)
+        return torch.squeeze(self.classification_head_time_distributed(output), dim=-1)

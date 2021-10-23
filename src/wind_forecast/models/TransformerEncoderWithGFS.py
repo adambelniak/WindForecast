@@ -15,7 +15,14 @@ class Transformer(TransformerBaseProps):
         encoder_norm = nn.LayerNorm(self.embed_dim)
         self.encoder = nn.TransformerEncoder(encoder_layer, config.experiment.transformer_attention_layers,
                                              encoder_norm)
-        self.linear = nn.Linear(in_features=self.embed_dim * config.experiment.sequence_length + 1, out_features=1)
+
+        dense_layers = []
+        features = self.embed_dim * config.experiment.sequence_length
+        for neurons in config.experiment.transformer_head_dims:
+            dense_layers.append(nn.Linear(in_features=features, out_features=neurons))
+            features = neurons
+        dense_layers.append(nn.Linear(in_features=features, out_features=1))
+        self.classification_head = nn.Sequential(*dense_layers)
         self.flatten = nn.Flatten()
 
     def forward(self, synop_input, gfs_input):
@@ -25,5 +32,5 @@ class Transformer(TransformerBaseProps):
         x = self.encoder(x)
         x = self.flatten(x)  # flat vector of synop_features out
 
-        return torch.squeeze(self.linear(torch.cat((x, gfs_input.unsqueeze(-1)), dim=1)))
+        return torch.squeeze(self.classification_head(torch.cat((x, gfs_input.unsqueeze(-1)), dim=1)))
 

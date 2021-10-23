@@ -133,6 +133,8 @@ class ExperimentSettings:
 
     transformer_attention_heads: int = 1
 
+    transformer_head_dims: List = field(default_factory=lambda: [])
+
     use_pos_encoding: bool = True
 
     cmax_sample_size: Any = (900, 900)

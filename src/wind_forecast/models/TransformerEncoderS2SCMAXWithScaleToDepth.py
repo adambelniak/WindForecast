@@ -39,9 +39,6 @@ class TransformerEncoderS2SCMAXWithScaleToDepth(TransformerBaseProps):
                                                    batch_first=True)
         encoder_norm = nn.LayerNorm(self.embed_dim)
         self.encoder = nn.TransformerEncoder(encoder_layer, config.experiment.transformer_attention_layers, encoder_norm)
-        self.linear = nn.Linear(in_features=self.embed_dim, out_features=1)
-        self.linear_time_distributed = TimeDistributed(self.linear, batch_first=True)
-        self.flatten = nn.Flatten()
 
     def forward(self, inputs, cmax_inputs, targets: torch.Tensor, epoch: int, stage=None):
         cmax_inputs = cmax_inputs.unsqueeze(2)
@@ -55,5 +52,5 @@ class TransformerEncoderS2SCMAXWithScaleToDepth(TransformerBaseProps):
         x = self.pos_encoder(x) if self.use_pos_encoding else x
         x = self.encoder(x)
 
-        return torch.squeeze(self.linear_time_distributed(x), dim=-1)
+        return torch.squeeze(self.classification_head_time_distributed(x), dim=-1)
 

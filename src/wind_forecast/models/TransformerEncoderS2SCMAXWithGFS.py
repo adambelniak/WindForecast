@@ -37,8 +37,6 @@ class TransformerEncoderS2SCMAXWithGFS(TransformerBaseProps):
         if config.experiment.use_all_gfs_as_input:
             self.time_2_vec_time_distributed = TimeDistributed(Time2Vec(self.features_len + len(process_config(config.experiment.train_parameters_config_file)),
                                                                         config.experiment.time2vec_embedding_size), batch_first=True)
-
-        if config.experiment.use_all_gfs_as_input:
             self.embed_dim += len(process_config(config.experiment.train_parameters_config_file)) * (config.experiment.time2vec_embedding_size + 1)
 
         self.pos_encoder = PositionalEncoding(self.embed_dim, self.dropout, self.sequence_length)
@@ -48,9 +46,15 @@ class TransformerEncoderS2SCMAXWithGFS(TransformerBaseProps):
                                                    batch_first=True)
         encoder_norm = nn.LayerNorm(self.embed_dim)
         self.encoder = nn.TransformerEncoder(encoder_layer, config.experiment.transformer_attention_layers, encoder_norm)
-        self.linear = nn.Linear(in_features=self.embed_dim + 1, out_features=1)
-        self.linear_time_distributed = TimeDistributed(self.linear, batch_first=True)
-        self.flatten = nn.Flatten()
+
+        dense_layers = []
+        features = self.embed_dim + 1
+        for neurons in config.experiment.transformer_head_dims:
+            dense_layers.append(nn.Linear(in_features=features, out_features=neurons))
+            features = neurons
+        dense_layers.append(nn.Linear(in_features=features, out_features=1))
+        self.classification_head = nn.Sequential(*dense_layers)
+        self.classification_head_time_distributed = TimeDistributed(self.classification_head, batch_first=True)
 
     def forward(self, inputs, gfs_inputs, gfs_targets, cmax_inputs, targets: torch.Tensor, epoch: int, stage=None):
         cmax_embeddings = self.conv_time_distributed(cmax_inputs.unsqueeze(2))
@@ -64,5 +68,5 @@ class TransformerEncoderS2SCMAXWithGFS(TransformerBaseProps):
         x = self.pos_encoder(x) if self.use_pos_encoding else x
         x = self.encoder(x)
 
-        return torch.squeeze(self.linear_time_distributed(torch.cat([x, gfs_targets], dim=-1)), dim=-1)
+        return torch.squeeze(self.classification_head_time_distributed(torch.cat([x, gfs_targets], dim=-1)), dim=-1)
 

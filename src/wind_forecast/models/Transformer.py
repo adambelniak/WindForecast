@@ -67,6 +67,15 @@ class TransformerBaseProps(LightningModule):
         self.time_2_vec_time_distributed = TimeDistributed(Time2Vec(self.features_len, config.experiment.time2vec_embedding_size), batch_first=True)
         self.pos_encoder = PositionalEncoding(self.embed_dim, self.dropout, self.sequence_length)
 
+        dense_layers = []
+        features = self.embed_dim
+        for neurons in config.experiment.transformer_head_dims:
+            dense_layers.append(nn.Linear(in_features=features, out_features=neurons))
+            features = neurons
+        dense_layers.append(nn.Linear(in_features=features, out_features=1))
+        self.classification_head = nn.Sequential(*dense_layers)
+        self.classification_head_time_distributed = TimeDistributed(self.classification_head, batch_first=True)
+
 
 class Transformer(TransformerBaseProps):
     def __init__(self, config: Config):
@@ -85,8 +94,6 @@ class Transformer(TransformerBaseProps):
         decoder_layer = nn.TransformerDecoderLayer(self.embed_dim, n_heads, ff_dim, self.dropout, batch_first=True)
         decoder_norm = nn.LayerNorm(self.embed_dim)
         self.decoder = nn.TransformerDecoder(decoder_layer, transformer_layers_num, decoder_norm)
-
-        self.linear = nn.Linear(in_features=self.embed_dim, out_features=1)
 
     def generate_mask(self, sequence_length: int) -> torch.Tensor:
         mask = (torch.triu(torch.ones(sequence_length, sequence_length)) == 1).transpose(0, 1)
@@ -140,4 +147,4 @@ class Transformer(TransformerBaseProps):
                 pred = next_pred if pred is None else torch.cat([pred, next_pred], 1)
             output = pred
 
-        return torch.squeeze(TimeDistributed(self.linear, batch_first=True)(output), dim=-1)
+        return torch.squeeze(self.classification_head_time_distributed(output), dim=-1)
