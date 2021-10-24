@@ -7,20 +7,24 @@ from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 from wind_forecast.util.config import process_config
 
 
-class TCNCNNS2S(LightningModule):
+class TCNS2SCMAXWithGFS(LightningModule):
     def __init__(self, config: Config):
-        super(TCNCNNS2S, self).__init__()
+        super(TCNS2SCMAXWithGFS, self).__init__()
         self.cnn = TimeDistributed(self.create_cnn_layers(config), batch_first=True)
+        if config.experiment.use_all_gfs_as_input:
+            out_features = config.experiment.tcn_channels[0] - len(config.experiment.synop_train_features) \
+                           - len(process_config(config.experiment.train_parameters_config_file))
+        else:
+            out_features = config.experiment.tcn_channels[0] - len(config.experiment.synop_train_features)
+
         self.cnn_lin_tcn = TimeDistributed(nn.Linear(in_features=config.experiment.cnn_lin_tcn_in_features,
-                                                     out_features=config.experiment.tcn_channels[0] - len(
-                                                         config.experiment.synop_train_features)),
-                                           batch_first=True)
+                                                     out_features=out_features), batch_first=True)
         self.tcn = self.create_tcn_layers(config)
 
         tcn_channels = config.experiment.tcn_channels
 
         linear = nn.Sequential(
-            nn.Linear(in_features=tcn_channels[-1], out_features=32),
+            nn.Linear(in_features=tcn_channels[-1] + 1, out_features=32),
             nn.ReLU(),
             nn.Linear(in_features=32, out_features=1)
         )
@@ -57,9 +61,13 @@ class TCNCNNS2S(LightningModule):
 
         return nn.Sequential(*tcn_layers)
 
-    def forward(self, inputs, cnn_inputs, targets: torch.Tensor, epoch: int, stage=None) -> torch.Tensor:
+    def forward(self, inputs, gfs_inputs, gfs_targets, cnn_inputs, targets: torch.Tensor, epoch: int, stage=None) -> torch.Tensor:
         x = self.cnn(cnn_inputs.unsqueeze(2))
         x = self.cnn_lin_tcn(x)
-        x = torch.cat([x, inputs], dim=-1)
+        if gfs_inputs is None:
+            x = torch.cat([x, inputs], dim=-1)
+        else:
+            x = torch.cat([x, inputs, gfs_inputs], dim=-1)
+
         x = self.tcn(x.permute(0, 2, 1))
-        return self.linear(x.permute(0, 2, 1)).squeeze(-1)
+        return self.linear(torch.cat([x.permute(0, 2, 1), gfs_targets], dim=-1)).squeeze(-1)

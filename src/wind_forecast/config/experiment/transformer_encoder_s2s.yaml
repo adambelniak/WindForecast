@@ -20,3 +20,5 @@ system:
 
 synop_from_year: 2017
 use_pos_encoding: False
+transformer_head_dims:
+  - 32
