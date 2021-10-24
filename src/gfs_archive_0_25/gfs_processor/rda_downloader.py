@@ -88,7 +88,7 @@ def check_request_actual_status(index_in_db, request, request_db):
     res = rc.get_status(req_id)
 
     if res['status'].lower() == 'error':
-        logger.info("Request date_key: {} has failed".format(req_id))
+        logger.info("Request file_id: {} has failed".format(req_id))
         request_db.loc[index_in_db, REQUEST_STATUS_FIELD] = RequestStatus.FAILED.value
 
     elif res['status'] == 'ok':

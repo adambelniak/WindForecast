@@ -5,7 +5,7 @@ defaults:
   - schema_experiment
 
 _tags_:
-  - LSTM_S2S
+  - TRANSFORMER_ENCODER_S2S_ALL_GFS
 
 resume_checkpoint: ~
 
@@ -13,9 +13,12 @@ datamodule:
   _target_: wind_forecast.datamodules.Sequence2SequenceDataModule.Sequence2SequenceDataModule
 
 model:
-  _target_: wind_forecast.models.LSTMS2SModel.LSTMS2SModel
+  _target_: wind_forecast.models.TransformerEncoderS2SWithGFS.TransformerEncoderS2SWithGFS
 
 system:
-  _target_: wind_forecast.systems.S2SRegressorWithTF.S2SRegressorWithTF
+  _target_: wind_forecast.systems.S2SRegressorWithTFWithGFSInput.S2SRegressorWithTFWithGFSInput
+
+use_gfs_data: True
 synop_from_year: 2017
-batch_size: 32
+use_all_gfs_as_input: True
+use_pos_encoding: False

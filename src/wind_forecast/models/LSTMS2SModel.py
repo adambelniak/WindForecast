@@ -16,8 +16,9 @@ class LSTMS2SModel(LightningModule):
         self.sequence_length = config.experiment.sequence_length
         self.teacher_forcing_epoch_num = config.experiment.teacher_forcing_epoch_num
         self.gradual_teacher_forcing = config.experiment.gradual_teacher_forcing
-        self.lstm1 = nn.LSTM(input_size=input_size, hidden_size=4*input_size*input_size, batch_first=True, dropout=0.5)
-        self.lstm2 = nn.LSTM(input_size=4*input_size*input_size, hidden_size=input_size, batch_first=True, dropout=0.5)
+        dropout = config.experiment.dropout
+        self.lstm1 = nn.LSTM(input_size=input_size, hidden_size=4*input_size*input_size, batch_first=True, dropout=dropout)
+        self.lstm2 = nn.LSTM(input_size=4*input_size*input_size, hidden_size=input_size, batch_first=True, dropout=dropout)
         self.dense = nn.Sequential(
             nn.Dropout(),
             nn.Linear(in_features=input_size, out_features=128),

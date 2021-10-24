@@ -72,7 +72,7 @@ def generate_product_description(start_hour, end_hour, hours_type, step=3):
 
 def find_coordinates(path, output_file_name="city_geo.csv"):
     location_list = pd.read_csv(path, encoding="ISO-8859-1",
-                                names=['date_key', 'city_name', 'meteo_code'])
+                                names=['file_id', 'city_name', 'meteo_code'])
 
     city_list = location_list["city_name"].to_list()
     geolocator = Nominatim(user_agent='gfs_fetch_processor')

@@ -115,8 +115,10 @@ class S2SRegressorWithTFWithGFSInput(pl.LightningModule):
     # ----------------------------------------------------------------------------------------------
     # Forward
     # ----------------------------------------------------------------------------------------------
-    def forward(self, x: torch.Tensor, gfs_inputs: torch.Tensor, targets: torch.Tensor, epoch, stage) -> torch.Tensor:
-        return self.model(x.float(), gfs_inputs.float(), targets.float(), epoch, stage)
+    def forward(self, x: torch.Tensor, gfs_targets: torch.Tensor, targets: torch.Tensor, epoch, stage, gfs_inputs: torch.Tensor = None) -> torch.Tensor:
+        if gfs_inputs is None:
+            return self.model(x.float(), gfs_targets.float(), targets.float(), epoch, stage)
+        return self.model(x.float(), gfs_inputs.float(), gfs_targets.float(), targets.float(), epoch, stage)
 
     # ----------------------------------------------------------------------------------------------
     # Loss
@@ -160,8 +162,13 @@ class S2SRegressorWithTFWithGFSInput(pl.LightningModule):
         dict[str, torch.Tensor]
             Metric values for a given batch.
         """
-        inputs, gfs_inputs, all_targets, targets = batch
-        outputs = self.forward(inputs, gfs_inputs, all_targets, self.current_epoch, 'fit')
+        if self.cfg.experiment.use_all_gfs_as_input:
+            inputs, gfs_inputs, gfs_targets, synop_targets, targets = batch
+            outputs = self.forward(inputs, gfs_targets, synop_targets, self.current_epoch, 'fit', gfs_inputs)
+        else:
+            inputs, gfs_targets, synop_targets, targets = batch
+            outputs = self.forward(inputs, gfs_targets, synop_targets, self.current_epoch, 'fit')
+
         loss = self.calculate_loss(outputs, targets.float())
         self.train_mse(outputs, targets)
         self.train_mae(outputs, targets)
@@ -219,8 +226,12 @@ class S2SRegressorWithTFWithGFSInput(pl.LightningModule):
         dict[str, torch.Tensor]
             Metric values for a given batch.
         """
-        inputs, gfs_inputs, all_targets, targets = batch
-        outputs = self.forward(inputs, gfs_inputs, all_targets, self.current_epoch, 'test')
+        if self.cfg.experiment.use_all_gfs_as_input:
+            inputs, gfs_inputs, gfs_targets, synop_targets, targets = batch
+            outputs = self.forward(inputs, gfs_targets, synop_targets, self.current_epoch, 'test', gfs_inputs)
+        else:
+            inputs, gfs_targets, synop_targets, targets = batch
+            outputs = self.forward(inputs, gfs_targets, synop_targets, self.current_epoch, 'test')
 
         self.val_mse(outputs.squeeze(), targets.float().squeeze())
         self.val_mae(outputs.squeeze(), targets.float().squeeze())
@@ -276,8 +287,12 @@ class S2SRegressorWithTFWithGFSInput(pl.LightningModule):
         dict[str, torch.Tensor]
             Metric values for a given batch.
         """
-        inputs, gfs_inputs, all_targets, targets = batch
-        outputs = self.forward(inputs, gfs_inputs, all_targets, self.current_epoch, 'test')
+        if self.cfg.experiment.use_all_gfs_as_input:
+            inputs, gfs_inputs, gfs_targets, synop_targets, targets = batch
+            outputs = self.forward(inputs, gfs_targets, synop_targets, self.current_epoch, 'test', gfs_inputs)
+        else:
+            inputs, gfs_targets, synop_targets, targets = batch
+            outputs = self.forward(inputs, gfs_targets, synop_targets, self.current_epoch, 'test')
 
         self.test_mse(outputs.squeeze(), targets.float().squeeze())
         self.test_mae(outputs.squeeze(), targets.float().squeeze())
