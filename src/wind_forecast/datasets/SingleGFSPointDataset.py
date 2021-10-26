@@ -32,8 +32,7 @@ class SingleGFSPointDataset(torch.utils.data.Dataset):
                                                                        self.target_coords[0],
                                                                        self.target_coords[1],
                                                                        self.prediction_offset,
-                                                                       self.train_parameters,
-                                                                       exact_date_match=True)
+                                                                       self.train_parameters)
 
         self.targets = self.targets.reshape((len(self.targets), 1))
 

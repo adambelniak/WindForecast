@@ -307,7 +307,7 @@ def get_forecast_date_and_offset_for_prediction_date(date, prediction_offset):
 
 
 def match_gfs_with_synop_sequence(features: Union[list, np.ndarray], targets: list, lat: float, lon: float,
-                                  prediction_offset: int, gfs_params: list, exact_date_match=False, return_GFS=True):
+                                  prediction_offset: int, gfs_params: list, return_GFS=True):
     gfs_values = []
     new_targets = []
     new_features = []
@@ -317,8 +317,7 @@ def match_gfs_with_synop_sequence(features: Union[list, np.ndarray], targets: li
 
     for index, value in tqdm(enumerate(targets)):
         date = value[0]
-        gfs_date, gfs_offset = get_forecast_date_and_offset_for_prediction_date(date, prediction_offset,
-                                                                                exact_date_match)
+        gfs_date, gfs_offset = get_forecast_date_and_offset_for_prediction_date(date, prediction_offset)
         gfs_date_key = gfs_loader.get_date_key(gfs_date)
 
         # check if there are forecasts available
@@ -342,17 +341,22 @@ def match_gfs_with_synop_sequence(features: Union[list, np.ndarray], targets: li
     return np.array(new_features), np.array(new_targets), removed_indices
 
 
-def match_gfs_with_synop_sequence2sequence(synop_features: list, targets: list, lat: float, lon: float,
-                                           prediction_offset: int, gfs_params: list,
+def match_gfs_with_synop_sequence2sequence(synop_data: pd.DataFrame, synop_data_indices: list, lat: float, lon: float,
+                                           prediction_offset: int, sequence_start_offset: int, sequence_end_offset: int, gfs_params: list,
                                            return_GFS=True):
+    """
+        1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27
+        # # # # # # # # # #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #
+              ^                 ^---------------take that--------------^
+            index       sequence_start_offset=8                 sequence_end_offset=21
+    """
     gfs_values = []
-    new_targets = []
-    new_synop_features = []
+    new_synop_indices = []
     removed_indices = []
     gfs_loader = GFSLoader()
     print("Matching GFS with synop data")
-    for index, value in tqdm(enumerate(targets)):
-        dates = value.loc[:, 'date']
+    for enum_index, index in enumerate(tqdm(synop_data_indices)):
+        dates = synop_data.iloc[index + sequence_start_offset:index + sequence_end_offset]['date']
         next_gfs_values = []
         exists = True
         for date in dates:
@@ -370,14 +374,13 @@ def match_gfs_with_synop_sequence2sequence(synop_features: list, targets: list, 
                     next_gfs_values.append(val)
 
             else:
-                removed_indices.append(index)
+                removed_indices.append(enum_index)
                 exists = False
                 break
         if exists:  # all gfs forecasts are available
             gfs_values.append(next_gfs_values)
-            new_synop_features.append(synop_features[index])
-            new_targets.append(value)
+            new_synop_indices.append(index)
 
     if return_GFS:
-        return new_synop_features, np.array(gfs_values), new_targets, removed_indices
-    return new_synop_features, new_targets, removed_indices
+        return new_synop_indices, np.array(gfs_values), removed_indices
+    return new_synop_indices, removed_indices

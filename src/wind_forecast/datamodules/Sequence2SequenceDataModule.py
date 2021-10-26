@@ -1,8 +1,9 @@
 import math
-from typing import Optional
+from typing import Optional, Tuple, List
 
 from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader
+from torch.utils.data.dataloader import default_collate
 from tqdm import tqdm
 
 from wind_forecast.config.register import Config
@@ -85,14 +86,12 @@ class Sequence2SequenceDataModule(LightningDataModule):
 
     def setup(self, stage: Optional[str] = None):
         if self.config.experiment.use_gfs_data:
-            synop_inputs, all_gfs_input_data, gfs_target_data, synop_targets, all_synop_targets = self.prepare_dataset_for_gfs()
+            synop_inputs, all_gfs_input_data, gfs_target_data = self.prepare_dataset_for_gfs()
 
             if self.gfs_train_params is not None:
-                dataset = Sequence2SequenceWithGFSDataset(synop_inputs, gfs_target_data,
-                                                          synop_targets, all_synop_targets, all_gfs_input_data)
+                dataset = Sequence2SequenceWithGFSDataset(self.config, self.synop_data, self.synop_data_indices, gfs_target_data, all_gfs_input_data)
             else:
-                dataset = Sequence2SequenceWithGFSDataset(synop_inputs, gfs_target_data, synop_targets,
-                                                          all_synop_targets)
+                dataset = Sequence2SequenceWithGFSDataset(self.config, self.synop_data, self.synop_data_indices, gfs_target_data)
 
         else:
             dataset = Sequence2SequenceDataset(config=self.config, synop_data=self.synop_data,
@@ -106,26 +105,29 @@ class Sequence2SequenceDataModule(LightningDataModule):
 
     def prepare_dataset_for_gfs(self):
         print("Preparing the dataset")
-        synop_inputs, all_synop_targets = self.resolve_all_synop_data()
-
         all_gfs_input_data = ...
         if self.gfs_train_params is not None:
             # first, get GFS input data that matches synop input data (matching past frames)
-            synop_inputs, all_gfs_input_data, _, removed_indices = match_gfs_with_synop_sequence2sequence(synop_inputs,
-                                                                                                          synop_inputs,
-                                                                                                          self.target_coords[0],
-                                                                                                          self.target_coords[1], 0,
-                                                                                                          self.gfs_train_params)
-            all_synop_targets = [item for index, item in enumerate(all_synop_targets) if
-                                 index not in removed_indices]
+            self.synop_data_indices, all_gfs_input_data, removed_indices = match_gfs_with_synop_sequence2sequence(
+                self.synop_data,
+                self.synop_data_indices,
+                self.target_coords[0],
+                self.target_coords[1],
+                0,
+                0,
+                self.sequence_length,
+                self.gfs_train_params)
+
             self.removed_dataset_indices = removed_indices
 
         # Then, get GFS data for forecast frames (matching future frames)
-        synop_inputs, gfs_target_data, all_synop_targets, next_removed_indices = match_gfs_with_synop_sequence2sequence(
-            synop_inputs, all_synop_targets,
+        self.synop_data_indices, gfs_target_data, next_removed_indices = match_gfs_with_synop_sequence2sequence(
+            self.synop_data, self.synop_data_indices,
             self.target_coords[0],
             self.target_coords[1],
             self.prediction_offset,
+            self.sequence_length + self.prediction_offset,
+            self.sequence_length + self.future_sequence_length + self.prediction_offset,
             target_param_to_gfs_name_level(
                 self.target_param))
 
@@ -135,24 +137,18 @@ class Sequence2SequenceDataModule(LightningDataModule):
             all_gfs_input_data = [item for index, item in enumerate(all_gfs_input_data) if
                                   index not in next_removed_indices]
 
-        synop_inputs = [inputs.loc[:, inputs.columns != 'date'].to_numpy() for inputs in synop_inputs]
-        synop_targets = [target.loc[:, self.target_param].to_numpy() for target in all_synop_targets]
-        all_synop_targets = [target.loc[:, target.columns != 'date'].to_numpy() for target in all_synop_targets]
-
         if self.target_param == "wind_velocity":
             gfs_target_data = np.array([math.sqrt(velocity[0] ** 2 + velocity[1] ** 2) for velocity in gfs_target_data])
 
         gfs_target_data = normalize_gfs_data(gfs_target_data, self.normalization_type)
 
-        assert len(synop_inputs) == len(synop_targets)
-        assert len(synop_inputs) == len(all_synop_targets)
-        assert len(synop_inputs) == len(gfs_target_data)
+        assert len(self.synop_data_indices) == len(gfs_target_data)
 
         if self.gfs_train_params is not None:
-            assert len(synop_inputs) == len(all_gfs_input_data)
-            return synop_inputs, all_gfs_input_data, gfs_target_data, synop_targets, all_synop_targets
+            assert len(self.synop_data_indices) == len(all_gfs_input_data)
+            return self.synop_data_indices, all_gfs_input_data, gfs_target_data
 
-        return synop_inputs, [], gfs_target_data, synop_targets, all_synop_targets
+        return self.synop_data_indices, [], gfs_target_data
 
     def resolve_all_synop_data(self):
         synop_inputs = []
@@ -171,10 +167,14 @@ class Sequence2SequenceDataModule(LightningDataModule):
         return synop_inputs, all_synop_targets
 
     def train_dataloader(self):
-        return DataLoader(self.dataset_train, batch_size=self.batch_size, shuffle=self.shuffle)
+        return DataLoader(self.dataset_train, batch_size=self.batch_size, shuffle=self.shuffle, collate_fn=self.collate_fn)
 
     def val_dataloader(self):
-        return DataLoader(self.dataset_val, batch_size=self.batch_size)
+        return DataLoader(self.dataset_val, batch_size=self.batch_size, collate_fn=self.collate_fn)
 
     def test_dataloader(self):
-        return DataLoader(self.dataset_test, batch_size=self.batch_size)
+        return DataLoader(self.dataset_test, batch_size=self.batch_size, collate_fn=self.collate_fn)
+
+    def collate_fn(self, x: List[Tuple]):
+        tensors, dates = [item[:len(item)-1] for item in x], [item[-1] for item in x]
+        return [*default_collate(tensors), dates]

@@ -163,11 +163,11 @@ class S2SRegressorWithTFWithGFSInput(pl.LightningModule):
             Metric values for a given batch.
         """
         if self.cfg.experiment.use_all_gfs_as_input:
-            inputs, gfs_inputs, gfs_targets, synop_targets, targets = batch
-            outputs = self.forward(inputs, gfs_targets, synop_targets, self.current_epoch, 'fit', gfs_inputs)
+            synop_inputs, all_gfs_inputs, gfs_targets, all_synop_targets, targets, targets_dates = batch
+            outputs = self.forward(synop_inputs, gfs_targets, all_synop_targets, self.current_epoch, 'fit', all_gfs_inputs)
         else:
-            inputs, gfs_targets, synop_targets, targets = batch
-            outputs = self.forward(inputs, gfs_targets, synop_targets, self.current_epoch, 'fit')
+            synop_inputs, gfs_targets, all_synop_targets, targets, targets_dates = batch
+            outputs = self.forward(synop_inputs, gfs_targets, all_synop_targets, self.current_epoch, 'fit')
 
         loss = self.calculate_loss(outputs, targets.float())
         self.train_mse(outputs, targets)
@@ -175,6 +175,7 @@ class S2SRegressorWithTFWithGFSInput(pl.LightningModule):
 
         return {
             'loss': loss,
+            'targets_dates': targets_dates
             # no need to return 'train_mse' here since it is always available as `self.train_mse`
         }
 
@@ -200,7 +201,8 @@ class S2SRegressorWithTFWithGFSInput(pl.LightningModule):
 
         # Average additional metrics over all batches
         for key in outputs[0]:
-            metrics[key] = float(self._reduce(outputs, key).item())
+            if key != "targets_dates":
+                metrics[key] = float(self._reduce(outputs, key).item())
 
         self.logger.log_metrics(metrics, step=step)
 
@@ -227,16 +229,17 @@ class S2SRegressorWithTFWithGFSInput(pl.LightningModule):
             Metric values for a given batch.
         """
         if self.cfg.experiment.use_all_gfs_as_input:
-            inputs, gfs_inputs, gfs_targets, synop_targets, targets = batch
-            outputs = self.forward(inputs, gfs_targets, synop_targets, self.current_epoch, 'test', gfs_inputs)
+            synop_inputs, all_gfs_inputs, gfs_targets, all_synop_targets, targets, targets_dates = batch
+            outputs = self.forward(synop_inputs, gfs_targets, all_synop_targets, self.current_epoch, 'test', all_gfs_inputs)
         else:
-            inputs, gfs_targets, synop_targets, targets = batch
-            outputs = self.forward(inputs, gfs_targets, synop_targets, self.current_epoch, 'test')
+            synop_inputs, gfs_targets, all_synop_targets, targets, targets_dates = batch
+            outputs = self.forward(synop_inputs, gfs_targets, all_synop_targets, self.current_epoch, 'test')
 
         self.val_mse(outputs.squeeze(), targets.float().squeeze())
         self.val_mae(outputs.squeeze(), targets.float().squeeze())
 
         return {
+            'targets_dates': targets_dates
             # 'additional_metric': ...
             # no need to return 'val_mse' here since it is always available as `self.val_mse`
         }
@@ -263,7 +266,8 @@ class S2SRegressorWithTFWithGFSInput(pl.LightningModule):
 
         # Average additional metrics over all batches
         for key in outputs[0]:
-            metrics[key] = float(self._reduce(outputs, key).item())
+            if key != "targets_dates":
+                metrics[key] = float(self._reduce(outputs, key).item())
 
         self.logger.log_metrics(metrics, step=step)
         self.log("ptl/val_loss", metrics['val_rmse'])
@@ -288,17 +292,19 @@ class S2SRegressorWithTFWithGFSInput(pl.LightningModule):
             Metric values for a given batch.
         """
         if self.cfg.experiment.use_all_gfs_as_input:
-            inputs, gfs_inputs, gfs_targets, synop_targets, targets = batch
-            outputs = self.forward(inputs, gfs_targets, synop_targets, self.current_epoch, 'test', gfs_inputs)
+            synop_inputs, all_gfs_inputs, gfs_targets, all_synop_targets, targets, targets_dates = batch
+            outputs = self.forward(synop_inputs, gfs_targets, all_synop_targets, self.current_epoch, 'test', all_gfs_inputs)
         else:
-            inputs, gfs_targets, synop_targets, targets = batch
-            outputs = self.forward(inputs, gfs_targets, synop_targets, self.current_epoch, 'test')
+            synop_inputs, gfs_targets, all_synop_targets, targets, targets_dates = batch
+            outputs = self.forward(synop_inputs, gfs_targets, all_synop_targets, self.current_epoch, 'test')
 
         self.test_mse(outputs.squeeze(), targets.float().squeeze())
         self.test_mae(outputs.squeeze(), targets.float().squeeze())
 
         return {'labels': targets,
-                'output': outputs}
+                'output': outputs,
+                'targets_dates': targets_dates
+                }
 
     def test_epoch_end(self, outputs: list[Any]) -> dict[str, Any]:
         """
@@ -327,17 +333,12 @@ class S2SRegressorWithTFWithGFSInput(pl.LightningModule):
         self.logger.log_metrics(metrics, step=step)
 
         # save results to view
-        labels = [x['labels'] for x in outputs]
-        labels_flatten = []
-        for i in labels:
-            for j in i:
-                labels_flatten.append(j)
+        labels = [item for sublist in [x['labels'] for x in outputs] for item in sublist]
 
-        out = [x['output'] for x in outputs]
-        out_flatten = []
-        for i in out:
-            for j in i:
-                out_flatten.append(j)
+        labels_dates = [item for sublist in [x['targets_dates'] for x in outputs] for item in sublist]
 
-        self.test_results = {'labels': copy.deepcopy(labels_flatten),
-                             'output': copy.deepcopy(out_flatten)}
+        out = [item for sublist in [x['output'] for x in outputs] for item in sublist]
+
+        self.test_results = {'labels': copy.deepcopy(labels),
+                             'output': copy.deepcopy(out),
+                             'targets_dates': copy.deepcopy(labels_dates)}

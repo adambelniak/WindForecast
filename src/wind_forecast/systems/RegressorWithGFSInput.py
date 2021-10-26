@@ -311,18 +311,10 @@ class RegressorWithGFSInput(pl.LightningModule):
 
         self.logger.log_metrics(metrics, step=step)
 
-        #save results to view
-        labels = [x['labels'] for x in outputs]
-        labels_flatten = []
-        for i in labels:
-            for j in i:
-                labels_flatten.append(j)
+        # save results to view
+        labels = [item for sublist in [x['labels'] for x in outputs] for item in sublist]
 
-        out = [x['output'] for x in outputs]
-        out_flatten = []
-        for i in out:
-            for j in i:
-                out_flatten.append(j)
+        out = [item for sublist in [x['output'] for x in outputs] for item in sublist]
 
-        self.test_results = {'labels': copy.deepcopy(labels_flatten),
-                             'output': copy.deepcopy(out_flatten)}
+        self.test_results = {'labels': copy.deepcopy(labels),
+                             'output': copy.deepcopy(out)}
