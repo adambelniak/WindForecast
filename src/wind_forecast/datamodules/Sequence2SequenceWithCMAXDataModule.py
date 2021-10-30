@@ -60,7 +60,7 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
 
     def setup(self, stage: Optional[str] = None):
         if self.config.experiment.use_gfs_data:
-            synop_inputs, all_gfs_input_data, gfs_target_data, synop_targets, all_synop_targets = self.prepare_dataset_for_gfs()
+            synop_inputs, all_gfs_input_data, gfs_target_data = self.prepare_dataset_for_gfs()
 
             self.cmax_IDs = [item for index, item in enumerate(self.cmax_IDs) if
                              index not in self.removed_dataset_indices]
@@ -68,21 +68,21 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
             assert len(self.cmax_IDs) == len(synop_inputs)
 
             if self.gfs_train_params is not None:
-                dataset = ConcatDatasets(Sequence2SequenceWithGFSDataset(synop_inputs, gfs_target_data,
-                                                                         synop_targets, all_synop_targets,
+                dataset = ConcatDatasets(Sequence2SequenceWithGFSDataset(self.config, self.synop_data,
+                                                                         self.synop_data_indices, gfs_target_data,
                                                                          all_gfs_input_data),
                                          CMAXDataset(config=self.config, IDs=self.cmax_IDs, normalize=True))
             else:
                 dataset = ConcatDatasets(
-                    Sequence2SequenceWithGFSDataset(synop_inputs, gfs_target_data, synop_targets, all_synop_targets),
+                    Sequence2SequenceWithGFSDataset(self.config, self.synop_data, self.synop_data_indices,
+                                                    gfs_target_data, all_gfs_input_data),
                     CMAXDataset(config=self.config, IDs=self.cmax_IDs, normalize=True))
 
         else:
             assert len(self.cmax_IDs) == len(self.synop_data_indices)
 
             dataset = ConcatDatasets(
-                Sequence2SequenceDataset(config=self.config, synop_data=self.synop_data,
-                                         synop_data_indices=self.synop_data_indices),
+                Sequence2SequenceDataset(self.config, self.synop_data, self.synop_data_indices),
                 CMAXDataset(config=self.config, IDs=self.cmax_IDs, normalize=True))
 
         dataset.set_mean([self.synop_mean, 0])

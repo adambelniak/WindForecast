@@ -94,8 +94,7 @@ class Sequence2SequenceDataModule(LightningDataModule):
                 dataset = Sequence2SequenceWithGFSDataset(self.config, self.synop_data, self.synop_data_indices, gfs_target_data)
 
         else:
-            dataset = Sequence2SequenceDataset(config=self.config, synop_data=self.synop_data,
-                                               synop_data_indices=self.synop_data_indices)
+            dataset = Sequence2SequenceDataset(self.config, self.synop_data, self.synop_data_indices)
 
         dataset.set_mean(self.synop_mean)
         dataset.set_std(self.synop_std)
