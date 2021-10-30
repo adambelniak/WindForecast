@@ -1,4 +1,6 @@
-from typing import Optional
+from typing import Optional, Tuple, List
+
+from torch.utils.data.dataloader import default_collate
 
 from wind_forecast.config.register import Config
 from wind_forecast.consts import SYNOP_DATASETS_DIRECTORY
@@ -90,3 +92,9 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
         self.dataset_train, self.dataset_val = split_dataset(dataset, self.config.experiment.val_split,
                                                              sequence_length=self.sequence_length if self.sequence_length > 1 else None)
         self.dataset_test = self.dataset_val
+
+    def collate_fn(self, x: List[Tuple]):
+        # if self.config.experiment.batch_size > 1:
+        s2s_data, cmax_data = [item[0] for item in x], [item[1] for item in x]
+        tensors, dates = [item[:-2] for item in s2s_data], [item[-2:] for item in s2s_data]
+        return [[*default_collate(tensors), *list(zip(*dates))], default_collate(cmax_data)]

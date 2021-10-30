@@ -424,6 +424,6 @@ def get_next_gfs_values(dates, prediction_offset, lat: float, lon: float, gfs_pa
 
                 val.append(val1 * (3 - mod_offset) / 3 + val2 * mod_offset / 3)
 
-            next_gfs_values.append(val)
+        next_gfs_values.append(val)
 
     return next_gfs_values

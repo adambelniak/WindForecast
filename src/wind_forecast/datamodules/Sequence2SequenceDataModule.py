@@ -96,6 +96,9 @@ class Sequence2SequenceDataModule(LightningDataModule):
         else:
             dataset = Sequence2SequenceDataset(self.config, self.synop_data, self.synop_data_indices)
 
+        if len(dataset) == 0:
+            raise RuntimeError("There are no valid samples in the dataset! Please check your run configuration")
+
         dataset.set_mean(self.synop_mean)
         dataset.set_std(self.synop_std)
         self.dataset_train, self.dataset_val = split_dataset(dataset, self.config.experiment.val_split,
@@ -175,5 +178,5 @@ class Sequence2SequenceDataModule(LightningDataModule):
         return DataLoader(self.dataset_test, batch_size=self.batch_size, collate_fn=self.collate_fn)
 
     def collate_fn(self, x: List[Tuple]):
-        tensors, dates = [item[:len(item)-2] for item in x], [item[-2:] for item in x]
+        tensors, dates = [item[:-2] for item in x], [item[-2:] for item in x]
         return [*default_collate(tensors), *list(zip(*dates))]

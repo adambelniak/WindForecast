@@ -42,7 +42,15 @@ class TransformerEncoderS2SCMAX(TransformerBaseProps):
                                                    batch_first=True)
         encoder_norm = nn.LayerNorm(self.embed_dim)
         self.encoder = nn.TransformerEncoder(encoder_layer, config.experiment.transformer_attention_layers, encoder_norm)
-        self.flatten = nn.Flatten()
+
+        dense_layers = []
+        features = self.embed_dim
+        for neurons in config.experiment.transformer_head_dims:
+            dense_layers.append(nn.Linear(in_features=features, out_features=neurons))
+            features = neurons
+        dense_layers.append(nn.Linear(in_features=features, out_features=1))
+        self.classification_head = nn.Sequential(*dense_layers)
+        self.classification_head_time_distributed = TimeDistributed(self.classification_head, batch_first=True)
 
     def forward(self, inputs, cmax_inputs, targets: torch.Tensor, epoch: int, stage=None):
         cmax_embeddings = self.conv_time_distributed(cmax_inputs.unsqueeze(2))

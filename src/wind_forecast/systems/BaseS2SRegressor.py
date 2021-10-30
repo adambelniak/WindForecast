@@ -1,8 +1,6 @@
-from __future__ import annotations
-
-import math
-from typing import Any, Tuple, Union, List
 import copy
+import math
+from typing import Union, Tuple, List, Any, Dict
 
 import pytorch_lightning as pl
 import torch
@@ -10,6 +8,7 @@ from hydra.utils import instantiate
 from pytorch_lightning import LightningModule
 from pytorch_lightning.loggers.base import LoggerCollection
 from pytorch_lightning.loggers.wandb import WandbLogger
+from pytorch_lightning.metrics import MeanAbsoluteError
 from torch.optim.lr_scheduler import _LRScheduler
 from pytorch_lightning.metrics.regression.mean_squared_error import MeanSquaredError
 from rich import print
@@ -20,7 +19,7 @@ from wandb.sdk.wandb_run import Run
 from wind_forecast.config.register import Config
 
 
-class AutoencoderSystem(pl.LightningModule):
+class BaseS2SRegressor(pl.LightningModule):
     def __init__(self, cfg: Config) -> None:
         super().__init__()  # type: ignore
 
@@ -37,8 +36,11 @@ class AutoencoderSystem(pl.LightningModule):
 
         # Metrics
         self.train_mse = MeanSquaredError()
+        self.train_mae = MeanAbsoluteError()
         self.val_mse = MeanSquaredError()
+        self.val_mae = MeanAbsoluteError()
         self.test_mse = MeanSquaredError()
+        self.test_mae = MeanAbsoluteError()
         self.test_results = []
 
     # -----------------------------------------------------------------------------------------------
@@ -57,7 +59,7 @@ class AutoencoderSystem(pl.LightningModule):
         elif isinstance(self.logger, WandbLogger):
             self.wandb = self.logger.experiment  # type: ignore
 
-    def on_save_checkpoint(self, checkpoint: dict[str, Any]) -> None:
+    def on_save_checkpoint(self, checkpoint: Dict[str, Any]) -> None:
         """
         Hook on checkpoint saving.
 
@@ -108,11 +110,8 @@ class AutoencoderSystem(pl.LightningModule):
             print(optimizer)
             return optimizer
 
-    # ----------------------------------------------------------------------------------------------
-    # Forward
-    # ----------------------------------------------------------------------------------------------
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.model(x)
+    def _reduce(self, outputs: List[Any], key: str):
+        return torch.stack([out[key] for out in outputs]).mean().detach()
 
     # ----------------------------------------------------------------------------------------------
     # Loss
@@ -135,38 +134,9 @@ class AutoencoderSystem(pl.LightningModule):
         torch.Tensor
             Loss value.
         """
-        return self.criterion(outputs, targets.float())
+        return self.criterion(outputs, targets)
 
-    # ----------------------------------------------------------------------------------------------
-    # Training
-    # ----------------------------------------------------------------------------------------------
-    def training_step(self, batch: torch.Tensor, batch_idx: int) -> dict[str, torch.Tensor]:  # type: ignore
-        """
-        Train on a single batch with loss defined by `self.criterion`.
-
-        Parameters
-        ----------
-        batch : list[torch.Tensor]
-            Training batch.
-        batch_idx : int
-            Batch index.
-
-        Returns
-        -------
-        dict[str, torch.Tensor]
-            Metric values for a given batch.
-        """
-        inputs = batch.float()
-        outputs = self.forward(inputs)
-        loss = self.calculate_loss(outputs, inputs)
-        self.train_mse(outputs, inputs)
-
-        return {
-            'loss': loss,
-            # no need to return 'train_mse' here since it is always available as `self.train_mse`
-        }
-
-    def training_epoch_end(self, outputs: List[Any]) -> None:
+    def training_epoch_end(self, outputs: List[Any]) -> Dict[str, Any]:
         """
         Log training metrics.
 
@@ -180,9 +150,11 @@ class AutoencoderSystem(pl.LightningModule):
         metrics = {
             'epoch': float(step),
             'train_rmse': math.sqrt(float(self.train_mse.compute().item())),
+            'train_mae': float(self.train_mae.compute().item())
         }
 
         self.train_mse.reset()
+        self.train_mae.reset()
 
         # Average additional metrics over all batches
         for key in outputs[0]:
@@ -190,39 +162,9 @@ class AutoencoderSystem(pl.LightningModule):
 
         self.logger.log_metrics(metrics, step=step)
 
-    def _reduce(self, outputs: List[Any], key: str):
-        return torch.stack([out[key] for out in outputs]).mean().detach()
+        return metrics
 
-    # ----------------------------------------------------------------------------------------------
-    # Validation
-    # ----------------------------------------------------------------------------------------------
-    def validation_step(self, batch: torch.Tensor, batch_idx: int) -> dict[str, torch.Tensor]:  # type: ignore
-        """
-        Compute validation metrics.
-
-        Parameters
-        ----------
-        batch : list[torch.Tensor]
-            Validation batch.
-        batch_idx : int
-            Batch index.
-
-        Returns
-        -------
-        dict[str, torch.Tensor]
-            Metric values for a given batch.
-        """
-        inputs = batch.float()
-        outputs = self.forward(inputs)
-
-        self.val_mse(outputs, inputs)
-
-        return {
-            # 'additional_metric': ...
-            # no need to return 'val_mse' here since it is always available as `self.val_mse`
-        }
-
-    def validation_epoch_end(self, outputs: List[Any]) -> dict[str, Any]:
+    def validation_epoch_end(self, outputs: List[Any]) -> Dict[str, Any]:
         """
         Log validation metrics.
 
@@ -236,9 +178,11 @@ class AutoencoderSystem(pl.LightningModule):
         metrics = {
             'epoch': float(step),
             'val_rmse': math.sqrt(float(self.val_mse.compute().item())),
+            'val_mae': float(self.val_mae.compute().item())
         }
 
         self.val_mse.reset()
+        self.val_mae.reset()
 
         # Average additional metrics over all batches
         for key in outputs[0]:
@@ -247,33 +191,9 @@ class AutoencoderSystem(pl.LightningModule):
         self.logger.log_metrics(metrics, step=step)
         self.log("ptl/val_loss", metrics['val_rmse'])
 
-    # ----------------------------------------------------------------------------------------------
-    # Test
-    # ----------------------------------------------------------------------------------------------
-    def test_step(self, batch: torch.Tensor, batch_idx: int) -> dict[str, torch.Tensor]:  # type: ignore
-        """
-        Compute test metrics.
+        return metrics
 
-        Parameters
-        ----------
-        batch : Batch
-            Test batch.
-        batch_idx : int
-            Batch index.
-
-        Returns
-        -------
-        dict[str, torch.Tensor]
-            Metric values for a given batch.
-        """
-        inputs = batch.float()
-        outputs = self.forward(inputs)
-
-        self.test_mse(outputs, inputs)
-
-        return {}
-
-    def test_epoch_end(self, outputs: List[Any]) -> dict[str, Any]:
+    def test_epoch_end(self, outputs: List[Any]) -> Dict[str, Any]:
         """
         Log test metrics.
 
@@ -287,21 +207,29 @@ class AutoencoderSystem(pl.LightningModule):
         metrics = {
             'epoch': float(step),
             'test_rmse': math.sqrt(float(self.test_mse.compute().item())),
+            'test_mae': float(self.test_mae.compute().item())
         }
 
         self.test_mse.reset()
-
-        # Average additional metrics over all batches
-        # for key in outputs[0]:
-        #     metrics[key] = float(self._reduce(outputs, key).item())
+        self.test_mae.reset()
 
         self.logger.log_metrics(metrics, step=step)
 
         # save results to view
         labels = [item for sublist in [x['labels'] for x in outputs] for item in sublist]
 
+        inputs_dates = [item for sublist in [x['inputs_dates'] for x in outputs] for item in sublist]
+
+        labels_dates = [item for sublist in [x['targets_dates'] for x in outputs] for item in sublist]
+
         out = [item for sublist in [x['output'] for x in outputs] for item in sublist]
 
-        self.test_results = {'labels': copy.deepcopy(labels),
-                             'output': copy.deepcopy(out)}
+        inputs = [item for sublist in [x['input'] for x in outputs] for item in sublist]
 
+        self.test_results = {'labels': copy.deepcopy(labels),
+                             'output': copy.deepcopy(out),
+                             'inputs': copy.deepcopy(inputs),
+                             'inputs_dates': copy.deepcopy(inputs_dates),
+                             'targets_dates': copy.deepcopy(labels_dates)}
+
+        return metrics

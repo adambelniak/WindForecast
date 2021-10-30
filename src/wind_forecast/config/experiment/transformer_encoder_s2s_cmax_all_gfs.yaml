@@ -18,11 +18,11 @@ model:
 system:
   _target_: wind_forecast.systems.S2SRegressorWithTFWithCMAXWithGFS.S2SRegressorWithTFWithCMAXWithGFS
 
-batch_size: 5
+batch_size: 1
 use_gfs_data: True
 use_future_cmax: False
-synop_from_year: 2017
-cmax_from_year: 2017
+synop_from_year: 2020
+cmax_from_year: 2020
 use_all_gfs_as_input: True
 train_parameters_config_file: TransformerConfig.json
 epochs: 40
