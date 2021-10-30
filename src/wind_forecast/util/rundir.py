@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime
 
 import coolname  # type: ignore
 from dotenv import load_dotenv
@@ -23,8 +22,8 @@ def setup_rundir():
         os.environ['WANDB_MODE'] = 'disabled'
     else:
         if os.getenv('RUN_MODE', '').lower() == 'view':
-            os.environ['WANDB_MODE'] = 'disabled'
-            run_dir = f'{results_root}/{os.getenv("VIEW_RUN_NAME")}'
+            # os.environ['WANDB_MODE'] = 'disabled'
+            run_dir = f'{results_root}/{os.getenv("RUN_NAME")}'
         else:
             run_dir = f'{results_root}/{os.getenv("RUN_NAME")}'
 

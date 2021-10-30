@@ -306,6 +306,23 @@ def get_forecast_date_and_offset_for_prediction_date(date, prediction_offset):
     return forecast_start_date + timedelta(hours=pred_offset), pred_offset
 
 
+"""
+    Two dates for interpolation or one date if it matches exactly
+"""
+def get_forecast_dates_and_offsets_for_prediction_date(date, prediction_offset):
+    utc_date = local_to_utc(date)
+    forecast_start_date = utc_date - timedelta(hours=prediction_offset + 5)  # 00 run is available at 5 UTC
+    hour = int(forecast_start_date.hour)
+    forecast_start_date = forecast_start_date - timedelta(hours=hour % 6)
+    real_prediction_offset = prediction_offset + 5 + hour % 6
+    if real_prediction_offset % 3 == 0:
+        return [forecast_start_date + timedelta(hours=real_prediction_offset)], [real_prediction_offset], 0
+
+    pred_offset = (real_prediction_offset) // 3 * 3
+    return [forecast_start_date + timedelta(hours=pred_offset), forecast_start_date + timedelta(hours=pred_offset + 3)],\
+           [pred_offset, pred_offset + 3], real_prediction_offset % 3
+
+
 def match_gfs_with_synop_sequence(features: Union[list, np.ndarray], targets: list, lat: float, lon: float,
                                   prediction_offset: int, gfs_params: list, return_GFS=True):
     gfs_values = []
@@ -343,44 +360,70 @@ def match_gfs_with_synop_sequence(features: Union[list, np.ndarray], targets: li
 
 def match_gfs_with_synop_sequence2sequence(synop_data: pd.DataFrame, synop_data_indices: list, lat: float, lon: float,
                                            prediction_offset: int, sequence_start_offset: int, sequence_end_offset: int, gfs_params: list,
-                                           return_GFS=True):
+                                           future_dates=False):
     """
         1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27
         # # # # # # # # # #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #
               ^                 ^---------------take that--------------^
             index       sequence_start_offset=8                 sequence_end_offset=21
+
+        future_dates - determines if dates are in the future, so we don't take the future's GFS data
     """
     gfs_values = []
     new_synop_indices = []
     removed_indices = []
-    gfs_loader = GFSLoader()
     print("Matching GFS with synop data")
     for enum_index, index in enumerate(tqdm(synop_data_indices)):
         dates = synop_data.iloc[index + sequence_start_offset:index + sequence_end_offset]['date']
-        next_gfs_values = []
-        exists = True
-        for date in dates:
-            gfs_date, gfs_offset = get_forecast_date_and_offset_for_prediction_date(date, prediction_offset)
-            gfs_date_key = gfs_loader.get_date_key(gfs_date)
-            # check if there are forecasts available
-            if all(gfs_loader.get_gfs_image(gfs_date_key, param, gfs_offset) is not None for param in gfs_params):
-                if return_GFS:
-                    val = []
-                    for param in gfs_params:
-                        val.append(get_point_from_GFS_slice_for_coords(
-                            gfs_loader.get_gfs_image(gfs_date_key, param, gfs_offset),
-                            Coords(lat, lat, lon, lon)))
-
-                    next_gfs_values.append(val)
-
-            else:
-                removed_indices.append(enum_index)
-                exists = False
-                break
-        if exists:  # all gfs forecasts are available
+        next_gfs_values = get_next_gfs_values(dates, prediction_offset, lat, lon, gfs_params, future_dates)
+        if next_gfs_values is None:
+            removed_indices.append(enum_index)
+        else:
+            # all gfs forecasts are available
             gfs_values.append(next_gfs_values)
             new_synop_indices.append(index)
 
-    if return_GFS:
-        return new_synop_indices, np.array(gfs_values), removed_indices
-    return new_synop_indices, removed_indices
+    return new_synop_indices, np.array(gfs_values), removed_indices
+
+
+def get_next_gfs_values(dates, prediction_offset, lat: float, lon: float, gfs_params: list, future_dates):
+    next_gfs_values = []
+    gfs_loader = GFSLoader()
+    first_date = dates.values[0]
+    coords = Coords(lat, lat, lon, lon)
+    for date in dates:
+        if future_dates:
+            offset = prediction_offset + int(divmod((date - first_date).total_seconds(), 3600)[0])
+        else:
+            offset = prediction_offset
+        gfs_dates, gfs_offsets, mod_offset = get_forecast_dates_and_offsets_for_prediction_date(date, offset)
+
+        val = []
+        for param in gfs_params:
+            if mod_offset == 0:
+                gfs_date_key = gfs_loader.get_date_key(gfs_dates[0])
+                value = gfs_loader.get_gfs_image(gfs_date_key, param, gfs_offsets[0])
+
+                if value is None:
+                    return None
+
+                value = get_point_from_GFS_slice_for_coords(value, coords)
+                val.append(value)
+            else:
+                # interpolate from 2 gfs forecasts
+                gfs_date_key = gfs_loader.get_date_key(gfs_dates[0])
+                val1 = gfs_loader.get_gfs_image(gfs_date_key, param, gfs_offsets[0])
+                gfs_date_key = gfs_loader.get_date_key(gfs_dates[1])
+                val2 = gfs_loader.get_gfs_image(gfs_date_key, param, gfs_offsets[1])
+
+                if val1 is None or val2 is None:
+                    return None
+
+                val1 = get_point_from_GFS_slice_for_coords(val1, coords)
+                val2 = get_point_from_GFS_slice_for_coords(val2, coords)
+
+                val.append(val1 * (3 - mod_offset) / 3 + val2 * mod_offset / 3)
+
+            next_gfs_values.append(val)
+
+    return next_gfs_values

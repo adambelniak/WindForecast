@@ -1,10 +1,10 @@
+import os
 import sys
 from datetime import datetime, timedelta
-import os
 from pathlib import Path
 from zipfile import ZipFile, BadZipFile
-import requests
 
+import requests
 
 from gfs_archive_0_25.utils import prep_zeros_if_needed
 
@@ -66,3 +66,4 @@ def get_all_zips():
 
 if __name__ == "__main__":
     get_all_zips()
+

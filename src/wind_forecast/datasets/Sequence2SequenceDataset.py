@@ -34,5 +34,6 @@ class Sequence2SequenceDataset(BaseDataset):
                       synop_index + self.sequence_length + self.prediction_offset:synop_index + self.sequence_length + self.prediction_offset + self.future_sequence_length][
                                 self.train_params].to_numpy()
         y = all_targets[:, self.target_param_index]
+        inputs_dates = self.synop_data.iloc[synop_index:synop_index + self.sequence_length]['date'].to_numpy()
         y_dates = self.synop_data.iloc[synop_index + self.sequence_length + self.prediction_offset:synop_index + self.sequence_length + self.prediction_offset + self.future_sequence_length]['date']
-        return inputs, all_targets, y, y_dates
+        return inputs, all_targets, y, y_dates, inputs_dates

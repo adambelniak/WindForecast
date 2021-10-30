@@ -1,7 +1,5 @@
 from typing import Optional
 
-from torch.utils.data import DataLoader
-
 from wind_forecast.config.register import Config
 from wind_forecast.consts import SYNOP_DATASETS_DIRECTORY
 from wind_forecast.datamodules.Sequence2SequenceDataModule import Sequence2SequenceDataModule
@@ -92,12 +90,3 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
         self.dataset_train, self.dataset_val = split_dataset(dataset, self.config.experiment.val_split,
                                                              sequence_length=self.sequence_length if self.sequence_length > 1 else None)
         self.dataset_test = self.dataset_val
-
-    def train_dataloader(self):
-        return DataLoader(self.dataset_train, batch_size=self.batch_size, shuffle=self.shuffle)
-
-    def val_dataloader(self):
-        return DataLoader(self.dataset_val, batch_size=self.batch_size)
-
-    def test_dataloader(self):
-        return DataLoader(self.dataset_test, batch_size=self.batch_size)

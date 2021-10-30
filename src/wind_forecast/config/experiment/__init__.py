@@ -77,7 +77,7 @@ class ExperimentSettings:
 
     use_all_gfs_as_input: bool = False
 
-    prediction_offset: int = 3
+    prediction_offset: int = 0
 
     data_dim_x: int = 53
 

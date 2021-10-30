@@ -129,7 +129,7 @@ class Sequence2SequenceDataModule(LightningDataModule):
             self.sequence_length + self.prediction_offset,
             self.sequence_length + self.future_sequence_length + self.prediction_offset,
             target_param_to_gfs_name_level(
-                self.target_param))
+                self.target_param), future_dates=True)
 
         self.removed_dataset_indices.extend(next_removed_indices)
 
@@ -176,5 +176,5 @@ class Sequence2SequenceDataModule(LightningDataModule):
         return DataLoader(self.dataset_test, batch_size=self.batch_size, collate_fn=self.collate_fn)
 
     def collate_fn(self, x: List[Tuple]):
-        tensors, dates = [item[:len(item)-1] for item in x], [item[-1] for item in x]
-        return [*default_collate(tensors), dates]
+        tensors, dates = [item[:len(item)-2] for item in x], [item[-2:] for item in x]
+        return [*default_collate(tensors), *list(zip(*dates))]
