@@ -136,7 +136,7 @@ class BaseS2SRegressor(pl.LightningModule):
         """
         return self.criterion(outputs, targets)
 
-    def training_epoch_end(self, outputs: List[Any]) -> Dict[str, Any]:
+    def training_epoch_end(self, outputs: List[Any]) -> None:
         """
         Log training metrics.
 
@@ -162,9 +162,7 @@ class BaseS2SRegressor(pl.LightningModule):
 
         self.logger.log_metrics(metrics, step=step)
 
-        return metrics
-
-    def validation_epoch_end(self, outputs: List[Any]) -> Dict[str, Any]:
+    def validation_epoch_end(self, outputs: List[Any]) -> None:
         """
         Log validation metrics.
 
@@ -191,9 +189,7 @@ class BaseS2SRegressor(pl.LightningModule):
         self.logger.log_metrics(metrics, step=step)
         self.log("ptl/val_loss", metrics['val_rmse'])
 
-        return metrics
-
-    def test_epoch_end(self, outputs: List[Any]) -> Dict[str, Any]:
+    def test_epoch_end(self, outputs: List[Any]) -> None:
         """
         Log test metrics.
 
@@ -231,5 +227,3 @@ class BaseS2SRegressor(pl.LightningModule):
                              'inputs': copy.deepcopy(inputs),
                              'inputs_dates': copy.deepcopy(inputs_dates),
                              'targets_dates': copy.deepcopy(labels_dates)}
-
-        return metrics
