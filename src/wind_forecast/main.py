@@ -16,7 +16,7 @@ from pytorch_lightning.loggers import WandbLogger
 from wandb.sdk.wandb_run import Run
 
 from wind_forecast.config.register import Config, register_configs, get_tags
-from wind_forecast.systems.S2SRegressorWithTFWithGFSInput import S2SRegressorWithTFWithGFSInput
+from wind_forecast.util.callbacks import CustomCheckpointer, get_resume_checkpoint
 from wind_forecast.util.logging import log
 from wind_forecast.util.rundir import setup_rundir
 
@@ -49,12 +49,9 @@ def plot_results(system, config: Config, mean, std):
 @hydra.main(config_path='config', config_name='default')
 def main(cfg: Config):
 
-    cfg.experiment.train_parameters_config_file = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'config', 'train_parameters', cfg.experiment.train_parameters_config_file)
-
-    RUN_MODE = os.getenv('RUN_MODE')
-    if RUN_MODE == 'view':
-        view_results(cfg)
-        return
+    cfg.experiment.train_parameters_config_file = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                                               'config', 'train_parameters',
+                                                               cfg.experiment.train_parameters_config_file)
 
     log.info(f'\\[init] Loaded config:\n{OmegaConf.to_yaml(cfg, resolve=True)}')
 
@@ -84,10 +81,22 @@ def main(cfg: Config):
     # Prepare data using datamodules
     datamodule: LightningDataModule = instantiate(cfg.experiment.datamodule, cfg)
 
+    resume_path = get_resume_checkpoint(cfg, wandb_logger)
+    if resume_path is not None:
+        log.info(f'[bold yellow]\\[checkpoint] [bold white]{resume_path}')
+
+    checkpointer = CustomCheckpointer(
+        period=1,
+        dirpath='checkpoints',
+        filename='{epoch}',
+    )
+
     trainer: pl.Trainer = instantiate(
         cfg.lightning,
         logger=wandb_logger,
         max_epochs=cfg.experiment.epochs,
+        callbacks=[checkpointer],
+        resume_from_checkpoint=resume_path,
         checkpoint_callback=True if cfg.experiment.save_checkpoints else False,
         num_sanity_val_steps=-1 if cfg.experiment.validate_before_training else 0
     )
@@ -108,38 +117,6 @@ def main(cfg: Config):
     if trainer.interrupted:  # type: ignore
         log.info(f'[bold red]>>> Training interrupted.')
         run.finish(exit_code=255)
-
-
-def view_results(cfg: Config):
-    RUN_NAME = os.getenv('RUN_NAME')
-
-    log.info(f'[bold yellow]\\[init] View run name --> {RUN_NAME}')
-
-    resume_path = cfg.experiment.resume_checkpoint
-
-    # Create main system (system = models + training regime)
-
-    system = S2SRegressorWithTFWithGFSInput.load_from_checkpoint(resume_path, cfg=cfg)
-    log.info(f'[bold yellow]\\[init] System architecture:')
-    log.info(system)
-    # Prepare data using datamodules
-    datamodule: LightningDataModule = instantiate(
-        cfg.experiment.datamodule,
-        cfg
-    )
-
-    trainer: pl.Trainer = instantiate(
-        cfg.lightning
-    )
-
-    trainer.test(system, datamodule=datamodule)
-    mean = datamodule.dataset_test.mean
-    std = datamodule.dataset_test.std
-
-    plot_results(system, cfg, mean, std)
-
-    if trainer.interrupted:  # type: ignore
-        log.info(f'[bold red]>>> Training interrupted.')
 
 
 if __name__ == '__main__':

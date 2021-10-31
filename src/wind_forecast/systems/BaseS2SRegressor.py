@@ -17,6 +17,7 @@ from torch.optim.optimizer import Optimizer
 from wandb.sdk.wandb_run import Run
 
 from wind_forecast.config.register import Config
+from wind_forecast.util.gfs_util import add_param_to_train_params
 
 
 class BaseS2SRegressor(pl.LightningModule):
@@ -42,6 +43,11 @@ class BaseS2SRegressor(pl.LightningModule):
         self.test_mse = MeanSquaredError()
         self.test_mae = MeanAbsoluteError()
         self.test_results = []
+        train_params = self.cfg.experiment.synop_train_features
+        target_param = self.cfg.experiment.target_parameter
+        all_params = add_param_to_train_params(train_params, target_param)
+        feature_names = list(list(zip(*all_params))[1])
+        self.target_param_index = [x for x in feature_names].index(target_param)
 
     # -----------------------------------------------------------------------------------------------
     # Default PyTorch Lightning hooks
