@@ -76,8 +76,7 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
                                          CMAXDataset(config=self.config, IDs=self.cmax_IDs, normalize=True))
             else:
                 dataset = ConcatDatasets(
-                    Sequence2SequenceWithGFSDataset(self.config, self.synop_data, self.synop_data_indices,
-                                                    gfs_target_data, all_gfs_input_data),
+                    Sequence2SequenceWithGFSDataset(self.config, self.synop_data, self.synop_data_indices, gfs_target_data),
                     CMAXDataset(config=self.config, IDs=self.cmax_IDs, normalize=True))
 
         else:
