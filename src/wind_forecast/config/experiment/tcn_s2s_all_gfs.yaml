@@ -1,0 +1,24 @@
+# Specific experiments settings
+# (default settings inherited from configs.experiment.ExperimentSettings)
+
+defaults:
+  - schema_experiment
+
+_tags_:
+  - TCN_S2S_ALL_GFS
+
+resume_checkpoint: ~
+
+datamodule:
+  _target_: wind_forecast.datamodules.Sequence2SequenceDataModule.Sequence2SequenceDataModule
+
+model:
+  _target_: wind_forecast.models.TCNS2SWithGFSModel.TemporalConvNetS2SWithGFS
+
+system:
+  _target_: wind_forecast.systems.S2SRegressorWithTFWithGFSInput.S2SRegressorWithTFWithGFSInput
+
+use_all_gfs_as_input: True
+train_parameters_config_file: TCNConfig.json
+use_gfs_data: True
+synop_from_year: 2020
