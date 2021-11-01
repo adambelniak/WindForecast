@@ -136,13 +136,14 @@ class Sequence2SequenceDataModule(LightningDataModule):
         self.removed_dataset_indices.extend(next_removed_indices)
 
         if self.gfs_train_params is not None:
-            all_gfs_input_data = [item for index, item in enumerate(all_gfs_input_data) if
-                                  index not in next_removed_indices]
+            all_gfs_input_data = np.array([item for index, item in enumerate(all_gfs_input_data) if
+                                  index not in next_removed_indices])
+            all_gfs_input_data = normalize_gfs_data(all_gfs_input_data, self.normalization_type, (0, 1))
 
         if self.target_param == "wind_velocity":
             gfs_target_data = np.array([math.sqrt(velocity[0] ** 2 + velocity[1] ** 2) for velocity in gfs_target_data])
 
-        gfs_target_data = normalize_gfs_data(gfs_target_data, self.normalization_type)
+        gfs_target_data = normalize_gfs_data(gfs_target_data, self.normalization_type, (0, 1))
 
         assert len(self.synop_data_indices) == len(gfs_target_data)
 

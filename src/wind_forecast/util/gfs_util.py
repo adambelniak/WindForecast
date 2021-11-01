@@ -209,12 +209,12 @@ def initialize_GFS_date_keys_for_sequence(date_keys: [str], labels: pd.DataFrame
     return new_list
 
 
-def normalize_gfs_data(gfs_data: np.ndarray, normalization_type: NormalizationType):
+def normalize_gfs_data(gfs_data: np.ndarray, normalization_type: NormalizationType, axes=-1):
     if normalization_type == NormalizationType.STANDARD:
-        return (gfs_data - np.mean(gfs_data)) / np.std(gfs_data)
+        return (gfs_data - np.mean(gfs_data, axis=axes)) / np.std(gfs_data, axis=axes)
     else:
-        return (gfs_data - np.min(gfs_data)) / (
-                    np.max(gfs_data) - np.min(gfs_data))
+        return (gfs_data - np.min(gfs_data, axis=axes)) / (
+                    np.max(gfs_data, axis=axes) - np.min(gfs_data, axis=axes))
 
 
 def get_nearest_lat_lon_from_coords(gfs_coords: [[float]], original_coords: Coords):
