@@ -21,4 +21,4 @@ system:
 use_all_gfs_as_input: True
 train_parameters_config_file: TCNConfig.json
 use_gfs_data: True
-synop_from_year: 2020
+synop_from_year: 2017

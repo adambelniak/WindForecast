@@ -66,9 +66,9 @@ if __name__ == "__main__":
 
     parser.add_argument("--station", help="Name of synoptic station", type=str, default='Warsaw')
     parser.add_argument("--target_param", help="Target parameter", type=str, default="temperature")
-    parser.add_argument("--prediction_offset", help="Prediction offset", type=int, default=3)
+    parser.add_argument("--prediction_offset", help="Prediction offset", type=int, default=0)
     parser.add_argument("--sequence_length", help="Length of predicted sequence", type=int, default=8)
-    parser.add_argument("--from_year", help="Include dates from this year forward", type=int, default=2018)
+    parser.add_argument("--from_year", help="Include dates from this year forward", type=int, default=2017)
 
     args = parser.parse_args()
 

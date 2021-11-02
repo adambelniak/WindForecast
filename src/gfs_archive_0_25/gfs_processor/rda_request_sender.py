@@ -272,7 +272,7 @@ if __name__ == '__main__':
     parser.add_argument('--hours_type', type=str, choices=['point', 'average', 'all'], help='For some params only 3h '
                                                         'averages are available instead of exact time-point forecasts. '
                                                         'Set to "average" if you want to fetch dates like "3-hour Average'
-                                                        ' (initial+0, intial+3)". Set to "all" to fetch both types. '
+                                                        ' (initial+0, initial+3)". Set to "all" to fetch both types. '
                                                         'Leave empty to use time-points.', default='point')
 
     args = parser.parse_args()

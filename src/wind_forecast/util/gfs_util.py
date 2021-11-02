@@ -297,8 +297,7 @@ def add_param_to_train_params(train_params: list, param: str):
 
 
 def get_forecast_date_and_offset_for_prediction_date(date, prediction_offset):
-    utc_date = local_to_utc(date)
-    forecast_start_date = utc_date - timedelta(hours=prediction_offset + 5)  # 00 run is available at 5 UTC
+    forecast_start_date = date - timedelta(hours=prediction_offset + 5)  # 00 run is available at 5 UTC
     hour = int(forecast_start_date.hour)
     forecast_start_date = forecast_start_date - timedelta(hours=hour % 6)
 
@@ -310,8 +309,7 @@ def get_forecast_date_and_offset_for_prediction_date(date, prediction_offset):
     Two dates for interpolation or one date if it matches exactly
 """
 def get_forecast_dates_and_offsets_for_prediction_date(date, prediction_offset):
-    utc_date = local_to_utc(date)
-    forecast_start_date = utc_date - timedelta(hours=prediction_offset + 5)  # 00 run is available at 5 UTC
+    forecast_start_date = date - timedelta(hours=prediction_offset + 5)  # 00 run is available at 5 UTC
     hour = int(forecast_start_date.hour)
     forecast_start_date = forecast_start_date - timedelta(hours=hour % 6)
     real_prediction_offset = prediction_offset + 5 + hour % 6
@@ -373,11 +371,11 @@ def match_gfs_with_synop_sequence2sequence(synop_data: pd.DataFrame, synop_data_
     new_synop_indices = []
     removed_indices = []
     print("Matching GFS with synop data")
-    for enum_index, index in enumerate(tqdm(synop_data_indices)):
+    for index in tqdm(synop_data_indices):
         dates = synop_data.iloc[index + sequence_start_offset:index + sequence_end_offset]['date']
         next_gfs_values = get_next_gfs_values(dates, prediction_offset, lat, lon, gfs_params, future_dates)
         if next_gfs_values is None:
-            removed_indices.append(enum_index)
+            removed_indices.append(index)
         else:
             # all gfs forecasts are available
             gfs_values.append(next_gfs_values)

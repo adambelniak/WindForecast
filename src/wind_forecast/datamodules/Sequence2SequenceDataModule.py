@@ -115,12 +115,12 @@ class Sequence2SequenceDataModule(LightningDataModule):
                 self.synop_data_indices,
                 self.target_coords[0],
                 self.target_coords[1],
-                0,
-                0,
+                0, 0,
                 self.sequence_length,
                 self.gfs_train_params)
 
             self.removed_dataset_indices = removed_indices
+            indices = self.synop_data_indices
 
         # Then, get GFS data for forecast frames (matching future frames)
         self.synop_data_indices, gfs_target_data, next_removed_indices = match_gfs_with_synop_sequence2sequence(
@@ -134,10 +134,12 @@ class Sequence2SequenceDataModule(LightningDataModule):
                 self.target_param), future_dates=True)
 
         self.removed_dataset_indices.extend(next_removed_indices)
+        self.removed_dataset_indices = set(self.removed_dataset_indices)
 
         if self.gfs_train_params is not None:
+            indices_to_remove = [indices.index(ind) for ind in next_removed_indices]
             all_gfs_input_data = np.array([item for index, item in enumerate(all_gfs_input_data) if
-                                  index not in next_removed_indices])
+                                  index not in indices_to_remove])
             all_gfs_input_data = normalize_gfs_data(all_gfs_input_data, self.normalization_type, (0, 1))
 
         if self.target_param == "wind_velocity":
