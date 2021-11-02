@@ -2,7 +2,7 @@ import torch
 from torch import nn
 
 from wind_forecast.config.register import Config
-from wind_forecast.models.Transformer import TransformerBaseProps, Time2Vec
+from wind_forecast.models.Transformer import TransformerBaseProps, Time2Vec, PositionalEncoding
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 from wind_forecast.util.config import process_config
 
@@ -19,6 +19,7 @@ class TransformerEncoderS2SWithGFS(TransformerBaseProps):
                                                    dim_feedforward=config.experiment.transformer_ff_dim, dropout=config.experiment.dropout,
                                                    batch_first=True)
         encoder_norm = nn.LayerNorm(self.embed_dim)
+        self.pos_encoder = PositionalEncoding(self.embed_dim, self.dropout, self.sequence_length)
         self.encoder = nn.TransformerEncoder(encoder_layer, config.experiment.transformer_attention_layers, encoder_norm)
         dense_layers = []
         features = self.embed_dim + 1
