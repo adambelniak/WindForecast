@@ -43,10 +43,10 @@ class Sequence2SequenceWithGFSDataset(BaseDataset):
                       synop_index + self.sequence_length + self.prediction_offset:synop_index + self.sequence_length + self.prediction_offset + self.future_sequence_length][
             self.train_params].to_numpy()
         y = all_synop_targets[:, self.target_param_index]
-        inputs_dates = self.synop_data.iloc[synop_index:synop_index + self.sequence_length]['date'].to_numpy()
+        inputs_dates = self.synop_data.iloc[synop_index:synop_index + self.sequence_length]['date']
         y_dates = self.synop_data.iloc[
                   synop_index + self.sequence_length + self.prediction_offset
-                  :synop_index + self.sequence_length + self.prediction_offset + self.future_sequence_length]['date'].to_numpy()
+                  :synop_index + self.sequence_length + self.prediction_offset + self.future_sequence_length]['date']
 
         if self.all_gfs_input_data is not None:
             return synop_inputs, all_gfs_inputs, gfs_targets, all_synop_targets, y, y_dates, inputs_dates

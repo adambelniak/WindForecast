@@ -20,5 +20,6 @@ system:
 
 use_gfs_data: True
 synop_from_year: 2017
+train_parameters_config_file: TransformerConfig.json
 use_all_gfs_as_input: True
 use_pos_encoding: False

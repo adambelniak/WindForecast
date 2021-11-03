@@ -2,6 +2,8 @@ import copy
 import math
 from typing import Union, Tuple, List, Any, Dict
 
+import numpy as np
+import pandas as pd
 import pytorch_lightning as pl
 import torch
 from hydra.utils import instantiate
@@ -48,6 +50,22 @@ class BaseS2SRegressor(pl.LightningModule):
         all_params = add_param_to_train_params(train_params, target_param)
         feature_names = list(list(zip(*all_params))[1])
         self.target_param_index = [x for x in feature_names].index(target_param)
+
+    def get_dates_embeddings(self, input_dates, target_dates):
+        input_days_embed = self.dates_to_embed_tensor(input_dates)
+        input_hours_embed = self.days_to_embed_tensor(input_dates)
+        target_days_embed = self.dates_to_embed_tensor(target_dates)
+        target_hours_embed = self.days_to_embed_tensor(target_dates)
+
+        return input_days_embed, input_hours_embed, target_days_embed, target_hours_embed
+
+    def dates_to_embed_tensor(self, dates):
+        return torch.Tensor(np.sin(np.array(
+            [[[pd.to_datetime(d).timetuple().tm_yday] for d in sublist] for sublist in dates]) / 365 * 2 * np.pi)).to(self.device)
+
+    def days_to_embed_tensor(self, dates):
+        return torch.Tensor(np.sin(np.array(
+            [[[pd.to_datetime(d).hour] for d in sublist] for sublist in dates]) / 24 * 2 * np.pi)).to(self.device)
 
     # -----------------------------------------------------------------------------------------------
     # Default PyTorch Lightning hooks

@@ -25,7 +25,7 @@ os.environ['KMP_DUPLICATE_LIB_OK']='True'
 
 
 def plot_results(system, config: Config, mean, std):
-    for index in np.random.choice(np.arange(len(system.test_results['output'])), 20, replace=False):
+    for index in np.random.choice(np.arange(len(system.test_results['output'])), min(40, len(system.test_results['output'])), replace=False):
         fig, ax = plt.subplots()
         inputs_dates = [pd.to_datetime(pd.Timestamp(d)) for d in system.test_results['inputs_dates'][index]]
         output_dates = [pd.to_datetime(pd.Timestamp(d)) for d in system.test_results['targets_dates'][index]]

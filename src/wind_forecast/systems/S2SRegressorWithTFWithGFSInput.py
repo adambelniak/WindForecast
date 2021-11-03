@@ -11,10 +11,11 @@ class S2SRegressorWithTFWithGFSInput(BaseS2SRegressor):
     # ----------------------------------------------------------------------------------------------
     # Forward
     # ----------------------------------------------------------------------------------------------
-    def forward(self, x: torch.Tensor, gfs_targets: torch.Tensor, targets: torch.Tensor, epoch, stage, gfs_inputs: torch.Tensor = None) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, gfs_targets: torch.Tensor, targets: torch.Tensor, epoch, stage, gfs_inputs: torch.Tensor = None,
+                dates_embeddings: torch.Tensor = None) -> torch.Tensor:
         if gfs_inputs is None:
-            return self.model(x.float(), None, gfs_targets.float(), targets.float(), epoch, stage)
-        return self.model(x.float(), gfs_inputs.float(), gfs_targets.float(), targets.float(), epoch, stage)
+            return self.model(x.float(), None, gfs_targets.float(), targets.float(), epoch, stage, dates_embeddings)
+        return self.model(x.float(), gfs_inputs.float(), gfs_targets.float(), targets.float(), epoch, stage, dates_embeddings)
 
     # ----------------------------------------------------------------------------------------------
     # Training
@@ -37,10 +38,22 @@ class S2SRegressorWithTFWithGFSInput(BaseS2SRegressor):
         """
         if self.cfg.experiment.use_all_gfs_as_input:
             synop_inputs, all_gfs_inputs, gfs_targets, all_synop_targets, targets, targets_dates, inputs_dates = batch
-            outputs = self.forward(synop_inputs, gfs_targets, all_synop_targets, self.current_epoch, 'fit', all_gfs_inputs)
+            if self.cfg.experiment.with_dates_inputs:
+                dates_embeddings = self.get_dates_embeddings(inputs_dates, targets_dates)
+
+                outputs = self.forward(synop_inputs, gfs_targets, all_synop_targets, self.current_epoch, 'fit',
+                                       all_gfs_inputs, dates_embeddings)
+            else:
+                outputs = self.forward(synop_inputs, gfs_targets, all_synop_targets, self.current_epoch, 'fit', all_gfs_inputs)
         else:
             synop_inputs, gfs_targets, all_synop_targets, targets, targets_dates, inputs_dates = batch
-            outputs = self.forward(synop_inputs, gfs_targets, all_synop_targets, self.current_epoch, 'fit')
+            if self.cfg.experiment.with_dates_inputs:
+                dates_embeddings = self.get_dates_embeddings(inputs_dates, targets_dates)
+
+                outputs = self.forward(synop_inputs, gfs_targets, all_synop_targets, self.current_epoch, 'fit',
+                                       None, dates_embeddings)
+            else:
+                outputs = self.forward(synop_inputs, gfs_targets, all_synop_targets, self.current_epoch, 'fit')
 
         loss = self.calculate_loss(outputs, targets.float())
         self.train_mse(outputs, targets)
@@ -72,10 +85,23 @@ class S2SRegressorWithTFWithGFSInput(BaseS2SRegressor):
         """
         if self.cfg.experiment.use_all_gfs_as_input:
             synop_inputs, all_gfs_inputs, gfs_targets, all_synop_targets, targets, targets_dates, inputs_dates = batch
-            outputs = self.forward(synop_inputs, gfs_targets, all_synop_targets, self.current_epoch, 'test', all_gfs_inputs)
+            if self.cfg.experiment.with_dates_inputs:
+                dates_embeddings = self.get_dates_embeddings(inputs_dates, targets_dates)
+
+                outputs = self.forward(synop_inputs, gfs_targets, all_synop_targets, self.current_epoch, 'test',
+                                       all_gfs_inputs, dates_embeddings)
+            else:
+                outputs = self.forward(synop_inputs, gfs_targets, all_synop_targets, self.current_epoch, 'test',
+                                       all_gfs_inputs)
         else:
             synop_inputs, gfs_targets, all_synop_targets, targets, targets_dates, inputs_dates = batch
-            outputs = self.forward(synop_inputs, gfs_targets, all_synop_targets, self.current_epoch, 'test')
+            if self.cfg.experiment.with_dates_inputs:
+                dates_embeddings = self.get_dates_embeddings(inputs_dates, targets_dates)
+
+                outputs = self.forward(synop_inputs, gfs_targets, all_synop_targets, self.current_epoch, 'test',
+                                       None, dates_embeddings)
+            else:
+                outputs = self.forward(synop_inputs, gfs_targets, all_synop_targets, self.current_epoch, 'test')
 
         self.val_mse(outputs.squeeze(), targets.float().squeeze())
         self.val_mae(outputs.squeeze(), targets.float().squeeze())
@@ -106,10 +132,23 @@ class S2SRegressorWithTFWithGFSInput(BaseS2SRegressor):
         """
         if self.cfg.experiment.use_all_gfs_as_input:
             synop_inputs, all_gfs_inputs, gfs_targets, all_synop_targets, targets, targets_dates, inputs_dates = batch
-            outputs = self.forward(synop_inputs, gfs_targets, all_synop_targets, self.current_epoch, 'test', all_gfs_inputs)
+            if self.cfg.experiment.with_dates_inputs:
+                dates_embeddings = self.get_dates_embeddings(inputs_dates, targets_dates)
+
+                outputs = self.forward(synop_inputs, gfs_targets, all_synop_targets, self.current_epoch, 'test',
+                                       all_gfs_inputs, dates_embeddings)
+            else:
+                outputs = self.forward(synop_inputs, gfs_targets, all_synop_targets, self.current_epoch, 'test',
+                                       all_gfs_inputs)
         else:
             synop_inputs, gfs_targets, all_synop_targets, targets, targets_dates, inputs_dates = batch
-            outputs = self.forward(synop_inputs, gfs_targets, all_synop_targets, self.current_epoch, 'test')
+            if self.cfg.experiment.with_dates_inputs:
+                dates_embeddings = self.get_dates_embeddings(inputs_dates, targets_dates)
+
+                outputs = self.forward(synop_inputs, gfs_targets, all_synop_targets, self.current_epoch, 'test',
+                                       None, dates_embeddings)
+            else:
+                outputs = self.forward(synop_inputs, gfs_targets, all_synop_targets, self.current_epoch, 'test')
 
         self.test_mse(outputs.squeeze(), targets.float().squeeze())
         self.test_mae(outputs.squeeze(), targets.float().squeeze())

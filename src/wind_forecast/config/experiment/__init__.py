@@ -133,7 +133,9 @@ class ExperimentSettings:
 
     transformer_attention_heads: int = 1
 
-    transformer_head_dims: List = field(default_factory=lambda: [])
+    transformer_head_dims: List = field(default_factory=lambda: [64])
+
+    with_dates_inputs: bool = False
 
     use_pos_encoding: bool = True
 
