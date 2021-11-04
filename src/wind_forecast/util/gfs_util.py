@@ -21,7 +21,7 @@ from scipy.interpolate import interpolate
 from gfs_archive_0_25.gfs_processor.Coords import Coords
 from wind_forecast.consts import NETCDF_FILE_REGEX, DATE_KEY_REGEX
 from gfs_archive_0_25.utils import get_nearest_coords
-from wind_forecast.util.common_util import prep_zeros_if_needed, local_to_utc, NormalizationType
+from wind_forecast.util.common_util import prep_zeros_if_needed, NormalizationType
 from wind_forecast.util.logging import log
 
 GFS_DATASET_DIR = os.environ.get('GFS_DATASET_DIR')

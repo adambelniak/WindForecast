@@ -19,7 +19,7 @@ system:
   _target_: wind_forecast.systems.S2SRegressorWithTFWithGFSInput.S2SRegressorWithTFWithGFSInput
 
 use_gfs_data: True
-synop_from_year: 2017
+synop_from_year: 2017g
 train_parameters_config_file: TransformerConfig.json
 use_all_gfs_as_input: True
 use_pos_encoding: False

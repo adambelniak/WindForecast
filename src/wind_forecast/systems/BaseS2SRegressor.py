@@ -246,8 +246,11 @@ class BaseS2SRegressor(pl.LightningModule):
 
         inputs = [item for sublist in [x['input'] for x in outputs] for item in sublist]
 
+        gfs_targets = [item for sublist in [x['gfs_targets'] for x in outputs] for item in sublist]
+
         self.test_results = {'labels': copy.deepcopy(labels),
                              'output': copy.deepcopy(out),
                              'inputs': copy.deepcopy(inputs),
                              'inputs_dates': copy.deepcopy(inputs_dates),
-                             'targets_dates': copy.deepcopy(labels_dates)}
+                             'targets_dates': copy.deepcopy(labels_dates),
+                             'gfs_targets': copy.deepcopy(gfs_targets)}

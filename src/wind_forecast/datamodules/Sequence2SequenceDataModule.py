@@ -8,6 +8,7 @@ from tqdm import tqdm
 
 from wind_forecast.config.register import Config
 from wind_forecast.consts import SYNOP_DATASETS_DIRECTORY
+from wind_forecast.datamodules.DataModulesCache import DataModulesCache
 from wind_forecast.datasets.Sequence2SequenceDataset import Sequence2SequenceDataset
 from wind_forecast.datasets.Sequence2SequenceWithGFSDataset import Sequence2SequenceWithGFSDataset
 from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset, normalize_synop_data
@@ -85,6 +86,11 @@ class Sequence2SequenceDataModule(LightningDataModule):
         print(f"Synop std: {synop_std[self.target_param_index]}")
 
     def setup(self, stage: Optional[str] = None):
+        cached_dataset = DataModulesCache().get_cached_dataset()
+        if stage == 'test' and cached_dataset is not None:
+            self.dataset_test = cached_dataset
+            return
+
         if self.config.experiment.use_gfs_data:
             synop_inputs, all_gfs_input_data, gfs_target_data = self.prepare_dataset_for_gfs()
 
@@ -104,6 +110,7 @@ class Sequence2SequenceDataModule(LightningDataModule):
         self.dataset_train, self.dataset_val = split_dataset(dataset, self.config.experiment.val_split,
                                                              sequence_length=self.sequence_length if self.sequence_length > 1 else None)
         self.dataset_test = self.dataset_val
+        DataModulesCache().cache_dataset(self.dataset_test)
 
     def prepare_dataset_for_gfs(self):
         print("Preparing the dataset")

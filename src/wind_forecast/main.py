@@ -35,9 +35,11 @@ def plot_results(system, config: Config, mean, std):
         plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%m/%d/%Y %H%M'))
         plt.gca().xaxis.set_major_locator(mdates.HourLocator())
         out_series = system.test_results['output'][index].cpu() * std + mean
+        gfs_out_series = system.test_results['gfs_targets'][index].cpu() * std + mean
         truth_series = (system.test_results['inputs'][index].cpu() * std + mean).tolist()
         truth_series.extend((system.test_results['labels'][index].cpu() * std + mean).tolist())
         ax.plot(output_dates, out_series, label='prediction')
+        ax.plot(output_dates, gfs_out_series, label='gfs prediction')
         ax.plot(x, truth_series, label='ground truth')
         ax.set_xlabel('Date')
         ax.set_ylabel(config.experiment.target_parameter)

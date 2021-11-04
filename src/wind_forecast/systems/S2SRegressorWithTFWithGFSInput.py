@@ -157,5 +157,6 @@ class S2SRegressorWithTFWithGFSInput(BaseS2SRegressor):
                 'output': outputs,
                 'input': synop_inputs[:, :, self.target_param_index],
                 'targets_dates': targets_dates,
-                'inputs_dates': inputs_dates
+                'inputs_dates': inputs_dates,
+                'gfs_targets': gfs_targets
                 }
