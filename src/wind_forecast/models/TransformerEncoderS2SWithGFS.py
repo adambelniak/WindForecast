@@ -18,7 +18,8 @@ class TransformerEncoderS2SWithGFS(TransformerBaseProps):
             self.embed_dim += gfs_params_len * (config.experiment.time2vec_embedding_size + 1)
 
         if config.experiment.with_dates_inputs:
-            self.embed_dim += 2
+            input_features_length += 2
+            self.embed_dim += 2 * (config.experiment.time2vec_embedding_size + 1)
 
         self.time_2_vec_time_distributed = TimeDistributed(Time2Vec(input_features_length,
                                                                     config.experiment.time2vec_embedding_size), batch_first=True)
@@ -44,17 +45,19 @@ class TransformerEncoderS2SWithGFS(TransformerBaseProps):
     def forward(self, inputs, gfs_inputs, gfs_targets, targets: torch.Tensor, epoch: int, stage=None,
                 dates_embeddings: (torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor) = None):
         if gfs_inputs is None:
-            time_embedding = torch.cat([inputs, self.time_2_vec_time_distributed(inputs)], dim=-1)
+            if dates_embeddings is None:
+                x = [inputs]
+            else:
+                x = [inputs, dates_embeddings[0], dates_embeddings[1]]
+            time_embedding = torch.cat([*x, self.time_2_vec_time_distributed(x)], dim=-1)
         else:
-            x = [inputs, gfs_inputs]
-            time_embedding = torch.cat([*x, self.time_2_vec_time_distributed(torch.cat(x, dim=-1))], dim=-1)
-
-        if dates_embeddings is None:
-            x = time_embedding
-        else:
-            x = torch.cat([time_embedding, dates_embeddings[0], dates_embeddings[1]], -1)
-
-        x = self.pos_encoder(x) if self.use_pos_encoding else x
+            if dates_embeddings is None:
+                x = [inputs, gfs_inputs]
+            else:
+                x = [inputs, gfs_inputs, dates_embeddings[0], dates_embeddings[1]]
+            time_embedding = torch.cat([*x,
+                                        self.time_2_vec_time_distributed(torch.cat(x, dim=-1))], dim=-1)
+        x = self.pos_encoder(time_embedding) if self.use_pos_encoding else time_embedding
         x = self.encoder(x)
 
         if dates_embeddings is None:
