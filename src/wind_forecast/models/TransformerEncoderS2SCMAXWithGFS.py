@@ -56,7 +56,7 @@ class TransformerEncoderS2SCMAXWithGFS(TransformerBaseProps):
         self.classification_head = nn.Sequential(*dense_layers)
         self.classification_head_time_distributed = TimeDistributed(self.classification_head, batch_first=True)
 
-    def forward(self, inputs, gfs_inputs, gfs_targets, cmax_inputs, targets: torch.Tensor, epoch: int, stage=None):
+    def forward(self, inputs, gfs_inputs, gfs_targets, cmax_inputs, targets: torch.Tensor, all_gfs_targets: torch.Tensor, epoch: int, stage=None):
         cmax_embeddings = self.conv_time_distributed(cmax_inputs.unsqueeze(2))
         if gfs_inputs is None:
             time_embedding = torch.cat([inputs, self.time_2_vec_time_distributed(inputs)], dim=-1)

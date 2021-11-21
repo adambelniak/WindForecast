@@ -42,21 +42,21 @@ class TransformerEncoderS2SWithGFS(TransformerBaseProps):
         self.classification_head = nn.Sequential(*dense_layers)
         self.classification_head_time_distributed = TimeDistributed(self.classification_head, batch_first=True)
 
-    def forward(self, inputs, gfs_inputs, gfs_targets, targets: torch.Tensor, epoch: int, stage=None,
+    def forward(self, inputs, gfs_inputs, gfs_targets, targets: torch.Tensor, all_gfs_targets: torch.Tensor, epoch: int, stage=None,
                 dates_embeddings: (torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor) = None):
         if gfs_inputs is None:
             if dates_embeddings is None:
                 x = [inputs]
             else:
                 x = [inputs, dates_embeddings[0], dates_embeddings[1]]
-            time_embedding = torch.cat([*x, self.time_2_vec_time_distributed(x)], dim=-1)
         else:
             if dates_embeddings is None:
                 x = [inputs, gfs_inputs]
             else:
                 x = [inputs, gfs_inputs, dates_embeddings[0], dates_embeddings[1]]
-            time_embedding = torch.cat([*x,
-                                        self.time_2_vec_time_distributed(torch.cat(x, dim=-1))], dim=-1)
+
+        time_embedding = torch.cat([*x, self.time_2_vec_time_distributed(torch.cat(x, dim=-1))], dim=-1)
+
         x = self.pos_encoder(time_embedding) if self.use_pos_encoding else time_embedding
         x = self.encoder(x)
 

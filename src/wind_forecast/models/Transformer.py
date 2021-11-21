@@ -83,28 +83,62 @@ class Transformer(TransformerBaseProps):
         self.teacher_forcing_epoch_num = config.experiment.teacher_forcing_epoch_num
         self.gradual_teacher_forcing = config.experiment.gradual_teacher_forcing
 
-        n_heads = config.experiment.transformer_attention_heads
-        ff_dim = config.experiment.transformer_ff_dim
-        transformer_layers_num = config.experiment.transformer_attention_layers
+        self.n_heads = config.experiment.transformer_attention_heads
+        self.ff_dim = config.experiment.transformer_ff_dim
+        self.transformer_layers_num = config.experiment.transformer_attention_layers
 
-        encoder_layer = nn.TransformerEncoderLayer(self.embed_dim, n_heads, ff_dim, self.dropout, batch_first=True)
+        self.input_features_length = self.features_len
+
+        if config.experiment.with_dates_inputs:
+            self.input_features_length += 2
+            self.embed_dim += 2 * (config.experiment.time2vec_embedding_size + 1)
+
+        self.time_2_vec_time_distributed = TimeDistributed(Time2Vec(self.input_features_length,
+                                                                    config.experiment.time2vec_embedding_size),
+                                                           batch_first=True)
+
+        self.pos_encoder = PositionalEncoding(self.embed_dim, self.dropout, self.sequence_length)
+        encoder_layer = nn.TransformerEncoderLayer(self.embed_dim, self.n_heads, self.ff_dim, self.dropout, batch_first=True)
         encoder_norm = nn.LayerNorm(self.embed_dim)
-        self.encoder = nn.TransformerEncoder(encoder_layer, transformer_layers_num, encoder_norm)
+        self.encoder = nn.TransformerEncoder(encoder_layer, self.transformer_layers_num, encoder_norm)
 
-        decoder_layer = nn.TransformerDecoderLayer(self.embed_dim, n_heads, ff_dim, self.dropout, batch_first=True)
+        decoder_layer = nn.TransformerDecoderLayer(self.embed_dim, self.n_heads, self.ff_dim, self.dropout, batch_first=True)
         decoder_norm = nn.LayerNorm(self.embed_dim)
-        self.decoder = nn.TransformerDecoder(decoder_layer, transformer_layers_num, decoder_norm)
+        self.decoder = nn.TransformerDecoder(decoder_layer, self.transformer_layers_num, decoder_norm)
+
+        dense_layers = []
+        features = self.embed_dim
+
+        for neurons in config.experiment.transformer_head_dims:
+            dense_layers.append(nn.Linear(in_features=features, out_features=neurons))
+            features = neurons
+        dense_layers.append(nn.Linear(in_features=features, out_features=1))
+        self.classification_head = nn.Sequential(*dense_layers)
+        self.classification_head_time_distributed = TimeDistributed(self.classification_head, batch_first=True)
 
     def generate_mask(self, sequence_length: int) -> torch.Tensor:
         mask = (torch.triu(torch.ones(sequence_length, sequence_length)) == 1).transpose(0, 1)
         mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
         return mask
 
-    def forward(self, inputs: torch.Tensor, targets: torch.Tensor, epoch: int, stage=None) -> torch.Tensor:
-        input_time_embedding = self.time_2_vec_time_distributed(inputs)
-        whole_input_embedding = torch.cat([inputs, input_time_embedding], -1)
+    def forward(self, synop_inputs: torch.Tensor, synop_targets: torch.Tensor, epoch: int, stage=None,
+                dates_embeddings: (torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor) = None) -> torch.Tensor:
+        if dates_embeddings is None:
+            x = [synop_inputs]
+        else:
+            x = [synop_inputs, dates_embeddings[0], dates_embeddings[1]]
+
+        whole_input_embedding = torch.cat([*x, self.time_2_vec_time_distributed(torch.cat(x, -1))], -1)
+
+        if dates_embeddings is None:
+            y = [synop_targets]
+        else:
+            y = [synop_targets, dates_embeddings[2], dates_embeddings[3]]
+
         x = self.pos_encoder(whole_input_embedding) if self.use_pos_encoding else whole_input_embedding
         memory = self.encoder(x)
+
+        whole_target_embedding = torch.cat([*y, self.time_2_vec_time_distributed(torch.cat(y, -1))], -1)
 
         if epoch < self.teacher_forcing_epoch_num and stage in [None, 'fit']:
             # Teacher forcing - masked targets as decoder inputs
@@ -119,28 +153,24 @@ class Transformer(TransformerBaseProps):
                     pred = next_pred if pred is None else torch.cat([pred, next_pred], 1)
 
                 # then, do teacher forcing
-                targets_time_embedding = self.time_2_vec_time_distributed(targets)
-                targets = torch.cat([targets, targets_time_embedding], -1)
-                y = torch.cat([torch.zeros(x.size(0), 1, self.embed_dim, device=self.device), targets], 1)[:, first_taught:-1, ]
-                y = self.pos_encoder(y) if self.use_pos_encoding else y
+                decoder_input = torch.cat([torch.zeros(x.size(0), 1, self.embed_dim, device=self.device), whole_target_embedding], 1)[:, first_taught:-1, ]
+                decoder_input = self.pos_encoder(decoder_input) if self.use_pos_encoding else decoder_input
                 target_mask = self.generate_mask(self.sequence_length - first_taught).to(self.device)
-                next_pred = self.decoder(y, memory, tgt_mask=target_mask)
+                next_pred = self.decoder(decoder_input, memory, tgt_mask=target_mask)
                 output = next_pred if pred is None else torch.cat([pred, next_pred], 1)
 
             else:
                 # non-gradual, just basic teacher forcing
-                targets_time_embedding = self.time_2_vec_time_distributed(targets)
-                targets = torch.cat([targets, targets_time_embedding], -1)
-                y = self.pos_encoder(targets) if self.use_pos_encoding else targets
-                y = torch.cat([torch.zeros(x.size(0), 1, self.embed_dim, device=self.device), y], 1)[:, :-1, ]
+                decoder_input = self.pos_encoder(whole_target_embedding) if self.use_pos_encoding else whole_target_embedding
+                decoder_input = torch.cat([torch.zeros(x.size(0), 1, self.embed_dim, device=self.device), decoder_input], 1)[:, :-1, ]
                 target_mask = self.generate_mask(self.sequence_length).to(self.device)
-                output = self.decoder(y, memory, tgt_mask=target_mask)
+                output = self.decoder(decoder_input, memory, tgt_mask=target_mask)
 
         else:
             # inference - pass only predictions to decoder
             decoder_input = torch.zeros(x.size(0), 1, self.embed_dim, device=self.device)  # SOS
             pred = None
-            for frame in range(inputs.size(1)):
+            for frame in range(synop_inputs.size(1)):
                 y = self.pos_encoder(decoder_input) if self.use_pos_encoding else decoder_input
                 next_pred = self.decoder(y, memory)
                 decoder_input = next_pred

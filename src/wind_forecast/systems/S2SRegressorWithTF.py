@@ -8,8 +8,8 @@ class S2SRegressorWithTF(BaseS2SRegressor):
     # ----------------------------------------------------------------------------------------------
     # Forward
     # ----------------------------------------------------------------------------------------------
-    def forward(self, x: torch.Tensor, targets: torch.Tensor, epoch, stage) -> torch.Tensor:
-        return self.model(x.float(), targets.float(), epoch, stage)
+    def forward(self, x: torch.Tensor, targets: torch.Tensor, epoch, stage, dates_embeddings: torch.Tensor = None) -> torch.Tensor:
+        return self.model(x.float(), targets.float(), epoch, stage, dates_embeddings)
 
     # ----------------------------------------------------------------------------------------------
     # Training
@@ -30,8 +30,14 @@ class S2SRegressorWithTF(BaseS2SRegressor):
         dict[str, torch.Tensor]
             Metric values for a given batch.
         """
-        inputs, all_targets, targets, targets_dates, inputs_dates = batch
-        outputs = self.forward(inputs, all_targets, self.current_epoch, 'fit')
+        synop_inputs, all_synop_targets, targets, targets_dates, inputs_dates = batch
+        if self.cfg.experiment.with_dates_inputs:
+            dates_embeddings = self.get_dates_embeddings(inputs_dates, targets_dates)
+
+            outputs = self.forward(synop_inputs, all_synop_targets, self.current_epoch, 'fit', dates_embeddings)
+        else:
+            outputs = self.forward(synop_inputs, all_synop_targets, self.current_epoch, 'fit')
+
         loss = self.calculate_loss(outputs, targets.float())
         self.train_mse(outputs, targets)
         self.train_mae(outputs, targets)
@@ -60,8 +66,13 @@ class S2SRegressorWithTF(BaseS2SRegressor):
         dict[str, torch.Tensor]
             Metric values for a given batch.
         """
-        inputs, all_targets, targets, targets_dates, inputs_dates = batch
-        outputs = self.forward(inputs, all_targets, self.current_epoch, 'test')
+        synop_inputs, all_synop_targets, targets, targets_dates, inputs_dates = batch
+        if self.cfg.experiment.with_dates_inputs:
+            dates_embeddings = self.get_dates_embeddings(inputs_dates, targets_dates)
+
+            outputs = self.forward(synop_inputs, all_synop_targets, self.current_epoch, 'test', dates_embeddings)
+        else:
+            outputs = self.forward(synop_inputs, all_synop_targets, self.current_epoch, 'test')
 
         self.val_mse(outputs, targets.float())
         self.val_mae(outputs, targets.float())
@@ -90,15 +101,20 @@ class S2SRegressorWithTF(BaseS2SRegressor):
         dict[str, torch.Tensor]
             Metric values for a given batch.
         """
-        inputs, all_targets, targets, targets_dates, inputs_dates = batch
-        outputs = self.forward(inputs, all_targets, self.current_epoch, 'test')
+        synop_inputs, all_synop_targets, targets, targets_dates, inputs_dates = batch
+        if self.cfg.experiment.with_dates_inputs:
+            dates_embeddings = self.get_dates_embeddings(inputs_dates, targets_dates)
+
+            outputs = self.forward(synop_inputs, all_synop_targets, self.current_epoch, 'test', dates_embeddings)
+        else:
+            outputs = self.forward(synop_inputs, all_synop_targets, self.current_epoch, 'test')
 
         self.test_mse(outputs, targets.float())
         self.test_mae(outputs, targets.float())
 
         return {'labels': targets,
                 'output': outputs,
-                'input': inputs[:, :, self.target_param_index],
+                'input': synop_inputs[:, :, self.target_param_index],
                 'targets_dates': targets_dates,
                 'inputs_dates': inputs_dates
                 }

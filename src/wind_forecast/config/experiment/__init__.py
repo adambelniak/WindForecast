@@ -91,7 +91,7 @@ class ExperimentSettings:
 
     cnn_filters: List = field(default_factory=lambda: [32, 64])
 
-    epochs: int = 100
+    epochs: int = 30
 
     synop_train_features: List = field(default_factory=lambda: SYNOP_TRAIN_FEATURES)
 
@@ -121,7 +121,7 @@ class ExperimentSettings:
 
     dropout: float = 0.1
 
-    teacher_forcing_epoch_num: int = 10
+    teacher_forcing_epoch_num: int = 20
 
     gradual_teacher_forcing: bool = True
 

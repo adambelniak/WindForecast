@@ -16,15 +16,17 @@ class S2SRegressorWithTFWithCMAXWithGFS(BaseS2SRegressor):
     # ----------------------------------------------------------------------------------------------
     # Forward
     # ----------------------------------------------------------------------------------------------
-    def forward(self, x: torch.Tensor, gfs_targets, cmax_inputs: torch.Tensor, targets: torch.Tensor, epoch, stage, gfs_inputs: torch.Tensor = None, cmax_targets: torch.Tensor = None) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, gfs_targets, cmax_inputs: torch.Tensor, targets: torch.Tensor,
+                all_gfs_targets: torch.Tensor, epoch, stage, gfs_inputs: torch.Tensor = None,
+                cmax_targets: torch.Tensor = None) -> torch.Tensor:
         if cmax_targets is None:
             if gfs_inputs is None:
-                return self.model(x.float(), None, gfs_targets.float(), cmax_inputs.float(), targets.float(), epoch, stage)
-            return self.model(x.float(), gfs_inputs.float(), gfs_targets.float(), cmax_inputs.float(), targets.float(), epoch, stage)
+                return self.model(x.float(), None, gfs_targets.float(), cmax_inputs.float(), targets.float(), all_gfs_targets, epoch, stage)
+            return self.model(x.float(), gfs_inputs.float(), gfs_targets.float(), cmax_inputs.float(), targets.float(), all_gfs_targets, epoch, stage)
         else:
             if gfs_inputs is None:
-                return self.model(x.float(), None, gfs_targets.float(), cmax_inputs.float(), targets.float(), cmax_targets.float(), epoch, stage)
-            return self.model(x.float(), gfs_inputs.float(), gfs_targets.float(), cmax_inputs.float(), targets.float(), cmax_targets.float(), epoch, stage)
+                return self.model(x.float(), None, gfs_targets.float(), cmax_inputs.float(), targets.float(), cmax_targets.float(), all_gfs_targets, epoch, stage)
+            return self.model(x.float(), gfs_inputs.float(), gfs_targets.float(), cmax_inputs.float(), targets.float(), cmax_targets.float(), all_gfs_targets, epoch, stage)
 
     # ----------------------------------------------------------------------------------------------
     # Training
@@ -47,22 +49,22 @@ class S2SRegressorWithTFWithCMAXWithGFS(BaseS2SRegressor):
         """
 
         if self.cfg.experiment.use_all_gfs_as_input:
-            inputs, gfs_inputs, gfs_targets, synop_targets, targets, targets_dates, inputs_dates = batch[0]
+            inputs, gfs_inputs, gfs_targets, synop_targets, targets, all_gfs_targets, targets_dates, inputs_dates = batch[0]
             if self.cfg.experiment.use_future_cmax:
                 cmax_inputs, cmax_targets = batch[1]
-                outputs = self.forward(inputs, gfs_targets, cmax_inputs, synop_targets, self.current_epoch, 'fit', gfs_inputs, cmax_targets)
+                outputs = self.forward(inputs, gfs_targets, cmax_inputs, synop_targets, all_gfs_targets, self.current_epoch, 'fit', gfs_inputs, cmax_targets)
             else:
                 cmax_inputs = batch[1]
-                outputs = self.forward(inputs, gfs_targets, cmax_inputs, synop_targets, self.current_epoch, 'fit', gfs_inputs)
+                outputs = self.forward(inputs, gfs_targets, cmax_inputs, synop_targets, all_gfs_targets, self.current_epoch, 'fit', gfs_inputs)
 
         else:
-            inputs, gfs_targets, synop_targets, targets, targets_dates, inputs_dates = batch[0]
+            inputs, gfs_targets, synop_targets, targets, targets_dates, all_gfs_targets, inputs_dates = batch[0]
             if self.cfg.experiment.use_future_cmax:
                 cmax_inputs, cmax_targets = batch[1]
-                outputs = self.forward(inputs, gfs_targets, cmax_inputs, synop_targets, self.current_epoch, 'fit', cmax_targets=cmax_targets)
+                outputs = self.forward(inputs, gfs_targets, cmax_inputs, synop_targets, all_gfs_targets, self.current_epoch, 'fit', cmax_targets=cmax_targets)
             else:
                 cmax_inputs = batch[1]
-                outputs = self.forward(inputs, gfs_targets, cmax_inputs, synop_targets, self.current_epoch, 'fit')
+                outputs = self.forward(inputs, gfs_targets, cmax_inputs, synop_targets, all_gfs_targets, self.current_epoch, 'fit')
 
         loss = self.calculate_loss(outputs, targets.float())
         self.train_mse(outputs, targets)
@@ -94,25 +96,25 @@ class S2SRegressorWithTFWithCMAXWithGFS(BaseS2SRegressor):
         """
 
         if self.cfg.experiment.use_all_gfs_as_input:
-            inputs, gfs_inputs, gfs_targets, synop_targets, targets, targets_dates, inputs_dates = batch[0]
+            inputs, gfs_inputs, gfs_targets, synop_targets, targets, all_gfs_targets, targets_dates, inputs_dates = batch[0]
             if self.cfg.experiment.use_future_cmax:
                 cmax_inputs, cmax_targets = batch[1]
-                outputs = self.forward(inputs, gfs_targets, cmax_inputs, synop_targets, self.current_epoch, 'test',
+                outputs = self.forward(inputs, gfs_targets, cmax_inputs, synop_targets, all_gfs_targets, self.current_epoch, 'test',
                                        gfs_inputs, cmax_targets)
             else:
                 cmax_inputs = batch[1]
-                outputs = self.forward(inputs, gfs_targets, cmax_inputs, synop_targets, self.current_epoch, 'test',
+                outputs = self.forward(inputs, gfs_targets, cmax_inputs, synop_targets, all_gfs_targets, self.current_epoch, 'test',
                                        gfs_inputs)
 
         else:
-            inputs, gfs_targets, synop_targets, targets, targets_dates, inputs_dates = batch[0]
+            inputs, gfs_targets, synop_targets, targets, all_gfs_targets, targets_dates, inputs_dates = batch[0]
             if self.cfg.experiment.use_future_cmax:
                 cmax_inputs, cmax_targets = batch[1]
-                outputs = self.forward(inputs, gfs_targets, cmax_inputs, synop_targets, self.current_epoch, 'test',
+                outputs = self.forward(inputs, gfs_targets, cmax_inputs, synop_targets, all_gfs_targets, self.current_epoch, 'test',
                                        cmax_targets=cmax_targets)
             else:
                 cmax_inputs = batch[1]
-                outputs = self.forward(inputs, gfs_targets, cmax_inputs, synop_targets, self.current_epoch, 'test')
+                outputs = self.forward(inputs, gfs_targets, cmax_inputs, synop_targets, all_gfs_targets, self.current_epoch, 'test')
 
         self.val_mse(outputs, targets.float())
         self.val_mae(outputs, targets.float())
@@ -142,25 +144,25 @@ class S2SRegressorWithTFWithCMAXWithGFS(BaseS2SRegressor):
             Metric values for a given batch.
         """
         if self.cfg.experiment.use_all_gfs_as_input:
-            synop_inputs, all_gfs_inputs, gfs_targets, all_synop_targets, targets, targets_dates, inputs_dates = batch[0]
+            synop_inputs, all_gfs_inputs, gfs_targets, all_synop_targets, targets, all_gfs_targets, targets_dates, inputs_dates = batch[0]
             if self.cfg.experiment.use_future_cmax:
                 cmax_inputs, cmax_targets = batch[1]
-                outputs = self.forward(synop_inputs, gfs_targets, cmax_inputs, all_synop_targets, self.current_epoch, 'test',
+                outputs = self.forward(synop_inputs, gfs_targets, cmax_inputs, all_synop_targets, all_gfs_targets, self.current_epoch, 'test',
                                        all_gfs_inputs, cmax_targets)
             else:
                 cmax_inputs = batch[1]
-                outputs = self.forward(synop_inputs, gfs_targets, cmax_inputs, all_synop_targets, self.current_epoch, 'test',
+                outputs = self.forward(synop_inputs, gfs_targets, cmax_inputs, all_synop_targets, all_gfs_targets, self.current_epoch, 'test',
                                        all_gfs_inputs)
 
         else:
-            synop_inputs, gfs_targets, all_synop_targets, targets, targets_dates, inputs_dates = batch[0]
+            synop_inputs, gfs_targets, all_synop_targets, targets, all_gfs_targets, targets_dates, inputs_dates = batch[0]
             if self.cfg.experiment.use_future_cmax:
                 cmax_inputs, cmax_targets = batch[1]
-                outputs = self.forward(synop_inputs, gfs_targets, cmax_inputs, all_synop_targets, self.current_epoch, 'test',
+                outputs = self.forward(synop_inputs, gfs_targets, cmax_inputs, all_synop_targets, all_gfs_targets, self.current_epoch, 'test',
                                        cmax_targets=cmax_targets)
             else:
                 cmax_inputs = batch[1]
-                outputs = self.forward(synop_inputs, gfs_targets, cmax_inputs, all_synop_targets, self.current_epoch, 'test')
+                outputs = self.forward(synop_inputs, gfs_targets, cmax_inputs, all_synop_targets, all_gfs_targets, self.current_epoch, 'test')
 
         self.test_mse(outputs, targets.float())
         self.test_mae(outputs, targets.float())

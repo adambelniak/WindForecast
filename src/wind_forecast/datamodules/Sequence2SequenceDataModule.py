@@ -53,6 +53,8 @@ class Sequence2SequenceDataModule(LightningDataModule):
         self.target_coords = config.experiment.target_coords
         self.gfs_train_params = process_config(
             config.experiment.train_parameters_config_file) if config.experiment.use_all_gfs_as_input else None
+        self.gfs_target_param_indices = [self.gfs_train_params.index(param) for param in target_param_to_gfs_name_level(
+            self.target_param)]
 
         self.synop_data = ...
         self.synop_data_indices = ...
@@ -92,12 +94,12 @@ class Sequence2SequenceDataModule(LightningDataModule):
             return
 
         if self.config.experiment.use_gfs_data:
-            synop_inputs, all_gfs_input_data, gfs_target_data = self.prepare_dataset_for_gfs()
+            synop_inputs, all_gfs_input_data, gfs_target_data, all_gfs_target_data = self.prepare_dataset_for_gfs()
 
             if self.gfs_train_params is not None:
-                dataset = Sequence2SequenceWithGFSDataset(self.config, self.synop_data, self.synop_data_indices, gfs_target_data, all_gfs_input_data)
+                dataset = Sequence2SequenceWithGFSDataset(self.config, self.synop_data, self.synop_data_indices, gfs_target_data, all_gfs_target_data, all_gfs_input_data)
             else:
-                dataset = Sequence2SequenceWithGFSDataset(self.config, self.synop_data, self.synop_data_indices, gfs_target_data)
+                dataset = Sequence2SequenceWithGFSDataset(self.config, self.synop_data, self.synop_data_indices, gfs_target_data, all_gfs_target_data)
 
         else:
             dataset = Sequence2SequenceDataset(self.config, self.synop_data, self.synop_data_indices)
@@ -130,15 +132,14 @@ class Sequence2SequenceDataModule(LightningDataModule):
             indices = self.synop_data_indices
 
         # Then, get GFS data for forecast frames (matching future frames)
-        self.synop_data_indices, gfs_target_data, next_removed_indices = match_gfs_with_synop_sequence2sequence(
+        self.synop_data_indices, all_gfs_target_data, next_removed_indices = match_gfs_with_synop_sequence2sequence(
             self.synop_data, self.synop_data_indices,
             self.target_coords[0],
             self.target_coords[1],
             self.prediction_offset,
             self.sequence_length + self.prediction_offset,
             self.sequence_length + self.future_sequence_length + self.prediction_offset,
-            target_param_to_gfs_name_level(
-                self.target_param), future_dates=True)
+            self.gfs_train_params, future_dates=True)
 
         self.removed_dataset_indices.extend(next_removed_indices)
         self.removed_dataset_indices = set(self.removed_dataset_indices)
@@ -149,18 +150,21 @@ class Sequence2SequenceDataModule(LightningDataModule):
                                   index not in indices_to_remove])
             all_gfs_input_data = normalize_gfs_data(all_gfs_input_data, self.normalization_type, (0, 1))
 
+        mean, std = np.mean(all_gfs_target_data, axis=-1), np.std(all_gfs_target_data, axis=-1)
+        gfs_target_data = all_gfs_target_data[self.gfs_target_param_indices]
         if self.target_param == "wind_velocity":
             gfs_target_data = np.array([math.sqrt(velocity[0] ** 2 + velocity[1] ** 2) for velocity in gfs_target_data])
 
-        gfs_target_data = normalize_gfs_data(gfs_target_data, self.normalization_type, (0, 1))
+        gfs_target_data = (gfs_target_data - mean) / std
+        all_gfs_target_data = (all_gfs_target_data - mean) / std
 
-        assert len(self.synop_data_indices) == len(gfs_target_data)
+        assert len(self.synop_data_indices) == len(all_gfs_target_data)
 
         if self.gfs_train_params is not None:
             assert len(self.synop_data_indices) == len(all_gfs_input_data)
-            return self.synop_data_indices, all_gfs_input_data, gfs_target_data
+            return self.synop_data_indices, all_gfs_input_data, gfs_target_data, all_gfs_target_data
 
-        return self.synop_data_indices, [], gfs_target_data
+        return self.synop_data_indices, [], gfs_target_data, all_gfs_target_data
 
     def resolve_all_synop_data(self):
         synop_inputs = []

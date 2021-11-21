@@ -14,16 +14,16 @@ class TransformerRandomMask(Transformer):
         mask[:, 0] = 0.0  # first decoder input cannot be -inf
         return mask
 
-    def forward(self, inputs: torch.Tensor, targets: torch.Tensor, epoch: int, stage=None) -> torch.Tensor:
-        input_time_embedding = self.time_2_vec_time_distributed(inputs)
-        whole_input_embedding = torch.cat([inputs, input_time_embedding], -1)
+    def forward(self, synop_inputs: torch.Tensor, synop_targets: torch.Tensor, epoch: int, stage=None) -> torch.Tensor:
+        input_time_embedding = self.time_2_vec_time_distributed(synop_inputs)
+        whole_input_embedding = torch.cat([synop_inputs, input_time_embedding], -1)
         x = self.pos_encoder(whole_input_embedding) if self.use_pos_encoding else whole_input_embedding
         memory = self.encoder(x)
 
         if stage in [None, 'fit']:
-            targets_time_embedding = self.time_2_vec_time_distributed(targets)
-            targets = torch.cat([targets, targets_time_embedding], -1)
-            y = self.pos_encoder(targets) if self.use_pos_encoding else targets
+            targets_time_embedding = self.time_2_vec_time_distributed(synop_targets)
+            synop_targets = torch.cat([synop_targets, targets_time_embedding], -1)
+            y = self.pos_encoder(synop_targets) if self.use_pos_encoding else synop_targets
             y = torch.cat([torch.zeros(x.size(0), 1, self.embed_dim, device=self.device), y], 1)[:, :-1, ]
             target_mask = self.generate_mask(self.sequence_length).to(self.device)
             output = self.decoder(y, memory, tgt_mask=target_mask)
@@ -32,7 +32,7 @@ class TransformerRandomMask(Transformer):
             # inference - pass only predictions to decoder
             decoder_input = torch.zeros(x.size(0), 1, self.embed_dim, device=self.device)  # SOS
             pred = None
-            for frame in range(inputs.size(1)):
+            for frame in range(synop_inputs.size(1)):
                 y = self.pos_encoder(decoder_input) if self.use_pos_encoding else decoder_input
                 next_pred = self.decoder(y, memory)
                 decoder_input = next_pred
