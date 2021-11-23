@@ -1,7 +1,10 @@
+from typing import Dict
+
 import torch
 from torch import nn
 
 from wind_forecast.config.register import Config
+from wind_forecast.consts import BatchKeys
 from wind_forecast.models.Transformer import TransformerBaseProps, Time2Vec, PositionalEncoding
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 
@@ -37,15 +40,21 @@ class TransformerEncoderS2S(TransformerBaseProps):
         self.classification_head = nn.Sequential(*dense_layers)
         self.classification_head_time_distributed = TimeDistributed(self.classification_head, batch_first=True)
 
-    def forward(self, inputs, targets: torch.Tensor, epoch: int, stage=None,
-                dates_embeddings: (torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor) = None):
-        if dates_embeddings is None:
-            x = [inputs]
+    def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
+        synop_inputs = batch[BatchKeys.SYNOP_INPUTS.value].float()
+        dates_embedding = None if self.config.experiment.with_dates_inputs is False else batch[BatchKeys.DATES_EMBEDDING.value]
+
+        if self.config.experiment.with_dates_inputs is None:
+            x = [synop_inputs, dates_embedding[0], dates_embedding[1]]
         else:
-            x = [inputs, dates_embeddings[0], dates_embeddings[1]]
+            x = [synop_inputs]
+
         time_embedding = torch.cat([*x, self.time_2_vec_time_distributed(torch.cat(x, -1))], -1)
         x = self.pos_encoder(time_embedding) if self.use_pos_encoding else time_embedding
         x = self.encoder(x)
 
-        return torch.squeeze(self.classification_head_time_distributed(torch.cat([x, dates_embeddings[2], dates_embeddings[3]], dim=-1)), dim=-1)
-
+        if self.config.experiment.with_dates_inputs:
+            return torch.squeeze(self.classification_head_time_distributed(
+                torch.cat([x, dates_embedding[2], dates_embedding[3]], -1)), -1)
+        else:
+            return torch.squeeze(self.classification_head_time_distributed(x), -1)

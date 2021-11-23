@@ -1,4 +1,5 @@
 import os
+from enum import Enum
 from pathlib import Path
 
 CREATED_AT_COLUMN_NAME = "created_at"
@@ -25,3 +26,17 @@ STATION_META = {
         'synop_file': "KOZIENICE_488_data.csv"
     }
 }
+
+
+class BatchKeys(Enum):
+    SYNOP_INPUTS = 'synop_inputs'
+    SYNOP_TARGETS = 'synop_targets'
+    ALL_SYNOP_TARGETS = 'all_synop_targets'
+    GFS_INPUTS = 'gfs_inputs'
+    GFS_TARGETS = 'gfs_targets'
+    ALL_GFS_TARGETS = 'all_gfs_targets'
+    DATES_INPUTS = 'dates_inputs'
+    DATES_TARGETS = 'dates_targets'
+    DATES_EMBEDDING = 'dates_embedding'
+    CMAX_INPUTS = 'cmax_inputs'
+    CMAX_TARGETS = 'cmax_targets'

@@ -1,9 +1,11 @@
+import os
 from typing import Optional, Tuple, List
 
 from torch.utils.data.dataloader import default_collate
 
 from wind_forecast.config.register import Config
-from wind_forecast.consts import SYNOP_DATASETS_DIRECTORY
+from wind_forecast.consts import SYNOP_DATASETS_DIRECTORY, BatchKeys
+from wind_forecast.datamodules.DataModulesCache import DataModulesCache
 from wind_forecast.datamodules.Sequence2SequenceDataModule import Sequence2SequenceDataModule
 from wind_forecast.datasets.CMAXDataset import CMAXDataset
 from wind_forecast.datasets.ConcatDatasets import ConcatDatasets
@@ -34,6 +36,9 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
                                                 to_year=self.synop_to_year,
                                                 norm=False)
 
+        if os.getenv('RUN_MODE', '').lower() == 'debug':
+            self.synop_data = self.synop_data.head(100)
+
         available_ids = get_available_cmax_hours(from_year=self.cmax_from_year,
                                                  to_year=self.cmax_to_year)
 
@@ -61,6 +66,11 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
         print(f"Synop std: {synop_std[self.target_param_index]}")
 
     def setup(self, stage: Optional[str] = None):
+        cached_dataset = DataModulesCache().get_cached_dataset()
+        if stage == 'test' and cached_dataset is not None:
+            self.dataset_test = cached_dataset
+            return
+
         if self.config.experiment.use_gfs_data:
             synop_inputs, all_gfs_input_data, gfs_target_data, all_gfs_target_data = self.prepare_dataset_for_gfs()
 
@@ -69,15 +79,15 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
 
             assert len(self.cmax_IDs) == len(synop_inputs)
 
-            if self.gfs_train_params is not None:
+            if self.use_all_gfs_params:
                 dataset = ConcatDatasets(Sequence2SequenceWithGFSDataset(self.config, self.synop_data,
                                                                          self.synop_data_indices, gfs_target_data,
                                                                          all_gfs_target_data, all_gfs_input_data),
                                          CMAXDataset(config=self.config, IDs=self.cmax_IDs, normalize=True))
             else:
-                dataset = ConcatDatasets(
-                    Sequence2SequenceWithGFSDataset(self.config, self.synop_data, self.synop_data_indices, gfs_target_data, all_gfs_target_data),
-                    CMAXDataset(config=self.config, IDs=self.cmax_IDs, normalize=True))
+                dataset = ConcatDatasets(Sequence2SequenceWithGFSDataset(self.config, self.synop_data,
+                                                                         self.synop_data_indices, gfs_target_data),
+                                         CMAXDataset(config=self.config, IDs=self.cmax_IDs, normalize=True))
 
         else:
             assert len(self.cmax_IDs) == len(self.synop_data_indices)
@@ -91,9 +101,34 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
         self.dataset_train, self.dataset_val = split_dataset(dataset, self.config.experiment.val_split,
                                                              sequence_length=self.sequence_length if self.sequence_length > 1 else None)
         self.dataset_test = self.dataset_val
+        DataModulesCache().cache_dataset(self.dataset_test)
 
     def collate_fn(self, x: List[Tuple]):
-        # if self.config.experiment.batch_size > 1:
         s2s_data, cmax_data = [item[0] for item in x], [item[1] for item in x]
         tensors, dates = [item[:-2] for item in s2s_data], [item[-2:] for item in s2s_data]
-        return [[*default_collate(tensors), *list(zip(*dates))], default_collate(cmax_data)]
+        all_data = [*default_collate(tensors), *list(zip(*dates)), *default_collate(cmax_data)]
+        dict_data = {
+            BatchKeys.SYNOP_INPUTS.value: all_data[0],
+            BatchKeys.SYNOP_TARGETS.value: all_data[1],
+            BatchKeys.ALL_SYNOP_TARGETS.value: all_data[2],
+            BatchKeys.CMAX_INPUTS.value: all_data[-2],
+            BatchKeys.CMAX_TARGETS.value: all_data[-1]
+        }
+
+        if self.config.experiment.use_gfs_data:
+            if self.use_all_gfs_params:
+                dict_data[BatchKeys.GFS_INPUTS.value] = all_data[3]
+                dict_data[BatchKeys.GFS_TARGETS.value] = all_data[4]
+                dict_data[BatchKeys.ALL_GFS_TARGETS.value] = all_data[5]
+                dict_data[BatchKeys.DATES_INPUTS.value] = all_data[6]
+                dict_data[BatchKeys.DATES_TARGETS.value] = all_data[7]
+
+            else:
+                dict_data[BatchKeys.GFS_TARGETS.value] = all_data[3]
+                dict_data[BatchKeys.DATES_INPUTS.value] = all_data[4]
+                dict_data[BatchKeys.DATES_TARGETS.value] = all_data[5]
+
+        else:
+            dict_data[BatchKeys.DATES_INPUTS.value] = all_data[3]
+            dict_data[BatchKeys.DATES_TARGETS.value] = all_data[4]
+        return dict_data

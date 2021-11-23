@@ -1,9 +1,12 @@
+from typing import Dict
+
 import torch
 import math
 from pytorch_lightning import LightningModule
 from torch import nn
 
 from wind_forecast.config.register import Config
+from wind_forecast.consts import BatchKeys
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 
 
@@ -80,6 +83,7 @@ class TransformerBaseProps(LightningModule):
 class Transformer(TransformerBaseProps):
     def __init__(self, config: Config):
         super().__init__(config)
+        self.config = config
         self.teacher_forcing_epoch_num = config.experiment.teacher_forcing_epoch_num
         self.gradual_teacher_forcing = config.experiment.gradual_teacher_forcing
 
@@ -107,7 +111,10 @@ class Transformer(TransformerBaseProps):
         self.decoder = nn.TransformerDecoder(decoder_layer, self.transformer_layers_num, decoder_norm)
 
         dense_layers = []
-        features = self.embed_dim
+        if config.experiment.with_dates_inputs:
+            features = self.embed_dim + 2
+        else:
+            features = self.embed_dim
 
         for neurons in config.experiment.transformer_head_dims:
             dense_layers.append(nn.Linear(in_features=features, out_features=neurons))
@@ -121,30 +128,30 @@ class Transformer(TransformerBaseProps):
         mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
         return mask
 
-    def forward(self, synop_inputs: torch.Tensor, synop_targets: torch.Tensor, epoch: int, stage=None,
-                dates_embeddings: (torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor) = None) -> torch.Tensor:
-        if dates_embeddings is None:
-            x = [synop_inputs]
+    def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
+        synop_inputs = batch[BatchKeys.SYNOP_INPUTS.value].float()
+        all_synop_targets = batch[BatchKeys.ALL_SYNOP_TARGETS.value].float()
+        dates_embedding = None if self.config.experiment.with_dates_inputs is False else batch[BatchKeys.DATES_EMBEDDING.value]
+
+        if self.config.experiment.with_dates_inputs is None:
+            x = [synop_inputs, dates_embedding[0], dates_embedding[1]]
+            y = [all_synop_targets, dates_embedding[2], dates_embedding[3]]
+
         else:
-            x = [synop_inputs, dates_embeddings[0], dates_embeddings[1]]
+            x = [synop_inputs]
+            y = [all_synop_targets]
 
         whole_input_embedding = torch.cat([*x, self.time_2_vec_time_distributed(torch.cat(x, -1))], -1)
-
-        if dates_embeddings is None:
-            y = [synop_targets]
-        else:
-            y = [synop_targets, dates_embeddings[2], dates_embeddings[3]]
+        whole_target_embedding = torch.cat([*y, self.time_2_vec_time_distributed(torch.cat(y, -1))], -1)
 
         x = self.pos_encoder(whole_input_embedding) if self.use_pos_encoding else whole_input_embedding
         memory = self.encoder(x)
-
-        whole_target_embedding = torch.cat([*y, self.time_2_vec_time_distributed(torch.cat(y, -1))], -1)
 
         if epoch < self.teacher_forcing_epoch_num and stage in [None, 'fit']:
             # Teacher forcing - masked targets as decoder inputs
             if self.gradual_teacher_forcing:
                 first_taught = math.floor(epoch / self.teacher_forcing_epoch_num * self.sequence_length)
-                decoder_input = torch.zeros(x.size(0), 1, self.embed_dim, device=self.device)  # SOS
+                decoder_input = self.getSOS(x.size(0))  # SOS
                 pred = None
                 for frame in range(first_taught):  # do normal prediction for the beginning frames
                     y = self.pos_encoder(decoder_input) if self.use_pos_encoding else decoder_input
@@ -153,7 +160,8 @@ class Transformer(TransformerBaseProps):
                     pred = next_pred if pred is None else torch.cat([pred, next_pred], 1)
 
                 # then, do teacher forcing
-                decoder_input = torch.cat([torch.zeros(x.size(0), 1, self.embed_dim, device=self.device), whole_target_embedding], 1)[:, first_taught:-1, ]
+                # SOS is appended for case when first_taught is 0
+                decoder_input = torch.cat([self.getSOS(x.size(0)), whole_target_embedding], 1)[:, first_taught:-1, ]
                 decoder_input = self.pos_encoder(decoder_input) if self.use_pos_encoding else decoder_input
                 target_mask = self.generate_mask(self.sequence_length - first_taught).to(self.device)
                 next_pred = self.decoder(decoder_input, memory, tgt_mask=target_mask)
@@ -162,7 +170,7 @@ class Transformer(TransformerBaseProps):
             else:
                 # non-gradual, just basic teacher forcing
                 decoder_input = self.pos_encoder(whole_target_embedding) if self.use_pos_encoding else whole_target_embedding
-                decoder_input = torch.cat([torch.zeros(x.size(0), 1, self.embed_dim, device=self.device), decoder_input], 1)[:, :-1, ]
+                decoder_input = torch.cat([self.getSOS(x.size(0)), decoder_input], 1)[:, :-1, ]
                 target_mask = self.generate_mask(self.sequence_length).to(self.device)
                 output = self.decoder(decoder_input, memory, tgt_mask=target_mask)
 
@@ -177,4 +185,10 @@ class Transformer(TransformerBaseProps):
                 pred = next_pred if pred is None else torch.cat([pred, next_pred], 1)
             output = pred
 
-        return torch.squeeze(self.classification_head_time_distributed(output), dim=-1)
+        if self.config.experiment.with_dates_inputs:
+            return torch.squeeze(self.classification_head_time_distributed(torch.cat([output, dates_embedding[2], dates_embedding[3]], -1)), -1)
+        else:
+            return torch.squeeze(self.classification_head_time_distributed(output), -1)
+
+    def getSOS(self, batch_size: int):
+        return torch.zeros(batch_size, 1, self.embed_dim, device=self.device)

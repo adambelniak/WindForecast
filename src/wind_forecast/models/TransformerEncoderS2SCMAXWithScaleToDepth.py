@@ -1,8 +1,11 @@
 import math
+from typing import Dict
+
 import torch
 from torch import nn
 
 from wind_forecast.config.register import Config
+from wind_forecast.consts import BatchKeys
 from wind_forecast.models.Transformer import TransformerBaseProps, PositionalEncoding
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 
@@ -40,17 +43,42 @@ class TransformerEncoderS2SCMAXWithScaleToDepth(TransformerBaseProps):
         encoder_norm = nn.LayerNorm(self.embed_dim)
         self.encoder = nn.TransformerEncoder(encoder_layer, config.experiment.transformer_attention_layers, encoder_norm)
 
-    def forward(self, inputs, cmax_inputs, targets: torch.Tensor, epoch: int, stage=None):
+        dense_layers = []
+        if config.experiment.with_dates_inputs:
+            features = self.embed_dim + 2
+        else:
+            features = self.embed_dim
+
+        for neurons in config.experiment.transformer_head_dims:
+            dense_layers.append(nn.Linear(in_features=features, out_features=neurons))
+            features = neurons
+        dense_layers.append(nn.Linear(in_features=features, out_features=1))
+        self.classification_head = nn.Sequential(*dense_layers)
+        self.classification_head_time_distributed = TimeDistributed(self.classification_head, batch_first=True)
+
+    def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
+        synop_inputs = batch[BatchKeys.SYNOP_INPUTS.value].float()
+        dates_embedding = None if self.config.experiment.with_dates_inputs is False else batch[
+            BatchKeys.DATES_EMBEDDING.value]
+        cmax_inputs = batch[BatchKeys.CMAX_INPUTS.value].float()
+
         cmax_inputs = cmax_inputs.unsqueeze(2)
         cmax_reshape = cmax_inputs.contiguous().view(cmax_inputs.size()[0] * cmax_inputs.size()[1], *cmax_inputs.size()[2:])
         cmax = torch.nn.functional.pixel_unshuffle(cmax_reshape, self.scaling_factor)
         cmax = cmax.contiguous().view(cmax_inputs.size(0), cmax_inputs.size(1), *cmax.size()[1:])
 
         cmax_embeddings = self.conv_time_distributed(cmax)
-        time_embedding = self.time_2_vec_time_distributed(inputs)
-        x = torch.cat([inputs, time_embedding, cmax_embeddings], -1)
-        x = self.pos_encoder(x) if self.use_pos_encoding else x
-        x = self.encoder(x)
 
-        return torch.squeeze(self.classification_head_time_distributed(x), dim=-1)
+        if self.config.experiment.with_dates_inputs is None:
+            x = [synop_inputs, dates_embedding[0], dates_embedding[1]]
+        else:
+            x = [synop_inputs]
 
+        whole_input_embedding = torch.cat([*x, self.time_2_vec_time_distributed(torch.cat(x, -1)), cmax_embeddings], -1)
+        x = self.pos_encoder(whole_input_embedding) if self.use_pos_encoding else whole_input_embedding
+        output = self.encoder(x)
+
+        if self.config.experiment.with_dates_inputs:
+            return torch.squeeze(self.classification_head_time_distributed(torch.cat([output, dates_embedding[2], dates_embedding[3]], -1)), -1)
+        else:
+            return torch.squeeze(self.classification_head_time_distributed(output), -1)

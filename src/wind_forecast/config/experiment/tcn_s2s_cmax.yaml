@@ -16,7 +16,7 @@ model:
   _target_: wind_forecast.models.TCNS2SCMAX.TCNS2SCMAX
 
 system:
-  _target_: wind_forecast.systems.S2SRegressorWithTFWithCMAX.S2SRegressorWithTFWithCMAX
+  _target_: wind_forecast.systems.BaseS2SRegressor.BaseS2SRegressor
 
 batch_size: 5
 use_future_cmax: False

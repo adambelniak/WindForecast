@@ -1,7 +1,10 @@
+from typing import Dict
+
 import torch
 import torch.nn as nn
 from pytorch_lightning import LightningModule
 from wind_forecast.config.register import Config
+from wind_forecast.consts import BatchKeys
 from wind_forecast.models.TCNModel import TemporalBlock
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 
@@ -20,14 +23,32 @@ class TemporalConvNetS2S(LightningModule):
             tcn_layers += [TemporalBlock(in_channels, out_channels, kernel_size, dilation=dilation_size,
                                          padding=(kernel_size - 1) * dilation_size)]
 
+        if self.config.experiment.with_dates_inputs:
+            features = config.experiment.tcn_channels + 2
+        else:
+            features = config.experiment.tcn_channels
+
         linear = nn.Sequential(
-            nn.Linear(in_features=num_channels[-1], out_features=32),
+            nn.Linear(in_features=features[-1], out_features=32),
             nn.ReLU(),
             nn.Linear(in_features=32, out_features=1)
         )
+
         self.tcn = nn.Sequential(*tcn_layers)
         self.linear_time_distributed = TimeDistributed(linear, batch_first=True)
 
-    def forward(self, inputs: torch.Tensor, targets: torch.Tensor, epoch: int, stage=None) -> torch.Tensor:
-        x = self.tcn(inputs.permute(0, 2, 1))
-        return self.linear_time_distributed(x.permute(0, 2, 1)).squeeze(-1)
+    def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
+        synop_inputs = batch[BatchKeys.SYNOP_INPUTS.value].float()
+        dates_embedding = None if self.config.experiment.with_dates_inputs is False else batch[
+            BatchKeys.DATES_EMBEDDING.value]
+
+        if self.config.experiment.with_dates_inputs:
+            x = [synop_inputs, dates_embedding[0], dates_embedding[1]]
+        else:
+            x = [synop_inputs]
+        x = self.tcn(torch.cat(x, dim=-1).permute(0, 2, 1))
+
+        if self.config.experiment.with_dates_inputs:
+            return self.linear_time_distributed(torch.cat([x.permute(0, 2, 1), dates_embedding[2], dates_embedding[3]], -1)).squeeze(-1)
+        else:
+            return self.linear_time_distributed(x.permute(0, 2, 1)).squeeze(-1)

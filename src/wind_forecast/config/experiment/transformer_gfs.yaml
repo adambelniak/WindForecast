@@ -18,6 +18,8 @@ model:
   _target_: wind_forecast.models.TransformerWithGFS.TransformerWithGFS
 
 system:
-  _target_: wind_forecast.systems.S2SRegressorWithTFWithGFSInput.S2SRegressorWithTFWithGFSInput
+  _target_: wind_forecast.systems.S2SRegressorWithGFSInput.S2SRegressorWithGFSInput
 
 synop_from_year: 2017
+use_all_gfs_params: True
+train_parameters_config_file: TransformerConfig.json

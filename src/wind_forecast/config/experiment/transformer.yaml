@@ -16,6 +16,6 @@ model:
   _target_: wind_forecast.models.Transformer.Transformer
 
 system:
-  _target_: wind_forecast.systems.S2SRegressorWithTF.S2SRegressorWithTF
+  _target_: wind_forecast.systems.BaseS2SRegressor.BaseS2SRegressor
 
 synop_from_year: 2017

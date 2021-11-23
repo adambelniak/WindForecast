@@ -1,4 +1,5 @@
 import math
+import os
 from typing import Optional, Tuple, List
 
 from pytorch_lightning import LightningDataModule
@@ -19,6 +20,7 @@ from wind_forecast.util.gfs_util import add_param_to_train_params, match_gfs_wit
 from wind_forecast.util.synop_util import get_correct_dates_for_sequence
 import pandas as pd
 import numpy as np
+from wind_forecast.consts import BatchKeys
 
 
 class Sequence2SequenceDataModule(LightningDataModule):
@@ -51,10 +53,11 @@ class Sequence2SequenceDataModule(LightningDataModule):
         self.normalization_type = config.experiment.normalization_type
         self.prediction_offset = config.experiment.prediction_offset
         self.target_coords = config.experiment.target_coords
+        self.use_all_gfs_params = config.experiment.use_all_gfs_params
         self.gfs_train_params = process_config(
-            config.experiment.train_parameters_config_file) if config.experiment.use_all_gfs_as_input else None
+            config.experiment.train_parameters_config_file) if self.use_all_gfs_params else None
         self.gfs_target_param_indices = [self.gfs_train_params.index(param) for param in target_param_to_gfs_name_level(
-            self.target_param)]
+            self.target_param)] if self.use_all_gfs_params else None
 
         self.synop_data = ...
         self.synop_data_indices = ...
@@ -68,6 +71,9 @@ class Sequence2SequenceDataModule(LightningDataModule):
                                                 from_year=self.synop_from_year,
                                                 to_year=self.synop_to_year,
                                                 norm=False)
+
+        if os.getenv('RUN_MODE', '').lower() == 'debug':
+            self.synop_data = self.synop_data.head(100)
 
         dates = get_correct_dates_for_sequence(self.synop_data, self.sequence_length, self.future_sequence_length,
                                                self.prediction_offset)
@@ -96,10 +102,12 @@ class Sequence2SequenceDataModule(LightningDataModule):
         if self.config.experiment.use_gfs_data:
             synop_inputs, all_gfs_input_data, gfs_target_data, all_gfs_target_data = self.prepare_dataset_for_gfs()
 
-            if self.gfs_train_params is not None:
-                dataset = Sequence2SequenceWithGFSDataset(self.config, self.synop_data, self.synop_data_indices, gfs_target_data, all_gfs_target_data, all_gfs_input_data)
+            if self.use_all_gfs_params:
+                dataset = Sequence2SequenceWithGFSDataset(self.config, self.synop_data, self.synop_data_indices,
+                                                          gfs_target_data, all_gfs_target_data, all_gfs_input_data)
             else:
-                dataset = Sequence2SequenceWithGFSDataset(self.config, self.synop_data, self.synop_data_indices, gfs_target_data, all_gfs_target_data)
+                dataset = Sequence2SequenceWithGFSDataset(self.config, self.synop_data, self.synop_data_indices,
+                                                          gfs_target_data)
 
         else:
             dataset = Sequence2SequenceDataset(self.config, self.synop_data, self.synop_data_indices)
@@ -117,7 +125,7 @@ class Sequence2SequenceDataModule(LightningDataModule):
     def prepare_dataset_for_gfs(self):
         print("Preparing the dataset")
         all_gfs_input_data = ...
-        if self.gfs_train_params is not None:
+        if self.use_all_gfs_params:
             # first, get GFS input data that matches synop input data (matching past frames)
             self.synop_data_indices, all_gfs_input_data, removed_indices = match_gfs_with_synop_sequence2sequence(
                 self.synop_data,
@@ -139,32 +147,35 @@ class Sequence2SequenceDataModule(LightningDataModule):
             self.prediction_offset,
             self.sequence_length + self.prediction_offset,
             self.sequence_length + self.future_sequence_length + self.prediction_offset,
-            self.gfs_train_params, future_dates=True)
+            self.gfs_train_params if self.use_all_gfs_params
+            else target_param_to_gfs_name_level(self.target_param), future_dates=True)
 
         self.removed_dataset_indices.extend(next_removed_indices)
         self.removed_dataset_indices = set(self.removed_dataset_indices)
 
-        if self.gfs_train_params is not None:
+        if self.use_all_gfs_params:
             indices_to_remove = [indices.index(ind) for ind in next_removed_indices]
             all_gfs_input_data = np.array([item for index, item in enumerate(all_gfs_input_data) if
-                                  index not in indices_to_remove])
+                                           index not in indices_to_remove])
             all_gfs_input_data = normalize_gfs_data(all_gfs_input_data, self.normalization_type, (0, 1))
+            gfs_target_data = all_gfs_target_data[:, :, self.gfs_target_param_indices]
+        else:
+            gfs_target_data = all_gfs_target_data
 
-        mean, std = np.mean(all_gfs_target_data, axis=-1), np.std(all_gfs_target_data, axis=-1)
-        gfs_target_data = all_gfs_target_data[self.gfs_target_param_indices]
+        mean, std = np.mean(all_gfs_target_data, axis=(0, 1)), np.std(all_gfs_target_data, axis=(0, 1))
         if self.target_param == "wind_velocity":
             gfs_target_data = np.array([math.sqrt(velocity[0] ** 2 + velocity[1] ** 2) for velocity in gfs_target_data])
 
-        gfs_target_data = (gfs_target_data - mean) / std
+        gfs_target_data = (gfs_target_data - mean[self.gfs_target_param_indices]) / std[self.gfs_target_param_indices]
         all_gfs_target_data = (all_gfs_target_data - mean) / std
 
         assert len(self.synop_data_indices) == len(all_gfs_target_data)
 
-        if self.gfs_train_params is not None:
+        if self.use_all_gfs_params:
             assert len(self.synop_data_indices) == len(all_gfs_input_data)
             return self.synop_data_indices, all_gfs_input_data, gfs_target_data, all_gfs_target_data
 
-        return self.synop_data_indices, [], gfs_target_data, all_gfs_target_data
+        return self.synop_data_indices, None, gfs_target_data, None
 
     def resolve_all_synop_data(self):
         synop_inputs = []
@@ -183,7 +194,8 @@ class Sequence2SequenceDataModule(LightningDataModule):
         return synop_inputs, all_synop_targets
 
     def train_dataloader(self):
-        return DataLoader(self.dataset_train, batch_size=self.batch_size, shuffle=self.shuffle, collate_fn=self.collate_fn)
+        return DataLoader(self.dataset_train, batch_size=self.batch_size, shuffle=self.shuffle,
+                          collate_fn=self.collate_fn)
 
     def val_dataloader(self):
         return DataLoader(self.dataset_val, batch_size=self.batch_size, collate_fn=self.collate_fn)
@@ -193,4 +205,27 @@ class Sequence2SequenceDataModule(LightningDataModule):
 
     def collate_fn(self, x: List[Tuple]):
         tensors, dates = [item[:-2] for item in x], [item[-2:] for item in x]
-        return [*default_collate(tensors), *list(zip(*dates))]
+        all_data = [*default_collate(tensors), *list(zip(*dates))]
+        dict_data = {
+            BatchKeys.SYNOP_INPUTS.value: all_data[0],
+            BatchKeys.SYNOP_TARGETS.value: all_data[1],
+            BatchKeys.ALL_SYNOP_TARGETS.value: all_data[2]
+        }
+
+        if self.config.experiment.use_gfs_data:
+            if self.use_all_gfs_params:
+                dict_data[BatchKeys.GFS_INPUTS.value] = all_data[3]
+                dict_data[BatchKeys.GFS_TARGETS.value] = all_data[4]
+                dict_data[BatchKeys.ALL_GFS_TARGETS.value] = all_data[5]
+                dict_data[BatchKeys.DATES_INPUTS.value] = all_data[6]
+                dict_data[BatchKeys.DATES_TARGETS.value] = all_data[7]
+
+            else:
+                dict_data[BatchKeys.GFS_TARGETS.value] = all_data[3]
+                dict_data[BatchKeys.DATES_INPUTS.value] = all_data[4]
+                dict_data[BatchKeys.DATES_TARGETS.value] = all_data[5]
+
+        else:
+            dict_data[BatchKeys.DATES_INPUTS.value] = all_data[3]
+            dict_data[BatchKeys.DATES_TARGETS.value] = all_data[4]
+        return dict_data

@@ -46,7 +46,7 @@ class SequenceDataModule(LightningDataModule):
         self.synop_from_year = config.experiment.synop_from_year
         self.synop_to_year = config.experiment.synop_to_year
         self.gfs_train_params = process_config(
-            config.experiment.train_parameters_config_file) if config.experiment.use_all_gfs_as_input else None
+            config.experiment.train_parameters_config_file) if config.experiment.use_all_gfs_params else None
 
         self.synop_data = ...
         self.synop_data_indices = ...

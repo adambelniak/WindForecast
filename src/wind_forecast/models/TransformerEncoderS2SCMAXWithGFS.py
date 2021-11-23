@@ -1,9 +1,11 @@
 import math
+from typing import Dict
 
 import torch
 from torch import nn
 
 from wind_forecast.config.register import Config
+from wind_forecast.consts import BatchKeys
 from wind_forecast.models.Transformer import TransformerBaseProps, PositionalEncoding, Time2Vec
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 from wind_forecast.util.config import process_config
@@ -34,7 +36,7 @@ class TransformerEncoderS2SCMAXWithGFS(TransformerBaseProps):
         self.conv_time_distributed = TimeDistributed(self.conv)
 
         self.embed_dim = self.features_len * (config.experiment.time2vec_embedding_size + 1) + conv_W * conv_H * out_channels
-        if config.experiment.use_all_gfs_as_input:
+        if config.experiment.use_all_gfs_params:
             self.time_2_vec_time_distributed = TimeDistributed(Time2Vec(self.features_len + len(process_config(config.experiment.train_parameters_config_file)),
                                                                         config.experiment.time2vec_embedding_size), batch_first=True)
             self.embed_dim += len(process_config(config.experiment.train_parameters_config_file)) * (config.experiment.time2vec_embedding_size + 1)
@@ -48,7 +50,11 @@ class TransformerEncoderS2SCMAXWithGFS(TransformerBaseProps):
         self.encoder = nn.TransformerEncoder(encoder_layer, config.experiment.transformer_attention_layers, encoder_norm)
 
         dense_layers = []
-        features = self.embed_dim + 1
+        if config.experiment.with_dates_inputs:
+            features = self.embed_dim + 3
+        else:
+            features = self.embed_dim + 1
+
         for neurons in config.experiment.transformer_head_dims:
             dense_layers.append(nn.Linear(in_features=features, out_features=neurons))
             features = neurons
@@ -56,17 +62,33 @@ class TransformerEncoderS2SCMAXWithGFS(TransformerBaseProps):
         self.classification_head = nn.Sequential(*dense_layers)
         self.classification_head_time_distributed = TimeDistributed(self.classification_head, batch_first=True)
 
-    def forward(self, inputs, gfs_inputs, gfs_targets, cmax_inputs, targets: torch.Tensor, all_gfs_targets: torch.Tensor, epoch: int, stage=None):
+    def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
+        synop_inputs = batch[BatchKeys.SYNOP_INPUTS.value].float()
+        gfs_targets = batch[BatchKeys.GFS_TARGETS.value].float()
+        dates_embedding = None if self.config.experiment.with_dates_inputs is False else batch[BatchKeys.DATES_EMBEDDING.value]
+        cmax_inputs = batch[BatchKeys.CMAX_INPUTS.value].float()
+
         cmax_embeddings = self.conv_time_distributed(cmax_inputs.unsqueeze(2))
-        if gfs_inputs is None:
-            time_embedding = torch.cat([inputs, self.time_2_vec_time_distributed(inputs)], dim=-1)
+
+        if self.config.experiment.with_dates_inputs:
+            if self.config.experiment.use_all_gfs_params:
+                gfs_inputs = batch[BatchKeys.GFS_INPUTS.value].float()
+                x = [synop_inputs, gfs_inputs, dates_embedding[0], dates_embedding[1]]
+            else:
+                x = [synop_inputs, dates_embedding[0], dates_embedding[1]]
         else:
-            time_embedding = torch.cat([inputs, gfs_inputs,
-                                        self.time_2_vec_time_distributed(torch.cat([inputs, gfs_inputs], dim=-1))], dim=-1)
+            if self.config.experiment.use_all_gfs_params:
+                gfs_inputs = batch[BatchKeys.GFS_INPUTS.value].float()
+                x = [synop_inputs, gfs_inputs]
+            else:
+                x = [synop_inputs]
 
-        x = torch.cat([time_embedding, cmax_embeddings], -1)
-        x = self.pos_encoder(x) if self.use_pos_encoding else x
-        x = self.encoder(x)
+        whole_input_embedding = torch.cat([*x, self.time_2_vec_time_distributed(torch.cat(x, -1)), cmax_embeddings], -1)
+        x = self.pos_encoder(whole_input_embedding) if self.use_pos_encoding else whole_input_embedding
+        output = self.encoder(x)
 
-        return torch.squeeze(self.classification_head_time_distributed(torch.cat([x, gfs_targets], dim=-1)), dim=-1)
+        if self.config.experiment.with_dates_inputs:
+            return torch.squeeze(self.classification_head_time_distributed(torch.cat([output, gfs_targets, dates_embedding[2], dates_embedding[3]], -1)), -1)
+        else:
+            return torch.squeeze(self.classification_head_time_distributed(output, gfs_targets), -1)
 

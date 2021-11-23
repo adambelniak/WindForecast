@@ -19,6 +19,7 @@ from torch.optim.optimizer import Optimizer
 from wandb.sdk.wandb_run import Run
 
 from wind_forecast.config.register import Config
+from wind_forecast.consts import BatchKeys
 from wind_forecast.util.gfs_util import add_param_to_train_params
 
 
@@ -138,6 +139,12 @@ class BaseS2SRegressor(pl.LightningModule):
         return torch.stack([out[key] for out in outputs]).mean().detach()
 
     # ----------------------------------------------------------------------------------------------
+    # Forward
+    # ----------------------------------------------------------------------------------------------
+    def forward(self, batch: Dict[str, torch.Tensor], epoch, stage) -> torch.Tensor:
+        return self.model(batch, epoch, stage)
+
+    # ----------------------------------------------------------------------------------------------
     # Loss
     # ----------------------------------------------------------------------------------------------
     def calculate_loss(self, outputs: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
@@ -159,6 +166,43 @@ class BaseS2SRegressor(pl.LightningModule):
             Loss value.
         """
         return self.criterion(outputs, targets)
+
+    # ----------------------------------------------------------------------------------------------
+    # Training
+    # ----------------------------------------------------------------------------------------------
+    def training_step(self, batch: Dict[str, torch.Tensor], batch_idx: int) -> Dict[str, torch.Tensor]:
+        """
+        Train on a single batch with loss defined by `self.criterion`.
+
+        Parameters
+        ----------
+        batch : Dict[str, torch.Tensor]
+            Training batch.
+        batch_idx : int
+            Batch index.
+
+        Returns
+        -------
+        dict[str, torch.Tensor]
+            Metric values for a given batch.
+        """
+
+        if self.cfg.experiment.with_dates_inputs:
+            dates_inputs = batch[BatchKeys.DATES_INPUTS.value]
+            dates_targets = batch[BatchKeys.DATES_TARGETS.value]
+            dates_embeddings = self.get_dates_embeddings(dates_inputs, dates_targets)
+            batch[BatchKeys.DATES_EMBEDDING.value] = dates_embeddings
+
+        outputs = self.forward(batch, self.current_epoch, 'fit')
+        targets = batch[BatchKeys.SYNOP_TARGETS.value]
+        loss = self.calculate_loss(outputs, targets.float())
+        self.train_mse(outputs, targets)
+        self.train_mae(outputs, targets)
+
+        return {
+            'loss': loss
+            # no need to return 'train_mse' here since it is always available as `self.train_mse`
+        }
 
     def training_epoch_end(self, outputs: List[Any]) -> None:
         """
@@ -185,6 +229,42 @@ class BaseS2SRegressor(pl.LightningModule):
             metrics[key] = float(self._reduce(outputs, key).item())
 
         self.logger.log_metrics(metrics, step=step)
+
+    # ----------------------------------------------------------------------------------------------
+    # Validation
+    # ----------------------------------------------------------------------------------------------
+    def validation_step(self, batch: Dict[str, torch.Tensor], batch_idx: int) -> Dict[str, torch.Tensor]:
+        """
+        Compute validation metrics.
+
+        Parameters
+        ----------
+        batch : Dict[str, torch.Tensor]
+            Validation batch.
+        batch_idx : int
+            Batch index.
+
+        Returns
+        -------
+        dict[str, torch.Tensor]
+            Metric values for a given batch.
+        """
+        if self.cfg.experiment.with_dates_inputs:
+            dates_inputs = batch[BatchKeys.DATES_INPUTS.value]
+            dates_targets = batch[BatchKeys.DATES_TARGETS.value]
+            dates_embeddings = self.get_dates_embeddings(dates_inputs, dates_targets)
+            batch[BatchKeys.DATES_EMBEDDING.value] = dates_embeddings
+
+        outputs = self.forward(batch, self.current_epoch, 'test')
+        targets = batch[BatchKeys.SYNOP_TARGETS.value]
+
+        self.val_mse(outputs.squeeze(), targets.float().squeeze())
+        self.val_mae(outputs.squeeze(), targets.float().squeeze())
+
+        return {
+            # 'additional_metric': ...
+            # no need to return 'val_mse' here since it is always available as `self.val_mse`
+        }
 
     def validation_epoch_end(self, outputs: List[Any]) -> None:
         """
@@ -213,6 +293,52 @@ class BaseS2SRegressor(pl.LightningModule):
         self.logger.log_metrics(metrics, step=step)
         self.log("ptl/val_loss", metrics['val_rmse'])
 
+    # ----------------------------------------------------------------------------------------------
+    # Test
+    # ----------------------------------------------------------------------------------------------
+    def test_step(self, batch: List[torch.Tensor], batch_idx: int) -> Dict[str, torch.Tensor]:
+        """
+        Compute test metrics.
+
+        Parameters
+        ----------
+        batch : Batch
+            Test batch.
+        batch_idx : int
+            Batch index.
+
+        Returns
+        -------
+        dict[str, torch.Tensor]
+            Metric values for a given batch.
+        """
+        if self.cfg.experiment.with_dates_inputs:
+            dates_inputs = batch[BatchKeys.DATES_INPUTS.value]
+            dates_targets = batch[BatchKeys.DATES_TARGETS.value]
+            dates_embeddings = self.get_dates_embeddings(dates_inputs, dates_targets)
+            batch[BatchKeys.DATES_EMBEDDING.value] = dates_embeddings
+
+        outputs = self.forward(batch, self.current_epoch, 'test')
+        targets = batch[BatchKeys.SYNOP_TARGETS.value]
+
+        self.test_mse(outputs.squeeze(), targets.float().squeeze())
+        self.test_mae(outputs.squeeze(), targets.float().squeeze())
+
+        synop_inputs = batch[BatchKeys.SYNOP_INPUTS.value]
+        if self.cfg.experiment.with_dates_inputs:
+            dates_inputs = batch[BatchKeys.DATES_INPUTS.value]
+            dates_targets = batch[BatchKeys.DATES_TARGETS.value]
+        else:
+            dates_inputs = None
+            dates_targets = None
+
+        return {BatchKeys.SYNOP_TARGETS.value: targets,
+                'output': outputs,
+                BatchKeys.SYNOP_INPUTS.value: synop_inputs[:, :, self.target_param_index],
+                BatchKeys.DATES_INPUTS.value: dates_inputs,
+                BatchKeys.DATES_TARGETS.value: dates_targets
+                }
+
     def test_epoch_end(self, outputs: List[Any]) -> None:
         """
         Log test metrics.
@@ -236,16 +362,18 @@ class BaseS2SRegressor(pl.LightningModule):
         self.logger.log_metrics(metrics, step=step)
 
         # save results to view
-        labels = [item for sublist in [x['labels'] for x in outputs] for item in sublist]
-
-        inputs_dates = [item for sublist in [x['inputs_dates'] for x in outputs] for item in sublist]
-
-        labels_dates = [item for sublist in [x['targets_dates'] for x in outputs] for item in sublist]
+        labels = [item for sublist in [x[BatchKeys.SYNOP_TARGETS.value] for x in outputs] for item in sublist]
 
         out = [item for sublist in [x['output'] for x in outputs] for item in sublist]
 
-        inputs = [item for sublist in [x['input'] for x in outputs] for item in sublist]
+        inputs = [item for sublist in [x[BatchKeys.SYNOP_INPUTS.value] for x in outputs] for item in sublist]
 
+        if self.cfg.experiment.with_dates_inputs:
+            inputs_dates = [item for sublist in [x[BatchKeys.DATES_INPUTS.value] for x in outputs] for item in sublist]
+            labels_dates = [item for sublist in [x[BatchKeys.DATES_TARGETS.value] for x in outputs] for item in sublist]
+        else:
+            inputs_dates = None
+            labels_dates = None
 
         self.test_results = {'labels': copy.deepcopy(labels),
                              'output': copy.deepcopy(out),

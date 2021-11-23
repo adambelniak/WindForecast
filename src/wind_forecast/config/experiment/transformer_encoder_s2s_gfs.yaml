@@ -18,7 +18,7 @@ model:
   _target_: wind_forecast.models.TransformerEncoderS2SWithGFS.TransformerEncoderS2SWithGFS
 
 system:
-  _target_: wind_forecast.systems.S2SRegressorWithTFWithGFSInput.S2SRegressorWithTFWithGFSInput
+  _target_: wind_forecast.systems.S2SRegressorWithGFSInput.S2SRegressorWithGFSInput
 
 synop_from_year: 2017
 use_pos_encoding: False

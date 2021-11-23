@@ -75,7 +75,7 @@ class ExperimentSettings:
 
     use_gfs_data: bool = False
 
-    use_all_gfs_as_input: bool = False
+    use_all_gfs_params: bool = False
 
     prediction_offset: int = 0
 
@@ -133,7 +133,7 @@ class ExperimentSettings:
 
     transformer_attention_heads: int = 1
 
-    transformer_head_dims: List = field(default_factory=lambda: [64])
+    transformer_head_dims: List = field(default_factory=lambda: [64, 128, 32])
 
     with_dates_inputs: bool = True
 

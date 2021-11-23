@@ -1,7 +1,10 @@
+from typing import Dict
+
 import torch
 import torch.nn as nn
 from pytorch_lightning import LightningModule
 from wind_forecast.config.register import Config
+from wind_forecast.consts import BatchKeys
 from wind_forecast.models.TCNModel import TemporalBlock
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 from wind_forecast.util.config import process_config
@@ -17,10 +20,13 @@ class TCNS2SCMAX(LightningModule):
                                            batch_first=True)
         self.tcn = self.create_tcn_layers(config)
 
-        tcn_channels = config.experiment.tcn_channels
+        if self.config.experiment.with_dates_inputs:
+            features = config.experiment.tcn_channels + 2
+        else:
+            features = config.experiment.tcn_channels
 
         linear = nn.Sequential(
-            nn.Linear(in_features=tcn_channels[-1], out_features=32),
+            nn.Linear(in_features=features, out_features=32),
             nn.ReLU(),
             nn.Linear(in_features=32, out_features=1)
         )
@@ -57,9 +63,24 @@ class TCNS2SCMAX(LightningModule):
 
         return nn.Sequential(*tcn_layers)
 
-    def forward(self, inputs, cnn_inputs, targets: torch.Tensor, epoch: int, stage=None) -> torch.Tensor:
-        x = self.cnn(cnn_inputs.unsqueeze(2))
-        x = self.cnn_lin_tcn(x)
-        x = torch.cat([x, inputs], dim=-1)
+    def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
+        synop_inputs = batch[BatchKeys.SYNOP_INPUTS.value].float()
+        cmax_inputs = batch[BatchKeys.CMAX_INPUTS.value].float()
+
+        dates_embedding = None if self.config.experiment.with_dates_inputs is False else batch[
+            BatchKeys.DATES_EMBEDDING.value]
+
+        if self.config.experiment.with_dates_inputs:
+            x = [synop_inputs, dates_embedding[0], dates_embedding[1]]
+        else:
+            x = [synop_inputs]
+
+        cmax_embedding = self.cnn(cmax_inputs.unsqueeze(2))
+        cmax_embedding = self.cnn_lin_tcn(cmax_embedding)
+        x = torch.cat([*x, cmax_embedding], dim=-1)
         x = self.tcn(x.permute(0, 2, 1))
-        return self.linear(x.permute(0, 2, 1)).squeeze(-1)
+
+        if self.config.experiment.with_dates_inputs:
+            return self.linear_time_distributed(torch.cat([x.permute(0, 2, 1), dates_embedding[2], dates_embedding[3]], -1)).squeeze(-1)
+        else:
+            return self.linear_time_distributed(x.permute(0, 2, 1)).squeeze(-1)

@@ -1,7 +1,10 @@
+from typing import Dict
+
 import torch
 import torch.nn as nn
 from pytorch_lightning import LightningModule
 from wind_forecast.config.register import Config
+from wind_forecast.consts import BatchKeys
 from wind_forecast.models.TCNModel import TemporalBlock
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 from wind_forecast.util.config import process_config
@@ -11,7 +14,7 @@ class TCNS2SCMAXWithGFS(LightningModule):
     def __init__(self, config: Config):
         super(TCNS2SCMAXWithGFS, self).__init__()
         self.cnn = TimeDistributed(self.create_cnn_layers(config), batch_first=True)
-        if config.experiment.use_all_gfs_as_input:
+        if config.experiment.use_all_gfs_params:
             out_features = config.experiment.tcn_channels[0] - len(config.experiment.synop_train_features) \
                            - len(process_config(config.experiment.train_parameters_config_file))
         else:
@@ -21,10 +24,13 @@ class TCNS2SCMAXWithGFS(LightningModule):
                                                      out_features=out_features), batch_first=True)
         self.tcn = self.create_tcn_layers(config)
 
-        tcn_channels = config.experiment.tcn_channels
+        if self.config.experiment.with_dates_inputs:
+            features = config.experiment.tcn_channels + 3
+        else:
+            features = config.experiment.tcn_channels + 1
 
         linear = nn.Sequential(
-            nn.Linear(in_features=tcn_channels[-1] + 1, out_features=32),
+            nn.Linear(in_features=features, out_features=32),
             nn.ReLU(),
             nn.Linear(in_features=32, out_features=1)
         )
@@ -61,13 +67,33 @@ class TCNS2SCMAXWithGFS(LightningModule):
 
         return nn.Sequential(*tcn_layers)
 
-    def forward(self, inputs, gfs_inputs, gfs_targets, cnn_inputs, targets: torch.Tensor, epoch: int, stage=None) -> torch.Tensor:
-        x = self.cnn(cnn_inputs.unsqueeze(2))
-        x = self.cnn_lin_tcn(x)
-        if gfs_inputs is None:
-            x = torch.cat([x, inputs], dim=-1)
+    def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
+        synop_inputs = batch[BatchKeys.SYNOP_INPUTS.value].float()
+        gfs_targets = batch[BatchKeys.GFS_TARGETS.value].float()
+        dates_embedding = None if self.config.experiment.with_dates_inputs is False else batch[BatchKeys.DATES_EMBEDDING.value]
+        cmax_inputs = batch[BatchKeys.CMAX_INPUTS.value].float()
+
+        if self.config.experiment.with_dates_inputs:
+            if self.config.experiment.use_all_gfs_params:
+                gfs_inputs = batch[BatchKeys.GFS_INPUTS.value].float()
+                x = [synop_inputs, gfs_inputs, dates_embedding[0], dates_embedding[1]]
+            else:
+                x = [synop_inputs, dates_embedding[0], dates_embedding[1]]
         else:
-            x = torch.cat([x, inputs, gfs_inputs], dim=-1)
+            if self.config.experiment.use_all_gfs_params:
+                gfs_inputs = batch[BatchKeys.GFS_INPUTS.value].float()
+                x = [synop_inputs, gfs_inputs]
+            else:
+                x = [synop_inputs]
+
+        cmax_embedding = self.cnn(cmax_inputs.unsqueeze(2))
+        cmax_embedding = self.cnn_lin_tcn(cmax_embedding)
+        x = torch.cat([*x, cmax_embedding], -1)
 
         x = self.tcn(x.permute(0, 2, 1))
-        return self.linear(torch.cat([x.permute(0, 2, 1), gfs_targets], dim=-1)).squeeze(-1)
+
+        if self.config.experiment.with_dates_inputs:
+            return self.linear_time_distributed(torch.cat([x.permute(0, 2, 1), gfs_targets, dates_embedding[2], dates_embedding[3]], -1)).squeeze(-1)
+        else:
+            return self.linear_time_distributed(torch.cat([x.permute(0, 2, 1), gfs_targets], -1)).squeeze(-1)
+

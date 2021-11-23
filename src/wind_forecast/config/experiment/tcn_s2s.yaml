@@ -16,4 +16,4 @@ model:
   _target_: wind_forecast.models.TCNS2SModel.TemporalConvNetS2S
 
 system:
-  _target_: wind_forecast.systems.S2SRegressorWithTF.S2SRegressorWithTF
+  _target_: wind_forecast.systems.BaseS2SRegressor.BaseS2SRegressor

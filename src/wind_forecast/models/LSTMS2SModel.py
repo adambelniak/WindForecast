@@ -1,10 +1,12 @@
 import math
+from typing import Dict
 
 import torch
 from pytorch_lightning import LightningModule
 from torch import nn
 
 from wind_forecast.config.register import Config
+from wind_forecast.consts import BatchKeys
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 
 
@@ -26,14 +28,17 @@ class LSTMS2SModel(LightningModule):
             nn.Linear(in_features=128, out_features=1)
         )
 
-    def forward(self, inputs: torch.Tensor, targets: torch.Tensor, epoch: int, stage=None) -> torch.Tensor:
-        output, _ = self.lstm1(inputs)
+    def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
+        synop_inputs = batch[BatchKeys.SYNOP_INPUTS.value].float()
+        all_synop_targets = batch[BatchKeys.ALL_SYNOP_TARGETS.value].float()
+
+        output, _ = self.lstm1(synop_inputs)
         output, _ = self.lstm2(output)
         if epoch < self.teacher_forcing_epoch_num and stage in [None, 'fit']:
             # Teacher forcing
             pred = output[:, -1:, :] # first in pred sequence
             if self.gradual_teacher_forcing:
-                targets_shifted = torch.cat([pred, targets[:, :-1, ]], 1)[:, :-1, :]
+                targets_shifted = torch.cat([pred, all_synop_targets[:, :-1, ]], 1)[:, :-1, :]
                 first_taught = math.floor(epoch / self.teacher_forcing_epoch_num * self.sequence_length)
                 for frame in range(first_taught): # do normal prediction for the beginning frames
                     next_pred, _ = self.lstm1(pred[:, -1:, :])
@@ -46,14 +51,14 @@ class LSTMS2SModel(LightningModule):
                 pred = torch.cat([pred, next_pred], 1)
 
             else: # non-gradual, just basic teacher forcing
-                targets_shifted = torch.cat([pred, targets], 1)[:, :-1, ]
+                targets_shifted = torch.cat([pred, all_synop_targets], 1)[:, :-1, ]
                 pred, _ = self.lstm1(targets_shifted)
                 pred, _ = self.lstm2(pred)
 
         else:
             # inference
             pred = output[:, -1:, :]
-            for frame in range(inputs.size(1) - 1):
+            for frame in range(synop_inputs.size(1) - 1):
                 next_pred, _ = self.lstm1(pred[:, -1:, :])
                 next_pred, _ = self.lstm2(next_pred)
                 pred = torch.cat([pred, next_pred], 1)

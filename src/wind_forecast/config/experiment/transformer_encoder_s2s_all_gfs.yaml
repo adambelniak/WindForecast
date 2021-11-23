@@ -16,10 +16,10 @@ model:
   _target_: wind_forecast.models.TransformerEncoderS2SWithGFS.TransformerEncoderS2SWithGFS
 
 system:
-  _target_: wind_forecast.systems.S2SRegressorWithTFWithGFSInput.S2SRegressorWithTFWithGFSInput
+  _target_: wind_forecast.systems.S2SRegressorWithGFSInput.S2SRegressorWithGFSInput
 
 use_gfs_data: True
 synop_from_year: 2017
 train_parameters_config_file: TransformerConfig.json
-use_all_gfs_as_input: True
+use_all_gfs_params: True
 use_pos_encoding: False

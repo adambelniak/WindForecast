@@ -6,7 +6,7 @@ from wind_forecast.util.gfs_util import add_param_to_train_params
 class Sequence2SequenceWithGFSDataset(BaseDataset):
     'Characterizes a dataset for PyTorch'
 
-    def __init__(self, config: Config, synop_data, synop_data_indices, gfs_target_data, all_gfs_target_data, all_gfs_input_data=None):
+    def __init__(self, config: Config, synop_data, synop_data_indices, gfs_target_data, all_gfs_target_data=None, all_gfs_input_data=None):
         'Initialization'
         super().__init__()
         self.target_param = config.experiment.target_parameter
@@ -20,12 +20,12 @@ class Sequence2SequenceWithGFSDataset(BaseDataset):
         self.feature_names = list(list(zip(*all_params))[1])
         self.target_param_index = [x for x in self.feature_names].index(self.target_param)
         self.train_params = list(list(zip(*train_params))[1])
+        self.use_all_gfs_params = config.experiment.use_all_gfs_params
 
-        self.all_gfs_input_data = all_gfs_input_data
-        if all_gfs_input_data is not None:
+        if self.use_all_gfs_params:
             self.data = list(zip(synop_data_indices, all_gfs_input_data, gfs_target_data, all_gfs_target_data))
         else:
-            self.data = list(zip(synop_data_indices, gfs_target_data, all_gfs_target_data))
+            self.data = list(zip(synop_data_indices, gfs_target_data))
 
     def __len__(self):
         'Denotes the total number of samples'
@@ -33,22 +33,22 @@ class Sequence2SequenceWithGFSDataset(BaseDataset):
 
     def __getitem__(self, index):
         'Generates one sample of data'
-        if self.all_gfs_input_data is not None:
+        if self.use_all_gfs_params:
             synop_index, all_gfs_inputs, gfs_targets, all_gfs_target_data = self.data[index]
         else:
-            synop_index, gfs_targets, all_gfs_target_data = self.data[index]
+            synop_index, gfs_targets = self.data[index]
 
         synop_inputs = self.synop_data.iloc[synop_index:synop_index + self.sequence_length][self.train_params].to_numpy()
         all_synop_targets = self.synop_data.iloc[
                       synop_index + self.sequence_length + self.prediction_offset:synop_index + self.sequence_length + self.prediction_offset + self.future_sequence_length][
             self.train_params].to_numpy()
-        y = all_synop_targets[:, self.target_param_index]
+        synop_targets = all_synop_targets[:, self.target_param_index]
         inputs_dates = self.synop_data.iloc[synop_index:synop_index + self.sequence_length]['date']
-        y_dates = self.synop_data.iloc[
+        target_dates = self.synop_data.iloc[
                   synop_index + self.sequence_length + self.prediction_offset
                   :synop_index + self.sequence_length + self.prediction_offset + self.future_sequence_length]['date']
 
-        if self.all_gfs_input_data is not None:
-            return synop_inputs, all_gfs_inputs, gfs_targets, all_synop_targets, all_gfs_target_data, y, y_dates, inputs_dates
+        if self.use_all_gfs_params:
+            return synop_inputs, synop_targets, all_synop_targets, all_gfs_inputs, gfs_targets, all_gfs_target_data, inputs_dates, target_dates
 
-        return synop_inputs, gfs_targets, all_synop_targets, all_gfs_target_data, y, y_dates, inputs_dates
+        return synop_inputs, synop_targets, all_synop_targets, gfs_targets, inputs_dates, target_dates
