@@ -35,7 +35,7 @@ class TransformerWithGFS(Transformer):
         self.decoder = nn.TransformerDecoder(decoder_layer, self.transformer_layers_num, decoder_norm)
 
         if config.experiment.with_dates_inputs:
-            features = self.embed_dim + 3
+            features = self.embed_dim + 2
         else:
             features = self.embed_dim + 1
         dense_layers = []
@@ -118,6 +118,7 @@ class TransformerWithGFS(Transformer):
             output = pred
 
         if self.config.experiment.with_dates_inputs:
-            return torch.squeeze(self.classification_head_time_distributed(torch.cat([output, gfs_targets, dates_embedding[2], dates_embedding[3]], -1)), -1)
+            # return torch.squeeze(self.classification_head_time_distributed(torch.cat([output, gfs_targets, dates_embedding[2], dates_embedding[3]], -1)), -1)
+            return torch.squeeze(self.classification_head_time_distributed(torch.cat([output, dates_embedding[2], dates_embedding[3]], -1)), -1)
         else:
             return torch.squeeze(self.classification_head_time_distributed(torch.cat([output, gfs_targets], -1)), -1)
