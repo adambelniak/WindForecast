@@ -151,7 +151,7 @@ class Transformer(TransformerBaseProps):
             # Teacher forcing - masked targets as decoder inputs
             if self.gradual_teacher_forcing:
                 first_taught = math.floor(epoch / self.teacher_forcing_epoch_num * self.sequence_length)
-                decoder_input = self.getSOS(x.size(0))  # SOS
+                decoder_input = whole_input_embedding[:, -1:, :]  # SOS - last input frame
                 pred = None
                 for frame in range(first_taught):  # do normal prediction for the beginning frames
                     y = self.pos_encoder(decoder_input) if self.use_pos_encoding else decoder_input
@@ -161,7 +161,7 @@ class Transformer(TransformerBaseProps):
 
                 # then, do teacher forcing
                 # SOS is appended for case when first_taught is 0
-                decoder_input = torch.cat([self.getSOS(x.size(0)), whole_target_embedding], 1)[:, first_taught:-1, ]
+                decoder_input = torch.cat([whole_input_embedding[:, -1:, :], whole_target_embedding], 1)[:, first_taught:-1, ]
                 decoder_input = self.pos_encoder(decoder_input) if self.use_pos_encoding else decoder_input
                 target_mask = self.generate_mask(self.sequence_length - first_taught).to(self.device)
                 next_pred = self.decoder(decoder_input, memory, tgt_mask=target_mask)
@@ -170,13 +170,13 @@ class Transformer(TransformerBaseProps):
             else:
                 # non-gradual, just basic teacher forcing
                 decoder_input = self.pos_encoder(whole_target_embedding) if self.use_pos_encoding else whole_target_embedding
-                decoder_input = torch.cat([self.getSOS(x.size(0)), decoder_input], 1)[:, :-1, ]
+                decoder_input = torch.cat([whole_input_embedding[:, -1:, :], decoder_input], 1)[:, :-1, ]
                 target_mask = self.generate_mask(self.sequence_length).to(self.device)
                 output = self.decoder(decoder_input, memory, tgt_mask=target_mask)
 
         else:
             # inference - pass only predictions to decoder
-            decoder_input = torch.zeros(x.size(0), 1, self.embed_dim, device=self.device)  # SOS
+            decoder_input = whole_input_embedding[:, -1:, :]  # SOS
             pred = None
             for frame in range(synop_inputs.size(1)):
                 y = self.pos_encoder(decoder_input) if self.use_pos_encoding else decoder_input
