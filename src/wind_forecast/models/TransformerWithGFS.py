@@ -34,10 +34,7 @@ class TransformerWithGFS(Transformer):
         decoder_norm = nn.LayerNorm(self.embed_dim)
         self.decoder = nn.TransformerDecoder(decoder_layer, self.transformer_layers_num, decoder_norm)
 
-        if config.experiment.with_dates_inputs:
-            features = self.embed_dim + 2
-        else:
-            features = self.embed_dim + 1
+        features = self.embed_dim
         dense_layers = []
 
         for neurons in config.experiment.transformer_head_dims:
@@ -50,7 +47,7 @@ class TransformerWithGFS(Transformer):
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
         synop_inputs = batch[BatchKeys.SYNOP_INPUTS.value].float()
         all_synop_targets = batch[BatchKeys.ALL_SYNOP_TARGETS.value].float()
-        gfs_targets = batch[BatchKeys.GFS_TARGETS.value].float()
+        # gfs_targets = batch[BatchKeys.GFS_TARGETS.value].float()
         dates_embedding = None if self.config.experiment.with_dates_inputs is False else batch[BatchKeys.DATES_EMBEDDING.value]
 
         if self.config.experiment.with_dates_inputs:
@@ -117,8 +114,4 @@ class TransformerWithGFS(Transformer):
                 pred = next_pred if pred is None else torch.cat([pred, next_pred], 1)
             output = pred
 
-        if self.config.experiment.with_dates_inputs:
-            # return torch.squeeze(self.classification_head_time_distributed(torch.cat([output, gfs_targets, dates_embedding[2], dates_embedding[3]], -1)), -1)
-            return torch.squeeze(self.classification_head_time_distributed(torch.cat([output, dates_embedding[2], dates_embedding[3]], -1)), -1)
-        else:
-            return torch.squeeze(self.classification_head_time_distributed(torch.cat([output, gfs_targets], -1)), -1)
+        return torch.squeeze(self.classification_head_time_distributed(output), -1)

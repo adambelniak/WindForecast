@@ -12,7 +12,7 @@ def get_nearest_coords(coords: Coords):
     long2 = math.floor((coords.elon + 0.25) * 4) / 4
     if long2 >= 360:
         long2 = 0
-    return [[lat1, lat2], [long1, long2]]
+    return Coords(lat2, lat1, long1, long2)
 
 
 def prep_zeros_if_needed(value: str, number_of_zeros: int):

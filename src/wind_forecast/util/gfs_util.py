@@ -3,6 +3,7 @@ import os
 import re
 import sys
 from typing import Union
+from wind_forecast.loaders.Singleton import Singleton
 
 if sys.version_info <= (3, 8, 2):
     import pickle5 as pickle
@@ -217,7 +218,7 @@ def normalize_gfs_data(gfs_data: np.ndarray, normalization_type: NormalizationTy
                     np.max(gfs_data, axis=axes) - np.min(gfs_data, axis=axes))
 
 
-def get_nearest_lat_lon_from_coords(gfs_coords: [[float]], original_coords: Coords):
+def get_gfs_lat_lon_from_coords(gfs_coords: [[float]], original_coords: Coords):
     lat = gfs_coords[0][0] if abs(original_coords.nlat - gfs_coords[0][0]) <= abs(
         original_coords.nlat - gfs_coords[0][1]) else gfs_coords[0][1]
     lon = gfs_coords[1][0] if abs(original_coords.elon - gfs_coords[1][0]) <= abs(
@@ -228,22 +229,38 @@ def get_nearest_lat_lon_from_coords(gfs_coords: [[float]], original_coords: Coor
 
 def get_point_from_GFS_slice_for_coords(gfs_data: np.ndarray, coords: Coords):
     nearest_coords = get_nearest_coords(coords)
-    lat, lon = get_nearest_lat_lon_from_coords(nearest_coords, coords)
-    lat_index = int((GFS_SPACE.nlat - lat) * 4)
-    lon_index = int((GFS_SPACE.elon - lon) * 4)
+    lat_index = int((GFS_SPACE.nlat - nearest_coords.slat) * 4)
+    lon_index = int((GFS_SPACE.elon - nearest_coords.wlon) * 4)
 
     return interpolate.interp2d(nearest_coords[0], nearest_coords[1],
                                 gfs_data[lat_index:lat_index + 2, lon_index:lon_index + 2])(
         coords.nlat, coords.elon).item()
 
 
+class Interpolator(metaclass=Singleton):
+    def __init__(self, target_point: Coords) -> None:
+        super().__init__()
+        self.target_point = target_point
+        self.nearest_coords = get_nearest_coords(target_point)
+        self.lat_index = int((GFS_SPACE.nlat - self.nearest_coords.slat) * 4)
+        self.lon_index = int((GFS_SPACE.elon - self.nearest_coords.wlon) * 4)
+        self.y_factor = (self.nearest_coords.nlat - target_point.nlat) / (self.nearest_coords.nlat - self.nearest_coords.slat)
+        self.x_factor = (self.nearest_coords.elon - target_point.elon) / (self.nearest_coords.elon - self.nearest_coords.wlon)
+
+    def __call__(self, gfs_data: np.ndarray) -> float:
+        f_x_y1 = self.x_factor * gfs_data[self.lat_index + 1, self.lon_index] + (1 - self.x_factor) * gfs_data[self.lat_index + 1, self.lon_index + 1]
+        f_x_y2 = self.x_factor * gfs_data[self.lat_index, self.lon_index] + (1 - self.x_factor) * gfs_data[self.lat_index, self.lon_index + 1]
+        f_x_y = self.y_factor * f_x_y1 + (1 - self.y_factor) * f_x_y2
+        return f_x_y
+
+
 def get_indices_of_GFS_slice_for_coords(coords: Coords):
     nearest_coords_NW = get_nearest_coords(Coords(coords.nlat, coords.nlat, coords.wlon, coords.wlon))
     nearest_coords_SE = get_nearest_coords(Coords(coords.slat, coords.slat, coords.elon, coords.elon))
-    lat_NW, lon_NW = get_nearest_lat_lon_from_coords(nearest_coords_NW,
-                                                     Coords(coords.nlat, coords.nlat, coords.wlon, coords.wlon))
-    lat_SE, lon_SE = get_nearest_lat_lon_from_coords(nearest_coords_SE,
-                                                     Coords(coords.slat, coords.slat, coords.elon, coords.elon))
+    lat_NW, lon_NW = get_gfs_lat_lon_from_coords(nearest_coords_NW,
+                                                 Coords(coords.nlat, coords.nlat, coords.wlon, coords.wlon))
+    lat_SE, lon_SE = get_gfs_lat_lon_from_coords(nearest_coords_SE,
+                                                 Coords(coords.slat, coords.slat, coords.elon, coords.elon))
 
     lat_index_start = int((GFS_SPACE.nlat - lat_NW) * 4)
     lat_index_end = int((GFS_SPACE.nlat - lat_SE) * 4)
@@ -328,6 +345,7 @@ def match_gfs_with_synop_sequence(features: Union[list, np.ndarray], targets: li
     new_features = []
     gfs_loader = GFSLoader()
     removed_indices = []
+    interpolator = Interpolator(Coords(lat, lat, lon, lon))
     print("Matching GFS with synop data")
 
     for index, value in tqdm(enumerate(targets)):
@@ -341,9 +359,7 @@ def match_gfs_with_synop_sequence(features: Union[list, np.ndarray], targets: li
                 val = []
 
                 for param in gfs_params:
-                    val.append(
-                        get_point_from_GFS_slice_for_coords(gfs_loader.get_gfs_image(gfs_date_key, param, gfs_offset),
-                                                            Coords(lat, lat, lon, lon)))
+                    val.append(interpolator(gfs_loader.get_gfs_image(gfs_date_key, param, gfs_offset)))
 
                 gfs_values.append(val)
             new_targets.append(value[1])
@@ -370,10 +386,12 @@ def match_gfs_with_synop_sequence2sequence(synop_data: pd.DataFrame, synop_data_
     gfs_values = []
     new_synop_indices = []
     removed_indices = []
+    coords = Coords(lat, lat, lon, lon)
+    interpolator = Interpolator(coords)
     print("Matching GFS with synop data")
     for index in tqdm(synop_data_indices):
         dates = synop_data.iloc[index + sequence_start_offset:index + sequence_end_offset]['date']
-        next_gfs_values = get_next_gfs_values(dates, prediction_offset, lat, lon, gfs_params, future_dates)
+        next_gfs_values = get_next_gfs_values(dates, prediction_offset, gfs_params, future_dates, interpolator)
         if next_gfs_values is None:
             removed_indices.append(index)
         else:
@@ -384,11 +402,10 @@ def match_gfs_with_synop_sequence2sequence(synop_data: pd.DataFrame, synop_data_
     return new_synop_indices, np.array(gfs_values), removed_indices
 
 
-def get_next_gfs_values(dates, prediction_offset, lat: float, lon: float, gfs_params: list, future_dates):
+def get_next_gfs_values(dates, prediction_offset, gfs_params: list, future_dates, interpolator: Interpolator):
     next_gfs_values = []
     gfs_loader = GFSLoader()
     first_date = dates.values[0]
-    coords = Coords(lat, lat, lon, lon)
     for date in dates:
         if future_dates:
             offset = prediction_offset + int(divmod((date - first_date).total_seconds(), 3600)[0])
@@ -405,7 +422,7 @@ def get_next_gfs_values(dates, prediction_offset, lat: float, lon: float, gfs_pa
                 if value is None:
                     return None
 
-                value = get_point_from_GFS_slice_for_coords(value, coords)
+                value = interpolator(value)
                 val.append(value)
             else:
                 # interpolate from 2 gfs forecasts
@@ -417,8 +434,8 @@ def get_next_gfs_values(dates, prediction_offset, lat: float, lon: float, gfs_pa
                 if val1 is None or val2 is None:
                     return None
 
-                val1 = get_point_from_GFS_slice_for_coords(val1, coords)
-                val2 = get_point_from_GFS_slice_for_coords(val2, coords)
+                val1 = interpolator(val1)
+                val2 = interpolator(val2)
 
                 val.append(val1 * (3 - mod_offset) / 3 + val2 * mod_offset / 3)
 

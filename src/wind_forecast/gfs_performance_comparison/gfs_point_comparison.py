@@ -8,7 +8,7 @@ from wind_forecast.consts import SYNOP_DATASETS_DIRECTORY, STATION_META
 from wind_forecast.loaders.GFSLoader import GFSLoader
 from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset
 from wind_forecast.util.gfs_util import target_param_to_gfs_name_level, \
-    get_available_gfs_date_keys, get_point_from_GFS_slice_for_coords, date_from_gfs_date_key
+    get_available_gfs_date_keys, date_from_gfs_date_key, Interpolator
 
 
 def get_gfs_values_and_targets_for_gfs_ids(gfs_date_keys, labels, target_param, lat: float, lon: float, offset: int):
@@ -16,14 +16,14 @@ def get_gfs_values_and_targets_for_gfs_ids(gfs_date_keys, labels, target_param, 
     gfs_values = []
     coords = Coords(lat, lat, lon, lon)
     gfs_loader = GFSLoader()
+    interpolator = Interpolator(coords)
     param = target_param_to_gfs_name_level(target_param)[0]
     for date_key in tqdm(gfs_date_keys):
         date = date_from_gfs_date_key(date_key)
         label = labels[labels["date"] == date]
         if len(label) > 0:
             targets.append(label[target_param].to_numpy())
-            gfs_values.append(
-                get_point_from_GFS_slice_for_coords(gfs_loader.get_gfs_image(date_key, param, offset), coords))
+            gfs_values.append(interpolator(gfs_loader.get_gfs_image(date_key, param, offset)))
 
     return np.array(gfs_values), np.array(targets).squeeze()
 
