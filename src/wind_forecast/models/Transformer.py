@@ -157,8 +157,8 @@ class Transformer(TransformerBaseProps):
                 for frame in range(first_taught):  # do normal prediction for the beginning frames
                     y = self.pos_encoder(decoder_input) if self.use_pos_encoding else decoder_input
                     next_pred = self.decoder(y, memory)
-                    decoder_input = next_pred
-                    pred = next_pred if pred is None else torch.cat([pred, next_pred], 1)
+                    decoder_input = torch.cat([decoder_input, next_pred[:, -1:, :]], -2)
+                    pred = decoder_input[:, 1:, :]
 
                 # then, do teacher forcing
                 # SOS is appended for case when first_taught is 0
@@ -182,8 +182,8 @@ class Transformer(TransformerBaseProps):
             for frame in range(synop_inputs.size(1)):
                 y = self.pos_encoder(decoder_input) if self.use_pos_encoding else decoder_input
                 next_pred = self.decoder(y, memory)
-                decoder_input = next_pred
-                pred = next_pred if pred is None else torch.cat([pred, next_pred], 1)
+                decoder_input = torch.cat([decoder_input, next_pred[:, -1:, :]], -2)
+                pred = decoder_input[:, 1:, :]
             output = pred
 
         if self.config.experiment.with_dates_inputs:
