@@ -63,7 +63,7 @@ class TransformerBaseProps(LightningModule):
     def __init__(self, config: Config):
         super().__init__()
         self.config = config
-        self.features_len = len(config.experimenat.synop_train_features)
+        self.features_len = len(config.experiment.synop_train_features)
         self.embed_dim = self.features_len * (config.experiment.time2vec_embedding_size + 1)
         self.dropout = config.experiment.dropout
         self.use_pos_encoding = config.experiment.use_pos_encoding
