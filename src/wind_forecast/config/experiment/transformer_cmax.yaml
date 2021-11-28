@@ -16,7 +16,7 @@ model:
   _target_: wind_forecast.models.TransformerCMAX.TransformerCMAX
 
 system:
-  _target_: wind_forecast.systems.BaseS2SRegressor.S2SRegressorWithGFSInput
+  _target_: wind_forecast.systems.S2SRegressorWithGFSInput.S2SRegressorWithGFSInput
 
 synop_from_year: 2017
 cmax_from_year: 2017
