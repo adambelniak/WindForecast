@@ -32,5 +32,5 @@ class Transformer(TransformerBaseProps):
         x = self.encoder(x)
         x = self.flatten(x)  # flat vector of synop_features out
 
-        return torch.squeeze(self.classification_head(torch.cat((x, gfs_input.unsqueeze(-1)), dim=1)))
+        return torch.squeeze(self.classification_head(x))
 

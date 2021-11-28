@@ -53,7 +53,4 @@ class TransformerRandomMask(Transformer):
                 pred = next_pred if pred is None else torch.cat([pred, next_pred], 1)
             output = pred
 
-        if self.config.experiment.with_dates_inputs:
-            return torch.squeeze(self.classification_head_time_distributed(torch.cat([output, dates_embedding[2], dates_embedding[3]], -1)), -1)
-        else:
-            return torch.squeeze(self.classification_head_time_distributed(output), -1)
+        return torch.squeeze(self.classification_head_time_distributed(output), -1)

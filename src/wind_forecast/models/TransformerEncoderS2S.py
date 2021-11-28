@@ -30,8 +30,6 @@ class TransformerEncoderS2S(TransformerBaseProps):
         self.flatten = nn.Flatten()
         dense_layers = []
         features = self.embed_dim
-        if config.experiment.with_dates_inputs:
-            features = self.embed_dim + 2
 
         for neurons in config.experiment.transformer_head_dims:
             dense_layers.append(nn.Linear(in_features=features, out_features=neurons))
@@ -53,8 +51,4 @@ class TransformerEncoderS2S(TransformerBaseProps):
         x = self.pos_encoder(time_embedding) if self.use_pos_encoding else time_embedding
         x = self.encoder(x)
 
-        if self.config.experiment.with_dates_inputs:
-            return torch.squeeze(self.classification_head_time_distributed(
-                torch.cat([x, dates_embedding[2], dates_embedding[3]], -1)), -1)
-        else:
-            return torch.squeeze(self.classification_head_time_distributed(x), -1)
+        return torch.squeeze(self.classification_head_time_distributed(x), -1)

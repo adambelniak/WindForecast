@@ -112,10 +112,7 @@ class Transformer(TransformerBaseProps):
         self.decoder = nn.TransformerDecoder(decoder_layer, self.transformer_layers_num, decoder_norm)
 
         dense_layers = []
-        if config.experiment.with_dates_inputs:
-            features = self.embed_dim + 2
-        else:
-            features = self.embed_dim
+        features = self.embed_dim
 
         for neurons in config.experiment.transformer_head_dims:
             dense_layers.append(nn.Linear(in_features=features, out_features=neurons))
@@ -186,10 +183,7 @@ class Transformer(TransformerBaseProps):
                 pred = decoder_input[:, 1:, :]
             output = pred
 
-        if self.config.experiment.with_dates_inputs:
-            return torch.squeeze(self.classification_head_time_distributed(torch.cat([output, dates_embedding[2], dates_embedding[3]], -1)), -1)
-        else:
-            return torch.squeeze(self.classification_head_time_distributed(output), -1)
+        return torch.squeeze(self.classification_head_time_distributed(output), -1)
 
     def getSOS(self, batch_size: int):
         return torch.zeros(batch_size, 1, self.embed_dim, device=self.device)

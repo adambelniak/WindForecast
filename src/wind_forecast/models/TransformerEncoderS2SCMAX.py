@@ -46,10 +46,7 @@ class TransformerEncoderS2SCMAX(TransformerBaseProps):
         self.encoder = nn.TransformerEncoder(encoder_layer, config.experiment.transformer_attention_layers, encoder_norm)
 
         dense_layers = []
-        if config.experiment.with_dates_inputs:
-            features = self.embed_dim + 2
-        else:
-            features = self.embed_dim
+        features = self.embed_dim
 
         for neurons in config.experiment.transformer_head_dims:
             dense_layers.append(nn.Linear(in_features=features, out_features=neurons))
@@ -74,7 +71,4 @@ class TransformerEncoderS2SCMAX(TransformerBaseProps):
         x = self.pos_encoder(whole_input_embedding) if self.use_pos_encoding else whole_input_embedding
         output = self.encoder(x)
 
-        if self.config.experiment.with_dates_inputs:
-            return torch.squeeze(self.classification_head_time_distributed(torch.cat([output, dates_embedding[2], dates_embedding[3]], -1)), -1)
-        else:
-            return torch.squeeze(self.classification_head_time_distributed(output), -1)
+        return torch.squeeze(self.classification_head_time_distributed(output), -1)

@@ -7,7 +7,7 @@ defaults:
 _tags_:
   - TRANSFORMER_GFS
 
-resume_checkpoint: ~
+resume_checkpoint: checkpoints/epoch_4.ckpt
 
 datamodule:
   _target_: wind_forecast.datamodules.Sequence2SequenceDataModule.Sequence2SequenceDataModule

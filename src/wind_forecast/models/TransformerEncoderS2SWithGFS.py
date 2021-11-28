@@ -33,10 +33,7 @@ class TransformerEncoderS2SWithGFS(TransformerBaseProps):
         self.pos_encoder = PositionalEncoding(self.embed_dim, self.dropout, self.sequence_length)
         self.encoder = nn.TransformerEncoder(encoder_layer, config.experiment.transformer_attention_layers, encoder_norm)
         dense_layers = []
-        if config.experiment.with_dates_inputs:
-            features = self.embed_dim + 3
-        else:
-            features = self.embed_dim + 1
+        features = self.embed_dim
 
         for neurons in config.experiment.transformer_head_dims:
             dense_layers.append(nn.Linear(in_features=features, out_features=neurons))
@@ -69,9 +66,6 @@ class TransformerEncoderS2SWithGFS(TransformerBaseProps):
         x = self.pos_encoder(whole_input_embedding) if self.use_pos_encoding else whole_input_embedding
         x = self.encoder(x)
 
-        if self.config.experiment.with_dates_inputs:
-            return torch.squeeze(self.classification_head_time_distributed(torch.cat([x, gfs_targets, dates_embedding[2], dates_embedding[3]], -1)), -1)
-        else:
-            return torch.squeeze(self.classification_head_time_distributed(torch.cat([x, gfs_targets], -1)), -1)
+        return torch.squeeze(self.classification_head_time_distributed(x), -1)
 
 

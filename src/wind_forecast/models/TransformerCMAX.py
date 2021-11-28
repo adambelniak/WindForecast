@@ -60,10 +60,7 @@ class TransformerCMAX(Transformer):
         self.decoder = nn.TransformerDecoder(decoder_layer, self.transformer_layers_num, decoder_norm)
 
         dense_layers = []
-        if config.experiment.with_dates_inputs:
-            features = self.embed_dim + 2
-        else:
-            features = self.embed_dim
+        features = self.embed_dim
 
         for neurons in config.experiment.transformer_head_dims:
             dense_layers.append(nn.Linear(in_features=features, out_features=neurons))
@@ -111,8 +108,8 @@ class TransformerCMAX(Transformer):
                 for frame in range(first_taught):  # do normal prediction for the beginning frames
                     y = self.pos_encoder(decoder_input) if self.use_pos_encoding else decoder_input
                     next_pred = self.decoder(y, memory)
-                    decoder_input = next_pred
-                    pred = next_pred if pred is None else torch.cat([pred, next_pred], 1)
+                    decoder_input = torch.cat([decoder_input, next_pred[:, -1:, :]], -2)
+                    pred = decoder_input[:, 1:, :]
 
                 # then, do teacher forcing
                 # SOS is appended for case when first_taught is 0
@@ -137,11 +134,8 @@ class TransformerCMAX(Transformer):
             for frame in range(synop_inputs.size(1)):
                 y = self.pos_encoder(decoder_input) if self.use_pos_encoding else decoder_input
                 next_pred = self.decoder(y, memory)
-                decoder_input = next_pred
-                pred = next_pred if pred is None else torch.cat([pred, next_pred], 1)
+                decoder_input = torch.cat([decoder_input, next_pred[:, -1:, :]], -2)
+                pred = decoder_input[:, 1:, :]
             output = pred
 
-        if self.config.experiment.with_dates_inputs:
-            return torch.squeeze(self.classification_head_time_distributed(torch.cat([output, dates_embedding[2], dates_embedding[3]], -1)), -1)
-        else:
-            return torch.squeeze(self.classification_head_time_distributed(output), -1)
+        return torch.squeeze(self.classification_head_time_distributed(output), -1)
