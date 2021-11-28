@@ -7,8 +7,8 @@ dependencies:
   - conda-forge::nodejs
   - numpy
   - pandas
-  - pytorch::pytorch=1.9.0
-  - pytorch::torchvision=0.10.0
+  - pytorch::pytorch=1.10.0
+  - pytorch::torchvision=0.11.0
   - pip
   - cudatoolkit=11.1
   - pip:

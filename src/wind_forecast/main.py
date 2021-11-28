@@ -134,6 +134,7 @@ if __name__ == '__main__':
         entity=os.getenv('WANDB_ENTITY'),
         name=os.getenv('RUN_NAME'),
         save_dir=os.getenv('RUN_DIR'),
+        log_model="all"
     )
 
     # Init logger from source dir (code base) before switching to run dir (results)

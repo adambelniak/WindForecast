@@ -6,7 +6,7 @@ from torch import nn
 
 from wind_forecast.config.register import Config
 from wind_forecast.consts import BatchKeys
-from wind_forecast.models.Transformer import PositionalEncoding
+from wind_forecast.models.Transformer import PositionalEncoding, Time2Vec
 from wind_forecast.models.TransformerCMAX import TransformerCMAX
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 from wind_forecast.util.config import process_config
@@ -18,8 +18,11 @@ class TransformerCMAXWithGFS(TransformerCMAX):
         if config.experiment.use_all_gfs_params:
             gfs_params_len = len(process_config(config.experiment.train_parameters_config_file))
             self.input_features_length += gfs_params_len
-            self.embed_dim += gfs_params_len * (config.experiment.time2vec_embedding_size + 1)
 
+        self.embed_dim = self.input_features_length * (config.experiment.time2vec_embedding_size + 1)
+        self.time_2_vec_time_distributed = TimeDistributed(Time2Vec(self.input_features_length,
+                                                                    config.experiment.time2vec_embedding_size),
+                                                           batch_first=True)
         self.pos_encoder = PositionalEncoding(self.embed_dim, self.dropout, self.sequence_length)
 
         encoder_layer = nn.TransformerEncoderLayer(d_model=self.embed_dim,
@@ -53,7 +56,6 @@ class TransformerCMAXWithGFS(TransformerCMAX):
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
         synop_inputs = batch[BatchKeys.SYNOP_INPUTS.value].float()
         all_synop_targets = batch[BatchKeys.ALL_SYNOP_TARGETS.value].float()
-        gfs_targets = batch[BatchKeys.GFS_TARGETS.value].float()
         cmax_inputs = batch[BatchKeys.CMAX_INPUTS.value].float()
         cmax_targets = batch[BatchKeys.CMAX_TARGETS.value].float()
 
@@ -92,7 +94,7 @@ class TransformerCMAXWithGFS(TransformerCMAX):
         x = self.pos_encoder(whole_input_embedding) if self.use_pos_encoding else whole_input_embedding
         memory = self.encoder(x)
 
-        if epoch < self.teacher_forcing_epoch_num and stage in [None, 'fit']:
+        if epoch < self.her_forcing_epoch_num and stage in [None, 'fit']:
             # Teacher forcing - masked targets as decoder inputs
             if self.gradual_teacher_forcing:
                 first_taught = math.floor(epoch / self.teacher_forcing_epoch_num * self.sequence_length)

@@ -25,7 +25,7 @@ torch==1.10.0+cu111
 torchvision==0.11.0+cu111
 git+https://github.com/pytorch/hydra-torch
 pytorch-lightning-bolts==0.3.2
-pytorch-lightning==1.2.8
+pytorch-lightning==1.5.3
 rich
 hydra-configs-pytorch-lightning
 setproctitle
