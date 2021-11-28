@@ -47,7 +47,6 @@ class TransformerWithGFS(Transformer):
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
         synop_inputs = batch[BatchKeys.SYNOP_INPUTS.value].float()
         all_synop_targets = batch[BatchKeys.ALL_SYNOP_TARGETS.value].float()
-        # gfs_targets = batch[BatchKeys.GFS_TARGETS.value].float()
         dates_embedding = None if self.config.experiment.with_dates_inputs is False else batch[BatchKeys.DATES_EMBEDDING.value]
 
         if self.config.experiment.with_dates_inputs:

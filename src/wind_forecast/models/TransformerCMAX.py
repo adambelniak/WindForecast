@@ -40,10 +40,6 @@ class TransformerCMAX(Transformer):
 
         self.embed_dim = self.features_len * (config.experiment.time2vec_embedding_size + 1) + conv_W * conv_H * out_channels
 
-        if config.experiment.with_dates_inputs:
-            self.input_features_length += 2
-            self.embed_dim += 2 * (config.experiment.time2vec_embedding_size + 1)
-
         self.pos_encoder = PositionalEncoding(self.embed_dim, self.dropout, self.sequence_length)
 
         encoder_layer = nn.TransformerEncoderLayer(d_model=self.embed_dim,
