@@ -7,7 +7,8 @@ defaults:
 _tags_:
   - TRANSFORMER_GFS
 
-resume_checkpoint: checkpoints/epoch_4.ckpt
+resume_checkpoint: ~
+#resume_checkpoint: wandb://mbelniak/wind-forecast/model-2nwqhmxt:v1@model.ckpt
 
 datamodule:
   _target_: wind_forecast.datamodules.Sequence2SequenceDataModule.Sequence2SequenceDataModule
@@ -20,6 +21,6 @@ model:
 system:
   _target_: wind_forecast.systems.S2SRegressorWithGFSInput.S2SRegressorWithGFSInput
 
-synop_from_year: 2017
+synop_from_year: 2020
 use_all_gfs_params: True
 train_parameters_config_file: TransformerConfig.json

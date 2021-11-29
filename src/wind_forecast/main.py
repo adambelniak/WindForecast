@@ -89,9 +89,8 @@ def main(cfg: Config):
         log.info(f'[bold yellow]\\[checkpoint] [bold white]{resume_path}')
 
     checkpointer = CustomCheckpointer(
-        period=1,
         dirpath='checkpoints',
-        filename='{epoch}',
+        filename='{epoch}'
     )
 
     trainer: pl.Trainer = instantiate(

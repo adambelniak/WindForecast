@@ -69,7 +69,7 @@ class S2SRegressorWithGFSInput(BaseS2SRegressor):
         outputs : list[Any]
             List of dictionaries returned by `self.test_step` with batch metrics.
         """
-        step = self.current_epoch + 1 if not self.trainer.running_sanity_check else self.current_epoch  # type: ignore
+        step = self.current_epoch + 1 if not self.trainer.sanity_checking else self.current_epoch  # type: ignore
 
         metrics = {
             'epoch': float(step),
