@@ -38,7 +38,7 @@ class TransformerCMAX(Transformer):
                                   nn.Linear(in_features=conv_W * conv_H * out_channels, out_features=conv_W * conv_H * out_channels))
         self.conv_time_distributed = TimeDistributed(self.conv)
 
-        self.embed_dim = self.features_len * (config.experiment.time2vec_embedding_size + 1) + conv_W * conv_H * out_channels
+        self.embed_dim += conv_W * conv_H * out_channels
 
         self.pos_encoder = PositionalEncoding(self.embed_dim, self.dropout, self.sequence_length)
 
@@ -76,7 +76,7 @@ class TransformerCMAX(Transformer):
 
         cmax_embeddings = self.conv_time_distributed(cmax_inputs.unsqueeze(2))
 
-        if self.config.experiment.with_dates_inputs is None:
+        if self.config.experiment.with_dates_inputs:
             x = [synop_inputs, dates_embedding[0], dates_embedding[1]]
             y = [all_synop_targets, dates_embedding[2], dates_embedding[3]]
 

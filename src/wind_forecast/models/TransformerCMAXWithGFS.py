@@ -17,10 +17,10 @@ class TransformerCMAXWithGFS(TransformerCMAX):
         super().__init__(config)
         if config.experiment.use_all_gfs_params:
             gfs_params_len = len(process_config(config.experiment.train_parameters_config_file))
-            self.input_features_length += gfs_params_len
+            self.features_length += gfs_params_len
             self.embed_dim += gfs_params_len * (config.experiment.time2vec_embedding_size + 1)
 
-        self.time_2_vec_time_distributed = TimeDistributed(Time2Vec(self.input_features_length,
+        self.time_2_vec_time_distributed = TimeDistributed(Time2Vec(self.features_length,
                                                                     config.experiment.time2vec_embedding_size),
                                                            batch_first=True)
         self.pos_encoder = PositionalEncoding(self.embed_dim, self.dropout, self.sequence_length)

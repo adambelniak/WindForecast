@@ -63,12 +63,15 @@ class TransformerBaseProps(LightningModule):
     def __init__(self, config: Config):
         super().__init__()
         self.config = config
-        self.features_len = len(config.experiment.synop_train_features)
-        self.embed_dim = self.features_len * (config.experiment.time2vec_embedding_size + 1)
+        self.features_length = len(config.experiment.synop_train_features)
+        if config.experiment.with_dates_inputs:
+            self.features_length += 2
+
+        self.embed_dim = self.features_length * (config.experiment.time2vec_embedding_size + 1)
         self.dropout = config.experiment.dropout
         self.use_pos_encoding = config.experiment.use_pos_encoding
         self.sequence_length = config.experiment.sequence_length
-        self.time_2_vec_time_distributed = TimeDistributed(Time2Vec(self.features_len, config.experiment.time2vec_embedding_size), batch_first=True)
+        self.time_2_vec_time_distributed = TimeDistributed(Time2Vec(self.features_length, config.experiment.time2vec_embedding_size), batch_first=True)
         self.pos_encoder = PositionalEncoding(self.embed_dim, self.dropout, self.sequence_length)
 
         dense_layers = []
@@ -92,13 +95,7 @@ class Transformer(TransformerBaseProps):
         self.ff_dim = config.experiment.transformer_ff_dim
         self.transformer_layers_num = config.experiment.transformer_attention_layers
 
-        self.input_features_length = self.features_len
-
-        if config.experiment.with_dates_inputs:
-            self.input_features_length += 2
-            self.embed_dim += 2 * (config.experiment.time2vec_embedding_size + 1)
-
-        self.time_2_vec_time_distributed = TimeDistributed(Time2Vec(self.input_features_length,
+        self.time_2_vec_time_distributed = TimeDistributed(Time2Vec(self.features_length,
                                                                     config.experiment.time2vec_embedding_size),
                                                            batch_first=True)
 
@@ -131,7 +128,7 @@ class Transformer(TransformerBaseProps):
         all_synop_targets = batch[BatchKeys.ALL_SYNOP_TARGETS.value].float()
         dates_embedding = None if self.config.experiment.with_dates_inputs is False else batch[BatchKeys.DATES_EMBEDDING.value]
 
-        if self.config.experiment.with_dates_inputs is None:
+        if self.config.experiment.with_dates_inputs:
             x = [synop_inputs, dates_embedding[0], dates_embedding[1]]
             y = [all_synop_targets, dates_embedding[2], dates_embedding[3]]
 

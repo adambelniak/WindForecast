@@ -12,13 +12,8 @@ from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 class TransformerEncoderS2S(TransformerBaseProps):
     def __init__(self, config: Config):
         super().__init__(config)
-        input_features_length = self.features_len
 
-        if config.experiment.with_dates_inputs:
-            input_features_length += 2
-            self.embed_dim += 2 * (config.experiment.time2vec_embedding_size + 1)
-
-        self.time_2_vec_time_distributed = TimeDistributed(Time2Vec(input_features_length,
+        self.time_2_vec_time_distributed = TimeDistributed(Time2Vec(self.features_length,
                                                                     config.experiment.time2vec_embedding_size),
                                                            batch_first=True)
         encoder_layer = nn.TransformerEncoderLayer(d_model=self.embed_dim, nhead=config.experiment.transformer_attention_heads,
@@ -42,7 +37,7 @@ class TransformerEncoderS2S(TransformerBaseProps):
         synop_inputs = batch[BatchKeys.SYNOP_INPUTS.value].float()
         dates_embedding = None if self.config.experiment.with_dates_inputs is False else batch[BatchKeys.DATES_EMBEDDING.value]
 
-        if self.config.experiment.with_dates_inputs is None:
+        if self.config.experiment.with_dates_inputs:
             x = [synop_inputs, dates_embedding[0], dates_embedding[1]]
         else:
             x = [synop_inputs]

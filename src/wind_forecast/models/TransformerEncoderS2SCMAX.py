@@ -36,7 +36,7 @@ class TransformerEncoderS2SCMAX(TransformerBaseProps):
                                   nn.Linear(in_features=conv_W * conv_H * out_channels, out_features=conv_W * conv_H * out_channels))
         self.conv_time_distributed = TimeDistributed(self.conv)
 
-        self.embed_dim = self.features_len * (config.experiment.time2vec_embedding_size + 1) + conv_W * conv_H * out_channels
+        self.embed_dim += conv_W * conv_H * out_channels
 
         self.pos_encoder = PositionalEncoding(self.embed_dim, self.dropout, self.sequence_length)
         encoder_layer = nn.TransformerEncoderLayer(d_model=self.embed_dim, nhead=config.experiment.transformer_attention_heads,
@@ -62,7 +62,7 @@ class TransformerEncoderS2SCMAX(TransformerBaseProps):
 
         cmax_embeddings = self.conv_time_distributed(cmax_inputs.unsqueeze(2))
 
-        if self.config.experiment.with_dates_inputs is None:
+        if self.config.experiment.with_dates_inputs:
             x = [synop_inputs, dates_embedding[0], dates_embedding[1]]
         else:
             x = [synop_inputs]

@@ -35,11 +35,15 @@ class TransformerEncoderS2SCMAXWithGFS(TransformerBaseProps):
                                   nn.Linear(in_features=conv_W * conv_H * out_channels, out_features=conv_W * conv_H * out_channels))
         self.conv_time_distributed = TimeDistributed(self.conv)
 
-        self.embed_dim = self.features_len * (config.experiment.time2vec_embedding_size + 1) + conv_W * conv_H * out_channels
+        self.embed_dim += conv_W * conv_H * out_channels
+
         if config.experiment.use_all_gfs_params:
-            self.time_2_vec_time_distributed = TimeDistributed(Time2Vec(self.features_len + len(process_config(config.experiment.train_parameters_config_file)),
-                                                                        config.experiment.time2vec_embedding_size), batch_first=True)
-            self.embed_dim += len(process_config(config.experiment.train_parameters_config_file)) * (config.experiment.time2vec_embedding_size + 1)
+            gfs_params_len = len(process_config(config.experiment.train_parameters_config_file))
+            self.embed_dim += gfs_params_len * (config.experiment.time2vec_embedding_size + 1)
+            self.features_length += gfs_params_len
+
+        self.time_2_vec_time_distributed = TimeDistributed(Time2Vec(self.features_length,
+                                                           config.experiment.time2vec_embedding_size), batch_first=True)
 
         self.pos_encoder = PositionalEncoding(self.embed_dim, self.dropout, self.sequence_length)
 

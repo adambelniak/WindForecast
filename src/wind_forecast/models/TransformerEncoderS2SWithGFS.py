@@ -13,18 +13,12 @@ from wind_forecast.util.config import process_config
 class TransformerEncoderS2SWithGFS(TransformerBaseProps):
     def __init__(self, config: Config):
         super().__init__(config)
-        input_features_length = self.features_len
         if config.experiment.use_all_gfs_params:
             gfs_params_len = len(process_config(config.experiment.train_parameters_config_file))
-            input_features_length += gfs_params_len
-
+            self.features_length += gfs_params_len
             self.embed_dim += gfs_params_len * (config.experiment.time2vec_embedding_size + 1)
 
-        if config.experiment.with_dates_inputs:
-            input_features_length += 2
-            self.embed_dim += 2 * (config.experiment.time2vec_embedding_size + 1)
-
-        self.time_2_vec_time_distributed = TimeDistributed(Time2Vec(input_features_length,
+        self.time_2_vec_time_distributed = TimeDistributed(Time2Vec(self.features_length,
                                                                     config.experiment.time2vec_embedding_size), batch_first=True)
         encoder_layer = nn.TransformerEncoderLayer(d_model=self.embed_dim, nhead=config.experiment.transformer_attention_heads,
                                                    dim_feedforward=config.experiment.transformer_ff_dim, dropout=config.experiment.dropout,
@@ -44,7 +38,6 @@ class TransformerEncoderS2SWithGFS(TransformerBaseProps):
 
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
         synop_inputs = batch[BatchKeys.SYNOP_INPUTS.value].float()
-        gfs_targets = batch[BatchKeys.GFS_TARGETS.value].float()
         dates_embedding = None if self.config.experiment.with_dates_inputs is False else batch[
             BatchKeys.DATES_EMBEDDING.value]
 

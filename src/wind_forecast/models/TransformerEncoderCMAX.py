@@ -32,7 +32,7 @@ class TransformerEncoderCMAX(TransformerBaseProps):
         self.conv = nn.Sequential(*conv_layers, nn.Flatten(),
                                   nn.Linear(in_features=conv_W * conv_H * out_channels, out_features=conv_W * conv_H * out_channels))
         self.conv_time_distributed = TimeDistributed(self.conv)
-        self.embed_dim = self.features_len * (config.experiment.time2vec_embedding_size + 1) + conv_W * conv_H * out_channels
+        self.embed_dim = self.features_length * (config.experiment.time2vec_embedding_size + 1) + conv_W * conv_H * out_channels
         self.pos_encoder = PositionalEncoding(self.embed_dim, self.dropout, self.sequence_length)
 
         encoder_layer = nn.TransformerEncoderLayer(d_model=self.embed_dim, nhead=config.experiment.transformer_attention_heads,
