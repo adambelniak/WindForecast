@@ -94,7 +94,7 @@ class TransformerCMAXWithGFS(TransformerCMAX):
         x = self.pos_encoder(whole_input_embedding) if self.use_pos_encoding else whole_input_embedding
         memory = self.encoder(x)
 
-        if epoch < self.her_forcing_epoch_num and stage in [None, 'fit']:
+        if epoch < self.teacher_forcing_epoch_num and stage in [None, 'fit']:
             # Teacher forcing - masked targets as decoder inputs
             if self.gradual_teacher_forcing:
                 first_taught = math.floor(epoch / self.teacher_forcing_epoch_num * self.sequence_length)
