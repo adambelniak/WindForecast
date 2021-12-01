@@ -15,6 +15,7 @@ class TemporalConvNetS2SWithDencoderWithGFS(LightningModule):
     def __init__(self, config: Config):
         super(TemporalConvNetS2SWithDencoderWithGFS, self).__init__()
         self.config = config
+        dropout = config.experiment.dropout
         tcn_layers = []
         num_channels = config.experiment.tcn_channels
         num_levels = len(num_channels)
@@ -30,7 +31,7 @@ class TemporalConvNetS2SWithDencoderWithGFS(LightningModule):
             dilation_size = 2 ** i
             out_channels = num_channels[i]
             tcn_layers += [TemporalBlock(in_channels, out_channels, kernel_size, dilation=dilation_size,
-                                         padding=(kernel_size - 1) * dilation_size)]
+                                         padding=(kernel_size - 1) * dilation_size, dropout=dropout)]
             in_channels = num_channels[i]
 
         self.encoder = nn.Sequential(*tcn_layers)
@@ -48,7 +49,7 @@ class TemporalConvNetS2SWithDencoderWithGFS(LightningModule):
             dilation_size = 2 ** i
             out_channels = num_channels[i]
             tcn_layers += [TemporalBlock(in_channels, out_channels, kernel_size, dilation=dilation_size,
-                                         padding=(kernel_size - 1) * dilation_size)]
+                                         padding=(kernel_size - 1) * dilation_size, dropout=dropout)]
             in_channels = num_channels[i]
 
         self.decoder = nn.Sequential(*tcn_layers)
