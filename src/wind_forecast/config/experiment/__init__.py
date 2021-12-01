@@ -26,6 +26,11 @@ class ExperimentSettings:
     # - wandb artifacts: wandb://ARTIFACT_PATH/ARTIFACT_NAME:VERSION@CHECKPOINT_NAME
     resume_checkpoint: Optional[str] = None
 
+    # Path to pretrained artifact. Two formats are supported:
+    # - local checkpoints: path to artifact relative from run (results) directory
+    # - wandb artifacts: wandb://ARTIFACT_PATH/ARTIFACT_NAME:VERSION@CHECKPOINT_NAME
+    pretrained_artifact: Optional[str] = None
+
     # Enable checkpoint saving
     save_checkpoints: bool = True
 
@@ -146,6 +151,8 @@ class ExperimentSettings:
     cmax_h: int = 225
 
     cmax_w: int = 225
+
+    use_pretrained_cmax_autoencoder: bool = False
 
     STD_scaling_factor: int = 5
 

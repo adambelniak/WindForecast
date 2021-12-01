@@ -2,12 +2,19 @@ import math
 from enum import Enum
 from typing import Sequence
 
+from pytorch_lightning.loggers import WandbLogger
+from wandb.sdk.wandb_run import Run
+from pathlib import Path
+import errno
+
+import os
 import numpy as np
 import pytz
 from torch.utils.data import Subset, random_split, Dataset
 from torch.utils.data.dataset import T_co
 from tqdm import tqdm
 
+wandb_logger: WandbLogger
 
 def prep_zeros_if_needed(value: str, number_of_zeros: int):
     for i in range(number_of_zeros - len(value) + 1):
@@ -82,6 +89,37 @@ def split_dataset(dataset, val_split=0.2, chunk_length=20, sequence_length=None)
 
 
     return CustomSubset(dataset, train_indexes), CustomSubset(dataset, val_indexes)
+
+
+def get_pretrained_artifact_path(pretrained_artifact_path: str):
+    run: Run = wandb_logger.experiment  # type: ignore
+
+    if pretrained_artifact_path is None:
+        raise ValueError('pretrained_artifact_path must be set to use pretrained artifact!')
+
+    wandb_prefix = 'wandb://'
+
+    if pretrained_artifact_path.startswith(wandb_prefix):
+        run_name = os.getenv("RUN_NAME")
+        # Resuming from wandb artifacts, e.g.:
+        # resume_checkpoint: wandb://WANDB_LOGIN/WANDB_PROJECT_NAME/ARTIFACT_NAME:v0@checkpoint.ckpt
+        artifact_root = f'{os.getenv("RESULTS_DIR")}/{os.getenv("WANDB_PROJECT")}/{run_name}/artifacts'
+
+        path = pretrained_artifact_path[len(wandb_prefix):]
+        artifact_path, checkpoint_path = path.split('@')
+        artifact_name = artifact_path.split('/')[-1].replace(':', '-')
+
+        os.makedirs(f'{artifact_root}/{artifact_name}', exist_ok=True)
+
+        artifact = run.use_artifact(artifact_path, type='model')  # type: ignore
+        artifact.download()  # type: ignore
+
+        pretrained_artifact_path = f'artifacts/{artifact_name}/{checkpoint_path}'
+
+    if not Path(pretrained_artifact_path).exists():
+        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), pretrained_artifact_path)
+
+    return pretrained_artifact_path
 
 
 class NormalizationType(Enum):
