@@ -162,12 +162,11 @@ class Sequence2SequenceDataModule(LightningDataModule):
         else:
             gfs_target_data = all_gfs_target_data
 
-        mean, std = np.mean(all_gfs_target_data, axis=(0, 1)), np.std(all_gfs_target_data, axis=(0, 1))
         if self.target_param == "wind_velocity":
-            gfs_target_data = np.array([math.sqrt(velocity[0] ** 2 + velocity[1] ** 2) for velocity in gfs_target_data])
+            gfs_target_data = np.apply_along_axis(lambda velocity: [math.sqrt(velocity[0] ** 2 + velocity[1] ** 2)], -1, gfs_target_data)
 
-        gfs_target_data = (gfs_target_data - mean[self.gfs_target_param_indices]) / std[self.gfs_target_param_indices]
-        all_gfs_target_data = (all_gfs_target_data - mean) / std
+        gfs_target_data = (gfs_target_data - np.mean(gfs_target_data, axis=(0, 1))) / np.std(gfs_target_data, axis=(0, 1))
+        all_gfs_target_data = (all_gfs_target_data - np.mean(all_gfs_target_data, axis=(0, 1))) / np.std(all_gfs_target_data, axis=(0, 1))
 
         assert len(self.synop_data_indices) == len(all_gfs_target_data)
 
