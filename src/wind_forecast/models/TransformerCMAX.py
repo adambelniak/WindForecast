@@ -18,6 +18,9 @@ class TransformerCMAX(Transformer):
         conv_W = config.experiment.cmax_w
         out_channels = config.experiment.cnn_filters[-1]
         self.conv = CMAXEncoder(config)
+        for _ in config.experiment.cnn_filters:
+            conv_W = math.ceil(conv_W / 2)
+            conv_H = math.ceil(conv_H / 2)
 
         if config.experiment.use_pretrained_cmax_autoencoder:
             set_pretrained_encoder(self.conv, config)

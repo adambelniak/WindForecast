@@ -2,7 +2,7 @@ import os
 from typing import Optional, Tuple, List
 
 from torch.utils.data.dataloader import default_collate
-
+import torch
 from wind_forecast.config.register import Config
 from wind_forecast.consts import SYNOP_DATASETS_DIRECTORY, BatchKeys
 from wind_forecast.datamodules.DataModulesCache import DataModulesCache
@@ -106,14 +106,22 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
     def collate_fn(self, x: List[Tuple]):
         s2s_data, cmax_data = [item[0] for item in x], [item[1] for item in x]
         tensors, dates = [item[:-2] for item in s2s_data], [item[-2:] for item in s2s_data]
-        all_data = [*default_collate(tensors), *list(zip(*dates)), *default_collate(cmax_data)]
+        if self.use_future_cmax:
+            all_data = [*default_collate(tensors), *list(zip(*dates)), *default_collate(cmax_data)]
+        else:
+            all_data = [*default_collate(tensors), *list(zip(*dates)), torch.Tensor(cmax_data)]
+
         dict_data = {
             BatchKeys.SYNOP_INPUTS.value: all_data[0],
             BatchKeys.SYNOP_TARGETS.value: all_data[1],
-            BatchKeys.ALL_SYNOP_TARGETS.value: all_data[2],
-            BatchKeys.CMAX_INPUTS.value: all_data[-2],
-            BatchKeys.CMAX_TARGETS.value: all_data[-1]
+            BatchKeys.ALL_SYNOP_TARGETS.value: all_data[2]
         }
+
+        if self.config.experiment.use_future_cmax:
+            dict_data[BatchKeys.CMAX_INPUTS.value] = all_data[-2]
+            dict_data[BatchKeys.CMAX_TARGETS.value] = all_data[-1]
+        else:
+            dict_data[BatchKeys.CMAX_INPUTS.value] = all_data[-1]
 
         if self.config.experiment.use_gfs_data:
             if self.use_all_gfs_params:
