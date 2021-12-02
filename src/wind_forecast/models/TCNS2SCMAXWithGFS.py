@@ -13,21 +13,18 @@ from wind_forecast.util.config import process_config
 class TCNS2SCMAXWithGFS(LightningModule):
     def __init__(self, config: Config):
         super(TCNS2SCMAXWithGFS, self).__init__()
+        self.config = config
         self.cnn = TimeDistributed(self.create_cnn_layers(config), batch_first=True)
-        if config.experiment.use_all_gfs_params:
-            out_features = config.experiment.tcn_channels[0] - len(config.experiment.synop_train_features) \
-                           - len(process_config(config.experiment.train_parameters_config_file))
-        else:
-            out_features = config.experiment.tcn_channels[0] - len(config.experiment.synop_train_features)
+        out_features = config.experiment.tcn_channels[0]
 
         self.cnn_lin_tcn = TimeDistributed(nn.Linear(in_features=config.experiment.cnn_lin_tcn_in_features,
                                                      out_features=out_features), batch_first=True)
         self.tcn = self.create_tcn_layers(config)
 
         if self.config.experiment.with_dates_inputs:
-            features = config.experiment.tcn_channels + 3
+            features = config.experiment.tcn_channels[-1] + 3
         else:
-            features = config.experiment.tcn_channels + 1
+            features = config.experiment.tcn_channels[-1] + 1
 
         linear = nn.Sequential(
             nn.Linear(in_features=features, out_features=32),
@@ -35,7 +32,7 @@ class TCNS2SCMAXWithGFS(LightningModule):
             nn.Linear(in_features=32, out_features=1)
         )
 
-        self.linear = TimeDistributed(linear, batch_first=True)
+        self.linear_time_distributed = TimeDistributed(linear, batch_first=True)
 
     def create_cnn_layers(self, config: Config):
         cnn_channels = len(process_config(config.experiment.train_parameters_config_file))
@@ -57,6 +54,10 @@ class TCNS2SCMAXWithGFS(LightningModule):
     def create_tcn_layers(self, config: Config):
         tcn_layers = []
         tcn_channels = config.experiment.tcn_channels
+        tcn_channels[0] += len(config.experiment.synop_train_features)
+        tcn_channels[0] += len(process_config(config.experiment.train_parameters_config_file)) if config.experiment.use_all_gfs_params else 0
+        tcn_channels[0] += 2 if config.experiment.with_dates_inputs else 0
+
         kernel_size = config.experiment.tcn_kernel_size
         for i in range(len(tcn_channels) - 1):
             dilation_size = 2 ** i

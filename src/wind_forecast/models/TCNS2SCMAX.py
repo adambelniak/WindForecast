@@ -13,6 +13,7 @@ from wind_forecast.util.config import process_config
 class TCNS2SCMAX(LightningModule):
     def __init__(self, config: Config):
         super(TCNS2SCMAX, self).__init__()
+        self.config = config
         self.cnn = TimeDistributed(self.create_cnn_layers(config), batch_first=True)
         self.cnn_lin_tcn = TimeDistributed(nn.Linear(in_features=config.experiment.cnn_lin_tcn_in_features,
                                                      out_features=config.experiment.tcn_channels[0] - len(
@@ -21,9 +22,9 @@ class TCNS2SCMAX(LightningModule):
         self.tcn = self.create_tcn_layers(config)
 
         if self.config.experiment.with_dates_inputs:
-            features = config.experiment.tcn_channels + 2
+            features = config.experiment.tcn_channels[-1] + 2
         else:
-            features = config.experiment.tcn_channels
+            features = config.experiment.tcn_channels[-1]
 
         linear = nn.Sequential(
             nn.Linear(in_features=features, out_features=32),
@@ -31,7 +32,7 @@ class TCNS2SCMAX(LightningModule):
             nn.Linear(in_features=32, out_features=1)
         )
 
-        self.linear = TimeDistributed(linear, batch_first=True)
+        self.linear_time_distributed = TimeDistributed(linear, batch_first=True)
 
     def create_cnn_layers(self, config: Config):
         cnn_channels = len(process_config(config.experiment.train_parameters_config_file))
