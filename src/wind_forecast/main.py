@@ -114,7 +114,8 @@ def main(cfg: Config):
     mean = datamodule.dataset_test.mean
     std = datamodule.dataset_test.std
 
-    plot_results(system, cfg, mean, std)
+    if cfg.experiment.view_test_result:
+        plot_results(system, cfg, mean, std)
 
     if trainer.interrupted:  # type: ignore
         log.info(f'[bold red]>>> Training interrupted.')

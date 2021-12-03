@@ -1,0 +1,24 @@
+# Specific experiments settings
+# (default settings inherited from configs.experiment.ExperimentSettings)
+
+defaults:
+  - schema_experiment
+
+_tags_:
+  - GFS
+
+resume_checkpoint: ~
+
+datamodule:
+  _target_: wind_forecast.datamodules.Sequence2SequenceDataModuleForGFSComparison.Sequence2SequenceDataModuleForGFSComparison
+
+model:
+  _target_: wind_forecast.models.LSTMModel.LSTMModel
+
+system:
+  _target_: wind_forecast.systems.S2SGFSRegressor.S2SGFSRegressor
+
+use_gfs_data: True
+view_test_result: False
+synop_from_year: 2017
+epochs: 0
