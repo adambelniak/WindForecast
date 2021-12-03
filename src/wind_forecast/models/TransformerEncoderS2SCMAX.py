@@ -6,6 +6,7 @@ from torch import nn
 
 from wind_forecast.config.register import Config
 from wind_forecast.consts import BatchKeys
+from wind_forecast.models.CMAXAutoencoder import CMAXEncoder, set_pretrained_encoder
 from wind_forecast.models.Transformer import TransformerBaseProps, PositionalEncoding
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 
@@ -15,26 +16,15 @@ class TransformerEncoderS2SCMAX(TransformerBaseProps):
         super().__init__(config)
         conv_H = config.experiment.cmax_h
         conv_W = config.experiment.cmax_w
-        conv_layers = []
-        assert len(config.experiment.cnn_filters) > 0
-
-        in_channels = 1
-        for index, filters in enumerate(config.experiment.cnn_filters):
-            out_channels = filters
-            conv_layers.extend([
-                nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=(3, 3), stride=(2, 2), padding=1),
-                nn.ReLU(),
-                nn.BatchNorm2d(num_features=out_channels),
-            ])
-            if index != len(config.experiment.cnn_filters) - 1:
-                conv_layers.append(nn.Dropout(config.experiment.dropout))
+        out_channels = config.experiment.cnn_filters[-1]
+        self.conv = CMAXEncoder(config)
+        for _ in config.experiment.cnn_filters:
             conv_W = math.ceil(conv_W / 2)
             conv_H = math.ceil(conv_H / 2)
-            in_channels = out_channels
 
-        self.conv = nn.Sequential(*conv_layers, nn.Flatten(),
-                                  nn.Linear(in_features=conv_W * conv_H * out_channels, out_features=conv_W * conv_H * out_channels))
-        self.conv_time_distributed = TimeDistributed(self.conv)
+        if config.experiment.use_pretrained_cmax_autoencoder:
+            set_pretrained_encoder(self.conv, config)
+        self.conv_time_distributed = TimeDistributed(self.conv, batch_first=True)
 
         self.embed_dim += conv_W * conv_H * out_channels
 

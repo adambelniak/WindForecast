@@ -52,41 +52,47 @@ class CMAXEncoder(LightningModule):
                                   nn.Linear(in_features=conv_W * conv_H * out_channels,
                                             out_features=conv_W * conv_H * out_channels))
 
+        self.output_shape = (conv_W * conv_H * out_channels, )
+
     def forward(self, inputs: torch.Tensor):
         return self.encoder(inputs)
 
+    def get_output_shape(self):
+        return self.output_shape
+
 
 class CMAXDecoder(LightningModule):
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, input_shape):
         super().__init__()
-        self.decoder = nn.Sequential(nn.Unflatten(dim=1, unflattened_size=(32, 4, 4)),
-                                     nn.BatchNorm2d(num_features=32),
-                                     nn.ConvTranspose2d(in_channels=32, out_channels=32, kernel_size=(3, 3), stride=(2, 2), padding=1,
-                                                        output_padding=1),
-                                     nn.ReLU(),
-                                     nn.BatchNorm2d(num_features=32),
-                                     nn.ConvTranspose2d(in_channels=32, out_channels=32, kernel_size=(3, 3),
-                                                        stride=(2, 2), padding=1),
-                                     nn.ReLU(),
-                                     nn.BatchNorm2d(num_features=32),
-                                     nn.ConvTranspose2d(in_channels=32, out_channels=32, kernel_size=(3, 3),
-                                                        stride=(2, 2), padding=1),
-                                     nn.ReLU(),
-                                     nn.BatchNorm2d(num_features=32),
-                                     nn.ConvTranspose2d(in_channels=32, out_channels=32, kernel_size=(3, 3),
-                                                        stride=(2, 2), padding=1),
-                                     nn.ReLU(),
-                                     nn.BatchNorm2d(num_features=32),
-                                     nn.ConvTranspose2d(in_channels=32, out_channels=16, kernel_size=(3, 3),
-                                                        stride=(2, 2), padding=1),
-                                     nn.ReLU(),
-                                     nn.BatchNorm2d(num_features=16),
-                                     nn.ConvTranspose2d(in_channels=16, out_channels=1, kernel_size=(3, 3),
-                                                        stride=(2, 2), padding=1)
-                                     )
+        in_channels = config.experiment.cnn_filters[-1]
+        in_size = int(math.sqrt(input_shape[0] / in_channels))
+        conv_layers = []
+        filters_layers = config.experiment.cnn_filters[:-1]
+        filters_layers.reverse()
+
+        for index, filters in enumerate(filters_layers):
+            out_channels = filters
+            conv_layers.extend([
+                nn.ConvTranspose2d(in_channels=in_channels, out_channels=out_channels, kernel_size=(3, 3), stride=(2, 2),
+                          padding=1, output_padding= 1 if index == 0 else 0),
+                nn.ReLU(),
+                nn.BatchNorm2d(num_features=out_channels),
+            ])
+            if index != len(filters_layers) - 1:
+                conv_layers.append(nn.Dropout(config.experiment.dropout))
+            in_channels = out_channels
+
+        conv_layers.extend([
+            nn.ConvTranspose2d(in_channels=in_channels, out_channels=1, kernel_size=(3, 3), stride=(2, 2),
+                               padding=1, output_padding=0)
+        ])
+
+        self.decoder = nn.Sequential(nn.Unflatten(dim=1, unflattened_size=(in_channels, in_size, in_size)),
+                                     nn.BatchNorm2d(num_features=in_channels),
+                                     *conv_layers)
 
     def forward(self, inputs: torch.Tensor):
-        return self.decoder(inputs);
+        return self.decoder(inputs)
 
 
 class CMAXAutoencoder(LightningModule):
@@ -94,7 +100,7 @@ class CMAXAutoencoder(LightningModule):
         super().__init__()
 
         self.encoder = CMAXEncoder(config)
-        self.decoder = CMAXDecoder(config)
+        self.decoder = CMAXDecoder(config, input_shape=self.encoder.get_output_shape())
 
     def forward(self, cmax_inputs):
         hidden = self.encoder(cmax_inputs)

@@ -24,7 +24,7 @@ class TransformerCMAX(Transformer):
 
         if config.experiment.use_pretrained_cmax_autoencoder:
             set_pretrained_encoder(self.conv, config)
-        self.conv_time_distributed = TimeDistributed(self.conv)
+        self.conv_time_distributed = TimeDistributed(self.conv, batch_first=True)
 
         self.embed_dim += conv_W * conv_H * out_channels
 

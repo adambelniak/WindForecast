@@ -94,7 +94,7 @@ class ExperimentSettings:
 
     cnn_ff_input_dim: List = field(default_factory=lambda: [1600, 256])
 
-    cnn_filters: List = field(default_factory=lambda: [32, 32, 32, 32, 32, 16])
+    cnn_filters: List = field(default_factory=lambda: [16, 32, 32, 32, 32, 16])
 
     epochs: int = 40
 
@@ -108,13 +108,11 @@ class ExperimentSettings:
 
     tcn_channels: List = field(default_factory=lambda: [64, 64])
 
-    cnn_lin_tcn_in_features: int = 2048
+    cnn_lin_tcn_in_features: int = 256
 
     tcn_kernel_size: int = 3
 
     tcn_input_features: int = 1600
-
-    tcn_cnn_ff_input_dim: int = 1536
 
     subregion_nlat: float = 53
 

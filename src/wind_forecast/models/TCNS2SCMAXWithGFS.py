@@ -15,7 +15,7 @@ class TCNS2SCMAXWithGFS(LightningModule):
     def __init__(self, config: Config):
         super(TCNS2SCMAXWithGFS, self).__init__()
         self.config = config
-        self.cnn = TimeDistributed(CMAXEncoder(config))
+        self.cnn = TimeDistributed(CMAXEncoder(config), batch_first=True)
         out_features = config.experiment.tcn_channels[0]
 
         self.cnn_lin_tcn = TimeDistributed(nn.Linear(in_features=config.experiment.cnn_lin_tcn_in_features,

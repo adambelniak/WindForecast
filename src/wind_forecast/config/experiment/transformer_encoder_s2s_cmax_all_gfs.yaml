@@ -27,10 +27,3 @@ use_all_gfs_params: True
 train_parameters_config_file: TransformerConfig.json
 epochs: 40
 time2vec_embedding_size: 5
-cnn_filters:
-  - 16
-  - 32
-  - 32
-  - 32
-  - 32
-  - 16

@@ -5,6 +5,7 @@ import torch.nn as nn
 from pytorch_lightning import LightningModule
 from wind_forecast.config.register import Config
 from wind_forecast.consts import BatchKeys
+from wind_forecast.models.CMAXAutoencoder import CMAXEncoder
 from wind_forecast.models.TCNModel import TemporalBlock
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 from wind_forecast.util.config import process_config
@@ -14,7 +15,7 @@ class TCNS2SCMAX(LightningModule):
     def __init__(self, config: Config):
         super(TCNS2SCMAX, self).__init__()
         self.config = config
-        self.cnn = TimeDistributed(self.create_cnn_layers(config), batch_first=True)
+        self.cnn = TimeDistributed(CMAXEncoder(config), batch_first=True)
         self.cnn_lin_tcn = TimeDistributed(nn.Linear(in_features=config.experiment.cnn_lin_tcn_in_features,
                                                      out_features=config.experiment.tcn_channels[0] - len(
                                                          config.experiment.synop_train_features)),

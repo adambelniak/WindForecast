@@ -23,14 +23,6 @@ use_gfs_data: True
 synop_from_year: 2017
 cmax_from_year: 2017
 epochs: 30
-cnn_lin_tcn_in_features: 1024
-cnn_filters:
-  - 16
-  - 32
-  - 32
-  - 32
-  - 16
-
 tcn_channels:
   - 64
   - 64

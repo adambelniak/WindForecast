@@ -23,10 +23,3 @@ cmax_from_year: 2017
 use_future_cmax: True
 batch_size: 5
 time2vec_embedding_size: 5
-cnn_filters:
-  - 16
-  - 32
-  - 32
-  - 32
-  - 32
-  - 16

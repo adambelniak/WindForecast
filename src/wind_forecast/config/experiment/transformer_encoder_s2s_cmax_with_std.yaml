@@ -24,9 +24,3 @@ synop_from_year: 2017
 cmax_from_year: 2017
 epochs: 40
 time2vec_embedding_size: 5
-cnn_filters:
-  - 16
-  - 32
-  - 32
-  - 32
-  - 16
