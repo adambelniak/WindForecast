@@ -39,7 +39,7 @@ class ExperimentSettings:
     # Enable initial validation before training
     validate_before_training: bool = False
 
-    wandb_logger: WandbLogger = None
+    wandb_logger: Any = None
 
     # ----------------------------------------------------------------------------------------------
     # Data loading settings
