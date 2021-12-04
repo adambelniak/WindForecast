@@ -20,7 +20,7 @@ from wind_forecast.util.callbacks import CustomCheckpointer, get_resume_checkpoi
 from wind_forecast.util.logging import log
 from wind_forecast.util.rundir import setup_rundir
 
-wandb_logger: WandbLogger
+from wind_forecast.util.common_util import wandb_logger
 os.environ['KMP_DUPLICATE_LIB_OK']='True'
 
 
@@ -128,14 +128,6 @@ if __name__ == '__main__':
     wandb.init(project=os.getenv('WANDB_PROJECT'),
                entity=os.getenv('WANDB_ENTITY'),
                name=os.getenv('RUN_NAME'))
-
-    wandb_logger = WandbLogger(
-        project=os.getenv('WANDB_PROJECT'),
-        entity=os.getenv('WANDB_ENTITY'),
-        name=os.getenv('RUN_NAME'),
-        save_dir=os.getenv('RUN_DIR'),
-        log_model="all"
-    )
 
     # Init logger from source dir (code base) before switching to run dir (results)
     wandb_logger.experiment  # type: ignore
