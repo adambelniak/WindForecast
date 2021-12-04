@@ -96,7 +96,6 @@ def split_dataset(dataset, val_split=0.2, chunk_length=20, sequence_length=None)
     return CustomSubset(dataset, train_indexes), CustomSubset(dataset, val_indexes)
 
 
-
 def get_pretrained_artifact_path(pretrained_artifact_path: str):
     run: Run = wandb_logger.experiment  # type: ignore
 

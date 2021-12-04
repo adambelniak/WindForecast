@@ -9,7 +9,7 @@ import math
 
 
 def set_pretrained_encoder(module: nn.Module, config: Config):
-    pretrained_autoencoder_path = get_pretrained_artifact_path(config.experiment.pretrained_artifact, config.experiment.wandb_logger)
+    pretrained_autoencoder_path = get_pretrained_artifact_path(config.experiment.pretrained_artifact)
     pretrained_model = CMAXAutoencoder(config=config)
     pretrained_model.load_from_checkpoint(pretrained_autoencoder_path)
     module_state = module.state_dict()
