@@ -52,6 +52,7 @@ def plot_results(system, config: Config, mean, std):
 @hydra.main(config_path='config', config_name='default')
 def main(cfg: Config):
 
+    cfg.experiment.wandb_logger = wandb_logger
     cfg.experiment.train_parameters_config_file = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                                                'config', 'train_parameters',
                                                                cfg.experiment.train_parameters_config_file)

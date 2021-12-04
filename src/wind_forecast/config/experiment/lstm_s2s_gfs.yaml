@@ -1,0 +1,23 @@
+# Specific experiments settings
+# (default settings inherited from configs.experiment.ExperimentSettings)
+
+defaults:
+  - schema_experiment
+
+_tags_:
+  - LSTM_S2S_GFS
+
+resume_checkpoint: ~
+
+datamodule:
+  _target_: wind_forecast.datamodules.Sequence2SequenceDataModule.Sequence2SequenceDataModule
+
+model:
+  _target_: wind_forecast.models.LSTMS2SWithGFSModel.LSTMS2SWithGFSModel
+
+system:
+  _target_: wind_forecast.systems.S2SRegressorWithGFSInput.S2SRegressorWithGFSInput
+synop_from_year: 2017
+batch_size: 32
+use_gfs_data: True
+use_all_gfs_params: True

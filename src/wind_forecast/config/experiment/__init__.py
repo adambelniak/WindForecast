@@ -6,6 +6,8 @@ from typing import Any, List, Optional
 from omegaconf.omegaconf import MISSING
 
 # Experiment settings validation schema & default values
+from pytorch_lightning.loggers import WandbLogger
+
 from wind_forecast.preprocess.synop.consts import SYNOP_TRAIN_FEATURES
 from wind_forecast.util.common_util import NormalizationType
 
@@ -36,6 +38,8 @@ class ExperimentSettings:
 
     # Enable initial validation before training
     validate_before_training: bool = False
+
+    wandb_logger: WandbLogger = None
 
     # ----------------------------------------------------------------------------------------------
     # Data loading settings
@@ -95,6 +99,8 @@ class ExperimentSettings:
     cnn_ff_input_dim: List = field(default_factory=lambda: [1600, 256])
 
     cnn_filters: List = field(default_factory=lambda: [16, 32, 32, 32, 32, 16])
+
+    lstm_num_layers: int = 4
 
     epochs: int = 40
 

@@ -14,19 +14,22 @@ class LSTMS2SModel(LightningModule):
 
     def __init__(self, config: Config):
         super(LSTMS2SModel, self).__init__()
+        self.config = config
         input_size = len(config.experiment.synop_train_features)
         self.sequence_length = config.experiment.sequence_length
         self.teacher_forcing_epoch_num = config.experiment.teacher_forcing_epoch_num
         self.gradual_teacher_forcing = config.experiment.gradual_teacher_forcing
         dropout = config.experiment.dropout
         self.lstm1 = nn.LSTM(input_size=input_size, hidden_size=4*input_size*input_size, batch_first=True, dropout=dropout)
-        self.lstm2 = nn.LSTM(input_size=4*input_size*input_size, hidden_size=input_size, batch_first=True, dropout=dropout)
+        self.lstm2 = nn.LSTM(input_size=4*input_size*input_size, hidden_size=4*input_size*input_size, batch_first=True, dropout=dropout)
+        self.lstm3 = nn.LSTM(input_size=4*input_size*input_size, hidden_size=input_size, batch_first=True, dropout=dropout)
         self.dense = nn.Sequential(
             nn.Dropout(),
             nn.Linear(in_features=input_size, out_features=128),
             nn.ReLU(),
             nn.Linear(in_features=128, out_features=1)
         )
+        self.classification_head_time_distributed = TimeDistributed(self.dense, batch_first=True)
 
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
         synop_inputs = batch[BatchKeys.SYNOP_INPUTS.value].float()

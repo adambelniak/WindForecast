@@ -51,7 +51,6 @@ class CustomCheckpointer(ModelCheckpoint):
 
 
 def get_resume_checkpoint(cfg: Config, wandb_logger: WandbLogger) -> Optional[str]:
-    wandb_logger: WandbLogger
     run: Run = wandb_logger.experiment  # type: ignore
     path = cfg.experiment.resume_checkpoint
 

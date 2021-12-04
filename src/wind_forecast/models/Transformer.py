@@ -181,6 +181,3 @@ class Transformer(TransformerBaseProps):
             output = pred
 
         return torch.squeeze(self.classification_head_time_distributed(output), -1)
-
-    def getSOS(self, batch_size: int):
-        return torch.zeros(batch_size, 1, self.embed_dim, device=self.device)
