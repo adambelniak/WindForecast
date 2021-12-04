@@ -39,8 +39,6 @@ class ExperimentSettings:
     # Enable initial validation before training
     validate_before_training: bool = False
 
-    wandb_logger: Any = None
-
     # ----------------------------------------------------------------------------------------------
     # Data loading settings
     # ----------------------------------------------------------------------------------------------
@@ -128,7 +126,7 @@ class ExperimentSettings:
 
     subregion_wlon: float = 20
 
-    dropout: float = 0.1
+    dropout: float = 0.5
 
     teacher_forcing_epoch_num: int = 40
 

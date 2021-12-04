@@ -1,20 +1,19 @@
+import errno
 import math
+import os
 from enum import Enum
+from pathlib import Path
 from typing import Sequence
 
-from pytorch_lightning.loggers import WandbLogger
-from wandb.sdk.wandb_run import Run
-from pathlib import Path
-import errno
-
-import os
 import numpy as np
 import pytz
 from torch.utils.data import Subset, random_split, Dataset
 from torch.utils.data.dataset import T_co
 from tqdm import tqdm
+from wandb.sdk.wandb_run import Run
 
-wandb_logger: WandbLogger
+from wind_forecast.main import wandb_logger
+
 
 def prep_zeros_if_needed(value: str, number_of_zeros: int):
     for i in range(number_of_zeros - len(value) + 1):
@@ -91,7 +90,7 @@ def split_dataset(dataset, val_split=0.2, chunk_length=20, sequence_length=None)
     return CustomSubset(dataset, train_indexes), CustomSubset(dataset, val_indexes)
 
 
-def get_pretrained_artifact_path(pretrained_artifact_path: str, wandb_logger: WandbLogger):
+def get_pretrained_artifact_path(pretrained_artifact_path: str):
     run: Run = wandb_logger.experiment  # type: ignore
 
     if pretrained_artifact_path is None:
