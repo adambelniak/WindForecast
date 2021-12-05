@@ -41,7 +41,7 @@ class LSTMS2SWithGFSModel(LightningModule):
         self.time_2_vec_time_distributed = TimeDistributed(Time2Vec(self.features_length,
                                                                     config.experiment.time2vec_embedding_size),
                                                            batch_first=True)
-
+        self.state_dense = nn.Linear(in_features=self.embed_dim, out_features=self.embed_dim)
         self.dense = nn.Sequential(
             nn.Dropout(),
             nn.Linear(in_features=self.embed_dim, out_features=128),
@@ -77,6 +77,7 @@ class LSTMS2SWithGFSModel(LightningModule):
 
         inputs = torch.cat([*x, self.time_2_vec_time_distributed(torch.cat(x, -1))], -1)
         output, state = self.encoder_lstm(inputs)
+        state = (self.state_dense(state[0]), self.state_dense(state[1]))
         targets = torch.cat([*y, self.time_2_vec_time_distributed(torch.cat(y, -1))], -1)
 
         if epoch < self.teacher_forcing_epoch_num and stage in [None, 'fit']:
@@ -106,7 +107,7 @@ class LSTMS2SWithGFSModel(LightningModule):
             decoder_input = inputs[:, -1:, :]
             pred = None
             for frame in range(synop_inputs.size(1)):
-                next_pred, _ = self.decoder_lstm(decoder_input, state)
+                next_pred, state = self.decoder_lstm(decoder_input, state)
                 pred = torch.cat([pred, next_pred[:, -1:, :]], -2) if pred is not None else next_pred[:, -1:, :]
                 decoder_input = next_pred[:, -1:, :]
             output = pred

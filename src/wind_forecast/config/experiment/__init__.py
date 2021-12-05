@@ -31,7 +31,7 @@ class ExperimentSettings:
     # Path to pretrained artifact. Two formats are supported:
     # - local checkpoints: path to artifact relative from run (results) directory
     # - wandb artifacts: wandb://ARTIFACT_PATH/ARTIFACT_NAME:VERSION@CHECKPOINT_NAME
-    pretrained_artifact: Optional[str] = None
+    pretrained_artifact: Optional[str] = 'wandb://mbelniak/wind-forecast/model-e7albsfc:v19@model.ckpt'
 
     # Enable checkpoint saving
     save_checkpoints: bool = True
@@ -90,7 +90,7 @@ class ExperimentSettings:
 
     data_dim_y: int = 33
 
-    train_parameters_config_file: str = "CNNConfig.json"
+    train_parameters_config_file: str = "TransformerConfig.json"
 
     cnn_input_size: Any = (33, 53)
 
