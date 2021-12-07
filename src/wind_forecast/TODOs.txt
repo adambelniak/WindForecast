@@ -1,3 +1,2 @@
 convGRU, convLSTM, GAN, maybe better autoencoder for cmax
-
-Use dictionaries for passing data
+TCN with attention

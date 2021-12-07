@@ -46,7 +46,7 @@ class TransformerEncoderS2SCMAXWithGFS(TransformerBaseProps):
         self.encoder = nn.TransformerEncoder(encoder_layer, config.experiment.transformer_attention_layers, encoder_norm)
 
         dense_layers = []
-        features = self.embed_dim
+        features = self.embed_dim + 1
 
         for neurons in config.experiment.transformer_head_dims:
             dense_layers.append(nn.Linear(in_features=features, out_features=neurons))
@@ -80,5 +80,5 @@ class TransformerEncoderS2SCMAXWithGFS(TransformerBaseProps):
         x = self.pos_encoder(whole_input_embedding) if self.use_pos_encoding else whole_input_embedding
         output = self.encoder(x)
 
-        return torch.squeeze(self.classification_head_time_distributed(output), -1)
+        return torch.squeeze(self.classification_head_time_distributed(torch.cat([x, gfs_targets], -1)), -1)
 
