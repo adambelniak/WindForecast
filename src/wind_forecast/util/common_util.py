@@ -116,10 +116,10 @@ def get_pretrained_artifact_path(pretrained_artifact: str):
         artifact_name = artifact_path.split('/')[-1].replace(':', '-')
         print(artifact_name)
 
-        os.makedirs(f'{artifact_root}/{artifact_name}', exist_ok=True)
+        os.makedirs(f'artifacts/{artifact_name}', exist_ok=True)
 
         artifact = run.use_artifact(artifact_path, type='model')  # type: ignore
-        artifact.download()  # type: ignore
+        artifact.download(root=f'artifacts/{artifact_name}')  # type: ignore
 
         pretrained_artifact_path = f'artifacts/{artifact_name}/{checkpoint_path}'
 
