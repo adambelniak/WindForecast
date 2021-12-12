@@ -25,3 +25,5 @@ use_gfs_data: True
 use_future_cmax: True
 batch_size: 5
 time2vec_embedding_size: 5
+#use_pretrained_cmax_autoencoder: True
+#pretrained_artifact: wandb://mbelniak/wind-forecast/model-e7albsfc:v19@model.ckpt

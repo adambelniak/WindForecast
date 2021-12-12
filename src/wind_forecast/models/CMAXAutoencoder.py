@@ -10,7 +10,11 @@ import math
 
 def get_pretrained_encoder(module: nn.Module, config: Config):
     pretrained_autoencoder_path = get_pretrained_artifact_path(config.experiment.pretrained_artifact)
-    pretrained_model = CMAXAutoencoder.load_from_checkpoint(pretrained_autoencoder_path, config=config)
+    checkpoint = torch.load(pretrained_autoencoder_path)
+    state_dict = checkpoint['state_dict']
+    state_dict = {k.partition('model.')[2]:state_dict[k] for k in state_dict.keys()}
+    pretrained_model = CMAXAutoencoder(config=config)
+    pretrained_model.load_state_dict(state_dict)
     module_state = module.state_dict()
     pretrained_state_dict = pretrained_model.state_dict()
     for name, param in pretrained_state_dict.items():
