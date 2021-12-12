@@ -112,7 +112,9 @@ def get_pretrained_artifact_path(pretrained_artifact: str):
 
         path = pretrained_artifact[len(wandb_prefix):]
         artifact_path, checkpoint_path = path.split('@')
+        print(artifact_path)
         artifact_name = artifact_path.split('/')[-1].replace(':', '-')
+        print(artifact_name)
 
         os.makedirs(f'{artifact_root}/{artifact_name}', exist_ok=True)
 
