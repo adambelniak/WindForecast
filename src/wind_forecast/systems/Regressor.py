@@ -95,7 +95,7 @@ class Regressor(pl.LightningModule):
                                     warmup_epochs=self.cfg.optim.warmup_epochs,
                                     decay_epochs=self.cfg.optim.decay_epochs,
                                     starting_lr=self.cfg.optim.starting_lr,
-                                    base_lr=self.cfg.optim.optimizer.lr,
+                                    base_lr=self.cfg.optim.lr,
                                     final_lr=self.cfg.optim.final_lr)
 
             scheduler: _LRScheduler = instantiate(  # type: ignore
