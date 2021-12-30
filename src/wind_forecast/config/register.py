@@ -47,6 +47,8 @@ class Config:
     # Optimizer & scheduler settings --> optim/*.yaml
     optim: OptimSettings = MISSING
 
+    debug_mode: bool = False
+
     # wandb metadata
     notes: Optional[str] = None
     tags: Optional[List[str]] = None

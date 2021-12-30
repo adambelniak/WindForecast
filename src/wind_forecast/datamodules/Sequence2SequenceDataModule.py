@@ -1,5 +1,4 @@
 import math
-import os
 from typing import Optional, Tuple, List
 
 from pytorch_lightning import LightningDataModule
@@ -72,7 +71,7 @@ class Sequence2SequenceDataModule(LightningDataModule):
                                                 to_year=self.synop_to_year,
                                                 norm=False)
 
-        if os.getenv('RUN_MODE', '').lower() == 'debug':
+        if self.config.debug_mode:
             self.synop_data = self.synop_data.head(100)
 
         dates = get_correct_dates_for_sequence(self.synop_data, self.sequence_length, self.future_sequence_length,
@@ -120,58 +119,44 @@ class Sequence2SequenceDataModule(LightningDataModule):
         self.dataset_train, self.dataset_val = split_dataset(dataset, self.config.experiment.val_split,
                                                              sequence_length=self.sequence_length if self.sequence_length > 1 else None)
         self.dataset_test = self.dataset_val
+        print(len(self.dataset_train))
+        print(len(self.dataset_test))
         DataModulesCache().cache_dataset(self.dataset_test)
 
     def prepare_dataset_for_gfs(self):
         print("Preparing the dataset")
-        all_gfs_input_data = ...
-        if self.use_all_gfs_params:
-            # first, get GFS input data that matches synop input data (matching past frames)
-            self.synop_data_indices, all_gfs_input_data, removed_indices = match_gfs_with_synop_sequence2sequence(
-                self.synop_data,
-                self.synop_data_indices,
-                self.target_coords[0],
-                self.target_coords[1],
-                0, 0,
-                self.sequence_length,
-                self.gfs_train_params)
-
-            self.removed_dataset_indices = removed_indices
-            indices = self.synop_data_indices
-
-        # Then, get GFS data for forecast frames (matching future frames)
-        self.synop_data_indices, all_gfs_target_data, next_removed_indices = match_gfs_with_synop_sequence2sequence(
-            self.synop_data, self.synop_data_indices,
-            self.target_coords[0],
-            self.target_coords[1],
+        # match GFS and synop sequences
+        self.synop_data_indices, self.removed_dataset_indices, all_gfs_input_data, all_gfs_target_data = match_gfs_with_synop_sequence2sequence(
+            self.synop_data,
+            self.synop_data_indices,
+            self.target_coords,
+            self.sequence_length,
             self.prediction_offset,
-            self.sequence_length + self.prediction_offset,
-            self.sequence_length + self.future_sequence_length + self.prediction_offset,
+            self.future_sequence_length,
+            self.gfs_train_params,
             self.gfs_train_params if self.use_all_gfs_params
-            else target_param_to_gfs_name_level(self.target_param), future_dates=True)
-
-        self.removed_dataset_indices.extend(next_removed_indices)
-        self.removed_dataset_indices = set(self.removed_dataset_indices)
+            else target_param_to_gfs_name_level(self.target_param))
 
         if self.use_all_gfs_params:
-            indices_to_remove = [indices.index(ind) for ind in next_removed_indices]
-            all_gfs_input_data = np.array([item for index, item in enumerate(all_gfs_input_data) if
-                                           index not in indices_to_remove])
+            # normalize GFS parameters data
             all_gfs_input_data = normalize_gfs_data(all_gfs_input_data, self.normalization_type, (0, 1))
             gfs_target_data = all_gfs_target_data[:, :, self.gfs_target_param_indices]
+            all_gfs_target_data = (all_gfs_target_data - np.mean(all_gfs_target_data, axis=(0, 1))) / np.std(
+                all_gfs_target_data, axis=(0, 1))
         else:
             gfs_target_data = all_gfs_target_data
 
         if self.target_param == "wind_velocity":
+            # handle target wind_velocity forecasted by GFS
             gfs_target_data = np.apply_along_axis(lambda velocity: [math.sqrt(velocity[0] ** 2 + velocity[1] ** 2)], -1, gfs_target_data)
 
         gfs_target_data = (gfs_target_data - np.mean(gfs_target_data, axis=(0, 1))) / np.std(gfs_target_data, axis=(0, 1))
-        all_gfs_target_data = (all_gfs_target_data - np.mean(all_gfs_target_data, axis=(0, 1))) / np.std(all_gfs_target_data, axis=(0, 1))
 
-        assert len(self.synop_data_indices) == len(all_gfs_target_data)
+        assert len(self.synop_data_indices) == len(all_gfs_input_data)
 
         if self.use_all_gfs_params:
             assert len(self.synop_data_indices) == len(all_gfs_input_data)
+            assert len(self.synop_data_indices) == len(all_gfs_target_data)
             return self.synop_data_indices, all_gfs_input_data, gfs_target_data, all_gfs_target_data
 
         return self.synop_data_indices, None, gfs_target_data, None

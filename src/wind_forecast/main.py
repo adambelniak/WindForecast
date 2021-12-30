@@ -51,6 +51,8 @@ def plot_results(system, config: Config, mean, std):
 
 @hydra.main(config_path='config', config_name='default')
 def main(cfg: Config):
+    if os.getenv('RUN_MODE', '').lower() == 'debug':
+        cfg.debug_mode = True
 
     cfg.experiment.train_parameters_config_file = os.path.join(os.path.dirname(os.path.realpath(__file__)),
                                                                'config', 'train_parameters',

@@ -2,7 +2,7 @@ import math
 import os
 import re
 import sys
-from typing import Union
+from typing import Union, Tuple
 from wind_forecast.loaders.Singleton import Singleton
 
 if sys.version_info <= (3, 8, 2):
@@ -372,37 +372,52 @@ def match_gfs_with_synop_sequence(features: Union[list, np.ndarray], targets: li
     return np.array(new_features), np.array(new_targets), removed_indices
 
 
-def match_gfs_with_synop_sequence2sequence(synop_data: pd.DataFrame, synop_data_indices: list, lat: float, lon: float,
-                                           prediction_offset: int, sequence_start_offset: int, sequence_end_offset: int, gfs_params: list,
-                                           future_dates=False):
-    """
-        1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27
-        # # # # # # # # # #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #  #
-              ^                 ^---------------take that--------------^
-            index       sequence_start_offset=8                 sequence_end_offset=21
-
-        future_dates - determines if dates are in the future, so we don't take the future's GFS data
-    """
-    gfs_values = []
+def match_gfs_with_synop_sequence2sequence(synop_data: pd.DataFrame, synop_data_indices: list, target_coords: Tuple[int],
+                                           sequence_length: int, prediction_offset: int, future_sequence_length: int,
+                                           gfs_train_params: list, gfs_target_params: list):
     new_synop_indices = []
     removed_indices = []
-    coords = Coords(lat, lat, lon, lon)
+    gfs_inputs = []
+    gfs_targets = []
+
+    coords = Coords(target_coords[0], target_coords[0], target_coords[1], target_coords[1])
     interpolator = Interpolator(coords)
     print("Matching GFS with synop data")
+
     for index in tqdm(synop_data_indices):
-        dates = synop_data.iloc[index + sequence_start_offset:index + sequence_end_offset]['date']
-        next_gfs_values = get_next_gfs_values(dates, prediction_offset, gfs_params, future_dates, interpolator)
-        if next_gfs_values is None:
-            removed_indices.append(index)
+        dates = synop_data.iloc[index:index + sequence_length]['date']
+        future_dates = synop_data.iloc[index + sequence_length + prediction_offset:index + sequence_length + prediction_offset + future_sequence_length]['date']
+
+        if gfs_train_params is not None and len(gfs_train_params) > 0:
+            # match GFS params for past sequences
+            next_gfs_values = get_next_gfs_values(dates, prediction_offset, gfs_train_params, False, interpolator)
+            if next_gfs_values is None:
+                removed_indices.append(index)
+                continue
+
+            # match GFS params for future sequences
+            next_gfs_future_values = get_next_gfs_values(future_dates, prediction_offset, gfs_train_params, True, interpolator)
+            if next_gfs_future_values is None:
+                removed_indices.append(index)
+                continue
+            else:
+                gfs_targets.append(next_gfs_future_values)
+                gfs_inputs.append(next_gfs_values)
         else:
-            # all gfs forecasts are available
-            gfs_values.append(next_gfs_values)
-            new_synop_indices.append(index)
+            # match only GFS target param
+            next_gfs_values = get_next_gfs_values(future_dates, prediction_offset, gfs_target_params, True, interpolator)
+            if next_gfs_values is None:
+                removed_indices.append(index)
+                continue
+            else:
+                gfs_targets.append(next_gfs_values)
 
-    return new_synop_indices, np.array(gfs_values), removed_indices
+        new_synop_indices.append(index)
+
+    return new_synop_indices, removed_indices, np.array(gfs_inputs), np.array(gfs_targets)
 
 
-def get_next_gfs_values(dates, prediction_offset, gfs_params: list, future_dates, interpolator: Interpolator):
+def get_next_gfs_values(dates, prediction_offset, gfs_params: list, future_dates: bool, interpolator: Interpolator):
     next_gfs_values = []
     gfs_loader = GFSLoader()
     first_date = dates.values[0]

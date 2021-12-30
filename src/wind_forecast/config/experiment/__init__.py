@@ -108,7 +108,7 @@ class ExperimentSettings:
 
     future_sequence_length: int = 24
 
-    target_coords: List = field(default_factory=lambda: [52.1831174, 20.9875259])
+    target_coords: Any = (52.1831174, 20.9875259)
 
     tcn_channels: List = field(default_factory=lambda: [64, 64])
 
