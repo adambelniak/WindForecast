@@ -8,7 +8,7 @@ from omegaconf.omegaconf import MISSING
 # Experiment settings validation schema & default values
 from pytorch_lightning.loggers import WandbLogger
 
-from wind_forecast.preprocess.synop.consts import SYNOP_TRAIN_FEATURES
+from wind_forecast.preprocess.synop.consts import SYNOP_TRAIN_FEATURES, PERIODIC_FEATURES
 from wind_forecast.util.common_util import NormalizationType
 
 
@@ -104,6 +104,8 @@ class ExperimentSettings:
 
     synop_train_features: List = field(default_factory=lambda: SYNOP_TRAIN_FEATURES)
 
+    periodic_features: List = field(default_factory=lambda: PERIODIC_FEATURES)
+
     sequence_length: int = 24
 
     future_sequence_length: int = 24
@@ -133,6 +135,8 @@ class ExperimentSettings:
     gradual_teacher_forcing: bool = True
 
     time2vec_embedding_size: int = 5
+
+    conv_embedding_dim: int = 128
 
     transformer_ff_dim: int = 1024
 

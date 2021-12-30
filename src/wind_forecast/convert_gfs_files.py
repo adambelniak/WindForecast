@@ -14,8 +14,8 @@ from wind_forecast.util.gfs_util import GFS_DATASET_DIR, date_from_gfs_np_file
 
 GFS_PARAMETERS = [
 {
-    "name": "DPT",
-    "level": "HTGL_2"
+    "name": "HGT",
+    "level": "ISBL_500"
 }
 ]
 

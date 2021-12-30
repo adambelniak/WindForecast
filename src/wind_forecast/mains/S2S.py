@@ -11,7 +11,7 @@ from wind_forecast.consts import SYNOP_DATASETS_DIRECTORY
 from wind_forecast.models.S2SModel import create_model
 from wind_forecast.preprocess.gfs.gfs_preprocess_csv import prepare_gfs_sequence_dataset
 from wind_forecast.preprocess.synop import consts
-from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset, normalize
+from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset, get_normalization_values
 from wind_forecast.util.gfs_util import convert_wind
 
 warnings.filterwarnings('ignore')
@@ -65,7 +65,7 @@ def prepare_data(gfs_dir: str, synop_dir: str, start_seq: int, end_seq: int, gfs
                 label = synop_dataset.loc[hour + synop_index + start_seq: hour + synop_index + end_seq]
 
                 synop_input = synop_input.drop(['date', 'year', 'day', 'month'], axis=1).values
-                gfs_input = normalize(single_gfs.drop(['date'], axis=1).values)
+                gfs_input = get_normalization_values(single_gfs.drop(['date'], axis=1).values)
                 label = label[column_name_label].values
 
                 synop_dataset_input.append(synop_input)

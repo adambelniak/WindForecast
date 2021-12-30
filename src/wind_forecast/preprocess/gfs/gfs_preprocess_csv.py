@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
 
 from wind_forecast.consts import CREATED_AT_COLUMN_NAME
-from wind_forecast.preprocess.synop.synop_preprocess import normalize
+from wind_forecast.preprocess.synop.synop_preprocess import get_normalization_values
 
 
 def prepare_gfs_data(dir):
@@ -181,7 +181,7 @@ def process_and_plot(dir, time_stride, index_column):
 
 def normalize_data_without_dates(data, index_column):
     columns_without_dates = [column for column in data.columns if column not in [index_column, CREATED_AT_COLUMN_NAME]]
-    data[columns_without_dates] = normalize(data[columns_without_dates].values)
+    data[columns_without_dates] = get_normalization_values(data[columns_without_dates].values)
     return data
 
 

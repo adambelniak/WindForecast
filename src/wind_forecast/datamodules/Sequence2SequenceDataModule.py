@@ -58,6 +58,7 @@ class Sequence2SequenceDataModule(LightningDataModule):
             config.experiment.train_parameters_config_file) if self.use_all_gfs_params else None
         self.gfs_target_param_indices = [self.gfs_train_params.index(param) for param in target_param_to_gfs_name_level(
             self.target_param)] if self.use_all_gfs_params else None
+        self.periodic_features = config.experiment.periodic_features
 
         self.synop_data = ...
         self.synop_data_indices = ...
@@ -83,15 +84,15 @@ class Sequence2SequenceDataModule(LightningDataModule):
         # Get indices which correspond to 'dates' - 'dates' are the ones, which start a proper sequence without breaks
         self.synop_data_indices = self.synop_data[self.synop_data["date"].isin(dates)].index
         # data was not normalized, so take all frames which will be used, compute std and mean and normalize data
-        self.synop_data, synop_mean, synop_std = normalize_synop_data(self.synop_data, self.synop_data_indices,
+        self.synop_data, target_param_mean, target_param_std = normalize_synop_data(self.synop_data, self.synop_data_indices,
                                                                       self.feature_names,
                                                                       self.sequence_length + self.prediction_offset
                                                                       + self.future_sequence_length,
-                                                                      self.normalization_type)
-        self.synop_mean = synop_mean[self.target_param_index]
-        self.synop_std = synop_std[self.target_param_index]
-        print(f"Synop mean: {synop_mean[self.target_param_index]}")
-        print(f"Synop std: {synop_std[self.target_param_index]}")
+                                                                      self.target_param, self.normalization_type, self.periodic_features)
+        self.synop_mean = target_param_mean
+        self.synop_std = target_param_std
+        print(f"Synop mean: {target_param_mean}")
+        print(f"Synop std: {target_param_std}")
 
     def setup(self, stage: Optional[str] = None):
         cached_dataset = DataModulesCache().get_cached_dataset()
