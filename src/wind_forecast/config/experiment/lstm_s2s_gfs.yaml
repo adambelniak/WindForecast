@@ -21,3 +21,4 @@ synop_from_year: 2017
 batch_size: 32
 use_gfs_data: True
 use_all_gfs_params: True
+teacher_forcing_epoch_num: 0
