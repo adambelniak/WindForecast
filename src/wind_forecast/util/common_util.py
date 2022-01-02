@@ -96,28 +96,30 @@ def split_dataset(dataset, val_split=0.2, chunk_length=20, sequence_length=None)
     return CustomSubset(dataset, train_indexes), CustomSubset(dataset, val_indexes)
 
 
-def get_pretrained_artifact_path(pretrained_artifact_path: str):
+def get_pretrained_artifact_path(pretrained_artifact: str):
     run: Run = wandb_logger.experiment  # type: ignore
 
-    if pretrained_artifact_path is None:
-        raise ValueError('pretrained_artifact_path must be set to use pretrained artifact!')
+    if pretrained_artifact is None:
+        raise ValueError('pretrained_artifact must be set to use pretrained artifact!')
 
     wandb_prefix = 'wandb://'
 
-    if pretrained_artifact_path.startswith(wandb_prefix):
+    if pretrained_artifact.startswith(wandb_prefix):
         run_name = os.getenv("RUN_NAME")
         # Resuming from wandb artifacts, e.g.:
         # resume_checkpoint: wandb://WANDB_LOGIN/WANDB_PROJECT_NAME/ARTIFACT_NAME:v0@checkpoint.ckpt
         artifact_root = f'{os.getenv("RESULTS_DIR")}/{os.getenv("WANDB_PROJECT")}/{run_name}/artifacts'
 
-        path = pretrained_artifact_path[len(wandb_prefix):]
+        path = pretrained_artifact[len(wandb_prefix):]
         artifact_path, checkpoint_path = path.split('@')
+        print(artifact_path)
         artifact_name = artifact_path.split('/')[-1].replace(':', '-')
+        print(artifact_name)
 
-        os.makedirs(f'{artifact_root}/{artifact_name}', exist_ok=True)
+        os.makedirs(f'artifacts/{artifact_name}', exist_ok=True)
 
         artifact = run.use_artifact(artifact_path, type='model')  # type: ignore
-        artifact.download()  # type: ignore
+        artifact.download(root=f'artifacts/{artifact_name}')  # type: ignore
 
         pretrained_artifact_path = f'artifacts/{artifact_name}/{checkpoint_path}'
 

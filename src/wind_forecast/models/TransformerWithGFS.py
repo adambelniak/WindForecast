@@ -34,7 +34,7 @@ class TransformerWithGFS(Transformer):
         decoder_norm = nn.LayerNorm(self.embed_dim)
         self.decoder = nn.TransformerDecoder(decoder_layer, self.transformer_layers_num, decoder_norm)
 
-        features = self.embed_dim
+        features = self.embed_dim + 1
         dense_layers = []
 
         for neurons in config.experiment.transformer_head_dims:
@@ -46,6 +46,7 @@ class TransformerWithGFS(Transformer):
 
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
         synop_inputs = batch[BatchKeys.SYNOP_INPUTS.value].float()
+        gfs_targets = batch[BatchKeys.GFS_TARGETS.value].float()
         all_synop_targets = batch[BatchKeys.ALL_SYNOP_TARGETS.value].float()
         dates_embedding = None if self.config.experiment.with_dates_inputs is False else batch[BatchKeys.DATES_EMBEDDING.value]
 
@@ -114,4 +115,4 @@ class TransformerWithGFS(Transformer):
                 pred = decoder_input[:, 1:, :]
             output = pred
 
-        return torch.squeeze(self.classification_head_time_distributed(output), -1)
+        return torch.squeeze(self.classification_head_time_distributed(torch.cat([x, gfs_targets], -1)), -1)

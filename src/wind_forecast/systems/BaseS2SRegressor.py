@@ -32,9 +32,7 @@ class BaseS2SRegressor(pl.LightningModule):
 
         self.cfg = cfg
 
-        self.model: LightningModule = instantiate(
-            self.cfg.experiment.model,
-            self.cfg)
+        self.model: LightningModule = instantiate(self.cfg.experiment.model, self.cfg)
 
         self.criterion = MSELoss()
 

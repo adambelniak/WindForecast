@@ -55,3 +55,11 @@ SYNOP_TRAIN_FEATURES = [
     CURRENT_WEATHER,
     LOWER_CLOUDS
 ]
+
+PERIODIC_FEATURES = [
+    {
+        'column': DIRECTION_COLUMN,
+        'min': 0,
+        'max': 360
+    }
+]
