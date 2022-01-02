@@ -27,6 +27,36 @@ class TemporalBlock(nn.Module):
         return self.relu(out + res)
 
 
+class TemporalBlockWithAttention(nn.Module):
+    def __init__(self, attention_heads, n_inputs, n_outputs, kernel_size, dilation, padding, stride=1, dropout=0.5):
+        super(TemporalBlockWithAttention, self).__init__()
+        self.conv1 = weight_norm(nn.Conv2d(n_inputs, n_outputs, (1, kernel_size),
+                                           stride=stride, padding=(0, 0), dilation=dilation))
+        self.pad = torch.nn.ZeroPad2d((padding, 0, 0, 0))
+        self.relu = nn.ReLU()
+        self.dropout = nn.Dropout(dropout)
+        self.conv2 = weight_norm(nn.Conv2d(n_outputs, n_outputs, (1, kernel_size),
+                                           stride=stride, padding=(0, 0), dilation=dilation))
+        self.tcn_block1 = nn.Sequential(self.pad, self.conv1, self.relu, self.dropout)
+        self.tcn_block2 = nn.Sequential(self.pad, self.conv2, self.relu, self.dropout)
+
+        self.self_attn = nn.MultiheadAttention(n_outputs, attention_heads,
+                                               dropout=dropout, batch_first=True)
+
+        self.downsample = nn.Conv1d(
+            n_inputs, n_outputs, 1) if n_inputs != n_outputs else None
+        self.relu = nn.ReLU()
+
+    def forward(self, x) -> torch.Tensor:
+        y = self.tcn_block1(x.unsqueeze(2)).squeeze(2)
+        y = y.permute(0, 2, 1)
+        y = self.self_attn(y, y, y, need_weights=False)[0]
+        y = y.permute(0, 2, 1)
+        y = self.tcn_block2(y.unsqueeze(2)).squeeze(2)
+        res = x if self.downsample is None else self.downsample(x)
+        return self.relu(y + res)
+
+
 class TemporalConvNet(LightningModule):
     def __init__(self, config: Config):
         super(TemporalConvNet, self).__init__()

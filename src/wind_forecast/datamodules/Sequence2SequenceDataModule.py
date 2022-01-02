@@ -119,8 +119,6 @@ class Sequence2SequenceDataModule(LightningDataModule):
         self.dataset_train, self.dataset_val = split_dataset(dataset, self.config.experiment.val_split,
                                                              sequence_length=self.sequence_length if self.sequence_length > 1 else None)
         self.dataset_test = self.dataset_val
-        print(len(self.dataset_train))
-        print(len(self.dataset_test))
         DataModulesCache().cache_dataset(self.dataset_test)
 
     def prepare_dataset_for_gfs(self):
@@ -152,11 +150,10 @@ class Sequence2SequenceDataModule(LightningDataModule):
 
         gfs_target_data = (gfs_target_data - np.mean(gfs_target_data, axis=(0, 1))) / np.std(gfs_target_data, axis=(0, 1))
 
-        assert len(self.synop_data_indices) == len(all_gfs_input_data)
+        assert len(self.synop_data_indices) == len(all_gfs_target_data), f"len(all_gfs_target_data) should be {len(self.synop_data_indices)} but was {len(all_gfs_target_data)}"
 
         if self.use_all_gfs_params:
-            assert len(self.synop_data_indices) == len(all_gfs_input_data)
-            assert len(self.synop_data_indices) == len(all_gfs_target_data)
+            assert len(self.synop_data_indices) == len(all_gfs_input_data), f"len(all_gfs_input_data) should be {len(self.synop_data_indices)} but was {len(all_gfs_input_data)}"
             return self.synop_data_indices, all_gfs_input_data, gfs_target_data, all_gfs_target_data
 
         return self.synop_data_indices, None, gfs_target_data, None

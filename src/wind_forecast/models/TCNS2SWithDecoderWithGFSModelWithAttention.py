@@ -2,23 +2,17 @@ from typing import Dict
 
 import torch
 import torch.nn as nn
-from pytorch_lightning import LightningModule
 
 from wind_forecast.config.register import Config
 from wind_forecast.consts import BatchKeys
-from wind_forecast.models.TCNModel import TemporalBlock
-from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
+from wind_forecast.models.TCNModel import TemporalBlockWithAttention
+from wind_forecast.models.TCNS2SWithDecoderWithGFSModel import TemporalConvNetS2SWithDencoderWithGFS
 from wind_forecast.util.config import process_config
 
 
-class TemporalConvNetS2SWithDencoderWithGFS(LightningModule):
+class TCNS2SWithDecoderWithGFSModelWithAttention(TemporalConvNetS2SWithDencoderWithGFS):
     def __init__(self, config: Config):
-        super(TemporalConvNetS2SWithDencoderWithGFS, self).__init__()
-        self.config = config
-        self.dropout = config.experiment.dropout
-        self.tcn_channels = config.experiment.tcn_channels
-        self.num_levels = len(self.tcn_channels)
-        self.kernel_size = config.experiment.tcn_kernel_size
+        super(TCNS2SWithDecoderWithGFSModelWithAttention, self).__init__(config)
 
         in_channels = len(config.experiment.synop_train_features)
         if config.experiment.use_all_gfs_params:
@@ -26,14 +20,16 @@ class TemporalConvNetS2SWithDencoderWithGFS(LightningModule):
 
         if config.experiment.with_dates_inputs:
             in_channels += 2
-
         tcn_layers = []
 
         for i in range(self.num_levels):
             dilation_size = 2 ** i
             out_channels = self.tcn_channels[i]
-            tcn_layers += [TemporalBlock(in_channels, out_channels, self.kernel_size, dilation=dilation_size,
-                                         padding=(self.kernel_size - 1) * dilation_size, dropout=self.dropout)]
+            tcn_layers += [TemporalBlockWithAttention(config.experiment.transformer_attention_heads,
+                                                      in_channels, out_channels, self.kernel_size,
+                                                      dilation=dilation_size,
+                                                      padding=(self.kernel_size - 1) * dilation_size,
+                                                      dropout=self.dropout)]
             in_channels = self.tcn_channels[i]
 
         self.encoder = nn.Sequential(*tcn_layers)
@@ -41,28 +37,23 @@ class TemporalConvNetS2SWithDencoderWithGFS(LightningModule):
         tcn_layers = []
 
         if config.experiment.with_dates_inputs:
+            # gfs_targets + dates
             in_channels += 3
         else:
+            # gfs_targets
             in_channels += 1
 
         for i in range(self.num_levels):
             dilation_size = 2 ** i
             out_channels = self.tcn_channels[i]
-            tcn_layers += [TemporalBlock(in_channels, out_channels, self.kernel_size, dilation=dilation_size,
-                                         padding=(self.kernel_size - 1) * dilation_size, dropout=self.dropout)]
+            tcn_layers += [TemporalBlockWithAttention(config.experiment.transformer_attention_heads,
+                                                      in_channels, out_channels, self.kernel_size,
+                                                      dilation=dilation_size,
+                                                      padding=(self.kernel_size - 1) * dilation_size,
+                                                      dropout=self.dropout)]
             in_channels = self.tcn_channels[i]
 
         self.decoder = nn.Sequential(*tcn_layers)
-        in_features = in_channels
-
-        linear = nn.Sequential(
-            nn.Linear(in_features=in_features, out_features=64),
-            nn.ReLU(),
-            nn.Linear(in_features=64, out_features=32),
-            nn.ReLU(),
-            nn.Linear(in_features=32, out_features=1)
-        )
-        self.linear_time_distributed = TimeDistributed(linear, batch_first=True)
 
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
         synop_inputs = batch[BatchKeys.SYNOP_INPUTS.value].float()
@@ -82,10 +73,13 @@ class TemporalConvNetS2SWithDencoderWithGFS(LightningModule):
             else:
                 x = [synop_inputs]
 
-        x = self.encoder(torch.cat(x, -1).permute(0, 2, 1))
+        x = torch.cat(x, -1).permute(0, 2, 1)
+        mem = self.encoder(x)
         if self.config.experiment.with_dates_inputs:
-            y = self.decoder(torch.cat([x, gfs_targets.permute(0, 2, 1), dates_embedding[2].permute(0, 2, 1), dates_embedding[3].permute(0, 2, 1)], -2))
+            decoder_input = torch.cat([mem, gfs_targets.permute(0, 2, 1), dates_embedding[2].permute(0, 2, 1), dates_embedding[3].permute(0, 2, 1)], -2)
         else:
-            y = self.decoder(torch.cat([x, gfs_targets.permute(0, 2, 1)], -2))
+            decoder_input = torch.cat([mem, gfs_targets.permute(0, 2, 1)], -2)
+
+        y = self.decoder(decoder_input)
 
         return self.linear_time_distributed(y.permute(0, 2, 1)).squeeze(-1)

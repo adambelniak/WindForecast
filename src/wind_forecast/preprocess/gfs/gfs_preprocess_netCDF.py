@@ -29,7 +29,8 @@ def get_netCDF_file(init_date, run, offset, param, level):
 
 def get_values_as_numpy_arr_from_file(netCDF_filepath, coords: Coords):
     ds = nc.Dataset(netCDF_filepath)
-    lats, lons = ds.variables['lat_0'][:], ds.variables['lon_0'][:]
+    lats, lons = ds.variables[[key for key in ds.variables.keys() if key.startswith('lat')][0]][:],\
+                 ds.variables[[key for key in ds.variables.keys() if key.startswith('lon')][0]][:]
     if coords.nlat not in lats or coords.slat not in lats or coords.wlon not in lons or coords.elon not in lons:
         return None
     else:
@@ -38,7 +39,7 @@ def get_values_as_numpy_arr_from_file(netCDF_filepath, coords: Coords):
         nlat_index, slat_index, wlon_index, elon_index = lats.index(coords.nlat), lats.index(coords.slat), \
                                                          lons.index(coords.wlon), lons.index(coords.elon)
 
-        return next(iter(ds.variables.values()))[0, nlat_index:slat_index + 1, wlon_index:elon_index + 1].data
+        return ds.variables[[key for key in ds.variables.keys() if key[0].isupper()][0]][nlat_index:slat_index + 1, wlon_index:elon_index + 1].data
 
 
 def create_single_slice_for_param_and_region(init_date, run, offset, param, level, coords: Coords):
