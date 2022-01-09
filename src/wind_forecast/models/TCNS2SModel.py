@@ -12,6 +12,7 @@ from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 class TemporalConvNetS2S(LightningModule):
     def __init__(self, config: Config):
         super(TemporalConvNetS2S, self).__init__()
+        self.config = config
         tcn_layers = []
         num_channels = config.experiment.tcn_channels
         num_levels = len(num_channels)
@@ -21,15 +22,15 @@ class TemporalConvNetS2S(LightningModule):
             in_channels = len(config.experiment.synop_train_features) if i == 0 else num_channels[i - 1]
             out_channels = num_channels[i]
             tcn_layers += [TemporalBlock(in_channels, out_channels, kernel_size, dilation=dilation_size,
-                                         padding=(kernel_size - 1) * dilation_size)]
+                                         padding=(kernel_size - 1) * dilation_size, dropout=config.experiment.dropout)]
 
         if self.config.experiment.with_dates_inputs:
-            features = config.experiment.tcn_channels + 2
+            features = num_channels[-1] + 2
         else:
-            features = config.experiment.tcn_channels
+            features = num_channels[-1]
 
         linear = nn.Sequential(
-            nn.Linear(in_features=features[-1], out_features=32),
+            nn.Linear(in_features=features, out_features=32),
             nn.ReLU(),
             nn.Linear(in_features=32, out_features=1)
         )

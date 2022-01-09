@@ -330,10 +330,10 @@ GFS_PARAMETERS = [
     #     "name": "HGT",
     #     "level": "ISBL_700"
     # },
-    # {
-    #     "name": "HGT",
-    #     "level": "ISBL_500"
-    # },
+    {
+        "name": "HGT",
+        "level": "ISBL_500"
+    },
     # {
     #     "name": "HGT",
     #     "level": "ISBL_300"

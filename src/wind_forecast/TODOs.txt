@@ -1,2 +1,2 @@
-convGRU, convLSTM, GAN, maybe better autoencoder for cmax
-TCN with attention
+GAN, maybe better autoencoder for cmax
+wavelet denoising of inputs

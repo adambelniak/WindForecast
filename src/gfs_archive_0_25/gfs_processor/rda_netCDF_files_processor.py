@@ -38,6 +38,7 @@ def get_forecast_df_for_date_and_run(csv_path):
 def get_date_run_offset_from_netCDF_file_name(file):
     date_matcher = re.match(RAW_NETCDF_FILENAME_REGEX, file)
     if date_matcher is None:
+        logger.warn(f"Filename {file} does not match raw netCDF file regex: {RAW_NETCDF_FILENAME_REGEX}")
         raise ProcessingException(f"Filename {file} does not match raw netCDF file regex: {RAW_NETCDF_FILENAME_REGEX}")
 
     date_from_filename = date_matcher.group(2)
@@ -132,7 +133,7 @@ def process_to_numpy_array(parameter_level_tuple, coords: Coords, output_dir: st
 
     for root, dirs, filenames in os.walk(download_dir):
         if len(filenames) > 0:
-            output_dir = os.path.join(output_dir, f"\\{parameter_level_tuple['name']}\\{parameter_level_tuple['level']}")
+            output_dir = os.path.join(output_dir, parameter_level_tuple['name'], parameter_level_tuple['level'])
 
             if not os.path.exists(output_dir):
                 os.makedirs(output_dir)

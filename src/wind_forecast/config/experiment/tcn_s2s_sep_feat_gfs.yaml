@@ -5,7 +5,7 @@ defaults:
   - schema_experiment
 
 _tags_:
-  - TRANSFORMER_ENCODER_S2S_ALL_GFS
+  - TCN_S2S_SEP_FEAT_GFS
 
 resume_checkpoint: ~
 
@@ -13,13 +13,14 @@ datamodule:
   _target_: wind_forecast.datamodules.Sequence2SequenceDataModule.Sequence2SequenceDataModule
 
 model:
-  _target_: wind_forecast.models.TransformerEncoderS2SWithGFS.TransformerEncoderS2SWithGFS
+  _target_: wind_forecast.models.TCNS2SFeatureSeparableModelWithGFS.TCNS2SFeatureSeparableModelWithGFS
 
 system:
   _target_: wind_forecast.systems.S2SRegressorWithGFSInput.S2SRegressorWithGFSInput
 
 use_gfs_data: True
 synop_from_year: 2017
-train_parameters_config_file: TransformerConfig2.json
-use_all_gfs_params: True
-use_pos_encoding: False
+tcn_channels:
+  - 16
+  - 32
+train_parameters_config_file: TCNConfig.json

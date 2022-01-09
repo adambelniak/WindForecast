@@ -14,14 +14,18 @@ from wind_forecast.util.gfs_util import GFS_DATASET_DIR, date_from_gfs_np_file
 
 GFS_PARAMETERS = [
 {
-    "name": "TMP",
-    "level": "ISBL_700"
+    "name": "HGT",
+    "level": "ISBL_500"
 }
 ]
 
+"""
+Converts GFS forecast kept in numpy .npy files to pickle .pkl files, grouped by offset and parameter.
+It's a convenient form of keeping and loading data and GFSLoader works on those files. 
+"""
 if __name__ == "__main__":
     pkl_dir = os.path.join(GFS_DATASET_DIR, 'pkl')
-    for offset in tqdm(range(3, 36, 3)):
+    for offset in tqdm(range(24, 36, 3)):
         for param in GFS_PARAMETERS:
             meta_keys = []
             gfs_images = {}
@@ -30,7 +34,11 @@ if __name__ == "__main__":
                 date = date_from_gfs_np_file(file.name)
                 date_key = GFSLoader.get_date_key(date)
                 meta_keys.append(date_key)
-                gfs_images[date_key] = np.load(file)
+                values = np.load(file)
+                if len(values.shape) == 3:
+                    # shape of values changed on RDA :/
+                    values = values[0]
+                gfs_images[date_key] = values
 
             with open(os.path.join(pkl_dir, f"{param['name']}_{param['level']}_{prep_zeros_if_needed(str(offset), 2)}_meta.pkl"), 'wb') as f:
                pickle.dump(meta_keys, f, pickle.HIGHEST_PROTOCOL)
