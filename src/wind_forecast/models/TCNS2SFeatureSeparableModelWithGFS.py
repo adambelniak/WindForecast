@@ -7,6 +7,7 @@ from wind_forecast.config.register import Config
 from wind_forecast.consts import BatchKeys
 from wind_forecast.models.TCNModel import TemporalBlock
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
+from wind_forecast.util.config import process_config
 
 
 class TCNS2SFeatureSeparableModelWithGFS(LightningModule):
@@ -17,13 +18,17 @@ class TCNS2SFeatureSeparableModelWithGFS(LightningModule):
         num_channels = config.experiment.tcn_channels
         num_levels = len(num_channels)
         kernel_size = 3
+        if self.config.experiment.use_all_gfs_params:
+            self.tcn_features = self.synop_train_features_length + len(process_config(self.config.experiment.train_parameters_config_file))
+        else:
+            self.tcn_features = self.synop_train_features_length
 
         dnn_features = num_channels[-1]
 
         self.sep_tcns = []
         self.sep_linears = []
-        for first_feat in range(0, self.synop_train_features_length - 1):
-            for second_feat in range(first_feat + 1, self.synop_train_features_length):
+        for first_feat in range(0, self.tcn_features - 1):
+            for second_feat in range(first_feat + 1, self.tcn_features):
                 tcn_dnn_layers = []
                 for i in range(num_levels):
                     dilation_size = 2 ** i
@@ -39,9 +44,9 @@ class TCNS2SFeatureSeparableModelWithGFS(LightningModule):
         self.sep_linears = nn.ModuleList(self.sep_linears)
 
         if self.config.experiment.with_dates_inputs:
-            head_linear_features = self.synop_train_features_length * (self.synop_train_features_length - 1) + 3
+            head_linear_features = self.tcn_features * (self.tcn_features - 1) + 3
         else:
-            head_linear_features = self.synop_train_features_length * (self.synop_train_features_length - 1) + 1
+            head_linear_features = self.tcn_features * (self.tcn_features - 1) + 1
 
         linear = nn.Sequential(
             nn.Linear(in_features=head_linear_features, out_features=256),
@@ -58,14 +63,19 @@ class TCNS2SFeatureSeparableModelWithGFS(LightningModule):
         dates_embedding = None if self.config.experiment.with_dates_inputs is False else batch[
             BatchKeys.DATES_EMBEDDING.value]
         gfs_targets = batch[BatchKeys.GFS_TARGETS.value].float()
+        if self.config.experiment.use_all_gfs_params:
+            gfs_inputs = batch[BatchKeys.GFS_INPUTS.value].float()
+            all_inputs = torch.cat([synop_inputs, gfs_inputs], -1)
+        else:
+            all_inputs = synop_inputs
 
         outputs = []
-        for first_feat in range(0, self.synop_train_features_length - 1):
-            for second_feat in range(first_feat + 1, self.synop_train_features_length):
+        for first_feat in range(0, self.tcn_features - 1):
+            for second_feat in range(first_feat + 1, self.tcn_features):
                 if self.config.experiment.with_dates_inputs:
-                    inputs = torch.cat([synop_inputs[:, :, first_feat:first_feat+1], synop_inputs[:, :, second_feat:second_feat+1], dates_embedding[0], dates_embedding[1]], -1)
+                    inputs = torch.cat([all_inputs[:, :, first_feat:first_feat+1], all_inputs[:, :, second_feat:second_feat+1], dates_embedding[0], dates_embedding[1]], -1)
                 else:
-                    inputs = torch.cat([synop_inputs[:, :, first_feat:first_feat+1], synop_inputs[:, :, second_feat:second_feat+1]], -1)
+                    inputs = torch.cat([all_inputs[:, :, first_feat:first_feat+1], all_inputs[:, :, second_feat:second_feat+1]], -1)
                 output = self.sep_tcns[first_feat](inputs.permute(0, 2, 1)).permute(0, 2, 1)
                 outputs.append(self.sep_linears[first_feat](output))
 

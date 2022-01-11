@@ -1,6 +1,8 @@
-[
-      {
-        "name": "TMP",
-        "level": "HTGL_2"
-      }
-]
+{
+  "params": [
+    {
+      "name": "TMP",
+      "level": "HTGL_2"
+    }
+  ]
+}

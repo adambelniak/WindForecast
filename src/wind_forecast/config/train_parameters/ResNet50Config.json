@@ -1,103 +1,104 @@
-[
-      {
-        "name": "T CDC",
-        "level":  "LCY_0"
-      },
-      {
-        "name": "T CDC",
-        "level":  "MCY_0"
-      },
-      {
-        "name": "T CDC",
-        "level":  "HCY_0"
-      },
-      {
-        "name": "GUST",
-        "level": "SFC_0"
-      },
-      {
-        "name": "V GRD",
-        "level": "HTGL_10"
-      },
-      {
-        "name": "V GRD",
-        "level": "ISBL_1000"
-      },
-      {
-        "name": "V GRD",
-        "level": "ISBL_975"
-      },
-      {
-        "name": "U GRD",
-        "level": "HTGL_10"
-      },
-      {
-        "name": "U GRD",
-        "level": "ISBL_1000"
-      },
-      {
-        "name": "U GRD",
-        "level": "ISBL_975"
-      },
-      {
-        "name": "TMP",
-        "level": "ISBL_850"
-      },
-      {
-        "name": "TMP",
-        "level": "ISBL_1000"
-      },
-      {
-        "name": "TMP",
-        "level": "HTGL_2"
-      },
-      {
-        "name": "PRATE",
-        "level": "SFC_0"
-      },
-      {
-        "name": "PRES",
-        "level": "SFC_0"
-      },
-      {
-        "name": "HGT",
-        "level": "ISBL_850"
-      },
-      {
-        "name": "HGT",
-        "level": "ISBL_500"
-      },
-      {
-        "name": "R H",
-        "level": "HTGL_2"
-      },
-      {
-        "name": "R H",
-        "level": "ISBL_1000"
-      },
-      {
-        "name": "R H",
-        "level": "ISBL_900"
-      },
-      {
-        "name": "R H",
-        "level": "ISBL_800"
-      },
-      {
-        "name": "R H",
-        "level": "ISBL_700"
-      },
-      {
-        "name": "R H",
-        "level": "ISBL_500"
-      },
-      {
-        "name": "DPT",
-        "level": "HTGL_2"
-      },
-      {
-        "name": "P WAT",
-        "level": "EATM_0"
-      }
-]
-
+{
+  "params": [
+    {
+      "name": "T CDC",
+      "level": "LCY_0"
+    },
+    {
+      "name": "T CDC",
+      "level": "MCY_0"
+    },
+    {
+      "name": "T CDC",
+      "level": "HCY_0"
+    },
+    {
+      "name": "GUST",
+      "level": "SFC_0"
+    },
+    {
+      "name": "V GRD",
+      "level": "HTGL_10"
+    },
+    {
+      "name": "V GRD",
+      "level": "ISBL_1000"
+    },
+    {
+      "name": "V GRD",
+      "level": "ISBL_975"
+    },
+    {
+      "name": "U GRD",
+      "level": "HTGL_10"
+    },
+    {
+      "name": "U GRD",
+      "level": "ISBL_1000"
+    },
+    {
+      "name": "U GRD",
+      "level": "ISBL_975"
+    },
+    {
+      "name": "TMP",
+      "level": "ISBL_850"
+    },
+    {
+      "name": "TMP",
+      "level": "ISBL_1000"
+    },
+    {
+      "name": "TMP",
+      "level": "HTGL_2"
+    },
+    {
+      "name": "PRATE",
+      "level": "SFC_0"
+    },
+    {
+      "name": "PRES",
+      "level": "SFC_0"
+    },
+    {
+      "name": "HGT",
+      "level": "ISBL_850"
+    },
+    {
+      "name": "HGT",
+      "level": "ISBL_500"
+    },
+    {
+      "name": "R H",
+      "level": "HTGL_2"
+    },
+    {
+      "name": "R H",
+      "level": "ISBL_1000"
+    },
+    {
+      "name": "R H",
+      "level": "ISBL_900"
+    },
+    {
+      "name": "R H",
+      "level": "ISBL_800"
+    },
+    {
+      "name": "R H",
+      "level": "ISBL_700"
+    },
+    {
+      "name": "R H",
+      "level": "ISBL_500"
+    },
+    {
+      "name": "DPT",
+      "level": "HTGL_2"
+    },
+    {
+      "name": "P WAT",
+      "level": "EATM_0"
+    }
+  ]
+}
