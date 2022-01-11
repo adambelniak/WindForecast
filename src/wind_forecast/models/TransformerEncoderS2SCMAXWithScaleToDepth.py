@@ -60,7 +60,7 @@ class TransformerEncoderS2SCMAXWithScaleToDepth(TransformerBaseProps):
         cmax_embeddings = self.conv_time_distributed(cmax)
 
         if self.config.experiment.with_dates_inputs:
-            x = [synop_inputs, dates_embedding[0], dates_embedding[1]]
+            x = [synop_inputs, *dates_embedding[0], *dates_embedding[1]]
         else:
             x = [synop_inputs]
 

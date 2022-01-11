@@ -18,7 +18,7 @@ class TemporalConvNetS2SWithGFS(LightningModule):
         self.config = config
         self.features_length = len(config.experiment.synop_train_features)
         if config.experiment.with_dates_inputs:
-            self.features_length += 2
+            self.features_length += 4
         if config.experiment.use_all_gfs_params:
             gfs_params_len = len(process_config(config.experiment.train_parameters_config_file))
             self.features_length += gfs_params_len
@@ -43,7 +43,7 @@ class TemporalConvNetS2SWithGFS(LightningModule):
             in_channels = num_channels[i]
 
         if config.experiment.with_dates_inputs:
-            in_features = num_channels[-1] + 3
+            in_features = num_channels[-1] + 5
         else:
             in_features = num_channels[-1] + 1
 
@@ -65,9 +65,9 @@ class TemporalConvNetS2SWithGFS(LightningModule):
         if self.config.experiment.with_dates_inputs:
             if self.config.experiment.use_all_gfs_params:
                 gfs_inputs = batch[BatchKeys.GFS_INPUTS.value].float()
-                x = [synop_inputs, gfs_inputs, dates_embedding[0], dates_embedding[1]]
+                x = [synop_inputs, gfs_inputs, *dates_embedding[0], *dates_embedding[1]]
             else:
-                x = [synop_inputs, dates_embedding[0], dates_embedding[1]]
+                x = [synop_inputs, *dates_embedding[0], *dates_embedding[1]]
         else:
             if self.config.experiment.use_all_gfs_params:
                 gfs_inputs = batch[BatchKeys.GFS_INPUTS.value].float()
@@ -79,6 +79,6 @@ class TemporalConvNetS2SWithGFS(LightningModule):
         x = self.tcn(whole_input_embedding.permute(0, 2, 1)).permute(0, 2, 1)
 
         if self.config.experiment.with_dates_inputs:
-            return self.linear_time_distributed(torch.cat([x, gfs_targets, dates_embedding[2], dates_embedding[3]], -1)).squeeze(-1)
+            return self.linear_time_distributed(torch.cat([x, gfs_targets, *dates_embedding[2], *dates_embedding[3]], -1)).squeeze(-1)
         else:
             return self.linear_time_distributed(torch.cat([x, gfs_targets], -1)).squeeze(-1)

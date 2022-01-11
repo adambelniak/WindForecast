@@ -17,15 +17,18 @@ class TemporalConvNetS2S(LightningModule):
         num_channels = config.experiment.tcn_channels
         num_levels = len(num_channels)
         kernel_size = 3
+        in_channels = len(config.experiment.synop_train_features)
+        if config.experiment.with_dates_inputs:
+            in_channels += 4
         for i in range(num_levels):
             dilation_size = 2 ** i
-            in_channels = len(config.experiment.synop_train_features) if i == 0 else num_channels[i - 1]
             out_channels = num_channels[i]
             tcn_layers += [TemporalBlock(in_channels, out_channels, kernel_size, dilation=dilation_size,
                                          padding=(kernel_size - 1) * dilation_size, dropout=config.experiment.dropout)]
+            in_channels = out_channels
 
         if self.config.experiment.with_dates_inputs:
-            features = num_channels[-1] + 2
+            features = num_channels[-1] + 4
         else:
             features = num_channels[-1]
 
@@ -44,12 +47,12 @@ class TemporalConvNetS2S(LightningModule):
             BatchKeys.DATES_EMBEDDING.value]
 
         if self.config.experiment.with_dates_inputs:
-            x = [synop_inputs, dates_embedding[0], dates_embedding[1]]
+            x = [synop_inputs, *dates_embedding[0], *dates_embedding[1]]
         else:
             x = [synop_inputs]
         x = self.tcn(torch.cat(x, dim=-1).permute(0, 2, 1))
 
         if self.config.experiment.with_dates_inputs:
-            return self.linear_time_distributed(torch.cat([x.permute(0, 2, 1), dates_embedding[2], dates_embedding[3]], -1)).squeeze(-1)
+            return self.linear_time_distributed(torch.cat([x.permute(0, 2, 1), *dates_embedding[2], *dates_embedding[3]], -1)).squeeze(-1)
         else:
             return self.linear_time_distributed(x.permute(0, 2, 1)).squeeze(-1)

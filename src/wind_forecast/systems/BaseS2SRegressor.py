@@ -59,12 +59,14 @@ class BaseS2SRegressor(pl.LightningModule):
         return input_days_embed, input_hours_embed, target_days_embed, target_hours_embed
 
     def dates_to_embed_tensor(self, dates):
-        return torch.Tensor(np.sin(np.array(
-            [[[pd.to_datetime(d).timetuple().tm_yday] for d in sublist] for sublist in dates]) / 365 * 2 * np.pi)).to(self.device)
+        argument = np.array(
+            [[[pd.to_datetime(d).timetuple().tm_yday] for d in sublist] for sublist in dates]) / 365 * 2 * np.pi
+        return torch.Tensor([np.sin(argument), np.cos(argument)]).to(self.device)
 
     def days_to_embed_tensor(self, dates):
-        return torch.Tensor(np.sin(np.array(
-            [[[pd.to_datetime(d).hour] for d in sublist] for sublist in dates]) / 24 * 2 * np.pi)).to(self.device)
+        argument = np.array(
+            [[[pd.to_datetime(d).hour] for d in sublist] for sublist in dates]) / 24 * 2 * np.pi
+        return torch.Tensor([np.sin(argument), np.cos(argument)]).to(self.device)
 
     # -----------------------------------------------------------------------------------------------
     # Default PyTorch Lightning hooks

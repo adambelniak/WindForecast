@@ -65,7 +65,7 @@ class TransformerBaseProps(LightningModule):
         self.config = config
         self.features_length = len(config.experiment.synop_train_features)
         if config.experiment.with_dates_inputs:
-            self.features_length += 2
+            self.features_length += 4
 
         self.embed_dim = self.features_length * (config.experiment.time2vec_embedding_size + 1)
         self.dropout = config.experiment.dropout
@@ -129,8 +129,8 @@ class Transformer(TransformerBaseProps):
         dates_embedding = None if self.config.experiment.with_dates_inputs is False else batch[BatchKeys.DATES_EMBEDDING.value]
 
         if self.config.experiment.with_dates_inputs:
-            x = [synop_inputs, dates_embedding[0], dates_embedding[1]]
-            y = [all_synop_targets, dates_embedding[2], dates_embedding[3]]
+            x = [synop_inputs, *dates_embedding[0], *dates_embedding[1]]
+            y = [all_synop_targets, *dates_embedding[2], *dates_embedding[3]]
 
         else:
             x = [synop_inputs]

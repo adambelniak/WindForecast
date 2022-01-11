@@ -33,7 +33,7 @@ class TCNS2SFeatureSeparableModelWithGFS(LightningModule):
                 for i in range(num_levels):
                     dilation_size = 2 ** i
                     # 4/2 input channels - a pair of synop variables +/- dates
-                    in_channels = (4 if config.experiment.with_dates_inputs else 2) if i == 0 else num_channels[i - 1]
+                    in_channels = (6 if config.experiment.with_dates_inputs else 2) if i == 0 else num_channels[i - 1]
                     out_channels = num_channels[i]
                     tcn_dnn_layers += [TemporalBlock(in_channels, out_channels, kernel_size, dilation=dilation_size,
                                                      padding=(kernel_size - 1) * dilation_size, dropout=config.experiment.dropout)]
@@ -44,7 +44,7 @@ class TCNS2SFeatureSeparableModelWithGFS(LightningModule):
         self.sep_linears = nn.ModuleList(self.sep_linears)
 
         if self.config.experiment.with_dates_inputs:
-            head_linear_features = self.tcn_features * (self.tcn_features - 1) + 3
+            head_linear_features = self.tcn_features * (self.tcn_features - 1) + 5
         else:
             head_linear_features = self.tcn_features * (self.tcn_features - 1) + 1
 
@@ -73,7 +73,8 @@ class TCNS2SFeatureSeparableModelWithGFS(LightningModule):
         for first_feat in range(0, self.tcn_features - 1):
             for second_feat in range(first_feat + 1, self.tcn_features):
                 if self.config.experiment.with_dates_inputs:
-                    inputs = torch.cat([all_inputs[:, :, first_feat:first_feat+1], all_inputs[:, :, second_feat:second_feat+1], dates_embedding[0], dates_embedding[1]], -1)
+                    inputs = torch.cat([all_inputs[:, :, first_feat:first_feat+1], all_inputs[:, :, second_feat:second_feat+1],
+                                        *dates_embedding[0], *dates_embedding[1]], -1)
                 else:
                     inputs = torch.cat([all_inputs[:, :, first_feat:first_feat+1], all_inputs[:, :, second_feat:second_feat+1]], -1)
                 output = self.sep_tcns[first_feat](inputs.permute(0, 2, 1)).permute(0, 2, 1)
@@ -81,6 +82,6 @@ class TCNS2SFeatureSeparableModelWithGFS(LightningModule):
 
         if self.config.experiment.with_dates_inputs:
             return self.linear_time_distributed(
-                torch.cat([*outputs, gfs_targets, dates_embedding[2], dates_embedding[3]], -1)).squeeze(-1)
+                torch.cat([*outputs, gfs_targets, *dates_embedding[2], *dates_embedding[3]], -1)).squeeze(-1)
         else:
             return self.linear_time_distributed(torch.cat([*outputs, gfs_targets], -1)).squeeze(-1)

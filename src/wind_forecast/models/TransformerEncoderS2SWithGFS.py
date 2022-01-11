@@ -45,9 +45,9 @@ class TransformerEncoderS2SWithGFS(TransformerBaseProps):
         if self.config.experiment.with_dates_inputs:
             if self.config.experiment.use_all_gfs_params:
                 gfs_inputs = batch[BatchKeys.GFS_INPUTS.value].float()
-                x = [synop_inputs, gfs_inputs, dates_embedding[0], dates_embedding[1]]
+                x = [synop_inputs, gfs_inputs, *dates_embedding[0], *dates_embedding[1]]
             else:
-                x = [synop_inputs, dates_embedding[0], dates_embedding[1]]
+                x = [synop_inputs, *dates_embedding[0], *dates_embedding[1]]
         else:
             if self.config.experiment.use_all_gfs_params:
                 gfs_inputs = batch[BatchKeys.GFS_INPUTS.value].float()

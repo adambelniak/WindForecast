@@ -38,7 +38,7 @@ class TransformerEncoderS2S(TransformerBaseProps):
         dates_embedding = None if self.config.experiment.with_dates_inputs is False else batch[BatchKeys.DATES_EMBEDDING.value]
 
         if self.config.experiment.with_dates_inputs:
-            x = [synop_inputs, dates_embedding[0], dates_embedding[1]]
+            x = [synop_inputs, *dates_embedding[0], *dates_embedding[1]]
         else:
             x = [synop_inputs]
 

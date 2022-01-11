@@ -19,7 +19,7 @@ class TCNS2SWithDecoderWithGFSModelWithAttention(TemporalConvNetS2SWithDencoderW
             in_channels += len(process_config(config.experiment.train_parameters_config_file))
 
         if config.experiment.with_dates_inputs:
-            in_channels += 2
+            in_channels += 4
         tcn_layers = []
 
         for i in range(self.num_levels):
@@ -38,7 +38,7 @@ class TCNS2SWithDecoderWithGFSModelWithAttention(TemporalConvNetS2SWithDencoderW
 
         if config.experiment.with_dates_inputs:
             # gfs_targets + dates
-            in_channels += 3
+            in_channels += 5
         else:
             # gfs_targets
             in_channels += 1
@@ -63,9 +63,9 @@ class TCNS2SWithDecoderWithGFSModelWithAttention(TemporalConvNetS2SWithDencoderW
         if self.config.experiment.with_dates_inputs:
             if self.config.experiment.use_all_gfs_params:
                 gfs_inputs = batch[BatchKeys.GFS_INPUTS.value].float()
-                x = [synop_inputs, gfs_inputs, dates_embedding[0], dates_embedding[1]]
+                x = [synop_inputs, gfs_inputs, *dates_embedding[0], *dates_embedding[1]]
             else:
-                x = [synop_inputs, dates_embedding[0], dates_embedding[1]]
+                x = [synop_inputs, *dates_embedding[0], *dates_embedding[1]]
         else:
             if self.config.experiment.use_all_gfs_params:
                 gfs_inputs = batch[BatchKeys.GFS_INPUTS.value].float()
@@ -76,7 +76,7 @@ class TCNS2SWithDecoderWithGFSModelWithAttention(TemporalConvNetS2SWithDencoderW
         x = torch.cat(x, -1).permute(0, 2, 1)
         mem = self.encoder(x)
         if self.config.experiment.with_dates_inputs:
-            decoder_input = torch.cat([mem, gfs_targets.permute(0, 2, 1), dates_embedding[2].permute(0, 2, 1), dates_embedding[3].permute(0, 2, 1)], -2)
+            decoder_input = torch.cat([mem, gfs_targets.permute(0, 2, 1), *dates_embedding[2].permute(0, 2, 1), *dates_embedding[3].permute(0, 2, 1)], -2)
         else:
             decoder_input = torch.cat([mem, gfs_targets.permute(0, 2, 1)], -2)
 

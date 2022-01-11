@@ -46,11 +46,11 @@ class BiLSTMS2SWithGFSModel(LSTMS2SWithGFSModel):
             if self.config.experiment.use_all_gfs_params:
                 gfs_inputs = batch[BatchKeys.GFS_INPUTS.value].float()
                 all_gfs_targets = batch[BatchKeys.ALL_GFS_TARGETS.value].float()
-                x = [synop_inputs, gfs_inputs, dates_embedding[0], dates_embedding[1]]
-                y = [all_synop_targets, all_gfs_targets, dates_embedding[2], dates_embedding[3]]
+                x = [synop_inputs, gfs_inputs, *dates_embedding[0], *dates_embedding[1]]
+                y = [all_synop_targets, all_gfs_targets, *dates_embedding[2], *dates_embedding[3]]
             else:
-                x = [synop_inputs, dates_embedding[0], dates_embedding[1]]
-                y = [all_synop_targets, dates_embedding[2], dates_embedding[3]]
+                x = [synop_inputs, *dates_embedding[0], *dates_embedding[1]]
+                y = [all_synop_targets, *dates_embedding[2], *dates_embedding[3]]
         else:
             if self.config.experiment.use_all_gfs_params:
                 gfs_inputs = batch[BatchKeys.GFS_INPUTS.value].float()

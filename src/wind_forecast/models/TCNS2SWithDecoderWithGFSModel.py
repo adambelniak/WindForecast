@@ -72,9 +72,9 @@ class TemporalConvNetS2SWithDencoderWithGFS(LightningModule):
         if self.config.experiment.with_dates_inputs:
             if self.config.experiment.use_all_gfs_params:
                 gfs_inputs = batch[BatchKeys.GFS_INPUTS.value].float()
-                x = [synop_inputs, gfs_inputs, dates_embedding[0], dates_embedding[1]]
+                x = [synop_inputs, gfs_inputs, *dates_embedding[0], *dates_embedding[1]]
             else:
-                x = [synop_inputs, dates_embedding[0], dates_embedding[1]]
+                x = [synop_inputs, *dates_embedding[0], *dates_embedding[1]]
         else:
             if self.config.experiment.use_all_gfs_params:
                 gfs_inputs = batch[BatchKeys.GFS_INPUTS.value].float()
@@ -84,7 +84,7 @@ class TemporalConvNetS2SWithDencoderWithGFS(LightningModule):
 
         x = self.encoder(torch.cat(x, -1).permute(0, 2, 1))
         if self.config.experiment.with_dates_inputs:
-            y = self.decoder(torch.cat([x, gfs_targets.permute(0, 2, 1), dates_embedding[2].permute(0, 2, 1), dates_embedding[3].permute(0, 2, 1)], -2))
+            y = self.decoder(torch.cat([x, gfs_targets.permute(0, 2, 1), *dates_embedding[2].permute(0, 2, 1), *dates_embedding[3].permute(0, 2, 1)], -2))
         else:
             y = self.decoder(torch.cat([x, gfs_targets.permute(0, 2, 1)], -2))
 

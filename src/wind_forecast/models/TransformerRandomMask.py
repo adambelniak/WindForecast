@@ -24,8 +24,8 @@ class TransformerRandomMask(Transformer):
             BatchKeys.DATES_EMBEDDING.value]
 
         if self.config.experiment.with_dates_inputs:
-            x = [synop_inputs, dates_embedding[0], dates_embedding[1]]
-            y = [all_synop_targets, dates_embedding[2], dates_embedding[3]]
+            x = [synop_inputs, *dates_embedding[0], *dates_embedding[1]]
+            y = [all_synop_targets, *dates_embedding[2], *dates_embedding[3]]
 
         else:
             x = [synop_inputs]
