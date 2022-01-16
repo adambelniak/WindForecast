@@ -110,7 +110,9 @@ def main(cfg: Config):
 
     wandb_logger.log_metrics({
         'target_mean': datamodule.dataset_test.mean,
-        'target_std': datamodule.dataset_test.std
+        'target_std': datamodule.dataset_test.std,
+        'train_dataset_length': len(datamodule.dataset_train),
+        'test_dataset_length': len(datamodule.dataset_test)
     }, step=system.current_epoch)
 
     mean = datamodule.dataset_test.mean

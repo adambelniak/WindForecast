@@ -54,7 +54,7 @@ class LSTMS2SWithGFSModel(LightningModule):
         synop_inputs = batch[BatchKeys.SYNOP_INPUTS.value].float()
         all_synop_targets = batch[BatchKeys.ALL_SYNOP_TARGETS.value].float()
         dates_embedding = None if self.config.experiment.with_dates_inputs is False else batch[
-            BatchKeys.DATES_EMBEDDING.value]
+            BatchKeys.DATES_TENSORS.value]
 
         if self.config.experiment.with_dates_inputs:
             if self.config.experiment.use_all_gfs_params:

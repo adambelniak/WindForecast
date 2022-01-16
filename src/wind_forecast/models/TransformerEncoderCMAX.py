@@ -4,7 +4,7 @@ import torch
 from torch import nn
 
 from wind_forecast.config.register import Config
-from wind_forecast.models.CMAXAutoencoder import CMAXEncoder, set_pretrained_encoder
+from wind_forecast.models.CMAXAutoencoder import CMAXEncoder, get_pretrained_encoder
 from wind_forecast.models.Transformer import TransformerBaseProps, PositionalEncoding
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 
@@ -21,7 +21,7 @@ class TransformerEncoderCMAX(TransformerBaseProps):
             conv_H = math.ceil(conv_H / 2)
 
         if config.experiment.use_pretrained_cmax_autoencoder:
-            set_pretrained_encoder(self.conv, config)
+            get_pretrained_encoder(self.conv, config)
         self.conv_time_distributed = TimeDistributed(self.conv, batch_first=True)
 
         self.embed_dim = self.features_length * (config.experiment.time2vec_embedding_size + 1) + conv_W * conv_H * out_channels

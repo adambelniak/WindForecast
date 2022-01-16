@@ -33,8 +33,8 @@ class S2SRegressorWithGFSInput(BaseS2SRegressor):
         if self.cfg.experiment.with_dates_inputs:
             dates_inputs = batch[BatchKeys.DATES_INPUTS.value]
             dates_targets = batch[BatchKeys.DATES_TARGETS.value]
-            dates_embeddings = self.get_dates_embeddings(dates_inputs, dates_targets)
-            batch[BatchKeys.DATES_EMBEDDING.value] = dates_embeddings
+            dates_embeddings = self.get_dates_tensor(dates_inputs, dates_targets)
+            batch[BatchKeys.DATES_TENSORS.value] = dates_embeddings
 
         outputs = self.forward(batch, self.current_epoch, 'test')
         targets = batch[BatchKeys.SYNOP_TARGETS.value]

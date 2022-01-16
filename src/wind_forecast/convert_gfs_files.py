@@ -25,7 +25,7 @@ It's a convenient form of keeping and loading data and GFSLoader works on those 
 """
 if __name__ == "__main__":
     pkl_dir = os.path.join(GFS_DATASET_DIR, 'pkl')
-    for offset in tqdm(range(24, 36, 3)):
+    for offset in tqdm(range(3, 39, 3)):
         for param in GFS_PARAMETERS:
             meta_keys = []
             gfs_images = {}

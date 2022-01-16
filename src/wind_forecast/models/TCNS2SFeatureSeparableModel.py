@@ -52,7 +52,7 @@ class TCNS2SFeatureSeparableModel(LightningModule):
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
         synop_inputs = batch[BatchKeys.SYNOP_INPUTS.value].float()
         dates_embedding = None if self.config.experiment.with_dates_inputs is False else batch[
-            BatchKeys.DATES_EMBEDDING.value]
+            BatchKeys.DATES_TENSORS.value]
 
         outputs = []
         for first_feat in range(0, self.synop_train_features_length - 1):

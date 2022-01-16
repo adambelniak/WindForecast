@@ -138,10 +138,10 @@ GFS_PARAMETERS = [
     #     "name": "TMP",
     #     "level": "ISBL_800"
     # },
-    {
-        "name": "TMP",
-        "level": "ISBL_700"
-    },
+    # {
+    #     "name": "TMP",
+    #     "level": "ISBL_700"
+    # },
     # {
     #     "name": "TMP",
     #     "level": "ISBL_600"
@@ -330,10 +330,10 @@ GFS_PARAMETERS = [
     #     "name": "HGT",
     #     "level": "ISBL_700"
     # },
-    # {
-    #     "name": "HGT",
-    #     "level": "ISBL_500"
-    # },
+    {
+        "name": "HGT",
+        "level": "ISBL_500"
+    },
     # {
     #     "name": "HGT",
     #     "level": "ISBL_300"

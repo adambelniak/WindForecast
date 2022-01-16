@@ -136,7 +136,7 @@ class ExperimentSettings:
 
     time2vec_embedding_size: int = 5
 
-    conv_embedding_dim: int = 128
+    embedding_scale: int = 5
 
     transformer_ff_dim: int = 1024
 
@@ -165,3 +165,5 @@ class ExperimentSettings:
     use_future_cmax: bool = False
 
     view_test_result: bool = True
+
+    dates_tensor_size: int = 4

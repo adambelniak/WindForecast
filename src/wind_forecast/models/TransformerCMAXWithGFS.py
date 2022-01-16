@@ -6,33 +6,40 @@ from torch import nn
 
 from wind_forecast.config.register import Config
 from wind_forecast.consts import BatchKeys
-from wind_forecast.models.Transformer import PositionalEncoding, Time2Vec
-from wind_forecast.models.TransformerCMAX import TransformerCMAX
+from wind_forecast.models.CMAXAutoencoder import CMAXEncoder, get_pretrained_encoder
+from wind_forecast.models.Transformer import PositionalEncoding, Time2Vec, TransformerGFSBaseProps
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
-from wind_forecast.util.config import process_config
 
 
-class TransformerCMAXWithGFS(TransformerCMAX):
+class TransformerCMAXWithGFS(TransformerGFSBaseProps):
     def __init__(self, config: Config):
         super().__init__(config)
-        if config.experiment.use_all_gfs_params:
-            gfs_params_len = len(process_config(config.experiment.train_parameters_config_file))
-            self.features_length += gfs_params_len
-            self.embed_dim += gfs_params_len * (config.experiment.time2vec_embedding_size + 1)
+        conv_H = config.experiment.cmax_h
+        conv_W = config.experiment.cmax_w
+        out_channels = config.experiment.cnn_filters[-1]
+        self.conv = CMAXEncoder(config)
+        for _ in config.experiment.cnn_filters:
+            conv_W = math.ceil(conv_W / 2)
+            conv_H = math.ceil(conv_H / 2)
 
-        self.time_2_vec_time_distributed = TimeDistributed(Time2Vec(self.features_length,
-                                                                    config.experiment.time2vec_embedding_size),
+        if config.experiment.use_pretrained_cmax_autoencoder:
+            get_pretrained_encoder(self.conv, config)
+        self.conv_time_distributed = TimeDistributed(self.conv, batch_first=True)
+
+        self.embed_dim += conv_W * conv_H * out_channels
+
+        self.time_2_vec_time_distributed = TimeDistributed(Time2Vec(self.features_length, self.time2vec_embedding_size),
                                                            batch_first=True)
+
         self.pos_encoder = PositionalEncoding(self.embed_dim, self.dropout, self.sequence_length)
 
         encoder_layer = nn.TransformerEncoderLayer(d_model=self.embed_dim,
-                                                   nhead=config.experiment.transformer_attention_heads,
-                                                   dim_feedforward=config.experiment.transformer_ff_dim,
+                                                   nhead=self.n_heads,
+                                                   dim_feedforward=self.ff_dim,
                                                    dropout=self.dropout,
                                                    batch_first=True)
         encoder_norm = nn.LayerNorm(self.embed_dim)
-        self.encoder = nn.TransformerEncoder(encoder_layer, config.experiment.transformer_attention_layers,
-                                             encoder_norm)
+        self.encoder = nn.TransformerEncoder(encoder_layer, self.transformer_layers_num, encoder_norm)
 
         decoder_layer = nn.TransformerDecoderLayer(self.embed_dim, self.n_heads, self.ff_dim, self.dropout, batch_first=True)
         decoder_norm = nn.LayerNorm(self.embed_dim)
@@ -41,55 +48,44 @@ class TransformerCMAXWithGFS(TransformerCMAX):
         features = self.embed_dim
         dense_layers = []
 
-        for neurons in config.experiment.transformer_head_dims:
+        for neurons in self.transformer_head_dims:
             dense_layers.append(nn.Linear(in_features=features, out_features=neurons))
             features = neurons
         dense_layers.append(nn.Linear(in_features=features, out_features=1))
         self.classification_head = nn.Sequential(*dense_layers)
         self.classification_head_time_distributed = TimeDistributed(self.classification_head, batch_first=True)
 
-    def generate_mask(self, sequence_length: int) -> torch.Tensor:
-        mask = (torch.triu(torch.ones(sequence_length, sequence_length)) == 1).transpose(0, 1)
-        mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
-        return mask
-
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
         synop_inputs = batch[BatchKeys.SYNOP_INPUTS.value].float()
         all_synop_targets = batch[BatchKeys.ALL_SYNOP_TARGETS.value].float()
+        gfs_targets = batch[BatchKeys.GFS_TARGETS.value].float()
         cmax_inputs = batch[BatchKeys.CMAX_INPUTS.value].float()
         cmax_targets = batch[BatchKeys.CMAX_TARGETS.value].float()
 
-        dates_embedding = None if self.config.experiment.with_dates_inputs is False else batch[
-            BatchKeys.DATES_EMBEDDING.value]
+        dates_tensors = None if self.config.experiment.with_dates_inputs is False else batch[
+            BatchKeys.DATES_TENSORS.value]
 
         cmax_embeddings = self.conv_time_distributed(cmax_inputs.unsqueeze(2))
 
-        if self.config.experiment.with_dates_inputs:
-            if self.config.experiment.use_all_gfs_params:
-                gfs_inputs = batch[BatchKeys.GFS_INPUTS.value].float()
-                all_gfs_targets = batch[BatchKeys.ALL_GFS_TARGETS.value].float()
-                x = [synop_inputs, gfs_inputs, *dates_embedding[0], *dates_embedding[1]]
-                y = [all_synop_targets, all_gfs_targets, *dates_embedding[2], *dates_embedding[3]]
-            else:
-                x = [synop_inputs, *dates_embedding[0], *dates_embedding[1]]
-                y = [all_synop_targets, *dates_embedding[2], *dates_embedding[3]]
+        if self.config.experiment.use_all_gfs_params:
+            gfs_inputs = batch[BatchKeys.GFS_INPUTS.value].float()
+            all_gfs_targets = batch[BatchKeys.ALL_GFS_TARGETS.value].float()
+            x = [synop_inputs, gfs_inputs]
+            y = [all_synop_targets, all_gfs_targets]
         else:
-            if self.config.experiment.use_all_gfs_params:
-                gfs_inputs = batch[BatchKeys.GFS_INPUTS.value].float()
-                all_gfs_targets = batch[BatchKeys.ALL_GFS_TARGETS.value].float()
-                x = [synop_inputs, gfs_inputs]
-                y = [all_synop_targets, all_gfs_targets]
-            else:
-                x = [synop_inputs]
-                y = [all_synop_targets]
-
-        whole_input_embedding = torch.cat([*x, self.time_2_vec_time_distributed(torch.cat(x, -1)), cmax_embeddings], -1)
+            x = [synop_inputs]
+            y = [all_synop_targets]
 
         self.conv_time_distributed.requires_grad_(False)
         cmax_targets_embeddings = self.conv_time_distributed(cmax_targets.unsqueeze(2))
         self.conv_time_distributed.requires_grad_(True)
 
+        whole_input_embedding = torch.cat([*x, self.time_2_vec_time_distributed(torch.cat(x, -1)), cmax_embeddings], -1)
         whole_target_embedding = torch.cat([*y, self.time_2_vec_time_distributed(torch.cat(y, -1)), cmax_targets_embeddings], -1)
+
+        if self.config.experiment.with_dates_inputs:
+            whole_input_embedding = torch.cat([whole_input_embedding, *dates_tensors[0]], -1)
+            whole_target_embedding = torch.cat([whole_target_embedding, *dates_tensors[1]], -1)
 
         x = self.pos_encoder(whole_input_embedding) if self.use_pos_encoding else whole_input_embedding
         memory = self.encoder(x)
@@ -133,4 +129,4 @@ class TransformerCMAXWithGFS(TransformerCMAX):
                 pred = decoder_input[:, 1:, :]
             output = pred
 
-        return torch.squeeze(self.classification_head_time_distributed(output), -1)
+        return torch.squeeze(self.classification_head_time_distributed(torch.cat([output, gfs_targets], -1)), -1)

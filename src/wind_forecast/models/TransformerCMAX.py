@@ -7,11 +7,11 @@ from torch import nn
 from wind_forecast.config.register import Config
 from wind_forecast.consts import BatchKeys
 from wind_forecast.models.CMAXAutoencoder import get_pretrained_encoder, CMAXEncoder
-from wind_forecast.models.Transformer import PositionalEncoding, Transformer
+from wind_forecast.models.Transformer import PositionalEncoding, TransformerBaseProps
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 
 
-class TransformerCMAX(Transformer):
+class TransformerCMAX(TransformerBaseProps):
     def __init__(self, config: Config):
         super().__init__(config)
         conv_H = config.experiment.cmax_h
@@ -31,13 +31,12 @@ class TransformerCMAX(Transformer):
         self.pos_encoder = PositionalEncoding(self.embed_dim, self.dropout, self.sequence_length)
 
         encoder_layer = nn.TransformerEncoderLayer(d_model=self.embed_dim,
-                                                   nhead=config.experiment.transformer_attention_heads,
-                                                   dim_feedforward=config.experiment.transformer_ff_dim,
+                                                   nhead=self.n_heads,
+                                                   dim_feedforward=self.ff_dim,
                                                    dropout=self.dropout,
                                                    batch_first=True)
         encoder_norm = nn.LayerNorm(self.embed_dim)
-        self.encoder = nn.TransformerEncoder(encoder_layer, config.experiment.transformer_attention_layers,
-                                             encoder_norm)
+        self.encoder = nn.TransformerEncoder(encoder_layer, self.transformer_layers_num, encoder_norm)
 
         decoder_layer = nn.TransformerDecoderLayer(self.embed_dim, self.n_heads, self.ff_dim, self.dropout, batch_first=True)
         decoder_norm = nn.LayerNorm(self.embed_dim)
@@ -46,7 +45,7 @@ class TransformerCMAX(Transformer):
         dense_layers = []
         features = self.embed_dim
 
-        for neurons in config.experiment.transformer_head_dims:
+        for neurons in self.transformer_head_dims:
             dense_layers.append(nn.Linear(in_features=features, out_features=neurons))
             features = neurons
         dense_layers.append(nn.Linear(in_features=features, out_features=1))
@@ -59,26 +58,22 @@ class TransformerCMAX(Transformer):
         cmax_inputs = batch[BatchKeys.CMAX_INPUTS.value].float()
         cmax_targets = batch[BatchKeys.CMAX_TARGETS.value].float()
 
-        dates_embedding = None if self.config.experiment.with_dates_inputs is False else batch[
-            BatchKeys.DATES_EMBEDDING.value]
+        dates_tensors = None if self.config.experiment.with_dates_inputs is False else batch[
+            BatchKeys.DATES_TENSORS.value]
 
         cmax_embeddings = self.conv_time_distributed(cmax_inputs.unsqueeze(2))
-
-        if self.config.experiment.with_dates_inputs:
-            x = [synop_inputs, *dates_embedding[0], *dates_embedding[1]]
-            y = [all_synop_targets, *dates_embedding[2], *dates_embedding[3]]
-
-        else:
-            x = [synop_inputs]
-            y = [all_synop_targets]
-
-        whole_input_embedding = torch.cat([*x, self.time_2_vec_time_distributed(torch.cat(x, -1)), cmax_embeddings], -1)
-
         self.conv_time_distributed.requires_grad_(False)
         cmax_targets_embeddings = self.conv_time_distributed(cmax_targets.unsqueeze(2))
         self.conv_time_distributed.requires_grad_(True)
 
-        whole_target_embedding = torch.cat([*y, self.time_2_vec_time_distributed(torch.cat(y, -1)), cmax_targets_embeddings], -1)
+        whole_input_embedding = torch.cat([synop_inputs, self.time_2_vec_time_distributed(synop_inputs),
+                                           cmax_embeddings, *dates_tensors[0]], -1)
+        whole_target_embedding = torch.cat([all_synop_targets, self.time_2_vec_time_distributed(all_synop_targets),
+                                            cmax_targets_embeddings, *dates_tensors[1]], -1)
+
+        if self.config.experiment.with_dates_inputs:
+            whole_input_embedding = torch.cat([whole_input_embedding, *dates_tensors[0]], -1)
+            whole_target_embedding = torch.cat([whole_target_embedding, *dates_tensors[1]], -1)
 
         x = self.pos_encoder(whole_input_embedding) if self.use_pos_encoding else whole_input_embedding
         memory = self.encoder(x)

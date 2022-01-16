@@ -6,7 +6,7 @@ from torch import nn
 
 from wind_forecast.config.register import Config
 from wind_forecast.consts import BatchKeys
-from wind_forecast.models.CMAXAutoencoder import CMAXEncoder, set_pretrained_encoder
+from wind_forecast.models.CMAXAutoencoder import CMAXEncoder, get_pretrained_encoder
 from wind_forecast.models.Transformer import TransformerBaseProps, PositionalEncoding
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 
@@ -24,7 +24,7 @@ class TransformerEncoderS2SCMAXWithScaleToDepth(TransformerBaseProps):
             conv_H = math.ceil(conv_H / 2)
 
         if config.experiment.use_pretrained_cmax_autoencoder:
-            set_pretrained_encoder(self.conv, config)
+            get_pretrained_encoder(self.conv, config)
         self.conv_time_distributed = TimeDistributed(self.conv, batch_first=True)
 
         self.embed_dim += conv_W * conv_H * out_channels
@@ -48,8 +48,8 @@ class TransformerEncoderS2SCMAXWithScaleToDepth(TransformerBaseProps):
 
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
         synop_inputs = batch[BatchKeys.SYNOP_INPUTS.value].float()
-        dates_embedding = None if self.config.experiment.with_dates_inputs is False else batch[
-            BatchKeys.DATES_EMBEDDING.value]
+        dates_tensors = None if self.config.experiment.with_dates_inputs is False else batch[
+            BatchKeys.DATES_TENSORS.value]
         cmax_inputs = batch[BatchKeys.CMAX_INPUTS.value].float()
 
         cmax_inputs = cmax_inputs.unsqueeze(2)
@@ -59,12 +59,12 @@ class TransformerEncoderS2SCMAXWithScaleToDepth(TransformerBaseProps):
 
         cmax_embeddings = self.conv_time_distributed(cmax)
 
-        if self.config.experiment.with_dates_inputs:
-            x = [synop_inputs, *dates_embedding[0], *dates_embedding[1]]
-        else:
-            x = [synop_inputs]
+        whole_input_embedding = torch.cat([synop_inputs, self.time_2_vec_time_distributed(synop_inputs),
+                                           cmax_embeddings], -1)
 
-        whole_input_embedding = torch.cat([*x, self.time_2_vec_time_distributed(torch.cat(x, -1)), cmax_embeddings], -1)
+        if self.config.experiment.with_dates_inputs:
+            whole_input_embedding = torch.cat([whole_input_embedding, *dates_tensors[0]], -1)
+
         x = self.pos_encoder(whole_input_embedding) if self.use_pos_encoding else whole_input_embedding
         output = self.encoder(x)
 

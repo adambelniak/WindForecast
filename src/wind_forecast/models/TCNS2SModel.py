@@ -44,7 +44,7 @@ class TemporalConvNetS2S(LightningModule):
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
         synop_inputs = batch[BatchKeys.SYNOP_INPUTS.value].float()
         dates_embedding = None if self.config.experiment.with_dates_inputs is False else batch[
-            BatchKeys.DATES_EMBEDDING.value]
+            BatchKeys.DATES_TENSORS.value]
 
         if self.config.experiment.with_dates_inputs:
             x = [synop_inputs, *dates_embedding[0], *dates_embedding[1]]

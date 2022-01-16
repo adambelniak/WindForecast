@@ -23,4 +23,4 @@ synop_from_year: 2017
 train_parameters_config_file: TransformerConfig.json
 use_all_gfs_params: True
 use_pos_encoding: False
-transformer_attention_heads: 4
+time2vec_embedding_size: 3

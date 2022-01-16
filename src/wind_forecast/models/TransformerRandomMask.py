@@ -20,19 +20,16 @@ class TransformerRandomMask(Transformer):
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
         synop_inputs = batch[BatchKeys.SYNOP_INPUTS.value].float()
         all_synop_targets = batch[BatchKeys.ALL_SYNOP_TARGETS.value].float()
-        dates_embedding = None if self.config.experiment.with_dates_inputs is False else batch[
-            BatchKeys.DATES_EMBEDDING.value]
+        dates_tensors = None if self.config.experiment.with_dates_inputs is False else batch[
+            BatchKeys.DATES_TENSORS.value]
+
+        whole_input_embedding = torch.cat([synop_inputs, self.time_2_vec_time_distributed(synop_inputs)], -1)
+        whole_target_embedding = torch.cat([all_synop_targets, self.time_2_vec_time_distributed(all_synop_targets)], -1)
 
         if self.config.experiment.with_dates_inputs:
-            x = [synop_inputs, *dates_embedding[0], *dates_embedding[1]]
-            y = [all_synop_targets, *dates_embedding[2], *dates_embedding[3]]
+            whole_input_embedding = torch.cat([whole_input_embedding, *dates_tensors[0]], -1)
+            whole_target_embedding = torch.cat([whole_target_embedding, *dates_tensors[1]], -1)
 
-        else:
-            x = [synop_inputs]
-            y = [all_synop_targets]
-
-        whole_input_embedding = torch.cat([*x, self.time_2_vec_time_distributed(torch.cat(x, -1))], -1)
-        whole_target_embedding = torch.cat([*y, self.time_2_vec_time_distributed(torch.cat(y, -1))], -1)
         x = self.pos_encoder(whole_input_embedding) if self.use_pos_encoding else whole_input_embedding
         memory = self.encoder(x)
 

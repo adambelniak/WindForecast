@@ -37,6 +37,6 @@ class BatchKeys(Enum):
     ALL_GFS_TARGETS = 'all_gfs_targets'
     DATES_INPUTS = 'dates_inputs'
     DATES_TARGETS = 'dates_targets'
-    DATES_EMBEDDING = 'dates_embedding'
+    DATES_TENSORS = 'dates_embedding'
     CMAX_INPUTS = 'cmax_inputs'
     CMAX_TARGETS = 'cmax_targets'

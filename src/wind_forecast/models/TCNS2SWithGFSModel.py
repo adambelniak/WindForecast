@@ -60,7 +60,7 @@ class TemporalConvNetS2SWithGFS(LightningModule):
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
         synop_inputs = batch[BatchKeys.SYNOP_INPUTS.value].float()
         gfs_targets = batch[BatchKeys.GFS_TARGETS.value].float()
-        dates_embedding = None if self.config.experiment.with_dates_inputs is False else batch[BatchKeys.DATES_EMBEDDING.value]
+        dates_embedding = None if self.config.experiment.with_dates_inputs is False else batch[BatchKeys.DATES_TENSORS.value]
 
         if self.config.experiment.with_dates_inputs:
             if self.config.experiment.use_all_gfs_params:

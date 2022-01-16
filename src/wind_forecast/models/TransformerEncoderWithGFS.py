@@ -4,7 +4,7 @@ from torch import nn
 from wind_forecast.config.register import Config
 from wind_forecast.models.Transformer import TransformerBaseProps
 
-
+# TODO check if working after refactoring
 class Transformer(TransformerBaseProps):
     def __init__(self, config: Config):
         super().__init__(config)

@@ -8,33 +8,49 @@ from torch import nn
 from wind_forecast.config.register import Config
 from wind_forecast.consts import BatchKeys
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
+from wind_forecast.util.config import process_config
 
 
 class Time2Vec(nn.Module):
     def __init__(self, num_features: int, embedding_size: int):
         super().__init__()
-        self.time2vec_dim = embedding_size - 1
+        self.time2vec_dim = embedding_size
         # trend
-        self.wb = nn.Parameter(data=torch.empty(size=(num_features,)), requires_grad=True)
-        self.bb = nn.Parameter(data=torch.empty(size=(num_features,)), requires_grad=True)
+        # self.wb = nn.Parameter(data=torch.empty(size=(num_features,)), requires_grad=True)
+        # self.bb = nn.Parameter(data=torch.empty(size=(num_features,)), requires_grad=True)
 
         # periodic
         self.wa = nn.Parameter(data=torch.empty(size=(1, num_features, self.time2vec_dim)), requires_grad=True)
         self.ba = nn.Parameter(data=torch.empty(size=(1, num_features, self.time2vec_dim)), requires_grad=True)
 
-        self.wb.data.uniform_(-1, 1)
-        self.bb.data.uniform_(-1, 1)
+        # self.wb.data.uniform_(-1, 1)
+        # self.bb.data.uniform_(-1, 1)
         self.wa.data.uniform_(-1, 1)
         self.ba.data.uniform_(-1, 1)
 
     def forward(self, inputs):
-        bias = torch.mul(self.wb, inputs) + self.bb
+        # bias = torch.mul(self.wb, inputs) + self.bb
         dp = torch.mul(torch.unsqueeze(inputs, -1), self.wa) + self.ba
-        wgts = torch.sin(dp)
+        # wgts = torch.sin(dp)
 
-        ret = torch.cat([torch.unsqueeze(bias, -1), wgts], -1)
-        ret = torch.reshape(ret, (-1, inputs.shape[1] * (self.time2vec_dim + 1)))
+        # ret = torch.cat([torch.unsqueeze(bias, -1), dp], -1)
+        ret = torch.reshape(dp, (-1, inputs.shape[1] * (self.time2vec_dim)))
         return ret
+
+
+class Simple2Vec(nn.Module):
+    def __init__(self, num_features: int, embedding_size: int):
+        super().__init__()
+        self.simple2vec_dim = embedding_size
+        self.wa = nn.Parameter(data=torch.empty(size=(1, num_features, self.simple2vec_dim)), requires_grad=True)
+        self.ba = nn.Parameter(data=torch.empty(size=(1, num_features, self.simple2vec_dim)), requires_grad=True)
+
+        self.wa.data.uniform_(-1, 1)
+        self.ba.data.uniform_(-1, 1)
+
+    def forward(self, inputs):
+        dp = torch.mul(torch.unsqueeze(inputs, -1), self.wa) + self.ba
+        return torch.reshape(dp, (-1, inputs.shape[1] * self.simple2vec_dim))
 
 
 class PositionalEncoding(nn.Module):
@@ -63,20 +79,71 @@ class TransformerBaseProps(LightningModule):
     def __init__(self, config: Config):
         super().__init__()
         self.config = config
-        self.features_length = len(config.experiment.synop_train_features)
-        if config.experiment.with_dates_inputs:
-            self.features_length += 4
-
-        self.embed_dim = self.features_length * (config.experiment.time2vec_embedding_size + 1)
         self.dropout = config.experiment.dropout
         self.use_pos_encoding = config.experiment.use_pos_encoding
         self.sequence_length = config.experiment.sequence_length
-        self.time_2_vec_time_distributed = TimeDistributed(Time2Vec(self.features_length, config.experiment.time2vec_embedding_size), batch_first=True)
+        self.teacher_forcing_epoch_num = config.experiment.teacher_forcing_epoch_num
+        self.gradual_teacher_forcing = config.experiment.gradual_teacher_forcing
+        self.time2vec_embedding_size = config.experiment.time2vec_embedding_size
+
+        self.n_heads = config.experiment.transformer_attention_heads
+        self.ff_dim = config.experiment.transformer_ff_dim
+        self.transformer_layers_num = config.experiment.transformer_attention_layers
+        self.transformer_head_dims = config.experiment.transformer_head_dims
+
+        self.features_length = len(config.experiment.synop_train_features)
+        self.embed_dim = self.features_length * (self.time2vec_embedding_size + 1)
+        if config.experiment.with_dates_inputs:
+            self.embed_dim += 6 #sin and cos for hour, month and day of year
+
+        self.time_2_vec_time_distributed = TimeDistributed(Time2Vec(self.features_length, self.time2vec_embedding_size), batch_first=True)
         self.pos_encoder = PositionalEncoding(self.embed_dim, self.dropout, self.sequence_length)
+
+        encoder_layer = nn.TransformerEncoderLayer(self.embed_dim, self.n_heads, self.ff_dim, self.dropout,
+                                                   batch_first=True)
+        encoder_norm = nn.LayerNorm(self.embed_dim)
+        self.encoder = nn.TransformerEncoder(encoder_layer, self.transformer_layers_num, encoder_norm)
+
+        decoder_layer = nn.TransformerDecoderLayer(self.embed_dim, self.n_heads, self.ff_dim, self.dropout,
+                                                   batch_first=True)
+        decoder_norm = nn.LayerNorm(self.embed_dim)
+        self.decoder = nn.TransformerDecoder(decoder_layer, self.transformer_layers_num, decoder_norm)
 
         dense_layers = []
         features = self.embed_dim
-        for neurons in config.experiment.transformer_head_dims:
+        for neurons in self.transformer_head_dims:
+            dense_layers.append(nn.Linear(in_features=features, out_features=neurons))
+            features = neurons
+        dense_layers.append(nn.Linear(in_features=features, out_features=1))
+        self.classification_head = nn.Sequential(*dense_layers)
+        self.classification_head_time_distributed = TimeDistributed(self.classification_head, batch_first=True)
+
+
+class TransformerGFSBaseProps(TransformerBaseProps):
+    def __init__(self, config: Config):
+        super().__init__(config)
+        if config.experiment.use_all_gfs_params:
+            gfs_params_len = len(process_config(config.experiment.train_parameters_config_file))
+            self.features_length += gfs_params_len
+            self.embed_dim += gfs_params_len * (config.experiment.time2vec_embedding_size + 1)
+
+        self.time_2_vec_time_distributed = TimeDistributed(
+            Time2Vec(self.features_length, self.time2vec_embedding_size), batch_first=True)
+        self.pos_encoder = PositionalEncoding(self.embed_dim, self.dropout, self.sequence_length)
+
+        encoder_layer = nn.TransformerEncoderLayer(self.embed_dim, self.n_heads, self.ff_dim, self.dropout,
+                                                   batch_first=True)
+        encoder_norm = nn.LayerNorm(self.embed_dim)
+        self.encoder = nn.TransformerEncoder(encoder_layer, self.transformer_layers_num, encoder_norm)
+
+        decoder_layer = nn.TransformerDecoderLayer(self.embed_dim, self.n_heads, self.ff_dim, self.dropout,
+                                                   batch_first=True)
+        decoder_norm = nn.LayerNorm(self.embed_dim)
+        self.decoder = nn.TransformerDecoder(decoder_layer, self.transformer_layers_num, decoder_norm)
+
+        dense_layers = []
+        features = self.embed_dim + 1
+        for neurons in self.transformer_head_dims:
             dense_layers.append(nn.Linear(in_features=features, out_features=neurons))
             features = neurons
         dense_layers.append(nn.Linear(in_features=features, out_features=1))
@@ -87,19 +154,7 @@ class TransformerBaseProps(LightningModule):
 class Transformer(TransformerBaseProps):
     def __init__(self, config: Config):
         super().__init__(config)
-        self.config = config
-        self.teacher_forcing_epoch_num = config.experiment.teacher_forcing_epoch_num
-        self.gradual_teacher_forcing = config.experiment.gradual_teacher_forcing
 
-        self.n_heads = config.experiment.transformer_attention_heads
-        self.ff_dim = config.experiment.transformer_ff_dim
-        self.transformer_layers_num = config.experiment.transformer_attention_layers
-
-        self.time_2_vec_time_distributed = TimeDistributed(Time2Vec(self.features_length,
-                                                                    config.experiment.time2vec_embedding_size),
-                                                           batch_first=True)
-
-        self.pos_encoder = PositionalEncoding(self.embed_dim, self.dropout, self.sequence_length)
         encoder_layer = nn.TransformerEncoderLayer(self.embed_dim, self.n_heads, self.ff_dim, self.dropout, batch_first=True)
         encoder_norm = nn.LayerNorm(self.embed_dim)
         self.encoder = nn.TransformerEncoder(encoder_layer, self.transformer_layers_num, encoder_norm)
@@ -107,16 +162,6 @@ class Transformer(TransformerBaseProps):
         decoder_layer = nn.TransformerDecoderLayer(self.embed_dim, self.n_heads, self.ff_dim, self.dropout, batch_first=True)
         decoder_norm = nn.LayerNorm(self.embed_dim)
         self.decoder = nn.TransformerDecoder(decoder_layer, self.transformer_layers_num, decoder_norm)
-
-        dense_layers = []
-        features = self.embed_dim
-
-        for neurons in config.experiment.transformer_head_dims:
-            dense_layers.append(nn.Linear(in_features=features, out_features=neurons))
-            features = neurons
-        dense_layers.append(nn.Linear(in_features=features, out_features=1))
-        self.classification_head = nn.Sequential(*dense_layers)
-        self.classification_head_time_distributed = TimeDistributed(self.classification_head, batch_first=True)
 
     def generate_mask(self, sequence_length: int) -> torch.Tensor:
         mask = (torch.triu(torch.ones(sequence_length, sequence_length)) == 1).transpose(0, 1)
@@ -126,18 +171,14 @@ class Transformer(TransformerBaseProps):
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
         synop_inputs = batch[BatchKeys.SYNOP_INPUTS.value].float()
         all_synop_targets = batch[BatchKeys.ALL_SYNOP_TARGETS.value].float()
-        dates_embedding = None if self.config.experiment.with_dates_inputs is False else batch[BatchKeys.DATES_EMBEDDING.value]
+        dates_tensors = None if self.config.experiment.with_dates_inputs is False else batch[BatchKeys.DATES_TENSORS.value]
+
+        whole_input_embedding = torch.cat([synop_inputs, self.time_2_vec_time_distributed(synop_inputs)], -1)
+        whole_target_embedding = torch.cat([all_synop_targets, self.time_2_vec_time_distributed(all_synop_targets)], -1)
 
         if self.config.experiment.with_dates_inputs:
-            x = [synop_inputs, *dates_embedding[0], *dates_embedding[1]]
-            y = [all_synop_targets, *dates_embedding[2], *dates_embedding[3]]
-
-        else:
-            x = [synop_inputs]
-            y = [all_synop_targets]
-
-        whole_input_embedding = torch.cat([*x, self.time_2_vec_time_distributed(torch.cat(x, -1))], -1)
-        whole_target_embedding = torch.cat([*y, self.time_2_vec_time_distributed(torch.cat(y, -1))], -1)
+            whole_input_embedding = torch.cat([whole_input_embedding, *dates_tensors[0]], -1)
+            whole_target_embedding = torch.cat([whole_target_embedding, *dates_tensors[1]], -1)
 
         x = self.pos_encoder(whole_input_embedding) if self.use_pos_encoding else whole_input_embedding
         memory = self.encoder(x)

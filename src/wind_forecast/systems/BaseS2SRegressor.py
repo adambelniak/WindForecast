@@ -50,23 +50,26 @@ class BaseS2SRegressor(pl.LightningModule):
         feature_names = list(list(zip(*all_params))[1])
         self.target_param_index = [x for x in feature_names].index(target_param)
 
-    def get_dates_embeddings(self, input_dates, target_dates):
-        input_days_embed = self.dates_to_embed_tensor(input_dates)
-        input_hours_embed = self.days_to_embed_tensor(input_dates)
-        target_days_embed = self.dates_to_embed_tensor(target_dates)
-        target_hours_embed = self.days_to_embed_tensor(target_dates)
+    def get_dates_tensor(self, input_dates, target_dates):
+        input_embed = self.dates_to_tensor(input_dates)
+        target_embed = self.dates_to_tensor(target_dates)
 
-        return input_days_embed, input_hours_embed, target_days_embed, target_hours_embed
+        return input_embed, target_embed
+    #
+    # def dates_to_tensor(self, dates):
+    #     return torch.Tensor([[[pd.to_datetime(d).year, pd.to_datetime(d).month, pd.to_datetime(d).day,
+    #                            pd.to_datetime(d).hour] for d in sublist] for sublist in dates]).to(self.device)
 
-    def dates_to_embed_tensor(self, dates):
-        argument = np.array(
-            [[[pd.to_datetime(d).timetuple().tm_yday] for d in sublist] for sublist in dates]) / 365 * 2 * np.pi
-        return torch.Tensor([np.sin(argument), np.cos(argument)]).to(self.device)
-
-    def days_to_embed_tensor(self, dates):
-        argument = np.array(
-            [[[pd.to_datetime(d).hour] for d in sublist] for sublist in dates]) / 24 * 2 * np.pi
-        return torch.Tensor([np.sin(argument), np.cos(argument)]).to(self.device)
+    def dates_to_tensor(self, dates):
+        day_of_year_argument = np.array([[[pd.to_datetime(d).timetuple().tm_yday] for d in sublist] for sublist in dates])
+        month_argument = np.array([[[pd.to_datetime(d).month] for d in sublist] for sublist in dates])
+        hour_argument = np.array([[[pd.to_datetime(d).hour] for d in sublist] for sublist in dates])
+        day_of_year_embed = day_of_year_argument / 365 * 2 * np.pi
+        month_embed = month_argument / 12 * 2 * np.pi
+        hour_embed = hour_argument / 24 * 2 * np.pi
+        return torch.Tensor(np.array([np.sin(day_of_year_embed), np.cos(day_of_year_embed),
+                             np.sin(month_embed), np.cos(month_embed),
+                             np.sin(hour_embed), np.cos(hour_embed)])).to(self.device)
 
     # -----------------------------------------------------------------------------------------------
     # Default PyTorch Lightning hooks
@@ -190,8 +193,8 @@ class BaseS2SRegressor(pl.LightningModule):
         if self.cfg.experiment.with_dates_inputs:
             dates_inputs = batch[BatchKeys.DATES_INPUTS.value]
             dates_targets = batch[BatchKeys.DATES_TARGETS.value]
-            dates_embeddings = self.get_dates_embeddings(dates_inputs, dates_targets)
-            batch[BatchKeys.DATES_EMBEDDING.value] = dates_embeddings
+            dates_embeddings = self.get_dates_tensor(dates_inputs, dates_targets)
+            batch[BatchKeys.DATES_TENSORS.value] = dates_embeddings
 
         outputs = self.forward(batch, self.current_epoch, 'fit')
         targets = batch[BatchKeys.SYNOP_TARGETS.value]
@@ -252,8 +255,8 @@ class BaseS2SRegressor(pl.LightningModule):
         if self.cfg.experiment.with_dates_inputs:
             dates_inputs = batch[BatchKeys.DATES_INPUTS.value]
             dates_targets = batch[BatchKeys.DATES_TARGETS.value]
-            dates_embeddings = self.get_dates_embeddings(dates_inputs, dates_targets)
-            batch[BatchKeys.DATES_EMBEDDING.value] = dates_embeddings
+            dates_embeddings = self.get_dates_tensor(dates_inputs, dates_targets)
+            batch[BatchKeys.DATES_TENSORS.value] = dates_embeddings
 
         outputs = self.forward(batch, self.current_epoch, 'test')
         targets = batch[BatchKeys.SYNOP_TARGETS.value]
@@ -315,8 +318,8 @@ class BaseS2SRegressor(pl.LightningModule):
         if self.cfg.experiment.with_dates_inputs:
             dates_inputs = batch[BatchKeys.DATES_INPUTS.value]
             dates_targets = batch[BatchKeys.DATES_TARGETS.value]
-            dates_embeddings = self.get_dates_embeddings(dates_inputs, dates_targets)
-            batch[BatchKeys.DATES_EMBEDDING.value] = dates_embeddings
+            dates_embeddings = self.get_dates_tensor(dates_inputs, dates_targets)
+            batch[BatchKeys.DATES_TENSORS.value] = dates_embeddings
 
         outputs = self.forward(batch, self.current_epoch, 'test')
         targets = batch[BatchKeys.SYNOP_TARGETS.value]

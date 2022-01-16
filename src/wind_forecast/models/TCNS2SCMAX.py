@@ -71,7 +71,7 @@ class TCNS2SCMAX(LightningModule):
         cmax_inputs = batch[BatchKeys.CMAX_INPUTS.value].float()
 
         dates_embedding = None if self.config.experiment.with_dates_inputs is False else batch[
-            BatchKeys.DATES_EMBEDDING.value]
+            BatchKeys.DATES_TENSORS.value]
 
         if self.config.experiment.with_dates_inputs:
             x = [synop_inputs, *dates_embedding[0], *dates_embedding[1]]

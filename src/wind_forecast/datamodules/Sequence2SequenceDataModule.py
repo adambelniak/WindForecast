@@ -120,6 +120,8 @@ class Sequence2SequenceDataModule(LightningDataModule):
         self.dataset_train, self.dataset_val = split_dataset(dataset, self.config.experiment.val_split,
                                                              sequence_length=self.sequence_length if self.sequence_length > 1 else None)
         self.dataset_test = self.dataset_val
+        print('Dataset train len: ' + str(len(self.dataset_train)))
+        print('Dataset test len: ' + str(len(self.dataset_test)))
         DataModulesCache().cache_dataset(self.dataset_test)
 
     def prepare_dataset_for_gfs(self):
