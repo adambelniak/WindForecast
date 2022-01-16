@@ -18,13 +18,12 @@ from tqdm import tqdm
 from wind_forecast.loaders.GFSLoader import GFSLoader
 from wind_forecast.preprocess.synop.consts import SYNOP_FEATURES
 from gfs_common.common import GFS_SPACE
-from scipy.interpolate import interpolate
+from scipy.interpolate import interpolate, barycentric_interpolate
 from gfs_archive_0_25.gfs_processor.Coords import Coords
 from wind_forecast.consts import NETCDF_FILE_REGEX, DATE_KEY_REGEX
 from gfs_archive_0_25.utils import get_nearest_coords
 from wind_forecast.util.common_util import prep_zeros_if_needed, NormalizationType
 from wind_forecast.util.logging import log
-from scipy.interpolate import BarycentricInterpolator, interp1d
 GFS_DATASET_DIR = os.environ.get('GFS_DATASET_DIR')
 GFS_DATASET_DIR = 'gfs_data' if GFS_DATASET_DIR is None else GFS_DATASET_DIR
 
@@ -212,7 +211,12 @@ def initialize_GFS_date_keys_for_sequence(date_keys: [str], labels: pd.DataFrame
 
 def normalize_gfs_data(gfs_data: np.ndarray, normalization_type: NormalizationType, axes=-1):
     if normalization_type == NormalizationType.STANDARD:
-        return (gfs_data - np.mean(gfs_data, axis=axes)) / np.std(gfs_data, axis=axes)
+        try:
+            value = (gfs_data - np.mean(gfs_data, axis=axes)) / np.std(gfs_data, axis=axes)
+            return value
+        except Exception:
+            print("e")
+
     else:
         return (gfs_data - np.min(gfs_data, axis=axes)) / (
                     np.max(gfs_data, axis=axes) - np.min(gfs_data, axis=axes))
@@ -287,7 +291,7 @@ def target_param_to_gfs_name_level(target_param):
         "temperature": [{
             "name": "TMP",
             "level": "HTGL_2",
-            "interpolation": "polynomial"
+            "interpolation": "linear"
         }],
         "wind_velocity": [{
             "name": "V GRD",
@@ -320,23 +324,8 @@ def get_forecast_date_and_offset_for_prediction_date(date, prediction_offset):
     forecast_start_date = date - timedelta(hours=prediction_offset + 5)  # 00 run is available at 5 UTC
     hour = int(forecast_start_date.hour)
     forecast_start_date = forecast_start_date - timedelta(hours=hour % 6)
-
-    pred_offset = (prediction_offset + 6) // 3 * 3
-    return forecast_start_date + timedelta(hours=pred_offset), pred_offset
-
-
-"""
-    Two dates for interpolation or one date if it matches exactly
-"""
-def get_forecast_dates_and_offsets_for_prediction_date(date, prediction_offset):
-    forecast_start_date = date - timedelta(hours=prediction_offset + 5)  # 00 run is available at 5 UTC
-    hour = int(forecast_start_date.hour)
-    forecast_start_date = forecast_start_date - timedelta(hours=hour % 6)
     real_prediction_offset = prediction_offset + 5 + hour % 6
-    if real_prediction_offset % 3 == 0:
-        return forecast_start_date + timedelta(hours=real_prediction_offset), real_prediction_offset, 0
-
-    pred_offset = (real_prediction_offset) // 3 * 3
+    pred_offset = real_prediction_offset // 3 * 3
     return forecast_start_date + timedelta(hours=pred_offset), pred_offset, real_prediction_offset % 3
 
 
@@ -433,7 +422,7 @@ def get_next_gfs_values(dates, prediction_offset, gfs_params: list, future_dates
                            pd.Timestamp(dates.values[-1]).to_pydatetime() + timedelta(hours=3)]
     for index, date in enumerate(dates_3_hours_before):
         value = get_gfs_values_for_date(pd.Timestamp(date), future_dates, gfs_params, prediction_offset, first_date, interpolator)
-        if value is not None and len(value) == len(gfs_params):
+        if value is not None and len(value) != 0:
             x_values.append(index - 3)
             gfs_values.append(value)
             break
@@ -441,51 +430,60 @@ def get_next_gfs_values(dates, prediction_offset, gfs_params: list, future_dates
     for index, date in enumerate(dates):
         # get real forecast values for hours which match the GFS forecast hour (if mod_offset == 0)
         value = get_gfs_values_for_date(date, future_dates, gfs_params, prediction_offset, first_date, interpolator)
-        if value is not None and len(value) == len(gfs_params):
-            gfs_values.append(value)
-            x_values.append(index)
-        elif value is None:
-            return None
+        if value is not None:
+            # Date does match
+            if len(value) != 0:
+                gfs_values.append(value)
+                x_values.append(index)
+            else:
+                return None
 
     for index, date in enumerate(dates_3_hours_after):
         value = get_gfs_values_for_date(pd.Timestamp(date), future_dates, gfs_params, prediction_offset, first_date, interpolator)
-        if value is not None and len(value) == len(gfs_params):
+        if value is not None and len(value) != 0:
             x_values.append(index + len(dates))
             gfs_values.append(value)
             break
 
     for index, param in enumerate(gfs_params):
-        values = []
-        if param['interpolation'] == 'polynomial':
-            interpolator_scipy = BarycentricInterpolator(x_values, [gfs_values[i][index] for i in range(len(gfs_values))])
-            for date_index, date in enumerate(dates):
-                values.append(interpolator_scipy(date_index))
-        else:
-            values = np.interp(np.arange(len(dates)), x_values, [gfs_values[i][index] for i in range(len(gfs_values))])
+        # polynomial interpolation gives worse results
+        # if param['interpolation'] == 'polynomial':
+        #     values = barycentric_interpolate(x_values, [gfs_values[i][index] for i in range(len(gfs_values))], np.arange(len(dates)))
+        # else:
+        values = np.interp(np.arange(len(dates)), x_values, [gfs_values[i][index] for i in range(len(gfs_values))])
 
         next_gfs_values.append(values)
 
     return np.array(next_gfs_values).transpose([1, 0])
 
 
+"""
+    Return values for all params only if there is a forecast for this exact date and hour.
+    Otherwise, if the date does not match the forecast date return None, but if the date match and still there's no 
+    forecast, return an empty array.
+"""
 def get_gfs_values_for_date(date: datetime, future_date: bool, gfs_params: list, prediction_offset: int, first_date: datetime,
                             gfs_interpolator):
     if future_date:
         offset = prediction_offset + int(divmod((date - first_date).total_seconds(), 3600)[0])
+        offset = max(3, offset)
     else:
-        offset = prediction_offset
-    gfs_dates, gfs_offsets, mod_offset = get_forecast_dates_and_offsets_for_prediction_date(date, offset)
+        offset = 3
+    gfs_dates, gfs_offset, mod_offset = get_forecast_date_and_offset_for_prediction_date(date, offset)
     gfs_loader = GFSLoader()
 
     vals = []
     if mod_offset == 0:
         for param in gfs_params:
             gfs_date_key = gfs_loader.get_date_key(gfs_dates)
-            value = gfs_loader.get_gfs_image(gfs_date_key, param, gfs_offsets)
+            value = gfs_loader.get_gfs_image(gfs_date_key, param, gfs_offset)
 
             if value is None:
-                return None
+                return []
 
             vals.append(gfs_interpolator(value))
 
-    return vals
+        return vals
+
+    else:
+        return None

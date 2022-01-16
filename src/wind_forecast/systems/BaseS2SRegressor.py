@@ -165,7 +165,7 @@ class BaseS2SRegressor(pl.LightningModule):
         torch.Tensor
             Loss value.
         """
-        return self.criterion(outputs, targets)
+        return torch.sqrt(self.criterion(outputs, targets))
 
     # ----------------------------------------------------------------------------------------------
     # Training
