@@ -67,9 +67,10 @@ class BaseS2SRegressor(pl.LightningModule):
         day_of_year_embed = day_of_year_argument / 365 * 2 * np.pi
         month_embed = month_argument / 12 * 2 * np.pi
         hour_embed = hour_argument / 24 * 2 * np.pi
-        return torch.Tensor(np.array([np.sin(day_of_year_embed), np.cos(day_of_year_embed),
-                             np.sin(month_embed), np.cos(month_embed),
-                             np.sin(hour_embed), np.cos(hour_embed)])).to(self.device)
+        # return torch.Tensor(np.array([np.sin(day_of_year_embed), np.cos(day_of_year_embed),
+        #                      np.sin(month_embed), np.cos(month_embed),
+        #                      np.sin(hour_embed), np.cos(hour_embed)])).to(self.device)
+        return torch.Tensor(np.array([day_of_year_argument, month_argument, hour_argument])).to(self.device)
 
     # -----------------------------------------------------------------------------------------------
     # Default PyTorch Lightning hooks
@@ -121,7 +122,7 @@ class BaseS2SRegressor(pl.LightningModule):
                                     warmup_epochs=self.cfg.optim.warmup_epochs,
                                     decay_epochs=self.cfg.optim.decay_epochs,
                                     starting_lr=self.cfg.optim.starting_lr,
-                                    base_lr=self.cfg.optim.optimizer.lr,
+                                    base_lr=self.cfg.optim.lr,
                                     final_lr=self.cfg.optim.final_lr)
 
             scheduler: _LRScheduler = instantiate(  # type: ignore
