@@ -28,12 +28,12 @@
     {
       "name": "TMP",
       "level": "ISBL_850",
-      "interpolation": "polynomial"
+      "interpolation": "linear"
     },
     {
       "name": "TMP",
       "level": "HTGL_2",
-      "interpolation": "polynomial"
+      "interpolation": "linear"
     },
     {
       "name": "PRATE",
@@ -43,7 +43,7 @@
     {
       "name": "PRES",
       "level": "SFC_0",
-      "interpolation": "polynomial"
+      "interpolation": "linear"
     },
     {
       "name": "R H",
@@ -53,17 +53,18 @@
     {
       "name": "DPT",
       "level": "HTGL_2",
-      "interpolation": "polynomial"
+      "interpolation": "linear"
     },
-    {
+        {
       "name": "HGT",
       "level": "ISBL_500",
-      "interpolation": "polynomial"
+      "interpolation": "linear"
     },
-    {
+        {
       "name": "TMP",
       "level": "ISBL_700",
-      "interpolation": "polynomial"
+      "interpolation": "linear"
     }
+
   ]
 }

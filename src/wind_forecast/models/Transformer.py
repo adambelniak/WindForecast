@@ -14,27 +14,27 @@ from wind_forecast.util.config import process_config
 class Time2Vec(nn.Module):
     def __init__(self, num_features: int, embedding_size: int):
         super().__init__()
-        self.time2vec_dim = embedding_size
+        self.time2vec_dim = embedding_size - 1
         # trend
-        # self.wb = nn.Parameter(data=torch.empty(size=(num_features,)), requires_grad=True)
-        # self.bb = nn.Parameter(data=torch.empty(size=(num_features,)), requires_grad=True)
+        self.wb = nn.Parameter(data=torch.empty(size=(num_features,)), requires_grad=True)
+        self.bb = nn.Parameter(data=torch.empty(size=(num_features,)), requires_grad=True)
 
         # periodic
         self.wa = nn.Parameter(data=torch.empty(size=(1, num_features, self.time2vec_dim)), requires_grad=True)
         self.ba = nn.Parameter(data=torch.empty(size=(1, num_features, self.time2vec_dim)), requires_grad=True)
 
-        # self.wb.data.uniform_(-1, 1)
-        # self.bb.data.uniform_(-1, 1)
+        self.wb.data.uniform_(-1, 1)
+        self.bb.data.uniform_(-1, 1)
         self.wa.data.uniform_(-1, 1)
         self.ba.data.uniform_(-1, 1)
 
     def forward(self, inputs):
-        # bias = torch.mul(self.wb, inputs) + self.bb
+        bias = torch.mul(self.wb, inputs) + self.bb
         dp = torch.mul(torch.unsqueeze(inputs, -1), self.wa) + self.ba
-        # wgts = torch.sin(dp)
+        wgts = torch.sin(dp)
 
-        # ret = torch.cat([torch.unsqueeze(bias, -1), dp], -1)
-        ret = torch.reshape(dp, (-1, inputs.shape[1] * (self.time2vec_dim)))
+        ret = torch.cat([torch.unsqueeze(bias, -1), wgts], -1)
+        ret = torch.reshape(ret, (-1, inputs.shape[1] * (self.time2vec_dim + 1)))
         return ret
 
 
@@ -96,7 +96,7 @@ class TransformerBaseProps(LightningModule):
         if config.experiment.with_dates_inputs:
             self.embed_dim += 6 #sin and cos for hour, month and day of year
 
-        self.time_2_vec_time_distributed = TimeDistributed(Time2Vec(self.features_length, self.time2vec_embedding_size), batch_first=True)
+        self.time_2_vec_time_distributed = TimeDistributed(Simple2Vec(self.features_length, self.time2vec_embedding_size), batch_first=True)
         self.pos_encoder = PositionalEncoding(self.embed_dim, self.dropout, self.sequence_length)
 
         encoder_layer = nn.TransformerEncoderLayer(self.embed_dim, self.n_heads, self.ff_dim, self.dropout,
@@ -128,7 +128,7 @@ class TransformerGFSBaseProps(TransformerBaseProps):
             self.embed_dim += gfs_params_len * (config.experiment.time2vec_embedding_size + 1)
 
         self.time_2_vec_time_distributed = TimeDistributed(
-            Time2Vec(self.features_length, self.time2vec_embedding_size), batch_first=True)
+            Simple2Vec(self.features_length, self.time2vec_embedding_size), batch_first=True)
         self.pos_encoder = PositionalEncoding(self.embed_dim, self.dropout, self.sequence_length)
 
         encoder_layer = nn.TransformerEncoderLayer(self.embed_dim, self.n_heads, self.ff_dim, self.dropout,
