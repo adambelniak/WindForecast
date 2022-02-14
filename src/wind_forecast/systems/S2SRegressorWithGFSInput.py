@@ -42,7 +42,7 @@ class S2SRegressorWithGFSInput(BaseS2SRegressor):
         self.test_mse(outputs.squeeze(), targets.float().squeeze())
         self.test_mae(outputs.squeeze(), targets.float().squeeze())
 
-        synop_inputs = batch[BatchKeys.SYNOP_INPUTS.value]
+        synop_past_targets = batch[BatchKeys.SYNOP_PAST_TARGETS.value]
         if self.cfg.experiment.with_dates_inputs:
             dates_inputs = batch[BatchKeys.DATES_INPUTS.value]
             dates_targets = batch[BatchKeys.DATES_TARGETS.value]
@@ -54,7 +54,7 @@ class S2SRegressorWithGFSInput(BaseS2SRegressor):
 
         return {BatchKeys.SYNOP_TARGETS.value: targets,
                 'output': outputs,
-                BatchKeys.SYNOP_INPUTS.value: synop_inputs[:, :, self.target_param_index],
+                BatchKeys.SYNOP_PAST_TARGETS.value: synop_past_targets[:, :],
                 BatchKeys.DATES_INPUTS.value: dates_inputs,
                 BatchKeys.DATES_TARGETS.value: dates_targets,
                 BatchKeys.GFS_TARGETS.value: gfs_targets
@@ -87,7 +87,7 @@ class S2SRegressorWithGFSInput(BaseS2SRegressor):
 
         out = [item for sublist in [x['output'] for x in outputs] for item in sublist]
 
-        inputs = [item for sublist in [x[BatchKeys.SYNOP_INPUTS.value] for x in outputs] for item in sublist]
+        inputs = [item for sublist in [x[BatchKeys.SYNOP_PAST_TARGETS.value] for x in outputs] for item in sublist]
 
         gfs_targets = [item for sublist in [x[BatchKeys.GFS_TARGETS.value] for x in outputs] for item in sublist]
 

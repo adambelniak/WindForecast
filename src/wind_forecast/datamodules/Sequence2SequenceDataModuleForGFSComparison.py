@@ -21,7 +21,8 @@ class Sequence2SequenceDataModuleForGFSComparison(Sequence2SequenceDataModule):
             return
 
         synop_inputs, all_gfs_input_data, gfs_target_data, all_gfs_target_data = self.prepare_dataset_for_gfs()
-        dataset = Sequence2SequenceWithGFSDataset(self.config, self.synop_data, self.synop_data_indices, gfs_target_data)
+        dataset = Sequence2SequenceWithGFSDataset(self.config, self.synop_data, self.synop_data_indices, self.synop_feature_names,
+                                                  gfs_target_data)
 
         if len(dataset) == 0:
             raise RuntimeError("There are no valid samples in the dataset! Please check your run configuration")

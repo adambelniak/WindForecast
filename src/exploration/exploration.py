@@ -92,6 +92,8 @@ GFS_PARAMETERS = [
         "level": "SFC_0"
     },
 ]
+import os
+os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 
 
 def explore_data_for_each_param():
@@ -166,14 +168,15 @@ def explore_synop_patterns(data: pd.DataFrame, relevant_features: (int, str), lo
     features_with_nans = []
     for feature in relevant_features:
         plot_dir = os.path.join('plots-synop', localisation_name, feature[1])
-        if not os.path.exists(plot_dir):
-            values = data[feature[1]].to_numpy()
-            if np.isnan(np.sum(values)):
-                features_with_nans.append(feature[1])
-            sns.boxplot(x=values).set_title(f"{feature[1]}")
-            os.makedirs(plot_dir, exist_ok=True)
-            plt.savefig(os.path.join(plot_dir, 'plot.png'))
-            plt.close()
+        values = data[feature[1]].to_numpy()
+        if np.isnan(np.sum(values)):
+            features_with_nans.append(feature[1])
+        # sns.boxplot(x=values).set_title(f"{feature[1]}")
+        sns.lineplot(data=data[['date', feature[1]]], x='date', y=feature[1])
+        plt.show()
+        os.makedirs(plot_dir, exist_ok=True)
+        plt.savefig(os.path.join(plot_dir, 'plot.png'))
+        plt.close()
     if len(features_with_nans):
         logger = get_logger(os.path.join("explore_results", 'logs.log'))
         logger.info(f"Nans in features:\n {[f'{feature}, ' for feature in features_with_nans]}")
@@ -186,8 +189,9 @@ def explore_synop(localisation_name: str, code_fallback: int):
         prepare_synop_csv(localisation_name, code_fallback, SYNOP_FEATURES)
 
     data = prepare_synop_dataset(synop_file, list(list(zip(*relevant_features))[1]), norm=False,
-                                 dataset_dir=SYNOP_DATASETS_DIRECTORY)
+                                 dataset_dir=SYNOP_DATASETS_DIRECTORY, from_year=2017)
 
+    data["date"] = pd.to_datetime(data[['year', 'month', 'day', 'hour']])
     explore_synop_correlations(data, relevant_features, localisation_name)
     explore_synop_patterns(data, relevant_features, localisation_name)
 
@@ -202,6 +206,6 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    explore_data_for_each_param()
-    explore_gfs_correlations()
+    # explore_data_for_each_param()
+    # explore_gfs_correlations()
     explore_synop(args.localisation_name, args.code_fallback)

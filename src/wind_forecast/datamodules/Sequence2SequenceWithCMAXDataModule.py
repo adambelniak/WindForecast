@@ -11,7 +11,7 @@ from wind_forecast.datasets.CMAXDataset import CMAXDataset
 from wind_forecast.datasets.ConcatDatasets import ConcatDatasets
 from wind_forecast.datasets.Sequence2SequenceDataset import Sequence2SequenceDataset
 from wind_forecast.datasets.Sequence2SequenceWithGFSDataset import Sequence2SequenceWithGFSDataset
-from wind_forecast.preprocess.synop.synop_preprocess import normalize_synop_data, prepare_synop_dataset
+from wind_forecast.preprocess.synop.synop_preprocess import normalize_synop_data_for_training, prepare_synop_dataset
 from wind_forecast.util.cmax_util import get_available_cmax_hours, \
     initialize_CMAX_list_IDs_and_synop_dates_for_sequence
 from wind_forecast.util.common_util import split_dataset
@@ -55,11 +55,11 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
         self.synop_data_indices = self.synop_data[self.synop_data["date"].isin(dates)].index
 
         # data was not normalized, so take all frames which will be used, compute std and mean and normalize data
-        self.synop_data, synop_mean, synop_std = normalize_synop_data(self.synop_data, self.synop_data_indices,
-                                                                      self.feature_names,
-                                                                      self.sequence_length + self.prediction_offset
-                                                                      + self.future_sequence_length,
-                                                                      self.normalization_type)
+        self.synop_data, self.synop_feature_names, synop_mean, synop_std = normalize_synop_data_for_training(self.synop_data, self.synop_data_indices,
+                                                                                                             self.feature_names,
+                                                                                                             self.sequence_length + self.prediction_offset
+                                                                                                             + self.future_sequence_length,
+                                                                                                             self.normalization_type)
         self.synop_mean = synop_mean[self.target_param_index]
         self.synop_std = synop_std[self.target_param_index]
         print(f"Synop mean: {synop_mean[self.target_param_index]}")
@@ -81,12 +81,14 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
 
             if self.use_all_gfs_params:
                 dataset = ConcatDatasets(Sequence2SequenceWithGFSDataset(self.config, self.synop_data,
-                                                                         self.synop_data_indices, gfs_target_data,
+                                                                         self.synop_data_indices,
+                                                                         self.synop_feature_names, gfs_target_data,
                                                                          all_gfs_target_data, all_gfs_input_data),
                                          CMAXDataset(config=self.config, IDs=self.cmax_IDs, normalize=True))
             else:
                 dataset = ConcatDatasets(Sequence2SequenceWithGFSDataset(self.config, self.synop_data,
-                                                                         self.synop_data_indices, gfs_target_data),
+                                                                         self.synop_data_indices, self.synop_feature_names,
+                                                                         gfs_target_data),
                                          CMAXDataset(config=self.config, IDs=self.cmax_IDs, normalize=True))
 
         else:
@@ -112,9 +114,10 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
             all_data = [*default_collate(tensors), *list(zip(*dates)), torch.Tensor(cmax_data)]
 
         dict_data = {
-            BatchKeys.SYNOP_INPUTS.value: all_data[0],
-            BatchKeys.SYNOP_TARGETS.value: all_data[1],
-            BatchKeys.ALL_SYNOP_TARGETS.value: all_data[2]
+            BatchKeys.SYNOP_PAST_TARGETS.value: all_data[0],
+            BatchKeys.SYNOP_INPUTS.value: all_data[1],
+            BatchKeys.SYNOP_TARGETS.value: all_data[2],
+            BatchKeys.ALL_SYNOP_TARGETS.value: all_data[3]
         }
 
         if self.config.experiment.use_future_cmax:
@@ -125,18 +128,18 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
 
         if self.config.experiment.use_gfs_data:
             if self.use_all_gfs_params:
-                dict_data[BatchKeys.GFS_INPUTS.value] = all_data[3]
-                dict_data[BatchKeys.GFS_TARGETS.value] = all_data[4]
-                dict_data[BatchKeys.ALL_GFS_TARGETS.value] = all_data[5]
-                dict_data[BatchKeys.DATES_INPUTS.value] = all_data[6]
-                dict_data[BatchKeys.DATES_TARGETS.value] = all_data[7]
+                dict_data[BatchKeys.GFS_INPUTS.value] = all_data[4]
+                dict_data[BatchKeys.GFS_TARGETS.value] = all_data[5]
+                dict_data[BatchKeys.ALL_GFS_TARGETS.value] = all_data[6]
+                dict_data[BatchKeys.DATES_INPUTS.value] = all_data[7]
+                dict_data[BatchKeys.DATES_TARGETS.value] = all_data[8]
 
             else:
-                dict_data[BatchKeys.GFS_TARGETS.value] = all_data[3]
-                dict_data[BatchKeys.DATES_INPUTS.value] = all_data[4]
-                dict_data[BatchKeys.DATES_TARGETS.value] = all_data[5]
+                dict_data[BatchKeys.GFS_TARGETS.value] = all_data[4]
+                dict_data[BatchKeys.DATES_INPUTS.value] = all_data[5]
+                dict_data[BatchKeys.DATES_TARGETS.value] = all_data[6]
 
         else:
-            dict_data[BatchKeys.DATES_INPUTS.value] = all_data[3]
-            dict_data[BatchKeys.DATES_TARGETS.value] = all_data[4]
+            dict_data[BatchKeys.DATES_INPUTS.value] = all_data[4]
+            dict_data[BatchKeys.DATES_TARGETS.value] = all_data[5]
         return dict_data

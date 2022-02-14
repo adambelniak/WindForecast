@@ -36,3 +36,5 @@ class OptimSettings:
     warmup_epochs: int = 10
 
     decay_epochs: int = 10
+
+    loss: str = 'rmse'

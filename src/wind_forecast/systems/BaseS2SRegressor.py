@@ -13,6 +13,7 @@ from pytorch_lightning.loggers.wandb import WandbLogger
 from torchmetrics.regression.mean_absolute_error import MeanAbsoluteError
 from torch.optim.lr_scheduler import _LRScheduler
 from torchmetrics.regression.mean_squared_error import MeanSquaredError
+from pytorch_forecasting.metrics import MASE
 from rich import print
 from torch.nn import MSELoss
 from torch.optim.optimizer import Optimizer
@@ -39,10 +40,13 @@ class BaseS2SRegressor(pl.LightningModule):
         # Metrics
         self.train_mse = MeanSquaredError()
         self.train_mae = MeanAbsoluteError()
+        self.train_mase = MASE()
         self.val_mse = MeanSquaredError()
         self.val_mae = MeanAbsoluteError()
+        self.val_mase = MASE()
         self.test_mse = MeanSquaredError()
         self.test_mae = MeanAbsoluteError()
+        self.test_mase = MASE()
         self.test_results = []
         train_params = self.cfg.experiment.synop_train_features
         target_param = self.cfg.experiment.target_parameter
@@ -164,7 +168,13 @@ class BaseS2SRegressor(pl.LightningModule):
         torch.Tensor
             Loss value.
         """
-        return torch.sqrt(self.criterion(outputs, targets))
+        if self.cfg.optim.loss == 'rmse':
+            return torch.sqrt(self.criterion(outputs, targets))
+        elif self.cfg.optim.loss == 'mse':
+            return self.criterion(outputs, targets)
+        else:
+            return self.criterion(outputs, targets)
+
 
     # ----------------------------------------------------------------------------------------------
     # Training
@@ -194,10 +204,15 @@ class BaseS2SRegressor(pl.LightningModule):
 
         outputs = self.forward(batch, self.current_epoch, 'fit')
         targets = batch[BatchKeys.SYNOP_TARGETS.value]
-        loss = self.calculate_loss(outputs, targets.float())
+        synop_past_targets = batch[BatchKeys.SYNOP_PAST_TARGETS.value]
         self.train_mse(outputs, targets)
         self.train_mae(outputs, targets)
-
+        self.train_mase(outputs, targets, synop_past_targets)
+        if self.cfg.optim.loss != 'mase':
+            loss = self.calculate_loss(outputs, targets.float())
+        else:
+            loss = MASE()
+            loss = loss(outputs, targets, synop_past_targets)
         return {
             'loss': loss
             # no need to return 'train_mse' here since it is always available as `self.train_mse`
@@ -217,11 +232,13 @@ class BaseS2SRegressor(pl.LightningModule):
         metrics = {
             'epoch': float(step),
             'train_rmse': math.sqrt(float(self.train_mse.compute().item())),
-            'train_mae': float(self.train_mae.compute().item())
+            'train_mae': float(self.train_mae.compute().item()),
+            'train_mase': float(self.train_mase.compute())
         }
 
         self.train_mse.reset()
         self.train_mae.reset()
+        self.train_mase.reset()
 
         # Average additional metrics over all batches
         for key in outputs[0]:
@@ -256,9 +273,11 @@ class BaseS2SRegressor(pl.LightningModule):
 
         outputs = self.forward(batch, self.current_epoch, 'test')
         targets = batch[BatchKeys.SYNOP_TARGETS.value]
+        synop_past_targets = batch[BatchKeys.SYNOP_PAST_TARGETS.value]
 
         self.val_mse(outputs.squeeze(), targets.float().squeeze())
         self.val_mae(outputs.squeeze(), targets.float().squeeze())
+        self.val_mase(outputs.squeeze(), targets.float().squeeze(), synop_past_targets)
 
         return {
             # 'additional_metric': ...
@@ -279,11 +298,13 @@ class BaseS2SRegressor(pl.LightningModule):
         metrics = {
             'epoch': float(step),
             'val_rmse': math.sqrt(float(self.val_mse.compute().item())),
-            'val_mae': float(self.val_mae.compute().item())
+            'val_mae': float(self.val_mae.compute().item()),
+            'val_mase': float(self.val_mase.compute())
         }
 
         self.val_mse.reset()
         self.val_mae.reset()
+        self.val_mase.reset()
 
         # Average additional metrics over all batches
         for key in outputs[0]:
@@ -295,7 +316,7 @@ class BaseS2SRegressor(pl.LightningModule):
     # ----------------------------------------------------------------------------------------------
     # Test
     # ----------------------------------------------------------------------------------------------
-    def test_step(self, batch: List[torch.Tensor], batch_idx: int) -> Dict[str, torch.Tensor]:
+    def test_step(self, batch: Dict[str, torch.Tensor], batch_idx: int) -> Dict[str, torch.Tensor]:
         """
         Compute test metrics.
 
@@ -319,9 +340,11 @@ class BaseS2SRegressor(pl.LightningModule):
 
         outputs = self.forward(batch, self.current_epoch, 'test')
         targets = batch[BatchKeys.SYNOP_TARGETS.value]
+        synop_past_targets = batch[BatchKeys.SYNOP_PAST_TARGETS.value]
 
         self.test_mse(outputs.squeeze(), targets.float().squeeze())
         self.test_mae(outputs.squeeze(), targets.float().squeeze())
+        self.test_mase(outputs.squeeze(), targets.float().squeeze(), synop_past_targets)
 
         synop_inputs = batch[BatchKeys.SYNOP_INPUTS.value]
         if self.cfg.experiment.with_dates_inputs:
@@ -333,6 +356,7 @@ class BaseS2SRegressor(pl.LightningModule):
 
         return {BatchKeys.SYNOP_TARGETS.value: targets,
                 'output': outputs,
+                BatchKeys.SYNOP_PAST_TARGETS.value: synop_past_targets[:, :],
                 BatchKeys.SYNOP_INPUTS.value: synop_inputs[:, :, self.target_param_index],
                 BatchKeys.DATES_INPUTS.value: dates_inputs,
                 BatchKeys.DATES_TARGETS.value: dates_targets
@@ -352,11 +376,13 @@ class BaseS2SRegressor(pl.LightningModule):
         metrics = {
             'epoch': float(step),
             'test_rmse': math.sqrt(float(self.test_mse.compute().item())),
-            'test_mae': float(self.test_mae.compute().item())
+            'test_mae': float(self.test_mae.compute().item()),
+            'test_mase': float(self.test_mase.compute())
         }
 
         self.test_mse.reset()
         self.test_mae.reset()
+        self.test_mase.reset()
 
         self.logger.log_metrics(metrics, step=step)
 
@@ -365,7 +391,7 @@ class BaseS2SRegressor(pl.LightningModule):
 
         out = [item for sublist in [x['output'] for x in outputs] for item in sublist]
 
-        inputs = [item for sublist in [x[BatchKeys.SYNOP_INPUTS.value] for x in outputs] for item in sublist]
+        inputs = [item for sublist in [x[BatchKeys.SYNOP_PAST_TARGETS.value] for x in outputs] for item in sublist]
 
         if self.cfg.experiment.with_dates_inputs:
             inputs_dates = [item for sublist in [x[BatchKeys.DATES_INPUTS.value] for x in outputs] for item in sublist]

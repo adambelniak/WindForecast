@@ -30,6 +30,7 @@ STATION_META = {
 
 class BatchKeys(Enum):
     SYNOP_INPUTS = 'synop_inputs'
+    SYNOP_PAST_TARGETS = 'synop_past_targets'
     SYNOP_TARGETS = 'synop_targets'
     ALL_SYNOP_TARGETS = 'all_synop_targets'
     GFS_INPUTS = 'gfs_inputs'

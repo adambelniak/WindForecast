@@ -11,7 +11,7 @@ from wind_forecast.consts import SYNOP_DATASETS_DIRECTORY
 from wind_forecast.datamodules.DataModulesCache import DataModulesCache
 from wind_forecast.datasets.Sequence2SequenceDataset import Sequence2SequenceDataset
 from wind_forecast.datasets.Sequence2SequenceWithGFSDataset import Sequence2SequenceWithGFSDataset
-from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset, normalize_synop_data
+from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset, normalize_synop_data_for_training
 from wind_forecast.util.common_util import split_dataset
 from wind_forecast.util.config import process_config
 from wind_forecast.util.gfs_util import add_param_to_train_params, match_gfs_with_synop_sequence2sequence, \
@@ -63,6 +63,7 @@ class Sequence2SequenceDataModule(LightningDataModule):
         self.synop_data_indices = ...
         self.synop_mean = ...
         self.synop_std = ...
+        self.synop_feature_names = ...
 
     def prepare_data(self, *args, **kwargs):
         self.synop_data = prepare_synop_dataset(self.synop_file,
@@ -73,7 +74,7 @@ class Sequence2SequenceDataModule(LightningDataModule):
                                                 norm=False)
 
         if self.config.debug_mode:
-            self.synop_data = self.synop_data.head(100)
+            self.synop_data = self.synop_data.head(self.sequence_length * 10)
 
         dates = get_correct_dates_for_sequence(self.synop_data, self.sequence_length, self.future_sequence_length,
                                                self.prediction_offset)
@@ -83,11 +84,11 @@ class Sequence2SequenceDataModule(LightningDataModule):
         # Get indices which correspond to 'dates' - 'dates' are the ones, which start a proper sequence without breaks
         self.synop_data_indices = self.synop_data[self.synop_data["date"].isin(dates)].index
         # data was not normalized, so take all frames which will be used, compute std and mean and normalize data
-        self.synop_data, target_param_mean, target_param_std = normalize_synop_data(self.synop_data, self.synop_data_indices,
-                                                                      self.feature_names,
-                                                                      self.sequence_length + self.prediction_offset
-                                                                      + self.future_sequence_length,
-                                                                      self.target_param, self.normalization_type, self.periodic_features)
+        self.synop_data, self.synop_feature_names, target_param_mean, target_param_std = normalize_synop_data_for_training(self.synop_data, self.synop_data_indices,
+                                                                                                                           self.feature_names,
+                                                                                                                           self.sequence_length + self.prediction_offset
+                                                                                                                           + self.future_sequence_length,
+                                                                                                                           self.target_param, self.normalization_type, self.periodic_features)
         self.synop_mean = target_param_mean
         self.synop_std = target_param_std
         print(f"Synop mean: {target_param_mean}")
@@ -104,13 +105,14 @@ class Sequence2SequenceDataModule(LightningDataModule):
 
             if self.use_all_gfs_params:
                 dataset = Sequence2SequenceWithGFSDataset(self.config, self.synop_data, self.synop_data_indices,
+                                                          self.synop_feature_names,
                                                           gfs_target_data, all_gfs_target_data, all_gfs_input_data)
             else:
                 dataset = Sequence2SequenceWithGFSDataset(self.config, self.synop_data, self.synop_data_indices,
-                                                          gfs_target_data)
+                                                          self.synop_feature_names, gfs_target_data)
 
         else:
-            dataset = Sequence2SequenceDataset(self.config, self.synop_data, self.synop_data_indices)
+            dataset = Sequence2SequenceDataset(self.config, self.synop_data, self.synop_data_indices, self.synop_feature_names)
 
         if len(dataset) == 0:
             raise RuntimeError("There are no valid samples in the dataset! Please check your run configuration")
@@ -191,25 +193,26 @@ class Sequence2SequenceDataModule(LightningDataModule):
         tensors, dates = [item[:-2] for item in x], [item[-2:] for item in x]
         all_data = [*default_collate(tensors), *list(zip(*dates))]
         dict_data = {
-            BatchKeys.SYNOP_INPUTS.value: all_data[0],
-            BatchKeys.SYNOP_TARGETS.value: all_data[1],
-            BatchKeys.ALL_SYNOP_TARGETS.value: all_data[2]
+            BatchKeys.SYNOP_PAST_TARGETS.value: all_data[0],
+            BatchKeys.SYNOP_INPUTS.value: all_data[1],
+            BatchKeys.SYNOP_TARGETS.value: all_data[2],
+            BatchKeys.ALL_SYNOP_TARGETS.value: all_data[3]
         }
 
         if self.config.experiment.use_gfs_data:
             if self.use_all_gfs_params:
-                dict_data[BatchKeys.GFS_INPUTS.value] = all_data[3]
-                dict_data[BatchKeys.GFS_TARGETS.value] = all_data[4]
-                dict_data[BatchKeys.ALL_GFS_TARGETS.value] = all_data[5]
-                dict_data[BatchKeys.DATES_INPUTS.value] = all_data[6]
-                dict_data[BatchKeys.DATES_TARGETS.value] = all_data[7]
+                dict_data[BatchKeys.GFS_INPUTS.value] = all_data[4]
+                dict_data[BatchKeys.GFS_TARGETS.value] = all_data[5]
+                dict_data[BatchKeys.ALL_GFS_TARGETS.value] = all_data[6]
+                dict_data[BatchKeys.DATES_INPUTS.value] = all_data[7]
+                dict_data[BatchKeys.DATES_TARGETS.value] = all_data[8]
 
             else:
-                dict_data[BatchKeys.GFS_TARGETS.value] = all_data[3]
-                dict_data[BatchKeys.DATES_INPUTS.value] = all_data[4]
-                dict_data[BatchKeys.DATES_TARGETS.value] = all_data[5]
+                dict_data[BatchKeys.GFS_TARGETS.value] = all_data[4]
+                dict_data[BatchKeys.DATES_INPUTS.value] = all_data[5]
+                dict_data[BatchKeys.DATES_TARGETS.value] = all_data[6]
 
         else:
-            dict_data[BatchKeys.DATES_INPUTS.value] = all_data[3]
-            dict_data[BatchKeys.DATES_TARGETS.value] = all_data[4]
+            dict_data[BatchKeys.DATES_INPUTS.value] = all_data[4]
+            dict_data[BatchKeys.DATES_TARGETS.value] = all_data[5]
         return dict_data

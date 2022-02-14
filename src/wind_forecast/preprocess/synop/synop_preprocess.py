@@ -61,10 +61,11 @@ def resolve_synop_data(all_synop_data: pd.DataFrame, synop_data_indices: [int], 
     return all_synop_data.take(list(all_indices))
 
 
-def normalize_synop_data(all_synop_data: pd.DataFrame, synop_data_indices: [int], features: [str], length_of_sequence: int, target_param: str, normalization_type: NormalizationType = NormalizationType.STANDARD, periodic_features: [Dict] = None):
+def normalize_synop_data_for_training(all_synop_data: pd.DataFrame, synop_data_indices: [int], features: [str], length_of_sequence: int, target_param: str, normalization_type: NormalizationType = NormalizationType.STANDARD, periodic_features: [Dict] = None):
     all_relevant_synop_data = resolve_synop_data(all_synop_data, synop_data_indices, length_of_sequence)
     periodic_features_names = [x['column'][1] for x in periodic_features]
     final_data = pd.DataFrame()
+    synop_feature_names = []
     mean_or_min_to_return = 0
     std_or_max_to_return = 0
     for feature in features:
@@ -73,19 +74,23 @@ def normalize_synop_data(all_synop_data: pd.DataFrame, synop_data_indices: [int]
             periodic_feature = [f for f in periodic_features if f['column'][1] == feature][0]
             min = periodic_feature['min']
             max = periodic_feature['max']
-            final_data[feature] = np.sin(((series_to_normalize.values - min) / (max - min)).astype(np.float64) * 2 * np.pi).tolist()
+            period_argument = ((series_to_normalize.values - min) / (max - min)).astype(np.float64) * 2 * np.pi
+            final_data[f'{feature}-sin'] = np.sin(period_argument).tolist()
+            final_data[f'{feature}-cos'] = np.cos(period_argument).tolist()
+            synop_feature_names.extend([f'{feature}-sin', f'{feature}-cos'])
             if target_param == feature:
                 mean_or_min_to_return = min
                 std_or_max_to_return = max
         else:
             values, mean_or_min, std_or_max = get_normalization_values(series_to_normalize.values, normalization_type)
             final_data[feature] = values
+            synop_feature_names.append(feature)
             if target_param == feature:
                 mean_or_min_to_return = mean_or_min
                 std_or_max_to_return = std_or_max
 
     rest_of_data = all_relevant_synop_data.drop(features, axis=1)
-    return pd.concat([final_data, rest_of_data], axis=1, join='inner'), mean_or_min_to_return, std_or_max_to_return
+    return pd.concat([final_data, rest_of_data], axis=1, join='inner'), synop_feature_names, mean_or_min_to_return, std_or_max_to_return
 
 
 def filter_for_dates(dataset, init_date, end_date):

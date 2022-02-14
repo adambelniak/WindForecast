@@ -91,7 +91,7 @@ class TransformerBaseProps(LightningModule):
         self.transformer_layers_num = config.experiment.transformer_attention_layers
         self.transformer_head_dims = config.experiment.transformer_head_dims
 
-        self.features_length = len(config.experiment.synop_train_features)
+        self.features_length = len(config.experiment.synop_train_features) + len(config.experiment.periodic_features)
         self.embed_dim = self.features_length * (self.time2vec_embedding_size + 1)
         if config.experiment.with_dates_inputs:
             self.embed_dim += 6 #sin and cos for hour, month and day of year

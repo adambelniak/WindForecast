@@ -9,7 +9,7 @@ from wind_forecast.datasets.CMAXDataset import CMAXDataset
 from wind_forecast.datasets.ConcatDatasets import ConcatDatasets
 from wind_forecast.datasets.SequenceDataset import SequenceDataset
 from wind_forecast.datasets.SequenceWithGFSDataset import SequenceWithGFSDataset
-from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset, normalize_synop_data
+from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset, normalize_synop_data_for_training
 from wind_forecast.util.cmax_util import get_available_cmax_hours, \
     initialize_CMAX_list_IDs_and_synop_dates_for_sequence
 from wind_forecast.util.common_util import split_dataset
@@ -46,10 +46,10 @@ class SequenceWithCMAXDataModule(SequenceDataModule):
         # Get indices which correspond to 'dates' - 'dates' are the ones, which start a proper sequence without breaks
         self.synop_data_indices = self.synop_data[self.synop_data["date"].isin(dates)].index
         # data was not normalized, so take all frames which will be used, compute std and mean and normalize data
-        self.synop_data, synop_mean, synop_std = normalize_synop_data(self.synop_data, self.synop_data_indices,
-                                                                      self.feature_names,
-                                                                      self.sequence_length + self.prediction_offset,
-                                                                      self.normalization_type)
+        self.synop_data, self.synop_feature_names, synop_mean, synop_std = normalize_synop_data_for_training(self.synop_data, self.synop_data_indices,
+                                                                                                             self.feature_names,
+                                                                                                             self.sequence_length + self.prediction_offset,
+                                                                                                             self.normalization_type)
         print(f"Synop mean: {synop_mean[self.target_param_index]}")
         print(f"Synop std: {synop_std[self.target_param_index]}")
 

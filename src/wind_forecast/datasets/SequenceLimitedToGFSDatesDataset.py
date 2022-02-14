@@ -3,7 +3,7 @@ import torch
 from tqdm import tqdm
 
 from wind_forecast.config.register import Config
-from wind_forecast.preprocess.synop.synop_preprocess import normalize_synop_data
+from wind_forecast.preprocess.synop.synop_preprocess import normalize_synop_data_for_training
 from wind_forecast.util.gfs_util import add_param_to_train_params, match_gfs_with_synop_sequence, \
     target_param_to_gfs_name_level
 
@@ -29,11 +29,13 @@ class SequenceLimitedToGFSDatesDataset(torch.utils.data.Dataset):
 
         if normalize_synop:
             # data was not normalized, so take all frames which will be used, compute std and mean and normalize data
-            self.synop_data, synop_feature_1, synop_feature_2 = normalize_synop_data(self.synop_data,
-                                                                                     synop_data_indices,
-                                                                                     feature_names,
-                                                                                     self.sequence_length + self.prediction_offset,
-                                                                                     config.experiment.normalization_type)
+            self.synop_data, self.synop_feature_names, synop_feature_1, synop_feature_2 = \
+                normalize_synop_data_for_training(self.synop_data,
+                                                  synop_data_indices,
+                                                  feature_names,
+                                                  self.sequence_length + self.prediction_offset,
+                                                  self.target_param,
+                                                  config.experiment.normalization_type)
             target_param_index = [x for x in feature_names].index(self.target_param)
             print(synop_feature_1[target_param_index])
             print(synop_feature_2[target_param_index])
@@ -44,7 +46,8 @@ class SequenceLimitedToGFSDatesDataset(torch.utils.data.Dataset):
 
         print("Preparing the dataset")
         for index in tqdm(synop_data_indices):
-            self.features.append(self.synop_data.iloc[index:index + self.sequence_length][list(list(zip(*self.train_params))[1])].to_numpy())
+            self.features.append(self.synop_data.iloc[index:index + self.sequence_length][
+                                     list(list(zip(*self.train_params))[1])].to_numpy())
             self.targets.append(labels.iloc[index + self.sequence_length + self.prediction_offset])
 
         self.features, self.targets = match_gfs_with_synop_sequence(self.features, self.targets,

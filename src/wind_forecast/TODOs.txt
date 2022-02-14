@@ -1,2 +1,4 @@
 GAN, maybe better autoencoder for cmax
 wavelet denoising of inputs
+NBEATS
+Time series decomposition - T, S and R as auxiliary inputs

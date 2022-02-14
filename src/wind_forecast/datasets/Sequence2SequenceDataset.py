@@ -1,25 +1,21 @@
+from typing import List
+
 from wind_forecast.config.register import Config
 from wind_forecast.datasets.BaseDataset import BaseDataset
-from wind_forecast.util.gfs_util import add_param_to_train_params
 
 
 class Sequence2SequenceDataset(BaseDataset):
     'Characterizes a dataset for PyTorch'
 
-    def __init__(self, config: Config, synop_data, synop_data_indices):
+    def __init__(self, config: Config, synop_data, synop_data_indices, synop_feature_names: List[str]):
         super().__init__()
         'Initialization'
+        self.train_params = synop_feature_names
         self.target_param = config.experiment.target_parameter
         self.sequence_length = config.experiment.sequence_length
         self.future_sequence_length = config.experiment.future_sequence_length
         self.prediction_offset = config.experiment.prediction_offset
         self.synop_data = synop_data.reset_index()
-        train_params = config.experiment.synop_train_features
-        self.target_param = config.experiment.target_parameter
-        all_params = add_param_to_train_params(train_params, self.target_param)
-        self.feature_names = list(list(zip(*all_params))[1])
-        self.target_param_index = [x for x in self.feature_names].index(self.target_param)
-        self.train_params = list(list(zip(*train_params))[1])
         self.data = synop_data_indices
 
     def __len__(self):
@@ -29,11 +25,16 @@ class Sequence2SequenceDataset(BaseDataset):
     def __getitem__(self, index):
         'Generates one sample of data'
         synop_index = self.data[index]
-        inputs = self.synop_data.iloc[synop_index:synop_index + self.sequence_length][self.train_params].to_numpy()
+        synop_inputs = self.synop_data.iloc[synop_index:synop_index + self.sequence_length][self.train_params].to_numpy()
         all_synop_targets = self.synop_data.iloc[
                       synop_index + self.sequence_length + self.prediction_offset:synop_index + self.sequence_length + self.prediction_offset + self.future_sequence_length][
                                 self.train_params].to_numpy()
-        synop_targets = all_synop_targets[:, self.target_param_index]
+        synop_targets = self.synop_data.iloc[
+                        synop_index:synop_index + self.sequence_length + self.prediction_offset + self.future_sequence_length][
+            self.target_param].to_numpy()
+        synop_past_targets = synop_targets[:self.sequence_length + self.prediction_offset]
+        synop_future_targets = synop_targets[self.sequence_length + self.prediction_offset
+                                             :synop_index + self.sequence_length + self.prediction_offset + self.future_sequence_length]
         input_dates = self.synop_data.iloc[synop_index:synop_index + self.sequence_length]['date'].to_numpy()
         target_dates = self.synop_data.iloc[synop_index + self.sequence_length + self.prediction_offset:synop_index + self.sequence_length + self.prediction_offset + self.future_sequence_length]['date']
-        return inputs, synop_targets, all_synop_targets, input_dates, target_dates
+        return synop_past_targets, synop_inputs, synop_future_targets, all_synop_targets, input_dates, target_dates
