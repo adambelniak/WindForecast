@@ -22,7 +22,7 @@ python-dotenv
 coolname
 wandb
 torch==1.10.0+cu111
-torchmetrics
+torchmetrics==0.6.0
 git+https://github.com/pytorch/hydra-torch
 pytorch-lightning-bolts==0.3.2
 pytorch-lightning==1.5.3
