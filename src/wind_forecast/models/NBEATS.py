@@ -12,8 +12,12 @@ class NBEATS(LightningModule):
 
     def __init__(self, config: Config) -> None:
         super(NBEATS, self).__init__()
-        self.model = NBeats(stack_types=['generic'],
+        self.model = NBeats(stack_types=['generic' for _ in range(30)],
                             num_blocks=[1 for _ in range(30)],
+                            num_block_layers=[4 for _ in range(30)],
+                            widths=[32, *[512 for _ in range(29)]],
+                            expansion_coefficient_lengths=[32 for _ in range(30)],
+                            dropout=config.experiment.dropout,
                             prediction_length=config.experiment.future_sequence_length,
                             context_length=config.experiment.sequence_length,
                             output_transformer=lambda out: out["prediction"])
