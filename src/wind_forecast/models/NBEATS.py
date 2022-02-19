@@ -16,7 +16,7 @@ class NBEATS(LightningModule):
                             num_blocks=list(config.experiment.nbeats_num_blocks),
                             num_block_layers=list(config.experiment.nbeats_num_layers),
                             widths=list(config.experiment.nbeats_num_hidden),
-                            expansion_coefficient_lengths=[32],
+                            expansion_coefficient_lengths=list(config.experiment.nbeats_expansion_coefficient_lengths),
                             dropout=config.experiment.dropout,
                             prediction_length=config.experiment.future_sequence_length,
                             context_length=config.experiment.sequence_length,

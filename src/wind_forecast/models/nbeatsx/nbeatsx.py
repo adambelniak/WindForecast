@@ -60,21 +60,10 @@ class Nbeatsx(pl.LightningModule):
     TREND_BLOCK = 'trend'
     IDENTITY_BLOCK = 'identity'
 
-    def __init__(self,
-                 config: Config):
+    def __init__(self, config: Config):
         super(Nbeatsx, self).__init__()
         """
         N-BEATSx model.
-        Parameters
-        ----------
-        n_harmonics: List[int]
-            Number of harmonic terms for each stack type.
-            Note that len(n_harmonics) = len(stack_types).
-        n_polynomials: List[int]
-            Number of polynomial terms for each stack type.
-            Note that len(n_polynomials) = len(stack_types).
-        batch_normalization: bool
-            Whether perform batch normalization.
         """
 
         self.activation = config.experiment.nbeats_activation
@@ -100,8 +89,9 @@ class Nbeatsx(pl.LightningModule):
         # No static features in our case
         self.x_s_n_hidden, self.n_x_s = 0, 0
 
-        self.n_insample_t = len(config.experiment.synop_train_features) + 1
-        self.n_outsample_t = len(process_config(config.experiment.train_parameters_config_file))
+        n_gfs_features = len(process_config(config.experiment.train_parameters_config_file))
+        self.n_insample_t = len(config.experiment.synop_train_features) + 1 + n_gfs_features
+        self.n_outsample_t = n_gfs_features
 
         block_list = self.create_stack()
 
@@ -209,8 +199,9 @@ class Nbeatsx(pl.LightningModule):
     def forward(self, batch: Dict[str, t.Tensor], epoch: int, stage=None) -> t.Tensor:
         synop_inputs = batch[BatchKeys.SYNOP_INPUTS.value].float().permute(0, 2, 1)
         synop_past_targets = batch[BatchKeys.SYNOP_PAST_TARGETS.value].float()
+        gfs_inputs = batch[BatchKeys.GFS_INPUTS.value].float().permute(0, 2, 1)
         gfs_all_targets = batch[BatchKeys.ALL_GFS_TARGETS.value].float().permute(0, 2, 1)
 
         # No static features in my case
         return self.model(x_s=t.Tensor([]), insample_y=synop_past_targets,
-                          insample_x_t=synop_inputs, outsample_x_t=gfs_all_targets)
+                          insample_x_t=t.cat([synop_inputs, gfs_inputs], 1), outsample_x_t=gfs_all_targets)

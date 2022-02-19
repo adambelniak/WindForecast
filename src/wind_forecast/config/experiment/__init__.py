@@ -185,5 +185,7 @@ class ExperimentSettings:
 
     nbeats_num_hidden: List = field(default_factory=lambda: [[512, 512], [512, 512]])
 
+    nbeats_expansion_coefficient_lengths: List = field(default_factory=lambda: [32])
+
     # Exogenous channels for non-interpretable exogenous basis.
     nbeats_exogenous_n_channels: int = 16
