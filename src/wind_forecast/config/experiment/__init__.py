@@ -167,3 +167,23 @@ class ExperimentSettings:
     view_test_result: bool = True
 
     dates_tensor_size: int = 4
+
+    # List of stack types.
+    # Subset from ['seasonality', 'trend', 'identity', 'exogenous', 'exogenous_tcn', 'exogenous_wavenet']
+    nbeats_stack_types: List = field(default_factory=lambda: ['identity', 'exogenous_tcn'])
+
+    # If True, repeats first block.
+    nbeats_shared_weights: bool = False
+
+    # Activation function.
+    # An item from ['relu', 'softplus', 'tanh', 'selu', 'lrelu', 'prelu', 'sigmoid'].
+    nbeats_activation: str = 'selu'
+
+    nbeats_num_blocks: List = field(default_factory=lambda: [1, 1])
+
+    nbeats_num_layers: List = field(default_factory=lambda: [2, 2])
+
+    nbeats_num_hidden: List = field(default_factory=lambda: [[512, 512], [512, 512]])
+
+    # Exogenous channels for non-interpretable exogenous basis.
+    nbeats_exogenous_n_channels: int = 16
