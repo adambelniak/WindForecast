@@ -179,11 +179,11 @@ class ExperimentSettings:
     # An item from ['relu', 'softplus', 'tanh', 'selu', 'lrelu', 'prelu', 'sigmoid'].
     nbeats_activation: str = 'selu'
 
-    nbeats_num_blocks: List = field(default_factory=lambda: [1, 1])
+    nbeats_num_blocks: List = field(default_factory=lambda: [15, 15])
 
-    nbeats_num_layers: List = field(default_factory=lambda: [2, 2])
+    nbeats_num_layers: List = field(default_factory=lambda: [4, 4])
 
-    nbeats_num_hidden: List = field(default_factory=lambda: [[512, 512], [512, 512]])
+    nbeats_num_hidden: List = field(default_factory=lambda: [[512, 512, 512, 512], [512, 512, 512, 512]])
 
     nbeats_expansion_coefficient_lengths: List = field(default_factory=lambda: [32])
 
