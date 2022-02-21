@@ -15,6 +15,7 @@ class TCNS2SCMAXWithGFS(LightningModule):
     def __init__(self, config: Config):
         super(TCNS2SCMAXWithGFS, self).__init__()
         self.config = config
+        self.future_sequence_length = config.experiment.future_sequence_length
         self.cnn = TimeDistributed(CMAXEncoder(config), batch_first=True)
         out_features = config.experiment.tcn_channels[0]
 
@@ -78,9 +79,9 @@ class TCNS2SCMAXWithGFS(LightningModule):
         if self.config.experiment.with_dates_inputs:
             if self.config.experiment.use_all_gfs_params:
                 gfs_inputs = batch[BatchKeys.GFS_INPUTS.value].float()
-                x = [synop_inputs, gfs_inputs, *dates_embedding[0], *dates_embedding[1]]
+                x = [synop_inputs, gfs_inputs, *dates_embedding[0]]
             else:
-                x = [synop_inputs, *dates_embedding[0], *dates_embedding[1]]
+                x = [synop_inputs, *dates_embedding[0]]
         else:
             if self.config.experiment.use_all_gfs_params:
                 gfs_inputs = batch[BatchKeys.GFS_INPUTS.value].float()
@@ -92,10 +93,11 @@ class TCNS2SCMAXWithGFS(LightningModule):
         cmax_embedding = self.cnn_lin_tcn(cmax_embedding)
         x = torch.cat([*x, cmax_embedding], -1)
 
-        x = self.tcn(x.permute(0, 2, 1))
+        x = self.tcn(x.permute(0, 2, 1)).permute(0, 2, 1)
+        mem = x[:, -self.future_sequence_length:, :]
 
         if self.config.experiment.with_dates_inputs:
-            return self.linear_time_distributed(torch.cat([x.permute(0, 2, 1), gfs_targets, *dates_embedding[2], *dates_embedding[3]], -1)).squeeze(-1)
+            return self.linear_time_distributed(torch.cat([mem, gfs_targets, *dates_embedding[1]], -1)).squeeze(-1)
         else:
-            return self.linear_time_distributed(torch.cat([x.permute(0, 2, 1), gfs_targets], -1)).squeeze(-1)
+            return self.linear_time_distributed(torch.cat([mem, gfs_targets], -1)).squeeze(-1)
 

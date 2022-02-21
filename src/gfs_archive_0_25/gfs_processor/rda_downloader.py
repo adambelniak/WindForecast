@@ -1,3 +1,4 @@
+import numpy
 import pandas as pd
 import schedule
 import tarfile, re, argparse
@@ -158,8 +159,9 @@ def processor(purge_requests: bool, tidy: bool):
                                    (request_db[REQUEST_STATUS_FIELD] == RequestStatus.DOWNLOADED.value) |
                                    (request_db[REQUEST_STATUS_FIELD] == RequestStatus.FINISHED.value)]
         for index, request in done_requests.iterrows():
-            purge(str(int(request[REQUEST_ID_FIELD])))
-            request_db.loc[index, REQUEST_STATUS_FIELD] = RequestStatus.PURGED.value
+            if not numpy.isnan(request[REQUEST_ID_FIELD]):
+                purge(str(int(request[REQUEST_ID_FIELD])))
+                request_db.loc[index, REQUEST_STATUS_FIELD] = RequestStatus.PURGED.value
         request_db.to_csv(REQ_ID_PATH)
 
     print("Done. Waiting for next scheduler trigger.")

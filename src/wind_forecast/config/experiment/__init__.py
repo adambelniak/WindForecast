@@ -68,6 +68,10 @@ class ExperimentSettings:
 
     val_split: float = .2
 
+    test_split: float = .2
+
+    dataset_split_mode: str = 'classic'
+
     synop_file: str = "WARSZAWA-OKECIE_375_data.csv"
 
     synop_from_year: int = 2017
@@ -104,6 +108,7 @@ class ExperimentSettings:
 
     synop_train_features: List = field(default_factory=lambda: SYNOP_TRAIN_FEATURES)
 
+    # Synop features which will be split into sin and cos during normalization phase
     periodic_features: List = field(default_factory=lambda: PERIODIC_FEATURES)
 
     sequence_length: int = 24

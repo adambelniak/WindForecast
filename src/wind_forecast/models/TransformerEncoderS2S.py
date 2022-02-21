@@ -21,5 +21,6 @@ class TransformerEncoderS2S(TransformerBaseProps):
 
         x = self.pos_encoder(whole_input_embedding) if self.use_pos_encoding else whole_input_embedding
         x = self.encoder(x)
+        x = x[:, -self.future_sequence_length:, :]
 
         return torch.squeeze(self.classification_head_time_distributed(x), -1)

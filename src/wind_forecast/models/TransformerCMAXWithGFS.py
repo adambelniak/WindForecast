@@ -31,7 +31,7 @@ class TransformerCMAXWithGFS(TransformerGFSBaseProps):
         self.time_2_vec_time_distributed = TimeDistributed(Time2Vec(self.features_length, self.time2vec_embedding_size),
                                                            batch_first=True)
 
-        self.pos_encoder = PositionalEncoding(self.embed_dim, self.dropout, self.sequence_length)
+        self.pos_encoder = PositionalEncoding(self.embed_dim, self.dropout, self.past_sequence_length)
 
         encoder_layer = nn.TransformerEncoderLayer(d_model=self.embed_dim,
                                                    nhead=self.n_heads,
@@ -93,7 +93,7 @@ class TransformerCMAXWithGFS(TransformerGFSBaseProps):
         if epoch < self.teacher_forcing_epoch_num and stage in [None, 'fit']:
             # Teacher forcing - masked targets as decoder inputs
             if self.gradual_teacher_forcing:
-                first_taught = math.floor(epoch / self.teacher_forcing_epoch_num * self.sequence_length)
+                first_taught = math.floor(epoch / self.teacher_forcing_epoch_num * self.future_sequence_length)
                 decoder_input = whole_input_embedding[:, -1:, :]
                 pred = None
                 for frame in range(first_taught):  # do normal prediction for the beginning frames
@@ -106,7 +106,7 @@ class TransformerCMAXWithGFS(TransformerGFSBaseProps):
                 # SOS is appended for case when first_taught is 0
                 decoder_input = torch.cat([whole_input_embedding[:, -1:, :], whole_target_embedding], 1)[:, first_taught:-1, ]
                 decoder_input = self.pos_encoder(decoder_input) if self.use_pos_encoding else decoder_input
-                target_mask = self.generate_mask(self.sequence_length - first_taught).to(self.device)
+                target_mask = self.generate_mask(self.future_sequence_length - first_taught).to(self.device)
                 next_pred = self.decoder(decoder_input, memory, tgt_mask=target_mask)
                 output = next_pred if pred is None else torch.cat([pred, next_pred], 1)
 
@@ -115,14 +115,14 @@ class TransformerCMAXWithGFS(TransformerGFSBaseProps):
                 decoder_input = self.pos_encoder(
                     whole_target_embedding) if self.use_pos_encoding else whole_target_embedding
                 decoder_input = torch.cat([whole_input_embedding[:, -1:, :], decoder_input], 1)[:, :-1, ]
-                target_mask = self.generate_mask(self.sequence_length).to(self.device)
+                target_mask = self.generate_mask(self.future_sequence_length).to(self.device)
                 output = self.decoder(decoder_input, memory, tgt_mask=target_mask)
 
         else:
             # inference - pass only predictions to decoder
             decoder_input = whole_input_embedding[:, -1:, :]
             pred = None
-            for frame in range(synop_inputs.size(1)):
+            for frame in range(self.future_sequence_length):
                 y = self.pos_encoder(decoder_input) if self.use_pos_encoding else decoder_input
                 next_pred = self.decoder(y, memory)
                 decoder_input = torch.cat([decoder_input, next_pred[:, -1:, :]], -2)

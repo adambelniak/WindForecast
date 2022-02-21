@@ -54,10 +54,10 @@ GFS_PARAMETERS = [
     #     "name": "V GRD",
     #     "level": "ISBL_200"
     # },
-    # {
-    #     "name": "V GRD",
-    #     "level": "HTGL_10"
-    # },
+    {
+        "name": "V GRD",
+        "level": "HTGL_10"
+    },
     # {
     #     "name": "U GRD",
     #     "level": "ISBL_1000"
@@ -106,14 +106,14 @@ GFS_PARAMETERS = [
     #     "name": "U GRD",
     #     "level": "ISBL_200"
     # },
-    # {
-    #     "name": "U GRD",
-    #     "level": "HTGL_10"
-    # },
-    # {
-    #     "name": "GUST",
-    #     "level": "SFC_0"
-    # },
+    {
+        "name": "U GRD",
+        "level": "HTGL_10"
+    },
+    {
+        "name": "GUST",
+        "level": "SFC_0"
+    },
     # {
     #     "name": "TMP",
     #     "level": "ISBL_1000"
@@ -130,18 +130,18 @@ GFS_PARAMETERS = [
     #     "name": "TMP",
     #     "level": "ISBL_900"
     # },
-    # {
-    #     "name": "TMP",
-    #     "level": "ISBL_850"
-    # },
+    {
+        "name": "TMP",
+        "level": "ISBL_850"
+    },
     # {
     #     "name": "TMP",
     #     "level": "ISBL_800"
     # },
-    # {
-    #     "name": "TMP",
-    #     "level": "ISBL_700"
-    # },
+    {
+        "name": "TMP",
+        "level": "ISBL_700"
+    },
     # {
     #     "name": "TMP",
     #     "level": "ISBL_600"
@@ -162,14 +162,14 @@ GFS_PARAMETERS = [
     #     "name": "TMP",
     #     "level": "ISBL_200"
     # },
-    # {
-    #     "name": "TMP",
-    #     "level": "HTGL_2"
-    # },
-    # {
-    #     "name": "CAPE",
-    #     "level": "SFC_0"
-    # },
+    {
+        "name": "TMP",
+        "level": "HTGL_2"
+    },
+    {
+        "name": "CAPE",
+        "level": "SFC_0"
+    },
     # {
     #     "name": "CAPE",
     #     "level": "SPDL_0-180"
@@ -182,10 +182,10 @@ GFS_PARAMETERS = [
     #     "name": "LFT X",
     #     "level": "SFC_0"
     # },
-    # {
-    #     "name": "DPT",
-    #     "level": "HTGL_2"
-    # },
+    {
+        "name": "DPT",
+        "level": "HTGL_2"
+    },
     # {
     #     "name": "CIN",
     #     "level": "SFC_0"
@@ -230,10 +230,10 @@ GFS_PARAMETERS = [
     #     "name": "R H",
     #     "level": "ISBL_800"
     # },
-    # {
-    #     "name": "R H",
-    #     "level": "ISBL_700"
-    # },
+    {
+        "name": "R H",
+        "level": "ISBL_700"
+    },
     # {
     #     "name": "R H",
     #     "level": "ISBL_600"
@@ -250,10 +250,10 @@ GFS_PARAMETERS = [
     #     "name": "R H",
     #     "level": "ISBL_300"
     # },
-    # {
-    #     "name": "R H",
-    #     "level": "HTGL_2"
-    # },
+    {
+        "name": "R H",
+        "level": "HTGL_2"
+    },
     # {
     #     "name": "V VEL",
     #     "level": "ISBL_1000"
@@ -298,26 +298,26 @@ GFS_PARAMETERS = [
     #     "name": "V VEL",
     #     "level": "ISBL_300"
     # },
-    # {
-    #     "name": "T CDC",
-    #     "level": "LCY_0"
-    # },
-    # {
-    #     "name": "T CDC",
-    #     "level": "MCY_0"
-    # },
-    # {
-    #     "name": "T CDC",
-    #     "level": "HCY_0"
-    # },
-    # {
-    #     "name": "PRATE",
-    #     "level": "SFC_0"
-    # },
-    # {
-    #     "name": "PRES",
-    #     "level": "SFC_0"
-    # },
+    {
+        "name": "T CDC",
+        "level": "LCY_0"
+    },
+    {
+        "name": "T CDC",
+        "level": "MCY_0"
+    },
+    {
+        "name": "T CDC",
+        "level": "HCY_0"
+    },
+    {
+        "name": "PRATE",
+        "level": "SFC_0"
+    },
+    {
+        "name": "PRES",
+        "level": "SFC_0"
+    },
     # {
     #     "name": "HLCY",
     #     "level": "HTGL_0-3000"

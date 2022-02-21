@@ -25,16 +25,17 @@ class Sequence2SequenceDataset(BaseDataset):
     def __getitem__(self, index):
         'Generates one sample of data'
         synop_index = self.data[index]
-        synop_inputs = self.synop_data.iloc[synop_index:synop_index + self.sequence_length][self.train_params].to_numpy()
-        all_synop_targets = self.synop_data.iloc[
+        synop_past_x = self.synop_data.iloc[synop_index:synop_index + self.sequence_length][self.train_params].to_numpy()
+        synop_future_x = self.synop_data.iloc[
                       synop_index + self.sequence_length + self.prediction_offset:synop_index + self.sequence_length + self.prediction_offset + self.future_sequence_length][
                                 self.train_params].to_numpy()
-        synop_targets = self.synop_data.iloc[
+        synop_y = self.synop_data.iloc[
                         synop_index:synop_index + self.sequence_length + self.prediction_offset + self.future_sequence_length][
             self.target_param].to_numpy()
-        synop_past_targets = synop_targets[:self.sequence_length + self.prediction_offset]
-        synop_future_targets = synop_targets[self.sequence_length + self.prediction_offset
+        synop_past_y = synop_y[:self.sequence_length + self.prediction_offset]
+        synop_future_y = synop_y[self.sequence_length + self.prediction_offset
                                              :synop_index + self.sequence_length + self.prediction_offset + self.future_sequence_length]
-        input_dates = self.synop_data.iloc[synop_index:synop_index + self.sequence_length]['date'].to_numpy()
-        target_dates = self.synop_data.iloc[synop_index + self.sequence_length + self.prediction_offset:synop_index + self.sequence_length + self.prediction_offset + self.future_sequence_length]['date']
-        return synop_past_targets, synop_inputs, synop_future_targets, all_synop_targets, input_dates, target_dates
+        past_dates = self.synop_data.iloc[synop_index:synop_index + self.sequence_length]['date']
+        future_dates = self.synop_data.iloc[synop_index + self.sequence_length + self.prediction_offset:synop_index + self.sequence_length + self.prediction_offset + self.future_sequence_length]['date']
+
+        return synop_past_y, synop_past_x, synop_future_y, synop_future_x, past_dates, future_dates

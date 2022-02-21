@@ -24,7 +24,7 @@ class MultiChannelSpatialDatasetWithEarthDeclination(torch.utils.data.Dataset):
         self.dim = config.experiment.cnn_input_size
         self.channels = len(self.train_parameters)
         self.normalization_type = config.experiment.normalization_type
-
+        self.prediction_offset = config.experiment.prediction_offset
         length = len(self.list_IDs)
         training_data, test_data = self.list_IDs[:int(length * 0.8)], self.list_IDs[int(length * 0.8):]
         if train:
@@ -37,9 +37,9 @@ class MultiChannelSpatialDatasetWithEarthDeclination(torch.utils.data.Dataset):
         self.normalize = normalize
         if normalize:
             if config.experiment.normalization_type == NormalizationType.STANDARD:
-                self.mean, self.std = initialize_mean_and_std(self.list_IDs, self.train_parameters, self.dim)
+                self.mean, self.std = initialize_mean_and_std(self.list_IDs, self.train_parameters, self.dim, self.prediction_offset)
             else:
-                self.min, self.max = initialize_min_max(self.list_IDs, self.train_parameters)
+                self.min, self.max = initialize_min_max(self.list_IDs, self.train_parameters, self.prediction_offset)
 
     def __len__(self):
         'Denotes the total number of samples'

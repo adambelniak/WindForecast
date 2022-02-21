@@ -15,6 +15,7 @@ class TCNS2SCMAX(LightningModule):
     def __init__(self, config: Config):
         super(TCNS2SCMAX, self).__init__()
         self.config = config
+        self.future_sequence_length = config.experiment.future_sequence_length
         self.cnn = TimeDistributed(CMAXEncoder(config), batch_first=True)
         self.cnn_lin_tcn = TimeDistributed(nn.Linear(in_features=config.experiment.cnn_lin_tcn_in_features,
                                                      out_features=config.experiment.tcn_channels[0] - len(
@@ -74,16 +75,17 @@ class TCNS2SCMAX(LightningModule):
             BatchKeys.DATES_TENSORS.value]
 
         if self.config.experiment.with_dates_inputs:
-            x = [synop_inputs, *dates_embedding[0], *dates_embedding[1]]
+            x = [synop_inputs, *dates_embedding[0]]
         else:
             x = [synop_inputs]
 
         cmax_embedding = self.cnn(cmax_inputs.unsqueeze(2))
         cmax_embedding = self.cnn_lin_tcn(cmax_embedding)
         x = torch.cat([*x, cmax_embedding], dim=-1)
-        x = self.tcn(x.permute(0, 2, 1))
+        x = self.tcn(x.permute(0, 2, 1)).permute(0, 2, 1)
+        mem = x[:, -self.future_sequence_length:, :]
 
         if self.config.experiment.with_dates_inputs:
-            return self.linear_time_distributed(torch.cat([x.permute(0, 2, 1), *dates_embedding[2], *dates_embedding[3]], -1)).squeeze(-1)
+            return self.linear_time_distributed(torch.cat([mem, *dates_embedding[1]], -1)).squeeze(-1)
         else:
-            return self.linear_time_distributed(x.permute(0, 2, 1)).squeeze(-1)
+            return self.linear_time_distributed(mem).squeeze(-1)

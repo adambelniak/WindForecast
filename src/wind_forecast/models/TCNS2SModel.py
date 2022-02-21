@@ -13,6 +13,7 @@ class TemporalConvNetS2S(LightningModule):
     def __init__(self, config: Config):
         super(TemporalConvNetS2S, self).__init__()
         self.config = config
+        self.future_sequence_length = config.experiment.future_sequence_length
         tcn_layers = []
         num_channels = config.experiment.tcn_channels
         num_levels = len(num_channels)
@@ -51,6 +52,7 @@ class TemporalConvNetS2S(LightningModule):
         else:
             x = [synop_inputs]
         x = self.tcn(torch.cat(x, dim=-1).permute(0, 2, 1))
+        x = x[:, -self.future_sequence_length:, :]
 
         if self.config.experiment.with_dates_inputs:
             return self.linear_time_distributed(torch.cat([x.permute(0, 2, 1), *dates_embedding[2], *dates_embedding[3]], -1)).squeeze(-1)

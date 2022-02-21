@@ -1,28 +1,25 @@
 from typing import Optional
 
-from pytorch_lightning import LightningDataModule
 from torch.utils.data import DataLoader
+
 from wind_forecast.config.register import Config
+from wind_forecast.datamodules.DataModulesCache import DataModulesCache
+from wind_forecast.datamodules.Splittable import Splittable
 from wind_forecast.datasets.CMAXDataset import CMAXDataset
 from wind_forecast.util.cmax_util import get_available_cmax_hours
-from wind_forecast.util.common_util import split_dataset
 
 
-class CMAXDataModule(LightningDataModule):
+class CMAXDataModule(Splittable):
 
     def __init__(
             self,
             config: Config
     ):
-        super().__init__()
+        super().__init__(config)
         self.config = config
-        self.val_split = config.experiment.val_split
         self.batch_size = config.experiment.batch_size
         self.shuffle = config.experiment.shuffle
         self.sequence_length = self.config.experiment.sequence_length
-        self.dataset_train = ...
-        self.dataset_val = ...
-        self.dataset_test = ...
 
         self.cmax_IDs = get_available_cmax_hours(from_year=config.experiment.cmax_from_year, to_year=config.experiment.cmax_to_year)
 
@@ -30,9 +27,10 @@ class CMAXDataModule(LightningDataModule):
         pass
 
     def setup(self, stage: Optional[str] = None):
+        if self.get_from_cache(stage):
+            return
         dataset = CMAXDataset(config=self.config, IDs=self.cmax_IDs, normalize=True)
-        self.dataset_train, self.dataset_val = split_dataset(dataset, self.config.experiment.val_split, sequence_length=self.sequence_length if self.sequence_length > 1 else None)
-        self.dataset_test = self.dataset_val
+        self.split_dataset(dataset, self.sequence_length)
 
     def train_dataloader(self):
         return DataLoader(self.dataset_train, batch_size=self.batch_size, shuffle=self.shuffle)

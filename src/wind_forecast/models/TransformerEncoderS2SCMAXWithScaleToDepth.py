@@ -28,7 +28,7 @@ class TransformerEncoderS2SCMAXWithScaleToDepth(TransformerBaseProps):
         self.conv_time_distributed = TimeDistributed(self.conv, batch_first=True)
 
         self.embed_dim += conv_W * conv_H * out_channels
-        self.pos_encoder = PositionalEncoding(self.embed_dim, self.dropout, self.sequence_length)
+        self.pos_encoder = PositionalEncoding(self.embed_dim, self.dropout, self.past_sequence_length)
 
         encoder_layer = nn.TransformerEncoderLayer(d_model=self.embed_dim, nhead=config.experiment.transformer_attention_heads,
                                                    dim_feedforward=config.experiment.transformer_ff_dim, dropout=self.dropout,
@@ -67,5 +67,6 @@ class TransformerEncoderS2SCMAXWithScaleToDepth(TransformerBaseProps):
 
         x = self.pos_encoder(whole_input_embedding) if self.use_pos_encoding else whole_input_embedding
         output = self.encoder(x)
+        output = output[:, -self.future_sequence_length:, :]
 
         return torch.squeeze(self.classification_head_time_distributed(output), -1)

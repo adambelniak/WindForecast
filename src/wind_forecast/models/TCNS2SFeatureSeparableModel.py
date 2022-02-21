@@ -13,6 +13,7 @@ class TCNS2SFeatureSeparableModel(LightningModule):
     def __init__(self, config: Config):
         super(TCNS2SFeatureSeparableModel, self).__init__()
         self.config = config
+        self.future_sequence_length = config.experiment.future_sequence_length
         self.synop_train_features_length = len(config.experiment.synop_train_features)
         num_channels = config.experiment.tcn_channels
         num_levels = len(num_channels)
@@ -58,16 +59,16 @@ class TCNS2SFeatureSeparableModel(LightningModule):
         for first_feat in range(0, self.synop_train_features_length - 1):
             for second_feat in range(first_feat + 1, self.synop_train_features_length):
                 if self.config.experiment.with_dates_inputs:
-                    inputs = torch.cat([synop_inputs[:, :, first_feat:first_feat+1], synop_inputs[:, :, second_feat:second_feat+1], dates_embedding[0], dates_embedding[1]], -1)
+                    inputs = torch.cat([synop_inputs[:, :, first_feat:first_feat+1], synop_inputs[:, :, second_feat:second_feat+1], *dates_embedding[1]], -1)
                 else:
                     inputs = torch.cat([synop_inputs[:, :, first_feat:first_feat+1], synop_inputs[:, :, second_feat:second_feat+1]], -1)
                 output = self.sep_tcns[first_feat](inputs.permute(0, 2, 1)).permute(0, 2, 1)
-                outputs.append(self.sep_linears[first_feat](output))
+                outputs.append(self.sep_linears[first_feat](output)[:, -self.future_sequence_length:, :])
 
         x = torch.cat(outputs, dim=-1)
 
-        # if self.config.experiment.with_dates_inputs:
-        #     return self.linear_time_distributed(
-        #         torch.cat([x.permute(0, 2, 1), dates_embedding[2], dates_embedding[3]], -1)).squeeze(-1)
-        # else:
-        return self.linear_time_distributed(x).squeeze(-1)
+        if self.config.experiment.with_dates_inputs:
+            return self.linear_time_distributed(
+                torch.cat([x.permute(0, 2, 1), *dates_embedding[1]], -1)).squeeze(-1)
+        else:
+            return self.linear_time_distributed(x).squeeze(-1)

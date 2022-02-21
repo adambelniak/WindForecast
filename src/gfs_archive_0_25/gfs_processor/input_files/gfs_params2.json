@@ -220,11 +220,6 @@
     "hours_type": "point"
   },
   {
-    "param": "GUST",
-    "level": "SFC:0",
-    "hours_type": "point"
-  },
-  {
     "param": "TMP",
     "level": "ISBL:1000",
     "hours_type": "point"

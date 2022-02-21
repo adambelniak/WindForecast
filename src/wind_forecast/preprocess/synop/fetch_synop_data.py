@@ -139,8 +139,7 @@ def plot_box_all_data(localisation_code: str, localisation_name: str, dir='synop
 
 
 def process_all_data(from_year, until_year, localisation_code, localisation_name, synop_dir=os.path.join(Path(__file__).parent, 'synop_data'), output_dir=os.path.join(Path(__file__).parent, 'synop_data'), columns=None):
-    columns = [consts.YEAR, consts.MONTH, consts.DAY, consts.HOUR, consts.DIRECTION_COLUMN, consts.VELOCITY_COLUMN,
-               consts.GUST_COLUMN, consts.TEMPERATURE, consts.PRESSURE, consts.CURRENT_WEATHER] if columns is None else columns
+    columns = consts.SYNOP_FEATURES if columns is None else columns
     station_data = pd.DataFrame(columns=list(list(zip(*columns))[1]))
     localisation_code = localisation_code.strip()
 

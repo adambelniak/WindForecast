@@ -1,24 +1,30 @@
 import pandas as pd
-import torch
 from tqdm import tqdm
 
+from gfs_archive_0_25.gfs_processor.Coords import Coords
 from wind_forecast.config.register import Config
+from wind_forecast.datasets.BaseDataset import BaseDataset
 from wind_forecast.preprocess.synop.synop_preprocess import normalize_synop_data_for_training
-from wind_forecast.util.gfs_util import add_param_to_train_params, match_gfs_with_synop_sequence, \
-    target_param_to_gfs_name_level
+from wind_forecast.util.gfs_util import add_param_to_train_params, target_param_to_gfs_name_level, GFSUtil
 
 
-class SequenceLimitedToGFSDatesDataset(torch.utils.data.Dataset):
+class SequenceLimitedToGFSDatesDataset(BaseDataset):
     """Characterizes a dataset for PyTorch"""
 
     def __init__(self, config: Config, synop_data, dates, normalize_synop=True):
         """Initialization"""
+        super().__init__()
         self.target_param = config.experiment.target_parameter
         self.train_params = config.experiment.synop_train_features
         self.synop_file = config.experiment.synop_file
         self.sequence_length = config.experiment.sequence_length
         self.prediction_offset = config.experiment.prediction_offset
-        self.target_coords = config.experiment.target_coords
+        self.sequence_length = config.experiment.sequence_length
+        coords = config.experiment.target_coords
+        self.target_coords = Coords(coords[0], coords[0], coords[1], coords[1])
+        self.gfs_util = GFSUtil(self.target_coords, self.sequence_length, 0, self.prediction_offset,
+                                self.train_parameters,
+                                target_param_to_gfs_name_level(self.target_param))
 
         self.synop_data = synop_data.reset_index()
         # Get indices which correspond to 'dates' - 'dates' are the ones, which start a proper sequence without breaks
@@ -50,12 +56,8 @@ class SequenceLimitedToGFSDatesDataset(torch.utils.data.Dataset):
                                      list(list(zip(*self.train_params))[1])].to_numpy())
             self.targets.append(labels.iloc[index + self.sequence_length + self.prediction_offset])
 
-        self.features, self.targets = match_gfs_with_synop_sequence(self.features, self.targets,
-                                                                    self.target_coords[0],
-                                                                    self.target_coords[1],
-                                                                    self.prediction_offset,
-                                                                    target_param_to_gfs_name_level(self.target_param),
-                                                                    return_GFS=False)
+        self.features, self.targets = self.gfs_util.match_gfs_with_synop_sequence(self.features, self.targets,
+                                                                                  return_GFS=False)
 
         self.data = list(zip(self.features, self.targets))
 

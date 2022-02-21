@@ -12,7 +12,6 @@ from wind_forecast.datasets.SequenceWithGFSDataset import SequenceWithGFSDataset
 from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset, normalize_synop_data_for_training
 from wind_forecast.util.cmax_util import get_available_cmax_hours, \
     initialize_CMAX_list_IDs_and_synop_dates_for_sequence
-from wind_forecast.util.common_util import split_dataset
 
 
 class SequenceWithCMAXDataModule(SequenceDataModule):
@@ -54,6 +53,8 @@ class SequenceWithCMAXDataModule(SequenceDataModule):
         print(f"Synop std: {synop_std[self.target_param_index]}")
 
     def setup(self, stage: Optional[str] = None):
+        if self.get_from_cache(stage):
+            return
         if self.config.experiment.use_gfs_data:
             synop_inputs, all_gfs_input_data, gfs_target_data, synop_targets = self.prepare_dataset_for_gfs()
 
@@ -72,9 +73,7 @@ class SequenceWithCMAXDataModule(SequenceDataModule):
             dataset = ConcatDatasets(SequenceDataset(config=self.config, synop_data=self.synop_data, synop_data_indices=self.synop_data_indices),
                                      CMAXDataset(config=self.config, IDs=self.cmax_IDs, normalize=True))
 
-        self.dataset_train, self.dataset_val = split_dataset(dataset, self.config.experiment.val_split,
-                                                             sequence_length=self.sequence_length if self.sequence_length > 1 else None)
-        self.dataset_test = self.dataset_val
+        self.split_dataset(dataset, self.sequence_length)
 
     def train_dataloader(self):
         return DataLoader(self.dataset_train, batch_size=self.batch_size, shuffle=self.shuffle)

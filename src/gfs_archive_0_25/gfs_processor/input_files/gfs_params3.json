@@ -1,5 +1,70 @@
 [
   {
+    "param": "T CDC",
+    "level":  "LCY:0",
+    "hours_type": "average"
+  },
+  {
+    "param": "T CDC",
+    "level":  "MCY:0",
+    "hours_type": "average"
+  },
+  {
+    "param": "T CDC",
+    "level":  "HCY:0",
+    "hours_type": "average"
+  },
+  {
+    "param": "GUST",
+    "level": "SFC:0",
+    "hours_type": "point"
+  },
+  {
+    "param": "V GRD",
+    "level": "HTGL:10",
+    "hours_type": "point"
+  },
+  {
+    "param": "U GRD",
+    "level": "HTGL:10",
+    "hours_type": "point"
+  },
+  {
+    "param": "TMP",
+    "level": "ISBL:850",
+    "hours_type": "point"
+  },
+  {
+    "param": "TMP",
+    "level": "HTGL:2",
+    "hours_type": "point"
+  },
+  {
+    "param": "PRATE",
+    "level": "SFC:0",
+    "hours_type": "average"
+  },
+  {
+    "param": "PRES",
+    "level": "SFC:0",
+    "hours_type": "point"
+  },
+  {
+    "param": "R H",
+    "level": "HTGL:2",
+    "hours_type": "point"
+  },
+  {
+    "param": "DPT",
+    "level": "HTGL:2",
+    "hours_type": "point"
+  },
+  {
+    "param": "HGT",
+    "level": "ISBL:500",
+    "hours_type": "point"
+  },
+  {
     "param": "TMP",
     "level": "ISBL:700",
     "hours_type": "point"

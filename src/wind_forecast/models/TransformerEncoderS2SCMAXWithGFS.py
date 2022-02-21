@@ -33,6 +33,7 @@ class TransformerEncoderS2SCMAXWithGFS(TransformerCMAXWithGFS):
 
         x = self.pos_encoder(whole_input_embedding) if self.use_pos_encoding else whole_input_embedding
         output = self.encoder(x)
+        output = output[:, -self.future_sequence_length:, :]
 
         return torch.squeeze(self.classification_head_time_distributed(torch.cat([output, gfs_targets], -1)), -1)
 

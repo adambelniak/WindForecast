@@ -15,6 +15,7 @@ class TemporalConvNetS2SWithDencoderWithGFS(LightningModule):
     def __init__(self, config: Config):
         super(TemporalConvNetS2SWithDencoderWithGFS, self).__init__()
         self.config = config
+        self.future_sequence_length = config.experiment.future_sequence_length
         self.dropout = config.experiment.dropout
         self.tcn_channels = config.experiment.tcn_channels
         self.num_levels = len(self.tcn_channels)
@@ -53,7 +54,7 @@ class TemporalConvNetS2SWithDencoderWithGFS(LightningModule):
             in_channels = self.tcn_channels[i]
 
         self.decoder = nn.Sequential(*tcn_layers)
-        in_features = in_channels
+        in_features = self.tcn_channels[-1]
 
         linear = nn.Sequential(
             nn.Linear(in_features=in_features, out_features=64),
@@ -72,9 +73,9 @@ class TemporalConvNetS2SWithDencoderWithGFS(LightningModule):
         if self.config.experiment.with_dates_inputs:
             if self.config.experiment.use_all_gfs_params:
                 gfs_inputs = batch[BatchKeys.GFS_INPUTS.value].float()
-                x = [synop_inputs, gfs_inputs, *dates_embedding[0], *dates_embedding[1]]
+                x = [synop_inputs, gfs_inputs, *dates_embedding[0]]
             else:
-                x = [synop_inputs, *dates_embedding[0], *dates_embedding[1]]
+                x = [synop_inputs, *dates_embedding[0]]
         else:
             if self.config.experiment.use_all_gfs_params:
                 gfs_inputs = batch[BatchKeys.GFS_INPUTS.value].float()
@@ -83,9 +84,10 @@ class TemporalConvNetS2SWithDencoderWithGFS(LightningModule):
                 x = [synop_inputs]
 
         x = self.encoder(torch.cat(x, -1).permute(0, 2, 1))
+        mem = x[:, -self.future_sequence_length:, :]
         if self.config.experiment.with_dates_inputs:
-            y = self.decoder(torch.cat([x, gfs_targets.permute(0, 2, 1), *dates_embedding[2].permute(0, 2, 1), *dates_embedding[3].permute(0, 2, 1)], -2))
+            y = self.decoder(torch.cat([mem, gfs_targets.permute(0, 2, 1), *dates_embedding[1].permute(0, 2, 1)], -2))
         else:
-            y = self.decoder(torch.cat([x, gfs_targets.permute(0, 2, 1)], -2))
+            y = self.decoder(torch.cat([mem, gfs_targets.permute(0, 2, 1)], -2))
 
         return self.linear_time_distributed(y.permute(0, 2, 1)).squeeze(-1)

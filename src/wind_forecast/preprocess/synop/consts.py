@@ -56,6 +56,7 @@ SYNOP_TRAIN_FEATURES = [
     LOWER_CLOUDS
 ]
 
+# Synop features which will be split into sin and cos during normalization phase
 PERIODIC_FEATURES = [
     {
         'column': DIRECTION_COLUMN,

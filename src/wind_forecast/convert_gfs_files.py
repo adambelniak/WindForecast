@@ -5,19 +5,19 @@ from tqdm import tqdm
 
 from gfs_archive_0_25.utils import prep_zeros_if_needed
 
-# from gfs_common.common import GFS_PARAMETERS
+from gfs_common.common import GFS_PARAMETERS
 import re
 import numpy as np
 
 from wind_forecast.loaders.GFSLoader import GFSLoader
 from wind_forecast.util.gfs_util import GFS_DATASET_DIR, date_from_gfs_np_file
 
-GFS_PARAMETERS = [
-{
-    "name": "HGT",
-    "level": "ISBL_500"
-}
-]
+# GFS_PARAMETERS = [
+# {
+#     "name": "HGT",
+#     "level": "ISBL_500"
+# }
+# ]
 
 """
 Converts GFS forecast kept in numpy .npy files to pickle .pkl files, grouped by offset and parameter.

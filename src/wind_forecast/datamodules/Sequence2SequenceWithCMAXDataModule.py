@@ -1,11 +1,10 @@
-import os
 from typing import Optional, Tuple, List
 
-from torch.utils.data.dataloader import default_collate
 import torch
+from torch.utils.data.dataloader import default_collate
+
 from wind_forecast.config.register import Config
 from wind_forecast.consts import SYNOP_DATASETS_DIRECTORY, BatchKeys
-from wind_forecast.datamodules.DataModulesCache import DataModulesCache
 from wind_forecast.datamodules.Sequence2SequenceDataModule import Sequence2SequenceDataModule
 from wind_forecast.datasets.CMAXDataset import CMAXDataset
 from wind_forecast.datasets.ConcatDatasets import ConcatDatasets
@@ -14,7 +13,6 @@ from wind_forecast.datasets.Sequence2SequenceWithGFSDataset import Sequence2Sequ
 from wind_forecast.preprocess.synop.synop_preprocess import normalize_synop_data_for_training, prepare_synop_dataset
 from wind_forecast.util.cmax_util import get_available_cmax_hours, \
     initialize_CMAX_list_IDs_and_synop_dates_for_sequence
-from wind_forecast.util.common_util import split_dataset
 
 
 class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
@@ -66,9 +64,7 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
         print(f"Synop std: {synop_std[self.target_param_index]}")
 
     def setup(self, stage: Optional[str] = None):
-        cached_dataset = DataModulesCache().get_cached_dataset()
-        if stage == 'test' and cached_dataset is not None:
-            self.dataset_test = cached_dataset
+        if self.get_from_cache(stage):
             return
 
         if self.config.experiment.use_gfs_data:
@@ -100,10 +96,7 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
 
         dataset.set_mean([self.synop_mean, 0])
         dataset.set_std([self.synop_std, 0])
-        self.dataset_train, self.dataset_val = split_dataset(dataset, self.config.experiment.val_split,
-                                                             sequence_length=self.sequence_length if self.sequence_length > 1 else None)
-        self.dataset_test = self.dataset_val
-        DataModulesCache().cache_dataset(self.dataset_test)
+        self.split_dataset(dataset, self.sequence_length)
 
     def collate_fn(self, x: List[Tuple]):
         s2s_data, cmax_data = [item[0] for item in x], [item[1] for item in x]

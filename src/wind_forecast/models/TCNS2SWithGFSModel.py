@@ -16,6 +16,7 @@ class TemporalConvNetS2SWithGFS(LightningModule):
     def __init__(self, config: Config):
         super(TemporalConvNetS2SWithGFS, self).__init__()
         self.config = config
+        self.future_sequence_length = config.experiment.future_sequence_length
         self.features_length = len(config.experiment.synop_train_features)
         if config.experiment.with_dates_inputs:
             self.features_length += 4
@@ -65,9 +66,9 @@ class TemporalConvNetS2SWithGFS(LightningModule):
         if self.config.experiment.with_dates_inputs:
             if self.config.experiment.use_all_gfs_params:
                 gfs_inputs = batch[BatchKeys.GFS_INPUTS.value].float()
-                x = [synop_inputs, gfs_inputs, *dates_embedding[0], *dates_embedding[1]]
+                x = [synop_inputs, gfs_inputs, *dates_embedding[0]]
             else:
-                x = [synop_inputs, *dates_embedding[0], *dates_embedding[1]]
+                x = [synop_inputs, *dates_embedding[0]]
         else:
             if self.config.experiment.use_all_gfs_params:
                 gfs_inputs = batch[BatchKeys.GFS_INPUTS.value].float()
@@ -77,8 +78,9 @@ class TemporalConvNetS2SWithGFS(LightningModule):
 
         whole_input_embedding = torch.cat([*x, self.time_2_vec_time_distributed(torch.cat(x, -1))], -1)
         x = self.tcn(whole_input_embedding.permute(0, 2, 1)).permute(0, 2, 1)
+        x = x[:, -self.future_sequence_length:, :]
 
         if self.config.experiment.with_dates_inputs:
-            return self.linear_time_distributed(torch.cat([x, gfs_targets, *dates_embedding[2], *dates_embedding[3]], -1)).squeeze(-1)
+            return self.linear_time_distributed(torch.cat([x, gfs_targets, *dates_embedding[1]], -1)).squeeze(-1)
         else:
             return self.linear_time_distributed(torch.cat([x, gfs_targets], -1)).squeeze(-1)
