@@ -68,10 +68,12 @@ class S2SGFSRegressor(BaseS2SRegressor):
         metrics = {
             'epoch': float(step),
             'test_rmse': math.sqrt(float(self.test_mse.compute().item())),
-            'test_mae': float(self.test_mae.compute().item())
+            'test_mae': float(self.test_mae.compute().item()),
+            'test_mase': float(self.test_mase.compute())
         }
 
         self.test_mse.reset()
         self.test_mae.reset()
+        self.test_mase.reset()
 
         self.logger.log_metrics(metrics, step=step)

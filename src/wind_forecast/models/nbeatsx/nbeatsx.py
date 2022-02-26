@@ -159,7 +159,7 @@ class Nbeatsx(pl.LightningModule):
                         nbeats_block = NBeatsBlock(x_t_n_inputs=x_t_n_inputs,
                                                    x_s_n_inputs=self.n_x_s,
                                                    x_s_n_hidden=self.x_s_n_hidden,
-                                                   theta_n_dim=2 * self.n_x_t,
+                                                   theta_n_dim=self.n_insample_t + self.n_outsample_t,
                                                    basis=ExogenousBasisInterpretable(),
                                                    n_layers=self.n_layers[i],
                                                    theta_n_hidden=list(self.n_hidden[i]),

@@ -24,4 +24,4 @@ train_parameters_config_file: TransformerConfig.json
 use_all_gfs_params: True
 use_pos_encoding: False
 dropout: 0.1
-sequence_length: 48
+sequence_length: 24

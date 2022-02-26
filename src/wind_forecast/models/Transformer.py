@@ -119,6 +119,11 @@ class TransformerBaseProps(LightningModule):
         self.classification_head = nn.Sequential(*dense_layers)
         self.classification_head_time_distributed = TimeDistributed(self.classification_head, batch_first=True)
 
+    def generate_mask(self, sequence_length: int) -> torch.Tensor:
+        mask = (torch.triu(torch.ones(sequence_length, sequence_length)) == 1).transpose(0, 1)
+        mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
+        return mask
+
 
 class TransformerGFSBaseProps(TransformerBaseProps):
     def __init__(self, config: Config):
@@ -163,11 +168,6 @@ class Transformer(TransformerBaseProps):
         decoder_layer = nn.TransformerDecoderLayer(self.embed_dim, self.n_heads, self.ff_dim, self.dropout, batch_first=True)
         decoder_norm = nn.LayerNorm(self.embed_dim)
         self.decoder = nn.TransformerDecoder(decoder_layer, self.transformer_layers_num, decoder_norm)
-
-    def generate_mask(self, sequence_length: int) -> torch.Tensor:
-        mask = (torch.triu(torch.ones(sequence_length, sequence_length)) == 1).transpose(0, 1)
-        mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
-        return mask
 
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
         synop_inputs = batch[BatchKeys.SYNOP_INPUTS.value].float()
