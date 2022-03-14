@@ -107,32 +107,32 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
             all_data = [*default_collate(tensors), *list(zip(*dates)), torch.Tensor(cmax_data)]
 
         dict_data = {
-            BatchKeys.SYNOP_PAST_TARGETS.value: all_data[0],
-            BatchKeys.SYNOP_INPUTS.value: all_data[1],
-            BatchKeys.SYNOP_TARGETS.value: all_data[2],
-            BatchKeys.ALL_SYNOP_TARGETS.value: all_data[3]
+            BatchKeys.SYNOP_PAST_Y.value: all_data[0],
+            BatchKeys.SYNOP_PAST_X.value: all_data[1],
+            BatchKeys.SYNOP_FUTURE_Y.value: all_data[2],
+            BatchKeys.SYNOP_FUTURE_X.value: all_data[3]
         }
 
         if self.config.experiment.use_future_cmax:
-            dict_data[BatchKeys.CMAX_INPUTS.value] = all_data[-2]
+            dict_data[BatchKeys.CMAX_PAST.value] = all_data[-2]
             dict_data[BatchKeys.CMAX_TARGETS.value] = all_data[-1]
         else:
-            dict_data[BatchKeys.CMAX_INPUTS.value] = all_data[-1]
+            dict_data[BatchKeys.CMAX_PAST.value] = all_data[-1]
 
         if self.config.experiment.use_gfs_data:
             if self.use_all_gfs_params:
-                dict_data[BatchKeys.GFS_INPUTS.value] = all_data[4]
-                dict_data[BatchKeys.GFS_TARGETS.value] = all_data[5]
-                dict_data[BatchKeys.ALL_GFS_TARGETS.value] = all_data[6]
-                dict_data[BatchKeys.DATES_INPUTS.value] = all_data[7]
-                dict_data[BatchKeys.DATES_TARGETS.value] = all_data[8]
+                dict_data[BatchKeys.GFS_PAST_X.value] = all_data[4]
+                dict_data[BatchKeys.GFS_FUTURE_Y.value] = all_data[5]
+                dict_data[BatchKeys.GFS_FUTURE_X.value] = all_data[6]
+                dict_data[BatchKeys.DATES_PAST.value] = all_data[7]
+                dict_data[BatchKeys.DATES_FUTURE.value] = all_data[8]
 
             else:
-                dict_data[BatchKeys.GFS_TARGETS.value] = all_data[4]
-                dict_data[BatchKeys.DATES_INPUTS.value] = all_data[5]
-                dict_data[BatchKeys.DATES_TARGETS.value] = all_data[6]
+                dict_data[BatchKeys.GFS_FUTURE_Y.value] = all_data[4]
+                dict_data[BatchKeys.DATES_PAST.value] = all_data[5]
+                dict_data[BatchKeys.DATES_FUTURE.value] = all_data[6]
 
         else:
-            dict_data[BatchKeys.DATES_INPUTS.value] = all_data[4]
-            dict_data[BatchKeys.DATES_TARGETS.value] = all_data[5]
+            dict_data[BatchKeys.DATES_PAST.value] = all_data[4]
+            dict_data[BatchKeys.DATES_FUTURE.value] = all_data[5]
         return dict_data

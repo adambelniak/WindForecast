@@ -14,12 +14,14 @@ class TemporalConvNetS2S(LightningModule):
         super(TemporalConvNetS2S, self).__init__()
         self.config = config
         self.future_sequence_length = config.experiment.future_sequence_length
+        self.self_output_test = config.experiment.self_output_test
         tcn_layers = []
         num_channels = config.experiment.tcn_channels
         num_levels = len(num_channels)
         kernel_size = 3
-        in_channels = len(config.experiment.synop_train_features)
-        if config.experiment.with_dates_inputs:
+        in_channels = 1 if self.self_output_test else len(config.experiment.synop_train_features)
+
+        if config.experiment.with_dates_inputs and not self.self_output_test:
             in_channels += 4
         for i in range(num_levels):
             dilation_size = 2 ** i
@@ -28,7 +30,7 @@ class TemporalConvNetS2S(LightningModule):
                                          padding=(kernel_size - 1) * dilation_size, dropout=config.experiment.dropout)]
             in_channels = out_channels
 
-        if self.config.experiment.with_dates_inputs:
+        if self.config.experiment.with_dates_inputs and not self.self_output_test:
             features = num_channels[-1] + 4
         else:
             features = num_channels[-1]
@@ -43,7 +45,10 @@ class TemporalConvNetS2S(LightningModule):
         self.linear_time_distributed = TimeDistributed(linear, batch_first=True)
 
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
-        synop_inputs = batch[BatchKeys.SYNOP_INPUTS.value].float()
+        if self.self_output_test:
+            return self.self_forward(batch, epoch, stage)
+
+        synop_inputs = batch[BatchKeys.SYNOP_PAST_X.value].float()
         dates_embedding = None if self.config.experiment.with_dates_inputs is False else batch[
             BatchKeys.DATES_TENSORS.value]
 
@@ -58,3 +63,11 @@ class TemporalConvNetS2S(LightningModule):
             return self.linear_time_distributed(torch.cat([x.permute(0, 2, 1), *dates_embedding[2], *dates_embedding[3]], -1)).squeeze(-1)
         else:
             return self.linear_time_distributed(x.permute(0, 2, 1)).squeeze(-1)
+
+    def self_forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
+        synop_targets = batch[BatchKeys.SYNOP_FUTURE_Y.value].float().unsqueeze(-1)
+
+        x = self.tcn(synop_targets.permute(0, 2, 1))
+        x = x[:, :, -self.future_sequence_length:]
+
+        return self.linear_time_distributed(x.permute(0, 2, 1)).squeeze(-1)

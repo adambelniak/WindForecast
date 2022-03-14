@@ -71,20 +71,20 @@ class TCNS2SCMAXWithGFS(LightningModule):
         return nn.Sequential(*tcn_layers)
 
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
-        synop_inputs = batch[BatchKeys.SYNOP_INPUTS.value].float()
-        gfs_targets = batch[BatchKeys.GFS_TARGETS.value].float()
+        synop_inputs = batch[BatchKeys.SYNOP_PAST_X.value].float()
+        gfs_targets = batch[BatchKeys.GFS_FUTURE_Y.value].float()
         dates_embedding = None if self.config.experiment.with_dates_inputs is False else batch[BatchKeys.DATES_TENSORS.value]
-        cmax_inputs = batch[BatchKeys.CMAX_INPUTS.value].float()
+        cmax_inputs = batch[BatchKeys.CMAX_PAST.value].float()
 
         if self.config.experiment.with_dates_inputs:
             if self.config.experiment.use_all_gfs_params:
-                gfs_inputs = batch[BatchKeys.GFS_INPUTS.value].float()
+                gfs_inputs = batch[BatchKeys.GFS_PAST_X.value].float()
                 x = [synop_inputs, gfs_inputs, *dates_embedding[0]]
             else:
                 x = [synop_inputs, *dates_embedding[0]]
         else:
             if self.config.experiment.use_all_gfs_params:
-                gfs_inputs = batch[BatchKeys.GFS_INPUTS.value].float()
+                gfs_inputs = batch[BatchKeys.GFS_PAST_X.value].float()
                 x = [synop_inputs, gfs_inputs]
             else:
                 x = [synop_inputs]

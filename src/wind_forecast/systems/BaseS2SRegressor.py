@@ -197,14 +197,14 @@ class BaseS2SRegressor(pl.LightningModule):
         """
 
         if self.cfg.experiment.with_dates_inputs:
-            dates_inputs = batch[BatchKeys.DATES_INPUTS.value]
-            dates_targets = batch[BatchKeys.DATES_TARGETS.value]
+            dates_inputs = batch[BatchKeys.DATES_PAST.value]
+            dates_targets = batch[BatchKeys.DATES_FUTURE.value]
             dates_embeddings = self.get_dates_tensor(dates_inputs, dates_targets)
             batch[BatchKeys.DATES_TENSORS.value] = dates_embeddings
 
         outputs = self.forward(batch, self.current_epoch, 'fit')
-        targets = batch[BatchKeys.SYNOP_TARGETS.value]
-        synop_past_targets = batch[BatchKeys.SYNOP_PAST_TARGETS.value]
+        targets = batch[BatchKeys.SYNOP_FUTURE_Y.value]
+        synop_past_targets = batch[BatchKeys.SYNOP_PAST_Y.value]
         self.train_mse(outputs, targets)
         self.train_mae(outputs, targets)
         self.train_mase(outputs, targets, synop_past_targets)
@@ -266,14 +266,14 @@ class BaseS2SRegressor(pl.LightningModule):
             Metric values for a given batch.
         """
         if self.cfg.experiment.with_dates_inputs:
-            dates_inputs = batch[BatchKeys.DATES_INPUTS.value]
-            dates_targets = batch[BatchKeys.DATES_TARGETS.value]
+            dates_inputs = batch[BatchKeys.DATES_PAST.value]
+            dates_targets = batch[BatchKeys.DATES_FUTURE.value]
             dates_embeddings = self.get_dates_tensor(dates_inputs, dates_targets)
             batch[BatchKeys.DATES_TENSORS.value] = dates_embeddings
 
         outputs = self.forward(batch, self.current_epoch, 'test')
-        targets = batch[BatchKeys.SYNOP_TARGETS.value]
-        synop_past_targets = batch[BatchKeys.SYNOP_PAST_TARGETS.value]
+        targets = batch[BatchKeys.SYNOP_FUTURE_Y.value]
+        synop_past_targets = batch[BatchKeys.SYNOP_PAST_Y.value]
 
         self.val_mse(outputs.squeeze(), targets.float().squeeze())
         self.val_mae(outputs.squeeze(), targets.float().squeeze())
@@ -333,33 +333,33 @@ class BaseS2SRegressor(pl.LightningModule):
             Metric values for a given batch.
         """
         if self.cfg.experiment.with_dates_inputs:
-            dates_inputs = batch[BatchKeys.DATES_INPUTS.value]
-            dates_targets = batch[BatchKeys.DATES_TARGETS.value]
+            dates_inputs = batch[BatchKeys.DATES_PAST.value]
+            dates_targets = batch[BatchKeys.DATES_FUTURE.value]
             dates_embeddings = self.get_dates_tensor(dates_inputs, dates_targets)
             batch[BatchKeys.DATES_TENSORS.value] = dates_embeddings
 
         outputs = self.forward(batch, self.current_epoch, 'test')
-        targets = batch[BatchKeys.SYNOP_TARGETS.value]
-        synop_past_targets = batch[BatchKeys.SYNOP_PAST_TARGETS.value]
+        targets = batch[BatchKeys.SYNOP_FUTURE_Y.value]
+        synop_past_targets = batch[BatchKeys.SYNOP_PAST_Y.value]
 
         self.test_mse(outputs.squeeze(), targets.float().squeeze())
         self.test_mae(outputs.squeeze(), targets.float().squeeze())
         self.test_mase(outputs.squeeze(), targets.float().squeeze(), synop_past_targets)
 
-        synop_inputs = batch[BatchKeys.SYNOP_INPUTS.value]
+        synop_inputs = batch[BatchKeys.SYNOP_PAST_X.value]
         if self.cfg.experiment.with_dates_inputs:
-            dates_inputs = batch[BatchKeys.DATES_INPUTS.value]
-            dates_targets = batch[BatchKeys.DATES_TARGETS.value]
+            dates_inputs = batch[BatchKeys.DATES_PAST.value]
+            dates_targets = batch[BatchKeys.DATES_FUTURE.value]
         else:
             dates_inputs = None
             dates_targets = None
 
-        return {BatchKeys.SYNOP_TARGETS.value: targets,
+        return {BatchKeys.SYNOP_FUTURE_Y.value: targets,
                 'output': outputs,
-                BatchKeys.SYNOP_PAST_TARGETS.value: synop_past_targets[:, :],
-                BatchKeys.SYNOP_INPUTS.value: synop_inputs[:, :, self.target_param_index],
-                BatchKeys.DATES_INPUTS.value: dates_inputs,
-                BatchKeys.DATES_TARGETS.value: dates_targets
+                BatchKeys.SYNOP_PAST_Y.value: synop_past_targets[:, :],
+                BatchKeys.SYNOP_PAST_X.value: synop_inputs[:, :, self.target_param_index],
+                BatchKeys.DATES_PAST.value: dates_inputs,
+                BatchKeys.DATES_FUTURE.value: dates_targets
                 }
 
     def test_epoch_end(self, outputs: List[Any]) -> None:
@@ -387,15 +387,15 @@ class BaseS2SRegressor(pl.LightningModule):
         self.logger.log_metrics(metrics, step=step)
 
         # save results to view
-        labels = [item for sublist in [x[BatchKeys.SYNOP_TARGETS.value] for x in outputs] for item in sublist]
+        labels = [item for sublist in [x[BatchKeys.SYNOP_FUTURE_Y.value] for x in outputs] for item in sublist]
 
         out = [item for sublist in [x['output'] for x in outputs] for item in sublist]
 
-        inputs = [item for sublist in [x[BatchKeys.SYNOP_PAST_TARGETS.value] for x in outputs] for item in sublist]
+        inputs = [item for sublist in [x[BatchKeys.SYNOP_PAST_Y.value] for x in outputs] for item in sublist]
 
         if self.cfg.experiment.with_dates_inputs:
-            inputs_dates = [item for sublist in [x[BatchKeys.DATES_INPUTS.value] for x in outputs] for item in sublist]
-            labels_dates = [item for sublist in [x[BatchKeys.DATES_TARGETS.value] for x in outputs] for item in sublist]
+            inputs_dates = [item for sublist in [x[BatchKeys.DATES_PAST.value] for x in outputs] for item in sublist]
+            labels_dates = [item for sublist in [x[BatchKeys.DATES_FUTURE.value] for x in outputs] for item in sublist]
         else:
             inputs_dates = None
             labels_dates = None

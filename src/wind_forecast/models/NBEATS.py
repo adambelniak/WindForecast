@@ -23,7 +23,7 @@ class NBEATS(LightningModule):
                             output_transformer=lambda out: out["prediction"])
 
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
-        inputs = batch[BatchKeys.SYNOP_PAST_TARGETS.value]
+        inputs = batch[BatchKeys.SYNOP_PAST_Y.value]
         x = {
             "encoder_cont": inputs.unsqueeze(-1).float(),
             "target_scale": torch.Tensor([[0, 1] for i in range(inputs.size()[0])]).float()

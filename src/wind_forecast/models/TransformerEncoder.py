@@ -27,7 +27,7 @@ class TransformerEncoder(TransformerBaseProps):
         self.flatten = nn.Flatten()
 
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
-        synop_inputs = batch[BatchKeys.SYNOP_INPUTS.value].float()
+        synop_inputs = batch[BatchKeys.SYNOP_PAST_X.value].float()
         dates_tensors = None if self.config.experiment.with_dates_inputs is False else batch[
             BatchKeys.DATES_TENSORS.value]
 

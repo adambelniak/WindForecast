@@ -86,15 +86,23 @@ class TransformerBaseProps(LightningModule):
         self.teacher_forcing_epoch_num = config.experiment.teacher_forcing_epoch_num
         self.gradual_teacher_forcing = config.experiment.gradual_teacher_forcing
         self.time2vec_embedding_size = config.experiment.time2vec_embedding_size
+        self.self_output_test = config.experiment.self_output_test
+        if self.self_output_test:
+            assert self.past_sequence_length == self.future_sequence_length,\
+                "past_sequence_length must be equal future_sequence_length for self_output_test"
 
         self.n_heads = config.experiment.transformer_attention_heads
         self.ff_dim = config.experiment.transformer_ff_dim
         self.transformer_layers_num = config.experiment.transformer_attention_layers
         self.transformer_head_dims = config.experiment.transformer_head_dims
 
-        self.features_length = len(config.experiment.synop_train_features) + len(config.experiment.periodic_features)
+        if self.self_output_test:
+            self.features_length = 1
+        else:
+            self.features_length = len(config.experiment.synop_train_features) + len(config.experiment.periodic_features)
+
         self.embed_dim = self.features_length * (self.time2vec_embedding_size + 1)
-        if config.experiment.with_dates_inputs:
+        if config.experiment.with_dates_inputs and not self.self_output_test:
             self.embed_dim += 6 #sin and cos for hour, month and day of year
 
         self.time_2_vec_time_distributed = TimeDistributed(Simple2Vec(self.features_length, self.time2vec_embedding_size), batch_first=True)
@@ -170,8 +178,8 @@ class Transformer(TransformerBaseProps):
         self.decoder = nn.TransformerDecoder(decoder_layer, self.transformer_layers_num, decoder_norm)
 
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
-        synop_inputs = batch[BatchKeys.SYNOP_INPUTS.value].float()
-        all_synop_targets = batch[BatchKeys.ALL_SYNOP_TARGETS.value].float()
+        synop_inputs = batch[BatchKeys.SYNOP_PAST_X.value].float()
+        all_synop_targets = batch[BatchKeys.SYNOP_FUTURE_X.value].float()
         dates_tensors = None if self.config.experiment.with_dates_inputs is False else batch[BatchKeys.DATES_TENSORS.value]
 
         whole_input_embedding = torch.cat([synop_inputs, self.time_2_vec_time_distributed(synop_inputs)], -1)

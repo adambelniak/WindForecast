@@ -12,9 +12,9 @@ class TransformerEncoderS2SCMAXWithGFS(TransformerCMAXWithGFS):
         super().__init__(config)
 
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
-        synop_inputs = batch[BatchKeys.SYNOP_INPUTS.value].float()
-        gfs_targets = batch[BatchKeys.GFS_TARGETS.value].float()
-        cmax_inputs = batch[BatchKeys.CMAX_INPUTS.value].float()
+        synop_inputs = batch[BatchKeys.SYNOP_PAST_X.value].float()
+        gfs_targets = batch[BatchKeys.GFS_FUTURE_Y.value].float()
+        cmax_inputs = batch[BatchKeys.CMAX_PAST.value].float()
 
         dates_tensors = None if self.config.experiment.with_dates_inputs is False else batch[
             BatchKeys.DATES_TENSORS.value]
@@ -22,7 +22,7 @@ class TransformerEncoderS2SCMAXWithGFS(TransformerCMAXWithGFS):
         cmax_embeddings = self.conv_time_distributed(cmax_inputs.unsqueeze(2))
 
         if self.config.experiment.use_all_gfs_params:
-            gfs_inputs = batch[BatchKeys.GFS_INPUTS.value].float()
+            gfs_inputs = batch[BatchKeys.GFS_PAST_X.value].float()
             x = [synop_inputs, gfs_inputs]
         else:
             x = [synop_inputs]

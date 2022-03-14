@@ -31,33 +31,35 @@ class S2SRegressorWithGFSInput(BaseS2SRegressor):
             Metric values for a given batch.
         """
         if self.cfg.experiment.with_dates_inputs:
-            dates_inputs = batch[BatchKeys.DATES_INPUTS.value]
-            dates_targets = batch[BatchKeys.DATES_TARGETS.value]
+            dates_inputs = batch[BatchKeys.DATES_PAST.value]
+            dates_targets = batch[BatchKeys.DATES_FUTURE.value]
             dates_embeddings = self.get_dates_tensor(dates_inputs, dates_targets)
             batch[BatchKeys.DATES_TENSORS.value] = dates_embeddings
 
         outputs = self.forward(batch, self.current_epoch, 'test')
-        targets = batch[BatchKeys.SYNOP_TARGETS.value]
+        targets = batch[BatchKeys.SYNOP_FUTURE_Y.value]
+        synop_past_targets = batch[BatchKeys.SYNOP_PAST_Y.value]
 
         self.test_mse(outputs.squeeze(), targets.float().squeeze())
         self.test_mae(outputs.squeeze(), targets.float().squeeze())
+        self.test_mase(outputs.squeeze(), targets.float().squeeze(), synop_past_targets)
 
-        synop_past_targets = batch[BatchKeys.SYNOP_PAST_TARGETS.value]
+        synop_past_targets = batch[BatchKeys.SYNOP_PAST_Y.value]
         if self.cfg.experiment.with_dates_inputs:
-            dates_inputs = batch[BatchKeys.DATES_INPUTS.value]
-            dates_targets = batch[BatchKeys.DATES_TARGETS.value]
+            dates_inputs = batch[BatchKeys.DATES_PAST.value]
+            dates_targets = batch[BatchKeys.DATES_FUTURE.value]
         else:
             dates_inputs = None
             dates_targets = None
 
-        gfs_targets = batch[BatchKeys.GFS_TARGETS.value]
+        gfs_targets = batch[BatchKeys.GFS_FUTURE_Y.value]
 
-        return {BatchKeys.SYNOP_TARGETS.value: targets,
+        return {BatchKeys.SYNOP_FUTURE_Y.value: targets,
                 'output': outputs,
-                BatchKeys.SYNOP_PAST_TARGETS.value: synop_past_targets[:, :],
-                BatchKeys.DATES_INPUTS.value: dates_inputs,
-                BatchKeys.DATES_TARGETS.value: dates_targets,
-                BatchKeys.GFS_TARGETS.value: gfs_targets
+                BatchKeys.SYNOP_PAST_Y.value: synop_past_targets[:, :],
+                BatchKeys.DATES_PAST.value: dates_inputs,
+                BatchKeys.DATES_FUTURE.value: dates_targets,
+                BatchKeys.GFS_FUTURE_Y.value: gfs_targets
                 }
 
     def test_epoch_end(self, outputs: List[Any]) -> None:
@@ -85,17 +87,17 @@ class S2SRegressorWithGFSInput(BaseS2SRegressor):
         self.logger.log_metrics(metrics, step=step)
 
         # save results to view
-        labels = [item for sublist in [x[BatchKeys.SYNOP_TARGETS.value] for x in outputs] for item in sublist]
+        labels = [item for sublist in [x[BatchKeys.SYNOP_FUTURE_Y.value] for x in outputs] for item in sublist]
 
         out = [item for sublist in [x['output'] for x in outputs] for item in sublist]
 
-        inputs = [item for sublist in [x[BatchKeys.SYNOP_PAST_TARGETS.value] for x in outputs] for item in sublist]
+        inputs = [item for sublist in [x[BatchKeys.SYNOP_PAST_Y.value] for x in outputs] for item in sublist]
 
-        gfs_targets = [item for sublist in [x[BatchKeys.GFS_TARGETS.value] for x in outputs] for item in sublist]
+        gfs_targets = [item for sublist in [x[BatchKeys.GFS_FUTURE_Y.value] for x in outputs] for item in sublist]
 
         if self.cfg.experiment.with_dates_inputs:
-            inputs_dates = [item for sublist in [x[BatchKeys.DATES_INPUTS.value] for x in outputs] for item in sublist]
-            labels_dates = [item for sublist in [x[BatchKeys.DATES_TARGETS.value] for x in outputs] for item in sublist]
+            inputs_dates = [item for sublist in [x[BatchKeys.DATES_PAST.value] for x in outputs] for item in sublist]
+            labels_dates = [item for sublist in [x[BatchKeys.DATES_FUTURE.value] for x in outputs] for item in sublist]
         else:
             inputs_dates = None
             labels_dates = None

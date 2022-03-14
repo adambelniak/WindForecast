@@ -32,8 +32,8 @@ class LSTMS2SModel(LightningModule):
         self.classification_head_time_distributed = TimeDistributed(self.dense, batch_first=True)
 
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
-        synop_inputs = batch[BatchKeys.SYNOP_INPUTS.value].float()
-        all_synop_targets = batch[BatchKeys.ALL_SYNOP_TARGETS.value].float()
+        synop_inputs = batch[BatchKeys.SYNOP_PAST_X.value].float()
+        all_synop_targets = batch[BatchKeys.SYNOP_FUTURE_X.value].float()
 
         output, _ = self.lstm1(synop_inputs)
         output, _ = self.lstm2(output)

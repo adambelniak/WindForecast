@@ -60,12 +60,12 @@ class TCNS2SFeatureSeparableModelWithGFS(LightningModule):
         self.linear_time_distributed = TimeDistributed(linear, batch_first=True)
 
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
-        synop_inputs = batch[BatchKeys.SYNOP_INPUTS.value].float()
+        synop_inputs = batch[BatchKeys.SYNOP_PAST_X.value].float()
         dates_embedding = None if self.config.experiment.with_dates_inputs is False else batch[
             BatchKeys.DATES_TENSORS.value]
-        gfs_targets = batch[BatchKeys.GFS_TARGETS.value].float()
+        gfs_targets = batch[BatchKeys.GFS_FUTURE_Y.value].float()
         if self.config.experiment.use_all_gfs_params:
-            gfs_inputs = batch[BatchKeys.GFS_INPUTS.value].float()
+            gfs_inputs = batch[BatchKeys.GFS_PAST_X.value].float()
             all_inputs = torch.cat([synop_inputs, gfs_inputs], -1)
         else:
             all_inputs = synop_inputs

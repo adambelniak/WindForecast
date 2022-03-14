@@ -12,12 +12,24 @@ class TransformerEncoderS2S(TransformerBaseProps):
         super().__init__(config)
 
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
-        synop_inputs = batch[BatchKeys.SYNOP_INPUTS.value].float()
+        if self.self_output_test:
+            return self.self_forward(batch, epoch, stage)
+        synop_inputs = batch[BatchKeys.SYNOP_PAST_X.value].float()
         dates_tensors = None if self.config.experiment.with_dates_inputs is False else batch[BatchKeys.DATES_TENSORS.value]
 
         whole_input_embedding = torch.cat([synop_inputs, self.time_2_vec_time_distributed(synop_inputs)], -1)
         if self.config.experiment.with_dates_inputs:
             whole_input_embedding = torch.cat([whole_input_embedding, *dates_tensors[0]], -1)
+
+        x = self.pos_encoder(whole_input_embedding) if self.use_pos_encoding else whole_input_embedding
+        x = self.encoder(x)
+        x = x[:, -self.future_sequence_length:, :]
+
+        return torch.squeeze(self.classification_head_time_distributed(x), -1)
+
+    def self_forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
+        synop_targets = batch[BatchKeys.SYNgOP_FUTURE_Y.value].float().unsqueeze(-1)
+        whole_input_embedding = torch.cat([synop_targets, self.time_2_vec_time_distributed(synop_targets)], -1)
 
         x = self.pos_encoder(whole_input_embedding) if self.use_pos_encoding else whole_input_embedding
         x = self.encoder(x)

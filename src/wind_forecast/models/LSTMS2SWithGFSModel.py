@@ -51,15 +51,15 @@ class LSTMS2SWithGFSModel(LightningModule):
         self.classification_head_time_distributed = TimeDistributed(self.dense, batch_first=True)
 
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
-        synop_inputs = batch[BatchKeys.SYNOP_INPUTS.value].float()
-        all_synop_targets = batch[BatchKeys.ALL_SYNOP_TARGETS.value].float()
+        synop_inputs = batch[BatchKeys.SYNOP_PAST_X.value].float()
+        all_synop_targets = batch[BatchKeys.SYNOP_FUTURE_X.value].float()
         dates_embedding = None if self.config.experiment.with_dates_inputs is False else batch[
             BatchKeys.DATES_TENSORS.value]
 
         if self.config.experiment.with_dates_inputs:
             if self.config.experiment.use_all_gfs_params:
-                gfs_inputs = batch[BatchKeys.GFS_INPUTS.value].float()
-                all_gfs_targets = batch[BatchKeys.ALL_GFS_TARGETS.value].float()
+                gfs_inputs = batch[BatchKeys.GFS_PAST_X.value].float()
+                all_gfs_targets = batch[BatchKeys.GFS_FUTURE_X.value].float()
                 x = [synop_inputs, gfs_inputs, *dates_embedding[0], *dates_embedding[1]]
                 y = [all_synop_targets, all_gfs_targets, *dates_embedding[2], *dates_embedding[3]]
             else:
@@ -67,8 +67,8 @@ class LSTMS2SWithGFSModel(LightningModule):
                 y = [all_synop_targets, *dates_embedding[2], *dates_embedding[3]]
         else:
             if self.config.experiment.use_all_gfs_params:
-                gfs_inputs = batch[BatchKeys.GFS_INPUTS.value].float()
-                all_gfs_targets = batch[BatchKeys.ALL_GFS_TARGETS.value].float()
+                gfs_inputs = batch[BatchKeys.GFS_PAST_X.value].float()
+                all_gfs_targets = batch[BatchKeys.GFS_FUTURE_X.value].float()
                 x = [synop_inputs, gfs_inputs]
                 y = [all_synop_targets, all_gfs_targets]
             else:

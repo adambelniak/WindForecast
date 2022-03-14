@@ -197,10 +197,10 @@ class Nbeatsx(pl.LightningModule):
         return block_list
 
     def forward(self, batch: Dict[str, t.Tensor], epoch: int, stage=None) -> t.Tensor:
-        synop_inputs = batch[BatchKeys.SYNOP_INPUTS.value].float().permute(0, 2, 1)
-        synop_past_targets = batch[BatchKeys.SYNOP_PAST_TARGETS.value].float()
-        gfs_inputs = batch[BatchKeys.GFS_INPUTS.value].float().permute(0, 2, 1)
-        gfs_all_targets = batch[BatchKeys.ALL_GFS_TARGETS.value].float().permute(0, 2, 1)
+        synop_inputs = batch[BatchKeys.SYNOP_PAST_X.value].float().permute(0, 2, 1)
+        synop_past_targets = batch[BatchKeys.SYNOP_PAST_Y.value].float()
+        gfs_inputs = batch[BatchKeys.GFS_PAST_X.value].float().permute(0, 2, 1)
+        gfs_all_targets = batch[BatchKeys.GFS_FUTURE_X.value].float().permute(0, 2, 1)
 
         # No static features in my case
         return self.model(x_s=t.Tensor([]), insample_y=synop_past_targets,

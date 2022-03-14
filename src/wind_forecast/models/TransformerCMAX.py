@@ -53,9 +53,9 @@ class TransformerCMAX(TransformerBaseProps):
         self.classification_head_time_distributed = TimeDistributed(self.classification_head, batch_first=True)
 
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
-        synop_inputs = batch[BatchKeys.SYNOP_INPUTS.value].float()
-        all_synop_targets = batch[BatchKeys.ALL_SYNOP_TARGETS.value].float()
-        cmax_inputs = batch[BatchKeys.CMAX_INPUTS.value].float()
+        synop_inputs = batch[BatchKeys.SYNOP_PAST_X.value].float()
+        all_synop_targets = batch[BatchKeys.SYNOP_FUTURE_X.value].float()
+        cmax_inputs = batch[BatchKeys.CMAX_PAST.value].float()
         cmax_targets = batch[BatchKeys.CMAX_TARGETS.value].float()
 
         dates_tensors = None if self.config.experiment.with_dates_inputs is False else batch[

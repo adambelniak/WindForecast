@@ -82,6 +82,9 @@ class ExperimentSettings:
 
     cmax_to_year: int = 2022
 
+    # pass alone target on input to see if model is capable of reproducing it
+    self_output_test: bool = False
+
     target_parameter: str = "temperature"
 
     use_gfs_data: bool = False

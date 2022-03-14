@@ -7,7 +7,9 @@ import torch
 from wind_forecast.consts import BatchKeys
 from wind_forecast.systems.BaseS2SRegressor import BaseS2SRegressor
 
-
+"""
+Created for raw GFS performance test
+"""
 class S2SGFSRegressor(BaseS2SRegressor):
     # ----------------------------------------------------------------------------------------------
     # Training
@@ -46,11 +48,13 @@ class S2SGFSRegressor(BaseS2SRegressor):
         dict[str, torch.Tensor]
             Metric values for a given batch.
         """
-        outputs = batch[BatchKeys.GFS_TARGETS.value]
-        targets = batch[BatchKeys.SYNOP_TARGETS.value]
+        outputs = batch[BatchKeys.GFS_FUTURE_Y.value]
+        targets = batch[BatchKeys.SYNOP_FUTURE_Y.value]
+        synop_past_targets = batch[BatchKeys.SYNOP_PAST_Y.value]
 
         self.test_mse(outputs.squeeze(), targets.float().squeeze())
         self.test_mae(outputs.squeeze(), targets.float().squeeze())
+        self.test_mase(outputs.squeeze(), targets.float().squeeze(), synop_past_targets)
 
         return {}
 
