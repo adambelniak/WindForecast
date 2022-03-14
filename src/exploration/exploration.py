@@ -150,7 +150,7 @@ def prepare_synop_csv(localisation_name: str, code_fallback: int, features: (int
     localisation_name = args.localisation_name
     if localisation_name is None:
         localisation_name = name
-    process_all_data(2001, 2021, str(localisation_code), localisation_name, output_dir=SYNOP_DATASETS_DIRECTORY,
+    process_all_data(2001, 2022, str(localisation_code), localisation_name, output_dir=SYNOP_DATASETS_DIRECTORY,
                      columns=features)
 
 
@@ -164,18 +164,20 @@ def explore_synop_correlations(data: pd.DataFrame, features: (int, str), localis
     plt.close()
 
 
-def explore_synop_patterns(data: pd.DataFrame, relevant_features: (int, str), localisation_name: str):
+def explore_synop_patterns(data: pd.DataFrame, features: (int, str), localisation_name: str):
     features_with_nans = []
-    for feature in relevant_features:
+    for feature in features:
         plot_dir = os.path.join('plots-synop', localisation_name, feature[1])
         values = data[feature[1]].to_numpy()
         if np.isnan(np.sum(values)):
             features_with_nans.append(feature[1])
-        # sns.boxplot(x=values).set_title(f"{feature[1]}")
-        sns.lineplot(data=data[['date', feature[1]]], x='date', y=feature[1])
-        plt.show()
+        sns.boxplot(x=values).set_title(f"{feature[1]}")
         os.makedirs(plot_dir, exist_ok=True)
-        plt.savefig(os.path.join(plot_dir, 'plot.png'))
+        plt.savefig(os.path.join(plot_dir, 'plot-box.png'))
+        plt.close()
+        sns.lineplot(data=data[['date', feature[1]]], x='date', y=feature[1])
+        os.makedirs(plot_dir, exist_ok=True)
+        plt.savefig(os.path.join(plot_dir, 'plot-line.png'))
         plt.close()
     if len(features_with_nans):
         logger = get_logger(os.path.join("explore_results", 'logs.log'))
@@ -189,7 +191,7 @@ def explore_synop(localisation_name: str, code_fallback: int):
         prepare_synop_csv(localisation_name, code_fallback, SYNOP_FEATURES)
 
     data = prepare_synop_dataset(synop_file, list(list(zip(*relevant_features))[1]), norm=False,
-                                 dataset_dir=SYNOP_DATASETS_DIRECTORY, from_year=2017)
+                                 dataset_dir=SYNOP_DATASETS_DIRECTORY, from_year=2017, to_year=2022)
 
     data["date"] = pd.to_datetime(data[['year', 'month', 'day', 'hour']])
     explore_synop_correlations(data, relevant_features, localisation_name)
@@ -206,6 +208,6 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    # explore_data_for_each_param()
-    # explore_gfs_correlations()
+    explore_data_for_each_param()
+    explore_gfs_correlations()
     explore_synop(args.localisation_name, args.code_fallback)
