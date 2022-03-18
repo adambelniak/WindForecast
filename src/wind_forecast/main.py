@@ -105,7 +105,9 @@ def main(cfg: Config):
         num_sanity_val_steps=-1 if cfg.experiment.validate_before_training else 0
     )
 
-    trainer.fit(system, datamodule=datamodule)
+    if not cfg.experiment.skip_training:
+        trainer.fit(system, datamodule=datamodule)
+
     trainer.test(system, datamodule=datamodule)
 
     wandb_logger.log_metrics({

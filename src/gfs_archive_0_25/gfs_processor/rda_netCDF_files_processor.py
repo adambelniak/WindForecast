@@ -129,7 +129,11 @@ def check_if_any_file_for_year_exists(year, parameter_level_tuple):
 
 
 def process_to_numpy_array(parameter_level_tuple, coords: Coords, output_dir: str):
-    download_dir = os.path.join(NETCDF_DOWNLOAD_PATH, parameter_level_tuple['name'], parameter_level_tuple['level'])
+    if parameter_level_tuple['name'] == 'T CDC':
+        param_name_dir = 'L CDC' if parameter_level_tuple['level'] == 'LCY_0' else 'M CDC' if parameter_level_tuple['level'] == 'MCY_0' else 'H CDC'
+    else:
+        param_name_dir = parameter_level_tuple['name']
+    download_dir = os.path.join(NETCDF_DOWNLOAD_PATH, param_name_dir, parameter_level_tuple['level'])
 
     for root, dirs, filenames in os.walk(download_dir):
         if len(filenames) > 0:

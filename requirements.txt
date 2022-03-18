@@ -33,3 +33,4 @@ h5py
 scikit-image
 pickle5
 pytorch_forecasting
+statsmodels

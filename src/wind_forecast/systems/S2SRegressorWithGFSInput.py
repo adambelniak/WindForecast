@@ -42,9 +42,8 @@ class S2SRegressorWithGFSInput(BaseS2SRegressor):
 
         self.test_mse(outputs.squeeze(), targets.float().squeeze())
         self.test_mae(outputs.squeeze(), targets.float().squeeze())
-        self.test_mase(outputs.squeeze(), targets.float().squeeze(), synop_past_targets)
+        self.test_mase(outputs, targets.float(), synop_past_targets)
 
-        synop_past_targets = batch[BatchKeys.SYNOP_PAST_Y.value]
         if self.cfg.experiment.with_dates_inputs:
             dates_inputs = batch[BatchKeys.DATES_PAST.value]
             dates_targets = batch[BatchKeys.DATES_FUTURE.value]

@@ -70,6 +70,9 @@ class ExperimentSettings:
 
     test_split: float = .2
 
+    # Run test only
+    skip_training: bool = False
+
     dataset_split_mode: str = 'classic'
 
     synop_file: str = "WARSZAWA-OKECIE_375_data.csv"

@@ -28,6 +28,7 @@ def get_correct_dates_for_sequence(labels: pd.DataFrame, sequence_length: int, f
             for frame in range(1, sequence_length + future_sequence_length + prediction_offset):
                 hours = timedelta(hours=frame)
                 local_date_to_remove = date - hours
-                synop_dates.remove(local_date_to_remove)
+                if local_date_to_remove in synop_dates:
+                    synop_dates.remove(local_date_to_remove)
 
     return synop_dates
