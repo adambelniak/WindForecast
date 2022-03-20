@@ -51,9 +51,25 @@
       "interpolation": "linear"
     },
     {
+      "name": "R H",
+      "level": "ISBL_700",
+      "interpolation": "linear"
+    },
+    {
       "name": "DPT",
       "level": "HTGL_2",
       "interpolation": "linear"
+    },
+        {
+      "name": "HGT",
+      "level": "ISBL_500",
+      "interpolation": "linear"
+    },
+        {
+      "name": "TMP",
+      "level": "ISBL_700",
+      "interpolation": "linear"
     }
+
   ]
 }

@@ -200,3 +200,11 @@ class ExperimentSettings:
 
     # Exogenous channels for non-interpretable exogenous basis.
     nbeats_exogenous_n_channels: int = 16
+
+    arima_p: int = 0
+    arima_d: int = 1
+    arima_q: int = 1
+    sarima_P: int = 0
+    sarima_D: int = 1
+    sarima_Q: int = 1
+    sarima_M: int = 24

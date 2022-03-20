@@ -10,6 +10,7 @@ from omegaconf import SI, MISSING, DictConfig
 from wind_forecast.config.experiment import ExperimentSettings
 from wind_forecast.config.lightning import LightningSettings
 from wind_forecast.config.optim import OptimSettings, OPTIMIZERS
+from wind_forecast.config.tune import TuneSettings
 
 
 @dataclass
@@ -27,6 +28,7 @@ class Config:
         {'experiment': 'cnn'},
         {'lightning': 'default'},
         {'optim': 'adam'},
+        {'tune': 'sarimax'},
         {'override hydra/job_logging': 'rich'},
         {'override hydra/hydra_logging': 'rich'},
     ])
@@ -47,7 +49,11 @@ class Config:
     # Optimizer & scheduler settings --> optim/*.yaml
     optim: OptimSettings = MISSING
 
+    tune: TuneSettings = MISSING
+
     debug_mode: bool = False
+
+    tune_mode: bool = False
 
     # wandb metadata
     notes: Optional[str] = None
@@ -65,6 +71,7 @@ def register_configs():
     cs.store(group='experiment', name='schema_experiment', node=ExperimentSettings)
     cs.store(group='lightning', name='schema_lightning', node=LightningSettings)
     cs.store(group='optim', name='schema_optim', node=OptimSettings)
+    cs.store(group='tune', name='schema_tune', node=TuneSettings)
 
     for key, node in OPTIMIZERS.items():
         name = f'schema_optim_{key}'

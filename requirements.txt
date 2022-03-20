@@ -34,3 +34,4 @@ scikit-image
 pickle5
 pytorch_forecasting
 statsmodels
+ray[tune]

@@ -4,7 +4,7 @@ import re
 import sys
 from typing import Union, Dict
 
-from wind_forecast.loaders.Singleton import Singleton
+from wind_forecast.loaders.GFSInterpolatedLoader import GFSInterpolatedLoader, Interpolator
 
 if sys.version_info <= (3, 8, 2):
     import pickle5 as pickle
@@ -32,8 +32,7 @@ GFS_DATASET_DIR = 'gfs_data' if GFS_DATASET_DIR is None else GFS_DATASET_DIR
 
 class GFSUtil:
     def __init__(self, target_coords: Coords, past_sequence_length: int, future_sequence_length: int,
-                 prediction_offset: int,
-                 train_params: list, target_params: list) -> None:
+                 prediction_offset: int, train_params: list, target_params: list) -> None:
         super().__init__()
         self.target_coords = target_coords
         self.past_sequence_length = past_sequence_length
@@ -42,6 +41,7 @@ class GFSUtil:
         self.train_params = train_params
         self.target_params = target_params
         self.interpolator = Interpolator(self.target_coords)
+        self.gfs_interpolated_loader = GFSInterpolatedLoader(self.target_coords)
 
     def match_gfs_with_synop_sequence(self, features: Union[list, np.ndarray], targets: list, return_GFS=True):
         gfs_values = []
@@ -88,8 +88,7 @@ class GFSUtil:
             dates = synop_data.iloc[index:index + self.past_sequence_length]['date']
             future_dates = synop_data.iloc[
                            index + self.past_sequence_length + self.prediction_offset
-                           :index + self.past_sequence_length + self.prediction_offset + self.future_sequence_length][
-                'date']
+                           :index + self.past_sequence_length + self.prediction_offset + self.future_sequence_length]['date']
 
             if self.train_params is not None and len(self.train_params) > 0:
                 # match GFS params for past sequences
@@ -157,10 +156,6 @@ class GFSUtil:
                 break
 
         for index, param in enumerate(gfs_params):
-            # polynomial interpolation gives worse results
-            # if param['interpolation'] == 'polynomial':
-            #     values = barycentric_interpolate(x_values, [gfs_values[i][index] for i in range(len(gfs_values))], np.arange(len(dates)))
-            # else:
             values = np.interp(np.arange(len(dates)), x_values, [gfs_values[i][index] for i in range(len(gfs_values))])
 
             next_gfs_values.append(values)
@@ -178,45 +173,22 @@ class GFSUtil:
             offset = max(3, offset)
         else:
             offset = 3
-        gfs_dates, gfs_offset, mod_offset = get_forecast_date_and_offset_for_prediction_date(date, offset)
-        gfs_loader = GFSLoader()
+        gfs_date, gfs_offset, mod_offset = get_forecast_date_and_offset_for_prediction_date(date, offset)
 
         vals = []
         if mod_offset == 0:
             for param in gfs_params:
-                gfs_date_key = gfs_loader.get_date_key(gfs_dates)
-                value = gfs_loader.get_gfs_image(gfs_date_key, param, gfs_offset)
+                value = self.gfs_interpolated_loader.get_gfs_value_for_date(gfs_date, param, gfs_offset)
 
                 if value is None:
                     return []
 
-                vals.append(self.interpolator(value))
+                vals.append(value)
 
             return vals
 
         else:
             return None
-
-
-class Interpolator(metaclass=Singleton):
-    def __init__(self, target_point: Coords) -> None:
-        super().__init__()
-        self.target_point = target_point
-        self.nearest_coords = get_nearest_coords(target_point)
-        self.lat_index = int((GFS_SPACE.nlat - self.nearest_coords.slat) * 4)
-        self.lon_index = int((GFS_SPACE.elon - self.nearest_coords.wlon) * 4)
-        self.y_factor = (self.nearest_coords.nlat - target_point.nlat) / (
-                self.nearest_coords.nlat - self.nearest_coords.slat)
-        self.x_factor = (self.nearest_coords.elon - target_point.elon) / (
-                self.nearest_coords.elon - self.nearest_coords.wlon)
-
-    def __call__(self, gfs_data: np.ndarray) -> float:
-        f_x_y1 = self.x_factor * gfs_data[self.lat_index + 1, self.lon_index] + (1 - self.x_factor) * gfs_data[
-            self.lat_index + 1, self.lon_index + 1]
-        f_x_y2 = self.x_factor * gfs_data[self.lat_index, self.lon_index] + (1 - self.x_factor) * gfs_data[
-            self.lat_index, self.lon_index + 1]
-        f_x_y = self.y_factor * f_x_y1 + (1 - self.y_factor) * f_x_y2
-        return f_x_y
 
 
 def get_available_numpy_files(features: list, offset: int):

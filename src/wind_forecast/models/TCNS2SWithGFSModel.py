@@ -19,10 +19,10 @@ class TemporalConvNetS2SWithGFS(LightningModule):
         self.future_sequence_length = config.experiment.future_sequence_length
         self.features_length = len(config.experiment.synop_train_features)
         if config.experiment.with_dates_inputs:
-            self.features_length += 4
+            self.features_length += 6
         if config.experiment.use_all_gfs_params:
             gfs_params_len = len(process_config(config.experiment.train_parameters_config_file))
-            self.features_length += gfs_params_len
+            self.features_length += gfs_params_len + len(config.experiment.periodic_features)
 
         self.embed_dim = self.features_length * (config.experiment.time2vec_embedding_size + 1)
 
@@ -44,7 +44,7 @@ class TemporalConvNetS2SWithGFS(LightningModule):
             in_channels = num_channels[i]
 
         if config.experiment.with_dates_inputs:
-            in_features = num_channels[-1] + 5
+            in_features = num_channels[-1] + 7
         else:
             in_features = num_channels[-1] + 1
 

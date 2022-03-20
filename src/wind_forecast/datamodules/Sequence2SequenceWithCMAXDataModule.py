@@ -91,7 +91,7 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
             assert len(self.cmax_IDs) == len(self.synop_data_indices)
 
             dataset = ConcatDatasets(
-                Sequence2SequenceDataset(self.config, self.synop_data, self.synop_data_indices),
+                Sequence2SequenceDataset(self.config, self.synop_data, self.synop_data_indices, self.synop_feature_names),
                 CMAXDataset(config=self.config, IDs=self.cmax_IDs, normalize=True))
 
         dataset.set_mean([self.synop_mean, 0])
