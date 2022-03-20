@@ -33,5 +33,5 @@ h5py
 scikit-image
 pickle5
 pytorch_forecasting
-statsmodels
+statsmodels==0.13.2
 ray[tune]
