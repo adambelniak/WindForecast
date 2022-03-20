@@ -3,6 +3,7 @@ from typing import cast
 
 import hydra
 import pytorch_lightning as pl
+from pathlib import Path
 import setproctitle
 import wandb
 from hydra.utils import instantiate
@@ -52,6 +53,7 @@ def run_tune(cfg: Config):
     log.info(f'[bold yellow]\\[init] System architecture:')
     log.info(system)
 
+    os.environ['PYTHONPATH'] = f"{Path(__file__).parent.parent};{Path(__file__).parent.parent.parent}"
     trainable = tune.with_parameters(
         train_for_tune,
         cfg=cfg,
@@ -66,7 +68,7 @@ def run_tune(cfg: Config):
         metric="loss",
         mode="min",
         config=config,
-        num_samples=2,
+        num_samples=1,
         sync_config=SyncConfig(sync_to_driver=False),
         name="tune")
 
