@@ -6,7 +6,6 @@ from typing import Any, List, Optional
 from omegaconf.omegaconf import MISSING
 
 # Experiment settings validation schema & default values
-from pytorch_lightning.loggers import WandbLogger
 
 from wind_forecast.preprocess.synop.consts import SYNOP_TRAIN_FEATURES, PERIODIC_FEATURES
 from wind_forecast.util.common_util import NormalizationType

@@ -53,7 +53,6 @@ def run_tune(cfg: Config):
     log.info(f'[bold yellow]\\[init] System architecture:')
     log.info(system)
 
-    os.environ['PYTHONPATH'] = f"{Path(__file__).parent.parent};{Path(__file__).parent.parent.parent}"
     trainable = tune.with_parameters(
         train_for_tune,
         cfg=cfg,
@@ -62,7 +61,7 @@ def run_tune(cfg: Config):
     analysis = tune.run(
         trainable,
         resources_per_trial={
-            "cpu": 1,
+            "cpu": 4,
             "gpu": cfg.lightning.gpus
         },
         metric="loss",

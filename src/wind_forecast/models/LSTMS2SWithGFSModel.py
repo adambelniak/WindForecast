@@ -18,17 +18,18 @@ class LSTMS2SWithGFSModel(LightningModule):
         super(LSTMS2SWithGFSModel, self).__init__()
         self.config = config
 
-        input_size = len(config.experiment.synop_train_features)
+        input_size = len(config.experiment.synop_train_features) + len(config.experiment.periodic_features)
 
         if config.experiment.use_all_gfs_params:
             input_size += len(process_config(config.experiment.train_parameters_config_file))
         if config.experiment.with_dates_inputs:
-            input_size += 4
+            input_size += 6
 
         self.features_length = input_size
         self.embed_dim = self.features_length * (config.experiment.time2vec_embedding_size + 1)
 
         self.sequence_length = config.experiment.sequence_length
+        self.future_sequence_length = config.experiment.future_sequence_length
         self.teacher_forcing_epoch_num = config.experiment.teacher_forcing_epoch_num
         self.gradual_teacher_forcing = config.experiment.gradual_teacher_forcing
         dropout = config.experiment.dropout
@@ -60,8 +61,8 @@ class LSTMS2SWithGFSModel(LightningModule):
             if self.config.experiment.use_all_gfs_params:
                 gfs_inputs = batch[BatchKeys.GFS_PAST_X.value].float()
                 all_gfs_targets = batch[BatchKeys.GFS_FUTURE_X.value].float()
-                x = [synop_inputs, gfs_inputs, *dates_embedding[0], *dates_embedding[1]]
-                y = [all_synop_targets, all_gfs_targets, *dates_embedding[2], *dates_embedding[3]]
+                x = [synop_inputs, gfs_inputs, *dates_embedding[0]]
+                y = [all_synop_targets, all_gfs_targets, *dates_embedding[1]]
             else:
                 x = [synop_inputs, *dates_embedding[0], *dates_embedding[1]]
                 y = [all_synop_targets, *dates_embedding[2], *dates_embedding[3]]
@@ -83,7 +84,7 @@ class LSTMS2SWithGFSModel(LightningModule):
         if epoch < self.teacher_forcing_epoch_num and stage in [None, 'fit']:
             # Teacher forcing
             if self.gradual_teacher_forcing:
-                first_taught = math.floor(epoch / self.teacher_forcing_epoch_num * self.sequence_length)
+                first_taught = math.floor(epoch / self.teacher_forcing_epoch_num * self.future_sequence_length)
                 decoder_input = inputs[:, -1:, :]
                 pred = None
                 for frame in range(first_taught):  # do normal prediction for the beginning frames
@@ -106,7 +107,7 @@ class LSTMS2SWithGFSModel(LightningModule):
             # inference - pass only predictions to decoder
             decoder_input = inputs[:, -1:, :]
             pred = None
-            for frame in range(synop_inputs.size(1)):
+            for frame in range(self.future_sequence_length):
                 next_pred, state = self.decoder_lstm(decoder_input, state)
                 pred = torch.cat([pred, next_pred[:, -1:, :]], -2) if pred is not None else next_pred[:, -1:, :]
                 decoder_input = next_pred[:, -1:, :]
