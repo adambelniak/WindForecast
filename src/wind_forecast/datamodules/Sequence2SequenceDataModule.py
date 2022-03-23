@@ -36,7 +36,6 @@ class Sequence2SequenceDataModule(Splittable):
         self.target_param = config.experiment.target_parameter
         all_params = add_param_to_train_params(self.train_params, self.target_param)
         self.feature_names = list(list(zip(*all_params))[1])
-        self.target_param_index = [x for x in self.feature_names].index(self.target_param)
         self.removed_dataset_indices = []
 
         self.synop_file = config.experiment.synop_file

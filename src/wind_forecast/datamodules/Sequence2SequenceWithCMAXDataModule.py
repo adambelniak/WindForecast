@@ -60,10 +60,10 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
                                                                                                              self.target_param,
                                                                                                              self.normalization_type,
                                                                                                              self.periodic_features)
-        self.synop_mean = synop_mean[self.target_param_index]
-        self.synop_std = synop_std[self.target_param_index]
-        print(f"Synop mean: {synop_mean[self.target_param_index]}")
-        print(f"Synop std: {synop_std[self.target_param_index]}")
+        self.synop_mean = synop_mean
+        self.synop_std = synop_std
+        print(f"Synop mean: {synop_mean}")
+        print(f"Synop std: {synop_std}")
 
     def setup(self, stage: Optional[str] = None):
         if self.get_from_cache(stage):
