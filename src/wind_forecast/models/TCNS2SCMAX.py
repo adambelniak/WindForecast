@@ -5,7 +5,7 @@ import torch.nn as nn
 from pytorch_lightning import LightningModule
 from wind_forecast.config.register import Config
 from wind_forecast.consts import BatchKeys
-from wind_forecast.models.CMAXAutoencoder import CMAXEncoder
+from wind_forecast.models.CMAXAutoencoder import CMAXEncoder, get_pretrained_encoder
 from wind_forecast.models.TCNModel import TemporalBlock
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 from wind_forecast.util.config import process_config
@@ -16,18 +16,25 @@ class TCNS2SCMAX(LightningModule):
         super(TCNS2SCMAX, self).__init__()
         self.config = config
         self.future_sequence_length = config.experiment.future_sequence_length
-        self.cnn = TimeDistributed(CMAXEncoder(config), batch_first=True)
+        self.conv_encoder = CMAXEncoder(config)
+
+        if config.experiment.use_pretrained_cmax_autoencoder:
+            get_pretrained_encoder(self.conv, config)
+
+        self.conv_time_distributed = TimeDistributed(self.conv, batch_first=True)
+
         self.cnn_lin_tcn = TimeDistributed(nn.Linear(in_features=config.experiment.cnn_lin_tcn_in_features,
-                                                     out_features=config.experiment.tcn_channels[0] - len(
-                                                         config.experiment.synop_train_features) - 4
-                                                     if config.experiment.with_dates_inputs else 0),
+                                                     out_features=config.experiment.tcn_channels[0]),
                                            batch_first=True)
-        self.tcn = self.create_tcn_layers(config)
+        self.tcn = self.create_tcn_layers()
 
         if self.config.experiment.with_dates_inputs:
-            features = config.experiment.tcn_channels[-1] + 4
+            features = config.experiment.tcn_channels[-1] + 6
         else:
             features = config.experiment.tcn_channels[-1]
+
+        if self.config.experiment.use_gfs_data:
+            features += 1
 
         linear = nn.Sequential(
             nn.Linear(in_features=features, out_features=32),
@@ -37,27 +44,15 @@ class TCNS2SCMAX(LightningModule):
 
         self.linear_time_distributed = TimeDistributed(linear, batch_first=True)
 
-    def create_cnn_layers(self, config: Config):
-        cnn_channels = len(process_config(config.experiment.train_parameters_config_file))
-        cnn_layers = []
-
-        for index, filters in enumerate(config.experiment.cnn_filters):
-            cnn_layers.append(
-                nn.Conv2d(in_channels=cnn_channels, out_channels=filters, kernel_size=(3, 3), padding=(1, 1),
-                          stride=(2, 2)))
-            cnn_layers.append(nn.ReLU())
-            cnn_layers.append(nn.BatchNorm2d(num_features=filters))
-            if index != len(config.experiment.cnn_filters) - 1:
-                cnn_layers.append(nn.Dropout(config.experiment.dropout))
-            cnn_channels = filters
-
-        cnn_layers.append(nn.Flatten())
-        return nn.Sequential(*cnn_layers)
-
-    def create_tcn_layers(self, config: Config):
+    def create_tcn_layers(self, ):
         tcn_layers = []
-        tcn_channels = config.experiment.tcn_channels
-        kernel_size = config.experiment.tcn_kernel_size
+        tcn_channels = self.config.experiment.tcn_channels
+        tcn_channels[0] += len(self.config.experiment.synop_train_features) + len(self.config.experiment.periodic_features)
+        tcn_channels[0] += 6 if self.config.experiment.with_dates_inputs else 0
+        tcn_channels[0] += len(process_config(
+            self.config.experiment.train_parameters_config_file)) if self.config.experiment.use_gfs_data and self.config.experiment.use_all_gfs_params else 0
+
+        kernel_size = self.config.experiment.tcn_kernel_size
         for i in range(len(tcn_channels) - 1):
             dilation_size = 2 ** i
             in_channels = tcn_channels[i]
@@ -73,11 +68,21 @@ class TCNS2SCMAX(LightningModule):
 
         dates_embedding = None if self.config.experiment.with_dates_inputs is False else batch[
             BatchKeys.DATES_TENSORS.value]
+        gfs_targets = None if self.config.experiment.use_gfs_data is False else batch[
+            BatchKeys.GFS_FUTURE_Y.value].float()
 
         if self.config.experiment.with_dates_inputs:
-            x = [synop_inputs, *dates_embedding[0]]
+            if self.config.experiment.use_gfs_data and self.config.experiment.use_all_gfs_params:
+                gfs_inputs = batch[BatchKeys.GFS_PAST_X.value].float()
+                x = [synop_inputs, gfs_inputs, *dates_embedding[0]]
+            else:
+                x = [synop_inputs, *dates_embedding[0]]
         else:
-            x = [synop_inputs]
+            if self.config.experiment.use_gfs_data and self.config.experiment.use_all_gfs_params:
+                gfs_inputs = batch[BatchKeys.GFS_PAST_X.value].float()
+                x = [synop_inputs, gfs_inputs]
+            else:
+                x = [synop_inputs]
 
         cmax_embedding = self.cnn(cmax_inputs.unsqueeze(2))
         cmax_embedding = self.cnn_lin_tcn(cmax_embedding)
@@ -86,6 +91,10 @@ class TCNS2SCMAX(LightningModule):
         mem = x[:, -self.future_sequence_length:, :]
 
         if self.config.experiment.with_dates_inputs:
+            if self.config.experiment.use_gfs_data:
+                return self.linear_time_distributed(torch.cat([mem, gfs_targets, *dates_embedding[1]], -1)).squeeze(-1)
             return self.linear_time_distributed(torch.cat([mem, *dates_embedding[1]], -1)).squeeze(-1)
         else:
+            if self.config.experiment.use_gfs_data:
+                return self.linear_time_distributed(torch.cat([mem, gfs_targets], -1)).squeeze(-1)
             return self.linear_time_distributed(mem).squeeze(-1)

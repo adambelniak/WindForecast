@@ -7,22 +7,31 @@ from wind_forecast.config.register import Config
 from wind_forecast.consts import BatchKeys
 from wind_forecast.models.TCNModel import TemporalBlock
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
+from wind_forecast.util.config import process_config
 
 
 class TemporalConvNetS2S(LightningModule):
     def __init__(self, config: Config):
         super(TemporalConvNetS2S, self).__init__()
         self.config = config
+        self.use_gfs = config.experiment.use_gfs_data
+        self.use_gfs_on_inputs = self.use_gfs and config.experiment.use_all_gfs_params
         self.future_sequence_length = config.experiment.future_sequence_length
         self.self_output_test = config.experiment.self_output_test
+
+        self.features_length = len(config.experiment.synop_train_features) + len(config.experiment.periodic_features)
+        if config.experiment.with_dates_inputs:
+            self.features_length += 6
+        if self.use_gfs_on_inputs:
+            gfs_params_len = len(process_config(config.experiment.train_parameters_config_file))
+            self.features_length += gfs_params_len
+
         tcn_layers = []
         num_channels = config.experiment.tcn_channels
         num_levels = len(num_channels)
         kernel_size = 3
-        in_channels = 1 if self.self_output_test else len(config.experiment.synop_train_features)
+        in_channels = 1 if self.self_output_test else self.features_length
 
-        if config.experiment.with_dates_inputs and not self.self_output_test:
-            in_channels += 4
         for i in range(num_levels):
             dilation_size = 2 ** i
             out_channels = num_channels[i]
@@ -31,12 +40,17 @@ class TemporalConvNetS2S(LightningModule):
             in_channels = out_channels
 
         if self.config.experiment.with_dates_inputs and not self.self_output_test:
-            features = num_channels[-1] + 4
+            in_features = num_channels[-1] + 6
         else:
-            features = num_channels[-1]
+            in_features = num_channels[-1]
+
+        if self.use_gfs:
+            in_features += 1
 
         linear = nn.Sequential(
-            nn.Linear(in_features=features, out_features=32),
+            nn.Linear(in_features=in_features, out_features=64),
+            nn.ReLU(),
+            nn.Linear(in_features=64, out_features=32),
             nn.ReLU(),
             nn.Linear(in_features=32, out_features=1)
         )
@@ -51,17 +65,31 @@ class TemporalConvNetS2S(LightningModule):
         synop_inputs = batch[BatchKeys.SYNOP_PAST_X.value].float()
         dates_embedding = None if self.config.experiment.with_dates_inputs is False else batch[
             BatchKeys.DATES_TENSORS.value]
+        gfs_targets = None if not self.use_gfs else batch[BatchKeys.GFS_FUTURE_Y.value].float()
 
         if self.config.experiment.with_dates_inputs:
-            x = [synop_inputs, *dates_embedding[0], *dates_embedding[1]]
+            if self.use_gfs_on_inputs:
+                gfs_inputs = batch[BatchKeys.GFS_PAST_X.value].float()
+                x = [synop_inputs, gfs_inputs, *dates_embedding[0]]
+            else:
+                x = [synop_inputs, *dates_embedding[0]]
         else:
-            x = [synop_inputs]
-        x = self.tcn(torch.cat(x, dim=-1).permute(0, 2, 1))
+            if self.use_gfs_on_inputs:
+                gfs_inputs = batch[BatchKeys.GFS_PAST_X.value].float()
+                x = [synop_inputs, gfs_inputs]
+            else:
+                x = [synop_inputs]
+
+        x = self.tcn(torch.cat(x, dim=-1).permute(0, 2, 1)).permute(0, 2, 1)
         x = x[:, -self.future_sequence_length:, :]
 
         if self.config.experiment.with_dates_inputs:
-            return self.linear_time_distributed(torch.cat([x.permute(0, 2, 1), *dates_embedding[2], *dates_embedding[3]], -1)).squeeze(-1)
+            if self.use_gfs:
+                return self.linear_time_distributed(torch.cat([x, gfs_targets, *dates_embedding[1]], -1)).squeeze(-1)
+            return self.linear_time_distributed(torch.cat([x, *dates_embedding[1]], -1)).squeeze(-1)
         else:
+            if self.use_gfs:
+                return self.linear_time_distributed(torch.cat([x, gfs_targets], -1)).squeeze(-1)
             return self.linear_time_distributed(x.permute(0, 2, 1)).squeeze(-1)
 
     def self_forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:

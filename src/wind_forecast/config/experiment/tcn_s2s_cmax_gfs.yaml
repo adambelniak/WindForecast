@@ -13,13 +13,14 @@ datamodule:
   _target_: wind_forecast.datamodules.Sequence2SequenceWithCMAXDataModule.Sequence2SequenceWithCMAXDataModule
 
 model:
-  _target_: wind_forecast.models.TCNS2SCMAXWithGFS.TCNS2SCMAXWithGFS
+  _target_: wind_forecast.models.TCNS2SCMAX.TCNS2SCMAX
 
 system:
   _target_: wind_forecast.systems.S2SRegressorWithGFSInput.S2SRegressorWithGFSInput
 
 batch_size: 2
 use_gfs_data: True
+use_all_gfs_params: True
 synop_from_year: 2017
 cmax_from_year: 2017
 epochs: 30

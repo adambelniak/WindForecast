@@ -122,7 +122,7 @@ class ExperimentSettings:
 
     target_coords: Any = (52.1831174, 20.9875259)
 
-    tcn_channels: List = field(default_factory=lambda: [64, 64])
+    tcn_channels: List = field(default_factory=lambda: [32, 64])
 
     cnn_lin_tcn_in_features: int = 256
 
@@ -193,7 +193,7 @@ class ExperimentSettings:
 
     nbeats_num_layers: List = field(default_factory=lambda: [4, 4])
 
-    nbeats_num_hidden: List = field(default_factory=lambda: [[512, 512, 512, 512], [512, 512, 512, 512]])
+    nbeats_num_hidden: List = field(default_factory=lambda: [[256, 256, 256, 256], [256, 256, 256, 256]])
 
     nbeats_expansion_coefficient_lengths: List = field(default_factory=lambda: [32])
 
