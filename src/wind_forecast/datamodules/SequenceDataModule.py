@@ -41,6 +41,7 @@ class SequenceDataModule(Splittable):
         self.target_coords = config.experiment.target_coords
         self.synop_from_year = config.experiment.synop_from_year
         self.synop_to_year = config.experiment.synop_to_year
+        self.periodic_features = config.experiment.periodic_features
         self.gfs_train_params = process_config(
             config.experiment.train_parameters_config_file) if config.experiment.use_all_gfs_params else None
         self.use_all_gfs_params = config.experiment.use_all_gfs_params
@@ -76,7 +77,8 @@ class SequenceDataModule(Splittable):
             self.feature_names,
             self.sequence_length + self.prediction_offset,
             self.target_param,
-            self.normalization_type)
+            self.normalization_type,
+            self.periodic_features)
         print(f"Synop mean: {synop_mean[self.target_param_index]}")
         print(f"Synop std: {synop_std[self.target_param_index]}")
 

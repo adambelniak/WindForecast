@@ -57,7 +57,9 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
                                                                                                              self.feature_names,
                                                                                                              self.sequence_length + self.prediction_offset
                                                                                                              + self.future_sequence_length,
-                                                                                                             self.normalization_type)
+                                                                                                             self.target_param,
+                                                                                                             self.normalization_type,
+                                                                                                             self.periodic_features)
         self.synop_mean = synop_mean[self.target_param_index]
         self.synop_std = synop_std[self.target_param_index]
         print(f"Synop mean: {synop_mean[self.target_param_index]}")
