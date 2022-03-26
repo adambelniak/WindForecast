@@ -1,4 +1,4 @@
-import datetime
+import pandas as pd
 import math
 from typing import Union
 
@@ -59,7 +59,7 @@ class CMAXDataset(BaseDataset):
 
         return self.__data_generation(ID)
 
-    def __data_generation(self, ID: Union[datetime.datetime, str]):
+    def __data_generation(self, ID: Union[pd.Timestamp, str]):
         # Initialization
         if self.use_future_cmax:
             x = np.empty((self.sequence_length, math.ceil(self.dim[0] / self.config.experiment.cmax_scaling_factor),
