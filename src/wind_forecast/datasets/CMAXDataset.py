@@ -1,4 +1,6 @@
+import datetime
 import math
+from typing import Union
 
 import numpy as np
 
@@ -12,7 +14,7 @@ from wind_forecast.util.common_util import NormalizationType
 class CMAXDataset(BaseDataset):
     'Characterizes a dataset for PyTorch'
 
-    def __init__(self, config: Config, IDs, normalize=True):
+    def __init__(self, config: Config, IDs, synop_dates=None, normalize=True):
         super().__init__()
         self.config = config
         self.dim = config.experiment.cmax_sample_size
@@ -21,6 +23,7 @@ class CMAXDataset(BaseDataset):
         self.future_sequence_length = config.experiment.future_sequence_length
         self.prediction_offset = config.experiment.prediction_offset
         self.use_future_cmax = config.experiment.use_future_cmax
+        self.data = synop_dates if synop_dates is not None else IDs
 
         self.min, self.max = 0, 0
         self.cmax_values = {}
@@ -43,7 +46,6 @@ class CMAXDataset(BaseDataset):
             else:
                 self.cmax_values, self.min, self.max = get_min_max_cmax(IDs, self.sequence_length)
 
-        self.data = IDs
         self.normalize = normalize
 
     def __len__(self):
@@ -57,7 +59,7 @@ class CMAXDataset(BaseDataset):
 
         return self.__data_generation(ID)
 
-    def __data_generation(self, ID):
+    def __data_generation(self, ID: Union[datetime.datetime, str]):
         # Initialization
         if self.use_future_cmax:
             x = np.empty((self.sequence_length, math.ceil(self.dim[0] / self.config.experiment.cmax_scaling_factor),

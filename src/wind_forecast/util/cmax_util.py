@@ -1,6 +1,7 @@
 import math
 import os
 import sys
+from typing import Union
 
 from wind_forecast.loaders.CMAXLoader import CMAXLoader
 
@@ -65,8 +66,12 @@ def date_from_cmax_date_key(date_key):
     return date
 
 
-def get_cmax_values_for_sequence(date_key, cmax_values, sequence_length):
-    date = date_from_cmax_date_key(date_key)
+def get_cmax_values_for_sequence(ID: Union[datetime, str], cmax_values, sequence_length):
+    if type(ID) is datetime:
+        date = ID
+    else:
+        date = date_from_cmax_date_key(ID)
+    date_key = CMAXLoader.get_date_key(date)
     values = []
     for frame in range(0, sequence_length):
         values.append(np.array(cmax_values[date_key]))
@@ -108,8 +113,11 @@ def get_mean_and_std_cmax(list_IDs: [str], dim: (int, int), sequence_length: int
     return cmax_loader.get_all_loaded_cmax_images(), mean, std
 
 
-def get_cmax_datekey_from_offset(id: str, offset: int) -> str:
-    date = date_from_cmax_date_key(id)
+def get_cmax_datekey_from_offset(ID: Union[datetime, str], offset: int) -> str:
+    if type(ID) is datetime:
+        date = ID
+    else:
+        date = date_from_cmax_date_key(ID)
     date = date + timedelta(hours=offset)
     return CMAXLoader.get_date_key(date)
 
@@ -133,10 +141,9 @@ def get_cmax_npy_filename(date: datetime):
                                        prep_zeros_if_needed(str(date.minute), 1))
 
 
-def initialize_CMAX_list_IDs_and_synop_dates_for_sequence(cmax_IDs: [str], labels: pd.DataFrame, sequence_length: int,
-                                                          future_seq_length: int, prediction_offset: int,
-                                                          use_future_cmax: bool = False):
-    new_cmax_IDs = []
+def initialize_synop_dates_for_sequence_with_cmax(cmax_IDs: [str], labels: pd.DataFrame, sequence_length: int,
+                                                  future_seq_length: int, prediction_offset: int,
+                                                  use_future_cmax: bool = False):
     synop_dates = []
     one_hour = timedelta(hours=1)
     print("Preparing sequences of synop and CMAX files.")
@@ -149,7 +156,6 @@ def initialize_CMAX_list_IDs_and_synop_dates_for_sequence(cmax_IDs: [str], label
             if len(labels[labels["date"] == next_date]) > 0 and next_cmax_date_key in cmax_IDs:
                 # next frame exists, so the sequence is continued
                 synop_dates.append(date)
-                new_cmax_IDs.append(cmax_date_key)
 
             elif len(labels[labels["date"] == next_date]) > 0:
                 # there is no next frame for CMAX, so the sequence is broken. Remove past frames of sequence_length (and future_length if use_future_cmax)
@@ -160,10 +166,6 @@ def initialize_CMAX_list_IDs_and_synop_dates_for_sequence(cmax_IDs: [str], label
 
                     if date_to_remove in synop_dates:
                         synop_dates.remove(date_to_remove)
-
-                    cmax_date_key_to_remove = CMAXLoader.get_date_key(date_to_remove)
-                    if cmax_date_key_to_remove in new_cmax_IDs:
-                        new_cmax_IDs.remove(cmax_date_key_to_remove)
             else:
                 # there is no next frame for synop and/or CMAX , so the sequence is broken. Remove past frames of sequence_length AND future_seq_length
                 for frame in range(0, sequence_length + future_seq_length + prediction_offset - 1):
@@ -172,8 +174,5 @@ def initialize_CMAX_list_IDs_and_synop_dates_for_sequence(cmax_IDs: [str], label
                     if date_to_remove in synop_dates:
                         synop_dates.remove(date_to_remove)
                     cmax_date_key_to_remove = CMAXLoader.get_date_key(date_to_remove)
-                    if cmax_date_key_to_remove in new_cmax_IDs:
-                        new_cmax_IDs.remove(cmax_date_key_to_remove)
 
-    assert len(new_cmax_IDs) == len(synop_dates)
-    return new_cmax_IDs, synop_dates
+    return synop_dates
