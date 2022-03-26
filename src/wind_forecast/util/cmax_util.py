@@ -68,7 +68,7 @@ def date_from_cmax_date_key(date_key):
 
 def get_cmax_values_for_sequence(ID: Union[np.datetime64, str], cmax_values, sequence_length):
     if type(ID) is np.datetime64:
-        date = ID
+        date = pd.to_datetime(pd.Timestamp(ID))
     else:
         date = date_from_cmax_date_key(ID)
     date_key = CMAXLoader.get_date_key(date)
@@ -115,7 +115,7 @@ def get_mean_and_std_cmax(list_IDs: [str], dim: (int, int), sequence_length: int
 
 def get_cmax_datekey_from_offset(ID: Union[np.datetime64, str], offset: int) -> str:
     if type(ID) is np.datetime64:
-        date = ID
+        date = pd.to_datetime(pd.Timestamp(ID))
     else:
         date = date_from_cmax_date_key(ID)
     date = date + timedelta(hours=offset)

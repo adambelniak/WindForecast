@@ -45,7 +45,7 @@ class TransformerCMAXWithGFS(TransformerGFSBaseProps):
         decoder_norm = nn.LayerNorm(self.embed_dim)
         self.decoder = nn.TransformerDecoder(decoder_layer, self.transformer_layers_num, decoder_norm)
 
-        features = self.embed_dim
+        features = self.embed_dim + 1
         dense_layers = []
 
         for neurons in self.transformer_head_dims:
