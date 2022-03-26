@@ -85,10 +85,10 @@ class GFSUtil:
         print("Matching GFS with synop data")
 
         for index in tqdm(synop_data_indices):
-            dates = synop_data.loc[index:index + self.past_sequence_length]['date']
+            dates = synop_data.loc[index:index + self.past_sequence_length - 1]['date']
             future_dates = synop_data.loc[
                            index + self.past_sequence_length + self.prediction_offset
-                           :index + self.past_sequence_length + self.prediction_offset + self.future_sequence_length]['date']
+                           :index + self.past_sequence_length + self.prediction_offset + self.future_sequence_length - 1]['date']
 
             if self.train_params is not None and len(self.train_params) > 0:
                 # match GFS params for past sequences
