@@ -28,8 +28,10 @@ class CMAXLoader(metaclass=Singleton):
         pickle_filename = date_key[:-4]
 
         if date_key not in self.cmax_images:
-            with open(os.path.join(self.pickle_dir, pickle_filename + ".pkl"), 'rb') as f:
-                self.cmax_images.update(pickle.load(f))
+            pkl_file = os.path.join(self.pickle_dir, pickle_filename + ".pkl")
+            if os.path.exists(pkl_file):
+                with open(pkl_file, 'rb') as f:
+                    self.cmax_images.update(pickle.load(f))
 
         return np.array(self.cmax_images[date_key]) if date_key in self.cmax_images else None
 
