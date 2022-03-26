@@ -71,12 +71,12 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
         if self.get_from_cache(stage):
             return
 
-        cmax_dataset = CMAXDataset(config=self.config, IDs=self.cmax_available_ids,
-                                   synop_dates=self.synop_dates,
-                                   normalize=True)
         if self.config.experiment.use_gfs_data:
             synop_inputs, all_gfs_input_data, gfs_target_data, all_gfs_target_data = self.prepare_dataset_for_gfs()
-
+            self.synop_dates = self.synop_dates.loc[self.synop_data_indices]
+            cmax_dataset = CMAXDataset(config=self.config, IDs=self.cmax_available_ids,
+                                       synop_dates=self.synop_dates,
+                                       normalize=True)
             if self.use_all_gfs_params:
                 synop_dataset = Sequence2SequenceWithGFSDataset(self.config, self.synop_data,
                                                                 self.synop_data_indices,
@@ -88,13 +88,16 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
                                                                 self.synop_feature_names,
                                                                 gfs_target_data)
             assert len(synop_dataset) == len(
-                cmax_dataset), f"CMAX and synop datasets lengths don't match: {len(synop_dataset)} vs {len(cmax_dataset)}"
+                cmax_dataset), f"Synop and CMAX datasets lengths don't match: {len(synop_dataset)} vs {len(cmax_dataset)}"
             dataset = ConcatDatasets(synop_dataset, cmax_dataset)
         else:
+            cmax_dataset = CMAXDataset(config=self.config, IDs=self.cmax_available_ids,
+                                       synop_dates=self.synop_dates,
+                                       normalize=True)
             synop_dataset = Sequence2SequenceDataset(self.config, self.synop_data, self.synop_data_indices,
                                                      self.synop_feature_names)
             assert len(synop_dataset) == len(
-                cmax_dataset), f"CMAX and synop datasets lengths don't match: {len(synop_dataset)} vs {len(cmax_dataset)}"
+                cmax_dataset), f"Synop and CMAX datasets lengths don't match: {len(synop_dataset)} vs {len(cmax_dataset)}"
 
             dataset = ConcatDatasets(synop_dataset, cmax_dataset)
 

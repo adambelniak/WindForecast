@@ -36,7 +36,6 @@ class Sequence2SequenceDataModule(Splittable):
         self.target_param = config.experiment.target_parameter
         all_params = add_param_to_train_params(self.train_params, self.target_param)
         self.feature_names = list(list(zip(*all_params))[1])
-        self.removed_dataset_indices = []
 
         self.synop_file = config.experiment.synop_file
         self.synop_from_year = config.experiment.synop_from_year
@@ -126,7 +125,7 @@ class Sequence2SequenceDataModule(Splittable):
     def prepare_dataset_for_gfs(self):
         print("Preparing the dataset")
         # match GFS and synop sequences
-        self.synop_data_indices, self.removed_dataset_indices, all_gfs_input_data, all_gfs_target_data = self.gfs_util.match_gfs_with_synop_sequence2sequence(
+        self.synop_data_indices, all_gfs_input_data, all_gfs_target_data = self.gfs_util.match_gfs_with_synop_sequence2sequence(
             self.synop_data,
             self.synop_data_indices)
 

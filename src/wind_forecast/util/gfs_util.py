@@ -78,7 +78,6 @@ class GFSUtil:
 
     def match_gfs_with_synop_sequence2sequence(self, synop_data: pd.DataFrame, synop_data_indices: list):
         new_synop_indices = []
-        removed_indices = []
         gfs_inputs = []
         gfs_targets = []
 
@@ -94,13 +93,11 @@ class GFSUtil:
                 # match GFS params for past sequences
                 next_gfs_values = self.get_next_gfs_values(dates, self.train_params, False)
                 if next_gfs_values is None:
-                    removed_indices.append(index)
                     continue
 
                 # match GFS params for future sequences
                 next_gfs_future_values = self.get_next_gfs_values(future_dates, self.train_params, True)
                 if next_gfs_future_values is None:
-                    removed_indices.append(index)
                     continue
                 else:
                     gfs_targets.append(next_gfs_future_values)
@@ -109,14 +106,13 @@ class GFSUtil:
                 # match only GFS target param
                 next_gfs_values = self.get_next_gfs_values(future_dates, self.target_params, True)
                 if next_gfs_values is None:
-                    removed_indices.append(index)
                     continue
                 else:
                     gfs_targets.append(next_gfs_values)
 
             new_synop_indices.append(index)
 
-        return new_synop_indices, removed_indices, np.array(gfs_inputs), np.array(gfs_targets)
+        return new_synop_indices, np.array(gfs_inputs), np.array(gfs_targets)
 
     def get_next_gfs_values(self, dates: [datetime], gfs_params: list, future_dates: bool):
         next_gfs_values = []
