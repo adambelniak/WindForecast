@@ -73,7 +73,7 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
 
         if self.config.experiment.use_gfs_data:
             synop_inputs, all_gfs_input_data, gfs_target_data, all_gfs_target_data = self.prepare_dataset_for_gfs()
-            self.synop_dates = self.synop_datag.loc[self.synop_data_indices]
+            self.synop_dates = self.synop_data.loc[self.synop_data_indices]
             cmax_dataset = CMAXDataset(config=self.config, IDs=self.cmax_available_ids,
                                        synop_dates=self.synop_dates,
                                        normalize=True)
