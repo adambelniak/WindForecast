@@ -153,8 +153,8 @@ def initialize_CMAX_list_IDs_and_synop_dates_for_sequence(cmax_IDs: [str], label
 
             elif len(labels[labels["date"] == next_date]) > 0:
                 # there is no next frame for CMAX, so the sequence is broken. Remove past frames of sequence_length (and future_length if use_future_cmax)
-                for frame in range(1, sequence_length + (
-                        0 if not use_future_cmax else prediction_offset + future_seq_length)):
+                for frame in range(0, sequence_length + (
+                        0 if not use_future_cmax else prediction_offset + future_seq_length) - 1):
                     hours = timedelta(hours=frame)
                     date_to_remove = date - hours
 
@@ -166,7 +166,7 @@ def initialize_CMAX_list_IDs_and_synop_dates_for_sequence(cmax_IDs: [str], label
                         new_cmax_IDs.remove(cmax_date_key_to_remove)
             else:
                 # there is no next frame for synop and/or CMAX , so the sequence is broken. Remove past frames of sequence_length AND future_seq_length
-                for frame in range(1, sequence_length + future_seq_length + prediction_offset):
+                for frame in range(0, sequence_length + future_seq_length + prediction_offset - 1):
                     hours = timedelta(hours=frame)
                     date_to_remove = date - hours
                     if date_to_remove in synop_dates:

@@ -87,15 +87,15 @@ class Sequence2SequenceDataModule(Splittable):
         # Get indices which correspond to 'dates' - 'dates' are the ones, which start a proper sequence without breaks
         self.synop_data_indices = self.synop_data[self.synop_data["date"].isin(dates)].index
         # data was not normalized, so take all frames which will be used, compute std and mean and normalize data
-        self.synop_data, self.synop_feature_names, target_param_mean, target_param_std = normalize_synop_data_for_training(
+        self.synop_data, self.synop_feature_names, mean, std = normalize_synop_data_for_training(
             self.synop_data, self.synop_data_indices,
             self.feature_names,
             self.sequence_length + self.prediction_offset + self.future_sequence_length,
-            self.target_param, self.normalization_type, self.periodic_features)
-        self.synop_mean = target_param_mean
-        self.synop_std = target_param_std
-        print(f"Synop mean: {target_param_mean}")
-        print(f"Synop std: {target_param_std}")
+            self.normalization_type, self.periodic_features)
+        self.synop_mean = mean[self.target_param]
+        self.synop_std = std[self.target_param]
+        print(f"Synop mean: {self.synop_mean}")
+        print(f"Synop std: {self.synop_std}")
 
     def setup(self, stage: Optional[str] = None):
         if self.get_from_cache(stage):

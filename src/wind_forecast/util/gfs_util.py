@@ -85,8 +85,8 @@ class GFSUtil:
         print("Matching GFS with synop data")
 
         for index in tqdm(synop_data_indices):
-            dates = synop_data.iloc[index:index + self.past_sequence_length]['date']
-            future_dates = synop_data.iloc[
+            dates = synop_data.loc[index:index + self.past_sequence_length]['date']
+            future_dates = synop_data.loc[
                            index + self.past_sequence_length + self.prediction_offset
                            :index + self.past_sequence_length + self.prediction_offset + self.future_sequence_length]['date']
 

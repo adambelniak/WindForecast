@@ -76,11 +76,10 @@ class SequenceDataModule(Splittable):
             self.synop_data, self.synop_data_indices,
             self.feature_names,
             self.sequence_length + self.prediction_offset,
-            self.target_param,
             self.normalization_type,
             self.periodic_features)
-        print(f"Synop mean: {synop_mean[self.target_param_index]}")
-        print(f"Synop std: {synop_std[self.target_param_index]}")
+        print(f"Synop mean: {synop_mean[self.target_param]}")
+        print(f"Synop std: {synop_std[self.target_param]}")
 
     def setup(self, stage: Optional[str] = None):
         if self.get_from_cache(stage):

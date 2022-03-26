@@ -35,10 +35,10 @@ if __name__ == "__main__":
     hour_files = [f.name for f in tqdm(os.scandir(CMAX_DATASET_DIR)) if matcher.match(f.name)]
     hour_files.sort()
 
-    month = 1
-    year = 2017
+    month = 12
+    year = 2021
     date = datetime(year, month, 1, 0, 0)
-    while date < datetime(2021, 9, 1):
+    while date < datetime(2022, 1, 1):
         cmax_dict = {}
         dict_name = datetime.strftime(date, "%Y%m")
         if not os.path.exists(os.path.join(cmax_pkl_dir, f"{dict_name}_meta.pkl")):
@@ -46,15 +46,18 @@ if __name__ == "__main__":
                      and int(matcher.match(file).group(2)) == month]
             if len(files) > 0:
                 for file in tqdm(files):
-                    with h5py.File(os.path.join(CMAX_DATASET_DIR, file), 'r') as hdf:
-                        date = date_from_h5y_file(file)
-                        date_key = datetime.strftime(date, "%Y%m%d%H")
-                        data = np.array(hdf.get('dataset1').get('data1').get('data'))
-                        mask = np.where(data >= 255)
-                        data[mask] = 0
-                        resampled = block_reduce(data, block_size=(4, 4), func=np.max)
-                        resampled = np.uint8(resampled)
-                        cmax_dict[date_key] = resampled
+                    try:
+                        with h5py.File(os.path.join(CMAX_DATASET_DIR, file), 'r') as hdf:
+                            date = date_from_h5y_file(file)
+                            date_key = datetime.strftime(date, "%Y%m%d%H")
+                            data = np.array(hdf.get('dataset1').get('data1').get('data'))
+                            mask = np.where(data >= 255)
+                            data[mask] = 0
+                            resampled = block_reduce(data, block_size=(4, 4), func=np.max)
+                            resampled = np.uint8(resampled)
+                            cmax_dict[date_key] = resampled
+                    except OSError:
+                        print(f"Error with opening file {os.path.join(CMAX_DATASET_DIR, file)}")
 
                 with open(os.path.join(cmax_pkl_dir, f"{dict_name}.pkl"), 'wb') as f:
                     pickle.dump(cmax_dict, f, pickle.HIGHEST_PROTOCOL)

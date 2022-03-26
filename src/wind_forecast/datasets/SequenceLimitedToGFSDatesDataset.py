@@ -40,11 +40,9 @@ class SequenceLimitedToGFSDatesDataset(BaseDataset):
                                                   synop_data_indices,
                                                   feature_names,
                                                   self.sequence_length + self.prediction_offset,
-                                                  self.target_param,
                                                   config.experiment.normalization_type)
-            target_param_index = [x for x in feature_names].index(self.target_param)
-            print(synop_feature_1[target_param_index])
-            print(synop_feature_2[target_param_index])
+            print(synop_feature_1[self.target_param])
+            print(synop_feature_2[self.target_param])
 
         synop_data_dates = self.synop_data['date']
         # labels and dates - dates are needed for matching the labels against GFS dates

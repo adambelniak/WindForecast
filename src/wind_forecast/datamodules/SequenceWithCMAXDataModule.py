@@ -49,8 +49,8 @@ class SequenceWithCMAXDataModule(SequenceDataModule):
                                                                                                              self.feature_names,
                                                                                                              self.sequence_length + self.prediction_offset,
                                                                                                              self.normalization_type)
-        print(f"Synop mean: {synop_mean[self.target_param_index]}")
-        print(f"Synop std: {synop_std[self.target_param_index]}")
+        print(f"Synop mean: {synop_mean[self.target_param]}")
+        print(f"Synop std: {synop_std[self.target_param]}")
 
     def setup(self, stage: Optional[str] = None):
         if self.get_from_cache(stage):

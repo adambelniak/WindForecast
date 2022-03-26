@@ -55,9 +55,9 @@ def extract_zip(date: datetime):
 
 
 def get_all_zips():
-    date = datetime(2021, 6, 19)
+    date = datetime(2021, 12, 17)
 
-    while date != datetime(2021, 9, 5):
+    while date != datetime(2022, 1, 1):
         print(f"Fetching zip for date {date.strftime('%Y-%m-%d')}")
         get_zip(date)
         extract_zip(date)
@@ -66,4 +66,3 @@ def get_all_zips():
 
 if __name__ == "__main__":
     get_all_zips()
-
