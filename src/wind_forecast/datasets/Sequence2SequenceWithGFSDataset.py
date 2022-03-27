@@ -34,20 +34,20 @@ class Sequence2SequenceWithGFSDataset(BaseDataset):
         else:
             synop_index, gfs_future_y = self.data[index]
 
-        synop_past_x = self.synop_data.iloc[synop_index:synop_index + self.sequence_length][self.train_params].to_numpy()
-        synop_future_x = self.synop_data.iloc[
-                      synop_index + self.sequence_length + self.prediction_offset:synop_index + self.sequence_length + self.prediction_offset + self.future_sequence_length][
+        synop_past_x = self.synop_data.loc[synop_index:synop_index + self.sequence_length - 1][self.train_params].to_numpy()
+        synop_future_x = self.synop_data.loc[
+                      synop_index + self.sequence_length + self.prediction_offset:synop_index + self.sequence_length + self.prediction_offset + self.future_sequence_length - 1][
             self.train_params].to_numpy()
-        synop_y = self.synop_data.iloc[
-                      synop_index:synop_index + self.sequence_length + self.prediction_offset + self.future_sequence_length][
+        synop_y = self.synop_data.loc[
+                      synop_index:synop_index + self.sequence_length + self.prediction_offset + self.future_sequence_length - 1][
             self.target_param].to_numpy()
         synop_past_y = synop_y[:self.sequence_length + self.prediction_offset]
         synop_future_y = synop_y[self.sequence_length + self.prediction_offset
                                              :synop_index + self.sequence_length + self.prediction_offset + self.future_sequence_length]
-        inputs_dates = self.synop_data.iloc[synop_index:synop_index + self.sequence_length]['date']
-        target_dates = self.synop_data.iloc[
+        inputs_dates = self.synop_data.loc[synop_index:synop_index + self.sequence_length - 1]['date']
+        target_dates = self.synop_data.loc[
                   synop_index + self.sequence_length + self.prediction_offset
-                  :synop_index + self.sequence_length + self.prediction_offset + self.future_sequence_length]['date']
+                  :synop_index + self.sequence_length + self.prediction_offset + self.future_sequence_length - 1]['date']
 
         if self.use_all_gfs_params:
             return synop_past_y, synop_past_x, synop_future_y, synop_future_x, gfs_past_x,\

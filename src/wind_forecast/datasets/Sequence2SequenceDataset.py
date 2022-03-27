@@ -25,17 +25,21 @@ class Sequence2SequenceDataset(BaseDataset):
     def __getitem__(self, index):
         'Generates one sample of data'
         synop_index = self.data[index]
-        synop_past_x = self.synop_data.iloc[synop_index:synop_index + self.sequence_length][self.train_params].to_numpy()
-        synop_future_x = self.synop_data.iloc[
-                      synop_index + self.sequence_length + self.prediction_offset:synop_index + self.sequence_length + self.prediction_offset + self.future_sequence_length][
-                                self.train_params].to_numpy()
-        synop_y = self.synop_data.iloc[
-                        synop_index:synop_index + self.sequence_length + self.prediction_offset + self.future_sequence_length][
+        synop_past_x = self.synop_data.loc[synop_index:synop_index + self.sequence_length - 1][
+            self.train_params].to_numpy()
+        synop_future_x = self.synop_data.loc[
+                         synop_index + self.sequence_length + self.prediction_offset
+                         :synop_index + self.sequence_length + self.prediction_offset + self.future_sequence_length - 1][
+            self.train_params].to_numpy()
+        synop_y = self.synop_data.loc[
+                  synop_index
+                  :synop_index + self.sequence_length + self.prediction_offset + self.future_sequence_length - 1][
             self.target_param].to_numpy()
         synop_past_y = synop_y[:self.sequence_length + self.prediction_offset]
         synop_future_y = synop_y[self.sequence_length + self.prediction_offset
-                                             :synop_index + self.sequence_length + self.prediction_offset + self.future_sequence_length]
-        past_dates = self.synop_data.iloc[synop_index:synop_index + self.sequence_length]['date']
-        future_dates = self.synop_data.iloc[synop_index + self.sequence_length + self.prediction_offset:synop_index + self.sequence_length + self.prediction_offset + self.future_sequence_length]['date']
+                                 :synop_index + self.sequence_length + self.prediction_offset + self.future_sequence_length]
+        past_dates = self.synop_data.loc[synop_index:synop_index + self.sequence_length - 1]['date']
+        future_dates = self.synop_data.loc[synop_index + self.sequence_length + self.prediction_offset
+                                           :synop_index + self.sequence_length + self.prediction_offset + self.future_sequence_length - 1]['date']
 
         return synop_past_y, synop_past_x, synop_future_y, synop_future_x, past_dates, future_dates

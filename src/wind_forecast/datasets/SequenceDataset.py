@@ -22,7 +22,7 @@ class SequenceDataset(BaseDataset):
     def __getitem__(self, index):
         'Generates one sample of data'
         synop_index = self.data[index]
-        past_x = self.synop_data.iloc[synop_index:synop_index + self.sequence_length][self.train_params].to_numpy()
-        future_y = self.synop_data.iloc[synop_index + self.sequence_length + self.prediction_offset][self.target_param]
+        past_x = self.synop_data.loc[synop_index:synop_index + self.sequence_length - 1][self.train_params].to_numpy()
+        future_y = self.synop_data.loc[synop_index + self.sequence_length + self.prediction_offset - 1][self.target_param]
 
         return past_x, future_y
