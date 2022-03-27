@@ -36,7 +36,6 @@ class MultiChannelSpatialSubregionDataset(BaseDataset):
         self.list_IDs = train_IDs
 
         self.data = self.list_IDs[str(self.prediction_offset)]
-        self.mean, self.std = [], []
         self.normalize = normalize
         if normalize:
             self.normalize_data(config.experiment.normalization_type)

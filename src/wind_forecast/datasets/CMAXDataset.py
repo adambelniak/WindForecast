@@ -25,7 +25,6 @@ class CMAXDataset(BaseDataset):
         self.use_future_cmax = config.experiment.use_future_cmax
         self.data = synop_dates if synop_dates is not None else IDs
 
-        self.min, self.max = 0, 0
         self.cmax_values = {}
 
         if self.normalization_type == NormalizationType.STANDARD:

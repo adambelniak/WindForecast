@@ -123,18 +123,29 @@ def run_training(cfg):
 
     trainer.test(system, datamodule=datamodule)
 
-    wandb_logger.log_metrics({
-        'target_mean': datamodule.dataset_test.mean,
-        'target_std': datamodule.dataset_test.std,
+    metrics = {
         'train_dataset_length': len(datamodule.dataset_train),
         'test_dataset_length': len(datamodule.dataset_test)
-    }, step=system.current_epoch)
+    }
 
     mean = datamodule.dataset_test.mean
     std = datamodule.dataset_test.std
+    min = datamodule.dataset_test.min
+    max = datamodule.dataset_test.max
+
+    if mean is not None:
+        metrics['target_mean'] = mean
+    if std is not None:
+        metrics['target_std'] = std
+    if min is not None:
+        metrics['target_min'] = min
+    if max is not None:
+        metrics['target_max'] = max
+
+    wandb_logger.log_metrics(metrics, step=system.current_epoch)
 
     if cfg.experiment.view_test_result:
-        plot_results(system, cfg, mean, std)
+        plot_results(system, cfg, mean, std, min, max)
 
     if trainer.interrupted:  # type: ignore
         log.info(f'[bold red]>>> Training interrupted.')
