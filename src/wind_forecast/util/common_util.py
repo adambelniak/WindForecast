@@ -17,7 +17,7 @@ wandb_logger: WandbLogger = WandbLogger(
     entity=os.getenv('WANDB_ENTITY'),
     name=os.getenv('RUN_NAME'),
     save_dir=os.getenv('RUN_DIR'),
-    log_model="all"
+    log_model=os.getenv('LOG_MODEL') == 'True'
 )
 
 
