@@ -139,9 +139,9 @@ def split_dataset(dataset, val_split=0, test_split=0.2, chunk_length=20, split_m
         if sequence_length is None:
             length = len(dataset)
             indexes = np.arange(length)
-            test_indexes = indexes[length - test_split * length:]
+            test_indexes = indexes[length - int(test_split * length):]
             non_test_length = length - len(test_indexes)
-            val_indexes = indexes[non_test_length - val_split * non_test_length:]
+            val_indexes = indexes[non_test_length - int(val_split * non_test_length):]
             train_indexes = indexes[:non_test_length]
             return CustomSubset(dataset, train_indexes), CustomSubset(dataset, val_indexes), CustomSubset(dataset,
                                                                                                           test_indexes)
