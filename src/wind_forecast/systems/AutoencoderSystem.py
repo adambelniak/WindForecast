@@ -297,11 +297,5 @@ class AutoencoderSystem(pl.LightningModule):
 
         self.logger.log_metrics(metrics, step=step)
 
-        # save results to view
-        labels = [item for sublist in [x['labels'] for x in outputs] for item in sublist]
-
-        out = [item for sublist in [x['output'] for x in outputs] for item in sublist]
-
-        self.test_results = {'labels': copy.deepcopy(labels),
-                             'output': copy.deepcopy(out)}
+        self.test_results = {}
 
