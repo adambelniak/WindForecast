@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 
 
-def plot_results(system, config: Config, mean, std, min, max):
+def plot_results(system, config: Config, mean, std):
     for index in np.random.choice(np.arange(len(system.test_results['output'])), min(40, len(system.test_results['output'])), replace=False):
         fig, ax = plt.subplots()
         inputs_dates = [pd.to_datetime(pd.Timestamp(d)) for d in system.test_results['inputs_dates'][index]]
@@ -34,15 +34,6 @@ def plot_results(system, config: Config, mean, std, min, max):
             truth_series = (truth_series * std + mean).tolist()
             if config.experiment.use_gfs_data:
                 gfs_out_series = gfs_out_series * std + mean
-        elif min is not None and max is not None:
-            if type(min) == list:
-                min = min[0]
-            if type(max) == list:
-                max = max[0]
-            out_series = out_series * (max - min) + min
-            truth_series = (truth_series * (max - min) + min).tolist()
-            if config.experiment.use_gfs_data:
-                gfs_out_series = gfs_out_series * (max - min) + min
 
         ax.plot(output_dates, out_series, label='prediction')
 
