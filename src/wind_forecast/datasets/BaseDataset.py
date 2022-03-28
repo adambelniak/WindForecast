@@ -17,3 +17,15 @@ class BaseDataset(torch.utils.data.Dataset):
 
     def set_max(self, max):
         self.max = max
+
+    def get_mean(self):
+        return self.mean
+
+    def get_std(self):
+        return self.std
+
+    def get_min(self):
+        return self.min
+
+    def get_max(self):
+        return self.max

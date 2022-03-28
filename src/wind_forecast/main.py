@@ -128,10 +128,10 @@ def run_training(cfg):
         'test_dataset_length': len(datamodule.dataset_test)
     }
 
-    mean = datamodule.dataset_test.mean
-    std = datamodule.dataset_test.std
-    min = datamodule.dataset_test.min
-    max = datamodule.dataset_test.max
+    mean = datamodule.dataset_test.get_mean()
+    std = datamodule.dataset_test.get_std()
+    min = datamodule.dataset_test.get_min()
+    max = datamodule.dataset_test.get_max()
 
     if mean is not None:
         metrics['target_mean'] = mean
