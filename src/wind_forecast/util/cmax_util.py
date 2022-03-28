@@ -173,6 +173,5 @@ def initialize_synop_dates_for_sequence_with_cmax(cmax_IDs: [str], labels: pd.Da
                     date_to_remove = date - hours
                     if date_to_remove in synop_dates:
                         synop_dates.remove(date_to_remove)
-                    cmax_date_key_to_remove = CMAXLoader.get_date_key(date_to_remove)
 
     return synop_dates

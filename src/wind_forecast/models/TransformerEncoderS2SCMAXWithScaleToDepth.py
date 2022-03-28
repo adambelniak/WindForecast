@@ -7,11 +7,11 @@ from torch import nn
 from wind_forecast.config.register import Config
 from wind_forecast.consts import BatchKeys
 from wind_forecast.models.CMAXAutoencoder import CMAXEncoder, get_pretrained_encoder
-from wind_forecast.models.Transformer import TransformerBaseProps, PositionalEncoding
+from wind_forecast.models.Transformer import PositionalEncoding, TransformerEncoderBaseProps
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 
 
-class TransformerEncoderS2SCMAXWithScaleToDepth(TransformerBaseProps):
+class TransformerEncoderS2SCMAXWithScaleToDepth(TransformerEncoderBaseProps):
     def __init__(self, config: Config):
         super().__init__(config)
         self.scaling_factor = config.experiment.STD_scaling_factor
@@ -38,7 +38,8 @@ class TransformerEncoderS2SCMAXWithScaleToDepth(TransformerBaseProps):
 
         dense_layers = []
         features = self.embed_dim
-
+        if self.config.experiment.with_dates_inputs:
+            features += 6
         for neurons in config.experiment.transformer_head_dims:
             dense_layers.append(nn.Linear(in_features=features, out_features=neurons))
             features = neurons
@@ -69,4 +70,7 @@ class TransformerEncoderS2SCMAXWithScaleToDepth(TransformerBaseProps):
         output = self.encoder(x)
         output = output[:, -self.future_sequence_length:, :]
 
-        return torch.squeeze(self.classification_head_time_distributed(output), -1)
+        if self.config.experiment.with_dates_inputs:
+            return torch.squeeze(self.classification_head_time_distributed(torch.cat([output, *dates_tensors[1]], -1)), -1)
+        else:
+            return torch.squeeze(self.classification_head_time_distributed(output), -1)

@@ -5,11 +5,11 @@ from torch import nn
 
 from wind_forecast.config.register import Config
 from wind_forecast.models.CMAXAutoencoder import CMAXEncoder, get_pretrained_encoder
-from wind_forecast.models.Transformer import TransformerBaseProps, PositionalEncoding
+from wind_forecast.models.Transformer import TransformerEncoderBaseProps, PositionalEncoding
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 
 
-class TransformerEncoderCMAX(TransformerBaseProps):
+class TransformerEncoderCMAX(TransformerEncoderBaseProps):
     def __init__(self, config: Config):
         super().__init__(config)
         conv_H = config.experiment.cmax_h
@@ -40,7 +40,6 @@ class TransformerEncoderCMAX(TransformerBaseProps):
             features = neurons
         dense_layers.append(nn.Linear(in_features=features, out_features=1))
         self.classification_head = nn.Sequential(*dense_layers)
-        self.flatten = nn.Flatten()
 
     def forward(self, inputs, cmax_inputs):
         cmax_embeddings = self.conv_time_distributed(cmax_inputs.unsqueeze(2))

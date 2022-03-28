@@ -1,27 +1,28 @@
 from typing import Dict
 
 import torch
-from torch import nn
+import torch.nn as nn
+
 from wind_forecast.config.register import Config
 from wind_forecast.consts import BatchKeys
-from wind_forecast.models.Transformer import TransformerGFSBaseProps
+from wind_forecast.models.Transformer import TransformerEncoderGFSBaseProps
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 
 
-class TransformerEncoderS2SWithGFS(TransformerGFSBaseProps):
+class TransformerEncoderS2SWithGFS(TransformerEncoderGFSBaseProps):
     def __init__(self, config: Config):
         super().__init__(config)
         dense_layers = []
+        features = self.embed_dim + 1  # GFS target
         if self.config.experiment.with_dates_inputs:
-            features = self.embed_dim + 7
-        else:
-            features = self.embed_dim + 1
+            features += 6
         for neurons in self.transformer_head_dims:
             dense_layers.append(nn.Linear(in_features=features, out_features=neurons))
             features = neurons
         dense_layers.append(nn.Linear(in_features=features, out_features=1))
         self.classification_head = nn.Sequential(*dense_layers)
         self.classification_head_time_distributed = TimeDistributed(self.classification_head, batch_first=True)
+        self.flatten = nn.Flatten()
 
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
         synop_inputs = batch[BatchKeys.SYNOP_PAST_X.value].float()

@@ -149,7 +149,7 @@ def split_dataset(dataset, val_split=0, test_split=0.2, chunk_length=20, split_m
             length = len(dataset)
             indexes = np.arange(length)
             test_indexes = indexes[int(length - test_split * length + sequence_length):]
-            non_test_indexes = indexes[:int(length - test_split * length + sequence_length)]
+            non_test_indexes = indexes[:int(length - test_split * length)]
             non_test_length = len(non_test_indexes)
             val_indexes = non_test_indexes[int(non_test_length - val_split * non_test_length + sequence_length):]
             train_indexes = non_test_indexes[:int(non_test_length - val_split * non_test_length)]

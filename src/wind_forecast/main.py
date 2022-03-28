@@ -137,10 +137,6 @@ def run_training(cfg):
         metrics['target_mean'] = mean
     if std is not None:
         metrics['target_std'] = std
-    if min is not None:
-        metrics['target_min'] = min
-    if max is not None:
-        metrics['target_max'] = max
 
     wandb_logger.log_metrics(metrics, step=system.current_epoch)
 

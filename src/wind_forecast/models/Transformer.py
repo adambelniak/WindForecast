@@ -74,8 +74,7 @@ class PositionalEncoding(nn.Module):
         return self.dropout(x)
 
 
-class TransformerBaseProps(LightningModule):
-
+class TransformerEncoderBaseProps(LightningModule):
     def __init__(self, config: Config):
         super().__init__()
         self.config = config
@@ -113,11 +112,6 @@ class TransformerBaseProps(LightningModule):
         encoder_norm = nn.LayerNorm(self.embed_dim)
         self.encoder = nn.TransformerEncoder(encoder_layer, self.transformer_layers_num, encoder_norm)
 
-        decoder_layer = nn.TransformerDecoderLayer(self.embed_dim, self.n_heads, self.ff_dim, self.dropout,
-                                                   batch_first=True)
-        decoder_norm = nn.LayerNorm(self.embed_dim)
-        self.decoder = nn.TransformerDecoder(decoder_layer, self.transformer_layers_num, decoder_norm)
-
         dense_layers = []
         features = self.embed_dim
         for neurons in self.transformer_head_dims:
@@ -126,6 +120,7 @@ class TransformerBaseProps(LightningModule):
         dense_layers.append(nn.Linear(in_features=features, out_features=1))
         self.classification_head = nn.Sequential(*dense_layers)
         self.classification_head_time_distributed = TimeDistributed(self.classification_head, batch_first=True)
+        self.flatten = nn.Flatten()
 
     def generate_mask(self, sequence_length: int) -> torch.Tensor:
         mask = (torch.triu(torch.ones(sequence_length, sequence_length)) == 1).transpose(0, 1)
@@ -133,7 +128,7 @@ class TransformerBaseProps(LightningModule):
         return mask
 
 
-class TransformerGFSBaseProps(TransformerBaseProps):
+class TransformerEncoderGFSBaseProps(TransformerEncoderBaseProps):
     def __init__(self, config: Config):
         super().__init__(config)
         if config.experiment.use_all_gfs_params:
@@ -141,41 +136,47 @@ class TransformerGFSBaseProps(TransformerBaseProps):
             self.features_length += gfs_params_len
             self.embed_dim += gfs_params_len * (config.experiment.time2vec_embedding_size + 1)
 
-        self.time_2_vec_time_distributed = TimeDistributed(
-            Simple2Vec(self.features_length, self.time2vec_embedding_size), batch_first=True)
-        self.pos_encoder = PositionalEncoding(self.embed_dim, self.dropout, self.past_sequence_length)
+            self.time_2_vec_time_distributed = TimeDistributed(
+                Simple2Vec(self.features_length, self.time2vec_embedding_size), batch_first=True)
+            self.pos_encoder = PositionalEncoding(self.embed_dim, self.dropout, self.past_sequence_length)
 
-        encoder_layer = nn.TransformerEncoderLayer(self.embed_dim, self.n_heads, self.ff_dim, self.dropout,
-                                                   batch_first=True)
-        encoder_norm = nn.LayerNorm(self.embed_dim)
-        self.encoder = nn.TransformerEncoder(encoder_layer, self.transformer_layers_num, encoder_norm)
-
-        decoder_layer = nn.TransformerDecoderLayer(self.embed_dim, self.n_heads, self.ff_dim, self.dropout,
-                                                   batch_first=True)
-        decoder_norm = nn.LayerNorm(self.embed_dim)
-        self.decoder = nn.TransformerDecoder(decoder_layer, self.transformer_layers_num, decoder_norm)
+            encoder_layer = nn.TransformerEncoderLayer(self.embed_dim, self.n_heads, self.ff_dim, self.dropout,
+                                                       batch_first=True)
+            encoder_norm = nn.LayerNorm(self.embed_dim)
+            self.encoder = nn.TransformerEncoder(encoder_layer, self.transformer_layers_num, encoder_norm)
 
         dense_layers = []
-        features = self.embed_dim + 1
+        features = self.embed_dim + 1  # GFS target
         for neurons in self.transformer_head_dims:
             dense_layers.append(nn.Linear(in_features=features, out_features=neurons))
             features = neurons
         dense_layers.append(nn.Linear(in_features=features, out_features=1))
         self.classification_head = nn.Sequential(*dense_layers)
         self.classification_head_time_distributed = TimeDistributed(self.classification_head, batch_first=True)
+        self.flatten = nn.Flatten()
+
+
+class TransformerBaseProps(TransformerEncoderBaseProps):
+    def __init__(self, config: Config):
+        super().__init__(config)
+        decoder_layer = nn.TransformerDecoderLayer(self.embed_dim, self.n_heads, self.ff_dim, self.dropout,
+                                                   batch_first=True)
+        decoder_norm = nn.LayerNorm(self.embed_dim)
+        self.decoder = nn.TransformerDecoder(decoder_layer, self.transformer_layers_num, decoder_norm)
+
+
+class TransformerGFSBaseProps(TransformerEncoderGFSBaseProps):
+    def __init__(self, config: Config):
+        super().__init__(config)
+        decoder_layer = nn.TransformerDecoderLayer(self.embed_dim, self.n_heads, self.ff_dim, self.dropout,
+                                                   batch_first=True)
+        decoder_norm = nn.LayerNorm(self.embed_dim)
+        self.decoder = nn.TransformerDecoder(decoder_layer, self.transformer_layers_num, decoder_norm)
 
 
 class Transformer(TransformerBaseProps):
     def __init__(self, config: Config):
         super().__init__(config)
-
-        encoder_layer = nn.TransformerEncoderLayer(self.embed_dim, self.n_heads, self.ff_dim, self.dropout, batch_first=True)
-        encoder_norm = nn.LayerNorm(self.embed_dim)
-        self.encoder = nn.TransformerEncoder(encoder_layer, self.transformer_layers_num, encoder_norm)
-
-        decoder_layer = nn.TransformerDecoderLayer(self.embed_dim, self.n_heads, self.ff_dim, self.dropout, batch_first=True)
-        decoder_norm = nn.LayerNorm(self.embed_dim)
-        self.decoder = nn.TransformerDecoder(decoder_layer, self.transformer_layers_num, decoder_norm)
 
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
         synop_inputs = batch[BatchKeys.SYNOP_PAST_X.value].float()

@@ -25,11 +25,20 @@ def plot_results(system, config: Config, mean, std, min, max):
             gfs_out_series = system.test_results['gfs_targets'][index].cpu()
 
         if mean is not None and std is not None:
+            # TODO think about a more robust solution
+            if type(mean) == list:
+                mean = mean[0]
+            if type(std) == list:
+                mean = std[0]
             out_series = out_series * std + mean
             truth_series = (truth_series * std + mean).tolist()
             if config.experiment.use_gfs_data:
                 gfs_out_series = gfs_out_series * std + mean
         elif min is not None and max is not None:
+            if type(min) == list:
+                min = min[0]
+            if type(max) == list:
+                max = max[0]
             out_series = out_series * (max - min) + min
             truth_series = (truth_series * (max - min) + min).tolist()
             if config.experiment.use_gfs_data:

@@ -34,6 +34,8 @@ class Sequence2SequenceWithGFSDataset(BaseDataset):
         else:
             synop_index, gfs_future_y = self.data[index]
 
+        if len(self.synop_data.loc[synop_index:synop_index + self.sequence_length - 1]['date']) < 24:
+            print(self.synop_data.loc[synop_index]['date'])
         synop_past_x = self.synop_data.loc[synop_index:synop_index + self.sequence_length - 1][self.train_params].to_numpy()
         synop_future_x = self.synop_data.loc[
                       synop_index + self.sequence_length + self.prediction_offset:synop_index + self.sequence_length + self.prediction_offset + self.future_sequence_length - 1][

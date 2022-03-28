@@ -12,7 +12,7 @@ from wind_forecast.datasets.Sequence2SequenceDataset import Sequence2SequenceDat
 from wind_forecast.datasets.Sequence2SequenceWithGFSDataset import Sequence2SequenceWithGFSDataset
 from wind_forecast.preprocess.synop.synop_preprocess import normalize_synop_data_for_training, prepare_synop_dataset
 from wind_forecast.util.cmax_util import get_available_cmax_hours, \
-    initialize_synop_dates_for_sequence_with_cmax
+    initialize_synop_dates_for_sequence_with_cmax, CMAX_MIN, CMAX_MAX
 
 
 class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
@@ -103,6 +103,8 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
 
         dataset.set_mean([self.synop_mean, 0])
         dataset.set_std([self.synop_std, 0])
+        dataset.set_min([0, CMAX_MIN])
+        dataset.set_max([0, CMAX_MAX])
         self.split_dataset(dataset, self.sequence_length)
 
     def collate_fn(self, x: List[Tuple]):
