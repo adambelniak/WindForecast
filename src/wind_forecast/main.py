@@ -132,9 +132,17 @@ def run_training(cfg):
     std = datamodule.dataset_test.std
 
     if mean is not None:
-        metrics['target_mean'] = mean
+        if type(mean) == list:
+            for index in enumerate(mean):
+                metrics[f"target_mean_{str(index)}"] = mean[index]
+        else:
+            metrics['target_mean'] = mean
     if std is not None:
-        metrics['target_std'] = std
+        if type(std) == list:
+            for index in enumerate(std):
+                metrics[f"target_std_{str(index)}"] = std[index]
+        else:
+            metrics['target_std'] = std
 
     wandb_logger.log_metrics(metrics, step=system.current_epoch)
 

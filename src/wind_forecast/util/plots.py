@@ -18,11 +18,11 @@ def plot_results(system, config: Config, mean, std):
         plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%m/%d/%Y %H%M'))
         plt.gca().xaxis.set_major_locator(mdates.HourLocator())
 
-        out_series = system.test_results['output'][index].cpu()
-        truth_series = system.test_results['inputs'][index].cpu()
-        truth_series.extend(system.test_results['labels'][index].cpu())
+        out_series = system.test_results['output'][index].cpu().tolist()
+        truth_series = system.test_results['inputs'][index].cpu().tolist()
+        truth_series.extend(system.test_results['labels'][index].cpu().tolist())
         if config.experiment.use_gfs_data:
-            gfs_out_series = system.test_results['gfs_targets'][index].cpu()
+            gfs_out_series = system.test_results['gfs_targets'][index].cpu().tolist()
 
         if mean is not None and std is not None:
             # TODO think about a more robust solution
@@ -30,10 +30,10 @@ def plot_results(system, config: Config, mean, std):
                 mean = mean[0]
             if type(std) == list:
                 mean = std[0]
-            out_series = out_series * std + mean
-            truth_series = (truth_series * std + mean).tolist()
+            out_series = (np.array(out_series) * std + mean).tolist()
+            truth_series = (np.array(truth_series) * std + mean).tolist()
             if config.experiment.use_gfs_data:
-                gfs_out_series = gfs_out_series * std + mean
+                gfs_out_series = (np.array(gfs_out_series) * std + mean).tolist()
 
         ax.plot(output_dates, out_series, label='prediction')
 
