@@ -21,8 +21,8 @@ system:
 batch_size: 1
 use_gfs_data: True
 use_future_cmax: False
-synop_from_year: 2021
-cmax_from_year: 2021
+synop_from_year: 2017
+cmax_from_year: 2017
 use_all_gfs_params: True
 train_parameters_config_file: TransformerConfig.json
 epochs: 40

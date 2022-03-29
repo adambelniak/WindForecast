@@ -15,7 +15,7 @@ class Sequence2SequenceDataset(BaseDataset):
         self.sequence_length = config.experiment.sequence_length
         self.future_sequence_length = config.experiment.future_sequence_length
         self.prediction_offset = config.experiment.prediction_offset
-        self.synop_data = synop_data.reset_index()
+        self.synop_data = synop_data
         self.data = synop_data_indices
 
     def __len__(self):

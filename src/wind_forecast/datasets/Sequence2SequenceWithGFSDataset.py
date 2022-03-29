@@ -15,7 +15,7 @@ class Sequence2SequenceWithGFSDataset(BaseDataset):
         self.sequence_length = config.experiment.sequence_length
         self.future_sequence_length = config.experiment.future_sequence_length
         self.prediction_offset = config.experiment.prediction_offset
-        self.synop_data = synop_data.reset_index()
+        self.synop_data = synop_data
         self.use_all_gfs_params = config.experiment.use_all_gfs_params
 
         if self.use_all_gfs_params:
