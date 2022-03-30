@@ -134,13 +134,13 @@ def run_training(cfg):
     if mean is not None:
         if type(mean) == list:
             for index, m in enumerate(mean):
-                metrics[f"target_mean_{str(index)}"] = mean[index]
+                metrics[f"target_mean_{str(index)}"] = m
         else:
             metrics['target_mean'] = mean
     if std is not None:
         if type(std) == list:
-            for index, std in enumerate(std):
-                metrics[f"target_std_{str(index)}"] = std[index]
+            for index, s in enumerate(std):
+                metrics[f"target_std_{str(index)}"] = s
         else:
             metrics['target_std'] = std
 
