@@ -3,8 +3,13 @@ from typing import List
 import PyEMD
 import numpy
 import torch
+from pytorch_lightning import LightningModule
 
-class Decomposeable():
+
+class Decomposeable(LightningModule):
+    def __init__(self) -> None:
+        super().__init__()
+
     def emd_decompose(self, x: torch.Tensor):
         raise NotImplementedError()
 

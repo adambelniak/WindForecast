@@ -2,7 +2,6 @@ from typing import Dict
 
 import torch
 import torch.nn as nn
-from pytorch_lightning import LightningModule
 from wind_forecast.config.register import Config
 from wind_forecast.consts import BatchKeys
 from wind_forecast.models.TCNModel import TemporalBlock
@@ -11,7 +10,7 @@ from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 from wind_forecast.util.config import process_config
 
 
-class TemporalConvNetS2S(LightningModule, EMDDecomposeable):
+class TemporalConvNetS2S(EMDDecomposeable):
     def __init__(self, config: Config):
         super(TemporalConvNetS2S, self).__init__(config.experiment.emd_decompose_trials)
         self.config = config
