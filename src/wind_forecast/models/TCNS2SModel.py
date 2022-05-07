@@ -6,13 +6,14 @@ from pytorch_lightning import LightningModule
 from wind_forecast.config.register import Config
 from wind_forecast.consts import BatchKeys
 from wind_forecast.models.TCNModel import TemporalBlock
+from wind_forecast.models.decomposeable.Decomposeable import EMDDecomposeable
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 from wind_forecast.util.config import process_config
 
 
-class TemporalConvNetS2S(LightningModule):
+class TemporalConvNetS2S(LightningModule, EMDDecomposeable):
     def __init__(self, config: Config):
-        super(TemporalConvNetS2S, self).__init__()
+        super(TemporalConvNetS2S, self).__init__(config.experiment.emd_decompose_trials)
         self.config = config
         self.use_gfs = config.experiment.use_gfs_data
         self.use_gfs_on_inputs = self.use_gfs and config.experiment.use_all_gfs_params
@@ -30,7 +31,7 @@ class TemporalConvNetS2S(LightningModule):
         num_channels = config.experiment.tcn_channels
         num_levels = len(num_channels)
         kernel_size = 3
-        in_channels = 1 if self.self_output_test else self.features_length
+        in_channels = 1 if self.self_output_test or self.config.experiment.emd_decompose else self.features_length
 
         for i in range(num_levels):
             dilation_size = 2 ** i
@@ -39,12 +40,12 @@ class TemporalConvNetS2S(LightningModule):
                                          padding=(kernel_size - 1) * dilation_size, dropout=config.experiment.dropout)]
             in_channels = out_channels
 
-        if self.config.experiment.with_dates_inputs and not self.self_output_test:
+        if self.config.experiment.with_dates_inputs and not self.self_output_test and not self.config.experiment.emd_decompose:
             in_features = num_channels[-1] + 6
         else:
             in_features = num_channels[-1]
 
-        if self.use_gfs:
+        if self.use_gfs and not self.self_output_test and not self.config.experiment.emd_decompose:
             in_features += 1
 
         linear = nn.Sequential(
@@ -62,7 +63,15 @@ class TemporalConvNetS2S(LightningModule):
         if self.self_output_test:
             return self.self_forward(batch, epoch, stage)
 
+        if self.config.experiment.emd_decompose:
+            synop_inputs = batch[BatchKeys.SYNOP_PAST_Y.value].float().unsqueeze(-1)
+            decomposed_batch = self.decompose(synop_inputs)
+            x = self.compose([self.tcn(decomposed.permute(0, 2, 1)).permute(0, 2, 1) for decomposed in decomposed_batch])
+            x = x[:, -self.future_sequence_length:, :]
+            return self.linear_time_distributed(x).squeeze(-1)
+
         synop_inputs = batch[BatchKeys.SYNOP_PAST_X.value].float()
+
         dates_embedding = None if self.config.experiment.with_dates_inputs is False else batch[
             BatchKeys.DATES_TENSORS.value]
         gfs_targets = None if not self.use_gfs else batch[BatchKeys.GFS_FUTURE_Y.value].float()
@@ -90,7 +99,7 @@ class TemporalConvNetS2S(LightningModule):
         else:
             if self.use_gfs:
                 return self.linear_time_distributed(torch.cat([x, gfs_targets], -1)).squeeze(-1)
-            return self.linear_time_distributed(x.permute(0, 2, 1)).squeeze(-1)
+            return self.linear_time_distributed(x).squeeze(-1)
 
     def self_forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
         synop_targets = batch[BatchKeys.SYNOP_FUTURE_Y.value].float().unsqueeze(-1)

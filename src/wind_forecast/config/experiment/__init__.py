@@ -207,3 +207,7 @@ class ExperimentSettings:
     sarima_D: int = 1
     sarima_Q: int = 1
     sarima_M: int = 24
+
+    emd_decompose: bool = False
+
+    emd_decompose_trials: int = 10

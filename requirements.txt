@@ -36,3 +36,4 @@ pytorch_forecasting
 statsmodels==0.13.2
 ray[tune]
 plotly
+EMD-signal

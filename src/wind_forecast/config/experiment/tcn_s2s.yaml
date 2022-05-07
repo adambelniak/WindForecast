@@ -17,3 +17,5 @@ model:
 
 system:
   _target_: wind_forecast.systems.BaseS2SRegressor.BaseS2SRegressor
+
+emd_decompose: True
