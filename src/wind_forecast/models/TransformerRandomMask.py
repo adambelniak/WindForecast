@@ -7,6 +7,7 @@ from wind_forecast.consts import BatchKeys
 from wind_forecast.models.Transformer import Transformer
 
 
+# Not investigated and developed - performance not promising
 class TransformerRandomMask(Transformer):
     def __init__(self, config: Config):
         super().__init__(config)

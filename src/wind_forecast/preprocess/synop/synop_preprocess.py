@@ -21,7 +21,8 @@ pd.DataFrame, float, float):
         data_max = data.max(axis=0)
         return (data - data_min) / (data_max - data_min), data_min, data_max
 
-def prepare_synop_dataset(synop_file_name, features, norm=True,
+
+def prepare_synop_dataset(synop_file_name: str, features: list, norm=True,
                           dataset_dir=os.path.join(Path(__file__).parent, 'synop_data'),
                           from_year=2001, to_year=2021,
                           normalization_type: NormalizationType = NormalizationType.STANDARD) \
