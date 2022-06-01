@@ -74,7 +74,8 @@ class ExperimentSettings:
 
     dataset_split_mode: str = 'classic'
 
-    synop_file: str = "WARSZAWA-OKECIE_375_data.csv"
+    # synop_file: str = "WARSZAWA-OKECIE_375_data.csv"
+    synop_file: str = "WARSZAWA-OKECIE_352200375_data.csv"
 
     synop_from_year: int = 2017
 

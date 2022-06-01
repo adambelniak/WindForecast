@@ -18,6 +18,14 @@ PRECIPITATION_6H = (48, 'precipitation_6h')
 PRECIPITATION_TYPE = (50, 'precipitation_type')
 CURRENT_WEATHER = (52, 'current_weather')
 LOWER_CLOUDS = (54, 'lower_clouds')
+# Auto station features
+AUTO_TEMPERATURE = ('B00300S', 'temperature')
+AUTO_TEMPERATURE_SURFACE = ('B00305A', 'temperature_surface')
+AUTO_WIND_DIRECTION = ('B00202A', 'wind_direction')
+AUTO_WIND = ('B00702A', 'wind_velocity')
+AUTO_GUST = ('B00703A', 'wind_gust')
+AUTO_10_MIN_PRECIPITATION = ('B00608S', 'precipitation')
+AUTO_HUMIDITY = ('B00802A', 'humidity')
 
 SYNOP_FEATURES = [
     YEAR,
@@ -54,6 +62,16 @@ SYNOP_TRAIN_FEATURES = [
     PRECIPITATION_TYPE,
     CURRENT_WEATHER,
     LOWER_CLOUDS
+]
+
+AUTO_STATION_FEATURES = [
+    AUTO_TEMPERATURE,
+    AUTO_TEMPERATURE_SURFACE,
+    AUTO_WIND_DIRECTION,
+    AUTO_WIND,
+    AUTO_GUST,
+    AUTO_10_MIN_PRECIPITATION,
+    AUTO_HUMIDITY
 ]
 
 # Synop features which will be split into sin and cos during normalization phase
