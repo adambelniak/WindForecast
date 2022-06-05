@@ -115,6 +115,7 @@ def extract_zip_files(zip_dir: str, target_dir):
     for file in os.listdir(zip_dir):
         with ZipFile(os.path.join(zip_dir, file), 'r') as zip:
             zip.extractall(path=target_dir)
+        os.remove(os.path.join(zip_dir, file))
 
 
 def read_synop_data(columns, dir='synop_data'):
@@ -173,7 +174,7 @@ def process_synop_data(from_year: int, until_year: int, localisation_code: str, 
     station_data = pd.DataFrame(columns=list(list(zip(*columns))[1]))
     localisation_code = localisation_code.strip()
 
-    for year in tqdm.tqdm(range(from_year, until_year)):
+    for year in tqdm.tqdm(range(from_year, until_year + 1)):
         get_synop_data(localisation_code, str(year), os.path.join(input_dir, str(year), 'download'))
         extract_zip_files(os.path.join(input_dir, str(year), 'download'), os.path.join(input_dir, str(year)))
         processed_data = read_synop_data(columns, os.path.join(input_dir, str(year)))
@@ -187,7 +188,7 @@ def process_auto_station_data(from_year: int, until_year: int, localisation_code
     station_data = pd.DataFrame(columns=AUTO_STATION_CSV_COLUMNS)
     localisation_code = localisation_code.strip()
 
-    for year in tqdm.tqdm(range(from_year, until_year)):
+    for year in tqdm.tqdm(range(from_year, until_year + 1)):
         for month in range(1, 13):
             str_month = prep_zeros_if_needed(str(month), 1)
             if not os.path.exists(os.path.join(input_dir, str(year), str_month)) or len(
@@ -224,20 +225,24 @@ def merge_synop_data_with_auto_station_data(localisation_name: str, localisation
     synop_df = pd.read_csv(os.path.join(synop_data_dir, f"{localisation_name}_{localisation_code}_data.csv"))
     auto_station_df = pd.read_csv(os.path.join(auto_station_data_dir, f"{localisation_name}_{localisation_code}_data.csv"))
 
-    add_hourly_parameter_values(synop_df, auto_station_df, consts.AUTO_WIND[1], consts.VELOCITY_COLUMN[1])
-    add_hourly_parameter_values(synop_df, auto_station_df, consts.AUTO_GUST[1], consts.GUST_COLUMN[1])
+    add_hourly_wind_velocity(synop_df, auto_station_df, consts.AUTO_WIND[1], consts.VELOCITY_COLUMN[1])
+    add_hourly_wind_velocity(synop_df, auto_station_df, consts.AUTO_GUST[1], consts.GUST_COLUMN[1])
     add_hourly_direction(synop_df, auto_station_df)
     synop_df.to_csv(os.path.join(synop_data_dir, f"{localisation_name}_{localisation_code}_data.csv"), index=False)
 
 
-def add_hourly_parameter_values(synop_df: pd.DataFrame, auto_station_df: pd.DataFrame, auto_station_param: str, synop_param: str):
+def add_hourly_wind_velocity(synop_df: pd.DataFrame, auto_station_df: pd.DataFrame, auto_station_param: str, synop_param: str):
     copy_auto_station_df = pd.DataFrame(auto_station_df)
     copy_synop_date = pd.DataFrame(synop_df)
-    auto_station_wind_data = np.array(auto_station_df[auto_station_param].tolist())
-    convolved = np.convolve(auto_station_wind_data, np.full(7, 1/7), 'valid')
-    convolved = np.insert(convolved, 0, auto_station_wind_data[0:3])
-    convolved = np.append(convolved, auto_station_wind_data[-3:])
-    copy_auto_station_df['convolved'] = convolved
+    if auto_station_param == consts.AUTO_GUST[1]:
+        copy_auto_station_df[auto_station_param] = auto_station_df[auto_station_param].rolling(6, min_periods=1).max()
+    else:
+        auto_station_wind_data = np.array(auto_station_df[auto_station_param].tolist())
+        convolved = np.convolve(auto_station_wind_data, np.full(7, 1/7), 'valid')
+        convolved = np.insert(convolved, 0, auto_station_wind_data[0:3])
+        convolved = np.append(convolved, auto_station_wind_data[-3:])
+        copy_auto_station_df['convolved'] = convolved
+
     copy_auto_station_df['date'] = pd.to_datetime(copy_auto_station_df['date'])
     copy_synop_date['date'] = pd.to_datetime(synop_df[['year', 'month', 'day', 'hour']])
 
@@ -248,7 +253,10 @@ def add_hourly_parameter_values(synop_df: pd.DataFrame, auto_station_df: pd.Data
             print(f"Auto station data not found for date {date}.")
             values.append(copy_synop_date.loc[copy_synop_date['date'] == date][synop_param].item())
         else:
-            values.append("{:.1f}".format(auto_station_row['convolved'].item()))
+            if auto_station_param == consts.AUTO_GUST[1]:
+                values.append("{:.1f}".format(auto_station_row[auto_station_param].item()))
+            else:
+                values.append("{:.1f}".format(auto_station_row['convolved'].item()))
 
     synop_df[synop_param] = values
 

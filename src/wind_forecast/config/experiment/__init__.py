@@ -72,6 +72,7 @@ class ExperimentSettings:
     # Run test only
     skip_training: bool = False
 
+    # classic or random
     dataset_split_mode: str = 'classic'
 
     # synop_file: str = "WARSZAWA-OKECIE_375_data.csv"

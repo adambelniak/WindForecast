@@ -36,7 +36,7 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
                                                 norm=False)
 
         if self.config.debug_mode:
-            self.synop_data = self.synop_data.head(self.sequence_length * 10)
+            self.synop_data = self.synop_data.head(self.sequence_length * 20)
 
         self.cmax_available_ids = get_available_cmax_hours(from_year=self.cmax_from_year, to_year=self.cmax_to_year)
 

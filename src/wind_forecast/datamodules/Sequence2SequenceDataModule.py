@@ -76,7 +76,7 @@ class Sequence2SequenceDataModule(Splittable):
                                                 norm=False)
 
         if self.config.debug_mode or self.config.tune_mode:
-            self.synop_data = self.synop_data.head(self.sequence_length * 10)
+            self.synop_data = self.synop_data.head(self.sequence_length * 20)
 
         dates = get_correct_dates_for_sequence(self.synop_data, self.sequence_length, self.future_sequence_length,
                                                self.prediction_offset)

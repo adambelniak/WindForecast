@@ -447,7 +447,12 @@ def target_param_to_gfs_name_level(target_param: str):
                 "level": "HTGL_10",
                 "interpolation": "linear"
             }
-        ]
+        ],
+        "wind_gust": [{
+            "name": "GUST",
+            "level": "SFC_0",
+            "interpolation": "linear"
+        }]
     }[target_param]
 
 
