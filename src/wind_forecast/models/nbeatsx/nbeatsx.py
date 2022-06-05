@@ -90,7 +90,7 @@ class Nbeatsx(pl.LightningModule):
         self.x_s_n_hidden, self.n_x_s = 0, 0
 
         n_gfs_features = len(process_config(config.experiment.train_parameters_config_file))
-        self.n_insample_t = len(config.experiment.synop_train_features) + 1 + n_gfs_features
+        self.n_insample_t = len(config.experiment.synop_train_features) + n_gfs_features + len(config.experiment.periodic_features)
         self.n_outsample_t = n_gfs_features
 
         block_list = self.create_stack()
@@ -119,6 +119,7 @@ class Nbeatsx(pl.LightningModule):
                         nbeats_block = NBeatsBlock(x_t_n_inputs=x_t_n_inputs,
                                                    x_s_n_inputs=self.n_x_s,
                                                    x_s_n_hidden=self.x_s_n_hidden,
+                                                   n_insample_t=self.n_insample_t,
                                                    theta_n_dim=4 * int(
                                                        np.ceil(self.n_harmonics / 2 * self.future_sequence_length) - (
                                                                    self.n_harmonics - 1)),
@@ -134,6 +135,7 @@ class Nbeatsx(pl.LightningModule):
                         nbeats_block = NBeatsBlock(x_t_n_inputs=x_t_n_inputs,
                                                    x_s_n_inputs=self.n_x_s,
                                                    x_s_n_hidden=self.x_s_n_hidden,
+                                                   n_insample_t=self.n_insample_t,
                                                    theta_n_dim=2 * (self.n_polynomials + 1),
                                                    basis=TrendBasis(degree_of_polynomial=self.n_polynomials,
                                                                     backcast_size=self.input_size,
@@ -147,6 +149,7 @@ class Nbeatsx(pl.LightningModule):
                         nbeats_block = NBeatsBlock(x_t_n_inputs=x_t_n_inputs,
                                                    x_s_n_inputs=self.n_x_s,
                                                    x_s_n_hidden=self.x_s_n_hidden,
+                                                   n_insample_t=self.n_insample_t,
                                                    theta_n_dim=self.input_size + self.future_sequence_length,
                                                    basis=IdentityBasis(backcast_size=self.input_size,
                                                                        forecast_size=self.future_sequence_length),
@@ -159,6 +162,7 @@ class Nbeatsx(pl.LightningModule):
                         nbeats_block = NBeatsBlock(x_t_n_inputs=x_t_n_inputs,
                                                    x_s_n_inputs=self.n_x_s,
                                                    x_s_n_hidden=self.x_s_n_hidden,
+                                                   n_insample_t=self.n_insample_t,
                                                    theta_n_dim=self.n_insample_t + self.n_outsample_t,
                                                    basis=ExogenousBasisInterpretable(),
                                                    n_layers=self.n_layers[i],
@@ -170,6 +174,7 @@ class Nbeatsx(pl.LightningModule):
                         nbeats_block = NBeatsBlock(x_t_n_inputs=x_t_n_inputs,
                                                    x_s_n_inputs=self.n_x_s,
                                                    x_s_n_hidden=self.x_s_n_hidden,
+                                                   n_insample_t=self.n_insample_t,
                                                    theta_n_dim=2 * self.exogenous_n_channels,
                                                    basis=ExogenousBasisTCN(self.exogenous_n_channels, self.n_insample_t, self.n_outsample_t, dropout_prob=self.dropout),
                                                    n_layers=self.n_layers[i],
@@ -181,6 +186,7 @@ class Nbeatsx(pl.LightningModule):
                         nbeats_block = NBeatsBlock(x_t_n_inputs=x_t_n_inputs,
                                                    x_s_n_inputs=self.n_x_s,
                                                    x_s_n_hidden=self.x_s_n_hidden,
+                                                   n_insample_t=self.n_insample_t,
                                                    theta_n_dim=2 * self.exogenous_n_channels,
                                                    basis=ExogenousBasisWavenet(self.exogenous_n_channels, self.n_x_t),
                                                    n_layers=self.n_layers[i],

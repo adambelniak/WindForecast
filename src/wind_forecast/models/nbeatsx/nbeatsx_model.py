@@ -49,7 +49,7 @@ class NBeatsBlock(nn.Module):
     N-BEATS block which takes a basis function as an argument.
     """
 
-    def __init__(self, x_t_n_inputs: int, x_s_n_inputs: int, x_s_n_hidden: int, theta_n_dim: int, basis: nn.Module,
+    def __init__(self, x_t_n_inputs: int, x_s_n_inputs: int, x_s_n_hidden: int, n_insample_t: int, theta_n_dim: int, basis: nn.Module,
                  n_layers: int, theta_n_hidden: list, batch_normalization: bool,
                  dropout_prob: float, activation: str):
         """
@@ -58,7 +58,7 @@ class NBeatsBlock(nn.Module):
 
         if x_s_n_inputs == 0:
             x_s_n_hidden = 0
-        theta_n_hidden = [x_t_n_inputs + x_s_n_hidden] + theta_n_hidden
+        theta_n_hidden = [x_t_n_inputs + x_s_n_hidden + x_t_n_inputs * n_insample_t] + theta_n_hidden
 
         self.x_s_n_inputs = x_s_n_inputs
         self.x_s_n_hidden = x_s_n_hidden
@@ -102,7 +102,9 @@ class NBeatsBlock(nn.Module):
             insample_y = t.cat((insample_y, x_s), 1)
 
         # Compute local projection weights and projection
-        theta = self.layers(insample_y)
+        theta = self.layers(t.cat([insample_y,
+                                   insample_x_t.contiguous().view(insample_x_t.size()[0],
+                                                                  insample_x_t.size()[1] * insample_x_t.size()[2])], -1))
         backcast, forecast = self.basis(theta, insample_x_t, outsample_x_t)
 
         return backcast, forecast

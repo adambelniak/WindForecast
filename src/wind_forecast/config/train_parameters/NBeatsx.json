@@ -69,6 +69,11 @@
       "name": "TMP",
       "level": "ISBL_700",
       "interpolation": "linear"
+    },
+    {
+      "name": "GUST",
+      "level": "SFC_0",
+      "interpolation": "linear"
     }
 
   ]

@@ -69,7 +69,7 @@ class TemporalConvNet(LightningModule):
             in_channels = len(config.experiment.synop_train_features) if i == 0 else num_channels[i - 1]
             out_channels = num_channels[i]
             layers += [TemporalBlock(in_channels, out_channels, kernel_size, dilation=dilation_size,
-                                     padding=(kernel_size-1) * dilation_size)]
+                                     padding=(kernel_size-1) * dilation_size, dropout=config.experiment.dropout)]
 
         layers += [
             nn.Flatten(),
