@@ -17,7 +17,7 @@ from wind_forecast.datasets.Sequence2SequenceWithGFSDataset import Sequence2Sequ
 from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset, normalize_synop_data_for_training
 from wind_forecast.util.config import process_config
 from wind_forecast.util.gfs_util import add_param_to_train_params, target_param_to_gfs_name_level, normalize_gfs_data, \
-    GFSUtil
+    GFSUtil, extend_wind_components
 from wind_forecast.util.synop_util import get_correct_dates_for_sequence
 
 
@@ -55,6 +55,9 @@ class Sequence2SequenceDataModule(Splittable):
 
         self.gfs_target_param_indices = [self.gfs_train_params.index(param) for param in target_param_to_gfs_name_level(
             self.target_param)] if self.use_all_gfs_params else None
+
+        self.gfs_wind_components_indices = [self.gfs_train_params.index(param) for param in target_param_to_gfs_name_level(
+            'wind_direction')] if self.use_all_gfs_params else None
 
         self.gfs_util = GFSUtil(self.target_coords, self.sequence_length, self.future_sequence_length,
                                 self.prediction_offset, self.gfs_train_params, self.gfs_target_params)
@@ -129,21 +132,33 @@ class Sequence2SequenceDataModule(Splittable):
             self.synop_data,
             self.synop_data_indices)
 
-        if self.use_all_gfs_params:
-            # normalize GFS parameters data
-            all_gfs_input_data = normalize_gfs_data(all_gfs_input_data, self.normalization_type, (0, 1))
+        if self.use_all_gfs_params:  # normalize GFS parameters data
+            # save target data
             gfs_target_data = all_gfs_target_data[:, :, self.gfs_target_param_indices]
-            all_gfs_target_data = (all_gfs_target_data - np.mean(all_gfs_target_data, axis=(0, 1))) / np.std(
-                all_gfs_target_data, axis=(0, 1))
+
+            param_names = [x['name'] for x in self.gfs_train_params]
+            if "V GRD" in param_names and "U GRD" in param_names:
+                all_gfs_input_data = self.prepare_gfs_data_with_wind_components(all_gfs_input_data)
+                all_gfs_target_data = self.prepare_gfs_data_with_wind_components(all_gfs_target_data)
+            else:
+                all_gfs_input_data = normalize_gfs_data(all_gfs_input_data, self.normalization_type, (0, 1))
+                all_gfs_target_data = normalize_gfs_data(all_gfs_target_data, self.normalization_type, (0, 1))
         else:
             gfs_target_data = all_gfs_target_data
 
         if self.target_param == "wind_velocity":
             # handle target wind_velocity forecast by GFS
+            # velocity[0] is V GRD (northward), velocity[1] is U GRD (eastward)
             gfs_target_data = np.apply_along_axis(lambda velocity: [math.sqrt(velocity[0] ** 2 + velocity[1] ** 2)], -1,
                                                   gfs_target_data)
+        if self.target_param == "wind_direction":
+            # set sin and cos components as targets, do not normalize them
+            gfs_target_data = np.apply_along_axis(lambda velocity: [-velocity[1] / (math.sqrt(velocity[0] ** 2 + velocity[1] ** 2)),
+                                                                    -velocity[0] / (math.sqrt(velocity[0] ** 2 + velocity[1] ** 2))], -1,
+                                                  gfs_target_data)
 
-        gfs_target_data = (gfs_target_data - np.mean(gfs_target_data, axis=(0, 1))) / np.std(gfs_target_data,
+        if self.target_param != "wind_direction":
+            gfs_target_data = (gfs_target_data - np.mean(gfs_target_data, axis=(0, 1))) / np.std(gfs_target_data,
                                                                                              axis=(0, 1))
 
         assert len(self.synop_data_indices) == len(
@@ -171,6 +186,13 @@ class Sequence2SequenceDataModule(Splittable):
                                      index + self.sequence_length + self.prediction_offset:index + self.sequence_length + self.prediction_offset + self.future_sequence_length])
 
         return synop_inputs, all_synop_targets
+
+    def prepare_gfs_data_with_wind_components(self, gfs_data: np.ndarray):
+        gfs_data = np.delete(gfs_data, self.gfs_wind_components_indices, -1)
+        velocity, sin, cos = extend_wind_components(gfs_data[:, :, self.gfs_target_param_indices])
+        gfs_data = normalize_gfs_data(np.concatenate([gfs_data, np.expand_dims(velocity, -1)], -1), self.normalization_type, (0, 1))
+        gfs_data = np.concatenate([gfs_data, np.expand_dims(sin, -1), np.expand_dims(cos, -1)], -1)
+        return gfs_data
 
     def train_dataloader(self):
         return DataLoader(self.dataset_train, batch_size=self.batch_size, shuffle=self.shuffle,

@@ -16,7 +16,12 @@ class TCNS2SWithDecoderModelWithAttention(TemporalConvNetS2SWithDecoder):
 
         in_channels = len(config.experiment.synop_train_features) + len(config.experiment.periodic_features)
         if self.use_gfs_on_input:
-            in_channels += len(process_config(config.experiment.train_parameters_config_file))
+            gfs_params = process_config(config.experiment.train_parameters_config_file)
+            gfs_params_len = len(gfs_params)
+            param_names = [x['name'] for x in gfs_params]
+            if "V GRD" in param_names and "U GRD" in param_names:
+                gfs_params_len += 1  # V and U will be expanded int velocity, sin and cos
+            in_channels += gfs_params_len
 
         if config.experiment.with_dates_inputs:
             in_channels += 6

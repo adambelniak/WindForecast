@@ -23,7 +23,11 @@ class TemporalConvNetS2S(EMDDecomposeable):
         if config.experiment.with_dates_inputs:
             self.features_length += 6
         if self.use_gfs_on_inputs:
-            gfs_params_len = len(process_config(config.experiment.train_parameters_config_file))
+            gfs_params = process_config(config.experiment.train_parameters_config_file)
+            gfs_params_len = len(gfs_params)
+            param_names = [x['name'] for x in gfs_params]
+            if "V GRD" in param_names and "U GRD" in param_names:
+                gfs_params_len += 1  # V and U will be expanded int velocity, sin and cos
             self.features_length += gfs_params_len
 
         tcn_layers = []

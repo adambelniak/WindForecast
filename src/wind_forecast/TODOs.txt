@@ -1,3 +1,3 @@
-GAN, maybe better autoencoder for cmax
-wavelet denoising of inputs
-NBEATSx
+maybe better autoencoder for cmax
+wavelet denoising of inputs?
+encoding of current weather, e.g. one hot or some learnable

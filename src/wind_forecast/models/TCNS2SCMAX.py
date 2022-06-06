@@ -49,8 +49,14 @@ class TCNS2SCMAX(LightningModule):
         tcn_channels = self.config.experiment.tcn_channels
         tcn_channels[0] += len(self.config.experiment.synop_train_features) + len(self.config.experiment.periodic_features)
         tcn_channels[0] += 6 if self.config.experiment.with_dates_inputs else 0
-        tcn_channels[0] += len(process_config(
-            self.config.experiment.train_parameters_config_file)) if self.config.experiment.use_gfs_data and self.config.experiment.use_all_gfs_params else 0
+
+        if self.config.experiment.use_gfs_data and self.config.experiment.use_all_gfs_params:
+            gfs_params = process_config(config.experiment.train_parameters_config_file)
+            gfs_params_len = len(gfs_params)
+            param_names = [x['name'] for x in gfs_params]
+            if "V GRD" in param_names and "U GRD" in param_names:
+                gfs_params_len += 1  # V and U will be expanded int velocity, sin and cos
+            tcn_channels[0] += gfs_params_len
 
         kernel_size = self.config.experiment.tcn_kernel_size
         for i in range(len(tcn_channels) - 1):

@@ -132,7 +132,12 @@ class TransformerEncoderGFSBaseProps(TransformerEncoderBaseProps):
     def __init__(self, config: Config):
         super().__init__(config)
         if config.experiment.use_all_gfs_params:
-            gfs_params_len = len(process_config(config.experiment.train_parameters_config_file))
+            gfs_params = process_config(config.experiment.train_parameters_config_file)
+            gfs_params_len = len(gfs_params)
+            param_names = [x['name'] for x in gfs_params]
+            if "V GRD" in param_names and "U GRD" in param_names:
+                gfs_params_len += 1  # V and U will be expanded int velocity, sin and cos
+
             self.features_length += gfs_params_len
             self.embed_dim += gfs_params_len * (config.experiment.time2vec_embedding_size + 1)
 

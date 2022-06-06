@@ -383,6 +383,15 @@ def normalize_gfs_data(gfs_data: np.ndarray, normalization_type: NormalizationTy
                 np.max(gfs_data, axis=axes) - np.min(gfs_data, axis=axes))
 
 
+def extend_wind_components(gfs_data: np.ndarray):
+    velocity = np.apply_along_axis(lambda velocity: math.sqrt(velocity[0] ** 2 + velocity[1] ** 2), -1,
+                                                  gfs_data)
+    sin = np.apply_along_axis(lambda velocity: -velocity[1] / (math.sqrt(velocity[0] ** 2 + velocity[1] ** 2)), -1, gfs_data)
+    cos = np.apply_along_axis(lambda velocity: -velocity[0] / (math.sqrt(velocity[0] ** 2 + velocity[1] ** 2)), -1, gfs_data)
+
+    return velocity, sin, cos
+
+
 def get_gfs_lat_lon_from_coords(gfs_coords: [[float]], original_coords: Coords):
     lat = gfs_coords[0][0] if abs(original_coords.nlat - gfs_coords[0][0]) <= abs(
         original_coords.nlat - gfs_coords[0][1]) else gfs_coords[0][1]
@@ -438,6 +447,17 @@ def target_param_to_gfs_name_level(target_param: str):
             "interpolation": "linear"
         }],
         "wind_velocity": [{
+            "name": "V GRD",
+            "level": "HTGL_10",
+            "interpolation": "linear"
+        },
+            {
+                "name": "U GRD",
+                "level": "HTGL_10",
+                "interpolation": "linear"
+            }
+        ],
+        "wind_direction": [{
             "name": "V GRD",
             "level": "HTGL_10",
             "interpolation": "linear"
