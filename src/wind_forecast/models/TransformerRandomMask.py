@@ -37,7 +37,7 @@ class TransformerRandomMask(Transformer):
         if stage in [None, 'fit']:
             y = self.pos_encoder(whole_target_embedding) if self.use_pos_encoding else whole_target_embedding
             y = torch.cat([whole_input_embedding[:, -1:, :], y], 1)[:, :-1, ]
-            target_mask = self.generate_mask(self.future_sequence_length).to(self.device)
+            target_mask = self.generate_mask(y.size(1)).to(self.device)
             output = self.decoder(y, memory, tgt_mask=target_mask)
 
         else:

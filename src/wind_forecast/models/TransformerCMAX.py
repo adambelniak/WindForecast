@@ -28,7 +28,7 @@ class TransformerCMAX(TransformerBaseProps):
 
         self.embed_dim += conv_W * conv_H * out_channels
 
-        self.pos_encoder = PositionalEncoding(self.embed_dim, self.dropout, self.past_sequence_length)
+        self.pos_encoder = PositionalEncoding(self.embed_dim, self.dropout)
 
         encoder_layer = nn.TransformerEncoderLayer(d_model=self.embed_dim,
                                                    nhead=self.n_heads,
@@ -53,30 +53,37 @@ class TransformerCMAX(TransformerBaseProps):
         self.classification_head_time_distributed = TimeDistributed(self.classification_head, batch_first=True)
 
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
+        is_train = stage not in ['test', 'predict', 'validate']
         synop_inputs = batch[BatchKeys.SYNOP_PAST_X.value].float()
-        all_synop_targets = batch[BatchKeys.SYNOP_FUTURE_X.value].float()
+
+        if is_train:
+            all_synop_targets = batch[BatchKeys.SYNOP_FUTURE_X.value].float()
         cmax_inputs = batch[BatchKeys.CMAX_PAST.value].float()
-        cmax_targets = batch[BatchKeys.CMAX_TARGETS.value].float()
+        if is_train:
+            cmax_targets = batch[BatchKeys.CMAX_TARGETS.value].float()
 
         dates_tensors = None if self.config.experiment.with_dates_inputs is False else batch[
             BatchKeys.DATES_TENSORS.value]
 
         cmax_embeddings = self.conv_time_distributed(cmax_inputs.unsqueeze(2))
-        self.conv_time_distributed.requires_grad_(False)
-        cmax_targets_embeddings = self.conv_time_distributed(cmax_targets.unsqueeze(2))
-        self.conv_time_distributed.requires_grad_(True)
+        if is_train:
+            self.conv_time_distributed.requires_grad_(False)
+            cmax_targets_embeddings = self.conv_time_distributed(cmax_targets.unsqueeze(2))
+            self.conv_time_distributed.requires_grad_(True)
 
         whole_input_embedding = torch.cat([synop_inputs, self.time_2_vec_time_distributed(synop_inputs),
                                            cmax_embeddings, *dates_tensors[0]], -1)
-        whole_target_embedding = torch.cat([all_synop_targets, self.time_2_vec_time_distributed(all_synop_targets),
+        if is_train:
+            whole_target_embedding = torch.cat([all_synop_targets, self.time_2_vec_time_distributed(all_synop_targets),
                                             cmax_targets_embeddings, *dates_tensors[1]], -1)
 
         if self.config.experiment.with_dates_inputs:
             whole_input_embedding = torch.cat([whole_input_embedding, *dates_tensors[0]], -1)
-            whole_target_embedding = torch.cat([whole_target_embedding, *dates_tensors[1]], -1)
+            if is_train:
+                whole_target_embedding = torch.cat([whole_target_embedding, *dates_tensors[1]], -1)
 
         x = self.pos_encoder(whole_input_embedding) if self.use_pos_encoding else whole_input_embedding
         memory = self.encoder(x)
-        output = self.base_transformer_forward(epoch, stage, whole_input_embedding, whole_target_embedding, memory)
+        output = self.base_transformer_forward(epoch, stage, whole_input_embedding, whole_target_embedding if is_train else None, memory)
 
         return torch.squeeze(self.classification_head_time_distributed(output), -1)

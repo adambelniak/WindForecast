@@ -1,7 +1,6 @@
 from typing import Dict
 
 import torch
-from torch import nn
 
 from wind_forecast.config.register import Config
 from wind_forecast.consts import BatchKeys

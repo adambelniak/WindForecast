@@ -30,7 +30,7 @@ class TransformerEncoderS2SWithGFSConvEmbedding(TransformerEncoderGFSBaseProps):
                                                    dropout=config.experiment.dropout,
                                                    batch_first=True)
         encoder_norm = nn.LayerNorm(self.embed_dim)
-        self.pos_encoder = PositionalEncoding(self.embed_dim, self.dropout, self.past_sequence_length)
+        self.pos_encoder = PositionalEncoding(self.embed_dim, self.dropout)
         self.encoder = nn.TransformerEncoder(encoder_layer, config.experiment.transformer_attention_layers,
                                              encoder_norm)
         dense_layers = []

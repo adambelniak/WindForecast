@@ -16,10 +16,7 @@ from wind_forecast.util.cmax_util import get_available_cmax_hours, \
 
 
 class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
-    def __init__(
-            self,
-            config: Config
-    ):
+    def __init__(self, config: Config):
         super().__init__(config)
         self.use_future_cmax = config.experiment.use_future_cmax
         self.cmax_from_year = config.experiment.cmax_from_year

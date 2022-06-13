@@ -27,7 +27,7 @@ class TransformerEncoderS2SCMAX(TransformerEncoderBaseProps):
 
         self.embed_dim += conv_W * conv_H * out_channels
 
-        self.pos_encoder = PositionalEncoding(self.embed_dim, self.dropout, self.past_sequence_length)
+        self.pos_encoder = PositionalEncoding(self.embed_dim, self.dropout)
 
         encoder_layer = nn.TransformerEncoderLayer(d_model=self.embed_dim,
                                                    nhead=self.n_heads,

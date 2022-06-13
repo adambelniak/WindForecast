@@ -189,7 +189,7 @@ class Sequence2SequenceDataModule(Splittable):
 
     def prepare_gfs_data_with_wind_components(self, gfs_data: np.ndarray):
         gfs_data = np.delete(gfs_data, self.gfs_wind_components_indices, -1)
-        velocity, sin, cos = extend_wind_components(gfs_data[:, :, self.gfs_target_param_indices])
+        velocity, sin, cos = extend_wind_components(gfs_data[:, :, self.gfs_wind_components_indices])
         gfs_data = normalize_gfs_data(np.concatenate([gfs_data, np.expand_dims(velocity, -1)], -1), self.normalization_type, (0, 1))
         gfs_data = np.concatenate([gfs_data, np.expand_dims(sin, -1), np.expand_dims(cos, -1)], -1)
         return gfs_data
