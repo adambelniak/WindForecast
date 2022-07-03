@@ -60,7 +60,7 @@ class TransformerEncoderS2SCMAXWithScaleToDepth(TransformerEncoderBaseProps):
 
         cmax_embeddings = self.conv_time_distributed(cmax)
 
-        whole_input_embedding = torch.cat([synop_inputs, self.time_2_vec_time_distributed(synop_inputs),
+        whole_input_embedding = torch.cat([synop_inputs, self.simple_2_vec_time_distributed(synop_inputs),
                                            cmax_embeddings], -1)
 
         if self.config.experiment.with_dates_inputs:

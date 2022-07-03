@@ -24,8 +24,8 @@ class TransformerRandomMask(Transformer):
         dates_tensors = None if self.config.experiment.with_dates_inputs is False else batch[
             BatchKeys.DATES_TENSORS.value]
 
-        whole_input_embedding = torch.cat([synop_inputs, self.time_2_vec_time_distributed(synop_inputs)], -1)
-        whole_target_embedding = torch.cat([all_synop_targets, self.time_2_vec_time_distributed(all_synop_targets)], -1)
+        whole_input_embedding = torch.cat([synop_inputs, self.simple_2_vec_time_distributed(synop_inputs)], -1)
+        whole_target_embedding = torch.cat([all_synop_targets, self.simple_2_vec_time_distributed(all_synop_targets)], -1)
 
         if self.config.experiment.with_dates_inputs:
             whole_input_embedding = torch.cat([whole_input_embedding, *dates_tensors[0]], -1)

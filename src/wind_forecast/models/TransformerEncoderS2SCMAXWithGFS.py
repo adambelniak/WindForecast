@@ -64,7 +64,7 @@ class TransformerEncoderS2SCMAXWithGFS(TransformerEncoderGFSBaseProps):
         else:
             x = [synop_inputs]
 
-        whole_input_embedding = torch.cat([*x, self.time_2_vec_time_distributed(torch.cat(x, -1)), cmax_embeddings], -1)
+        whole_input_embedding = torch.cat([*x, self.simple_2_vec_time_distributed(torch.cat(x, -1)), cmax_embeddings], -1)
         if self.config.experiment.with_dates_inputs:
             whole_input_embedding = torch.cat([whole_input_embedding, *dates_tensors[0]], -1)
 

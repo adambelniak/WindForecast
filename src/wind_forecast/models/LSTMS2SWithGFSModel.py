@@ -17,6 +17,7 @@ class LSTMS2SWithGFSModel(LightningModule):
     def __init__(self, config: Config):
         super(LSTMS2SWithGFSModel, self).__init__()
         self.config = config
+        self.lstm_hidden_state = config.experiment.lstm_hidden_state
 
         input_size = len(config.experiment.synop_train_features) + len(config.experiment.periodic_features)
 
@@ -38,55 +39,63 @@ class LSTMS2SWithGFSModel(LightningModule):
         self.teacher_forcing_epoch_num = config.experiment.teacher_forcing_epoch_num
         self.gradual_teacher_forcing = config.experiment.gradual_teacher_forcing
         dropout = config.experiment.dropout
-        self.encoder_lstm = nn.LSTM(input_size=self.embed_dim, hidden_size=self.embed_dim, batch_first=True,
-                                    dropout=dropout, num_layers=config.experiment.lstm_num_layers)
+        self.encoder_lstm = nn.LSTM(input_size=self.embed_dim, hidden_size=self.lstm_hidden_state, batch_first=True,
+                                    dropout=dropout, num_layers=config.experiment.lstm_num_layers, proj_size=self.embed_dim)
 
-        self.decoder_lstm = nn.LSTM(input_size=self.embed_dim, hidden_size=self.embed_dim, batch_first=True,
-                                    dropout=dropout, num_layers=config.experiment.lstm_num_layers)
+        self.decoder_lstm = nn.LSTM(input_size=self.embed_dim, hidden_size=self.lstm_hidden_state, batch_first=True,
+                                    dropout=dropout, num_layers=config.experiment.lstm_num_layers, proj_size=self.embed_dim)
 
         self.time_2_vec_time_distributed = TimeDistributed(Time2Vec(self.features_length,
                                                                     config.experiment.time2vec_embedding_size),
                                                            batch_first=True)
-        self.state_dense = nn.Linear(in_features=self.embed_dim, out_features=self.embed_dim)
+        # self.state_dense = nn.Linear(in_features=self.embed_dim, out_features=self.embed_dim)
         self.dense = nn.Sequential(
             nn.Dropout(),
-            nn.Linear(in_features=self.embed_dim, out_features=128),
+            nn.Linear(in_features=self.embed_dim + 1, out_features=128),
             nn.ReLU(),
             nn.Linear(in_features=128, out_features=1)
         )
         self.classification_head_time_distributed = TimeDistributed(self.dense, batch_first=True)
 
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
+        is_train = stage not in ['test', 'predict', 'validate']
         synop_inputs = batch[BatchKeys.SYNOP_PAST_X.value].float()
-        all_synop_targets = batch[BatchKeys.SYNOP_FUTURE_X.value].float()
+        if is_train:
+            all_synop_targets = batch[BatchKeys.SYNOP_FUTURE_X.value].float()
         dates_embedding = None if self.config.experiment.with_dates_inputs is False else batch[
             BatchKeys.DATES_TENSORS.value]
+        gfs_targets = batch[BatchKeys.GFS_FUTURE_Y.value].float()
 
         if self.config.experiment.with_dates_inputs:
             if self.config.experiment.use_all_gfs_params:
                 gfs_inputs = batch[BatchKeys.GFS_PAST_X.value].float()
                 all_gfs_targets = batch[BatchKeys.GFS_FUTURE_X.value].float()
                 x = [synop_inputs, gfs_inputs, *dates_embedding[0]]
-                y = [all_synop_targets, all_gfs_targets, *dates_embedding[1]]
+                if is_train:
+                    y = [all_synop_targets, all_gfs_targets, *dates_embedding[1]]
             else:
                 x = [synop_inputs, *dates_embedding[0], *dates_embedding[1]]
-                y = [all_synop_targets, *dates_embedding[2], *dates_embedding[3]]
+                if is_train:
+                    y = [all_synop_targets, *dates_embedding[2], *dates_embedding[3]]
         else:
             if self.config.experiment.use_all_gfs_params:
                 gfs_inputs = batch[BatchKeys.GFS_PAST_X.value].float()
                 all_gfs_targets = batch[BatchKeys.GFS_FUTURE_X.value].float()
                 x = [synop_inputs, gfs_inputs]
-                y = [all_synop_targets, all_gfs_targets]
+                if is_train:
+                    y = [all_synop_targets, all_gfs_targets]
             else:
                 x = [synop_inputs]
-                y = [all_synop_targets]
+                if is_train:
+                    y = [all_synop_targets]
 
         inputs = torch.cat([*x, self.time_2_vec_time_distributed(torch.cat(x, -1))], -1)
-        output, state = self.encoder_lstm(inputs)
-        state = (self.state_dense(state[0]), self.state_dense(state[1]))
-        targets = torch.cat([*y, self.time_2_vec_time_distributed(torch.cat(y, -1))], -1)
+        _, state = self.encoder_lstm(inputs)
+        # state = (self.state_dense(state[0]), self.state_dense(state[1]))
+        if is_train:
+            targets = torch.cat([*y, self.time_2_vec_time_distributed(torch.cat(y, -1))], -1)
 
-        if epoch < self.teacher_forcing_epoch_num and stage in [None, 'fit']:
+        if epoch < self.teacher_forcing_epoch_num and is_train:
             # Teacher forcing
             if self.gradual_teacher_forcing:
                 first_taught = math.floor(epoch / self.teacher_forcing_epoch_num * self.future_sequence_length)
@@ -118,4 +127,4 @@ class LSTMS2SWithGFSModel(LightningModule):
                 decoder_input = next_pred[:, -1:, :]
             output = pred
 
-        return torch.squeeze(self.classification_head_time_distributed(output), -1)
+        return torch.squeeze(self.classification_head_time_distributed(torch.cat([output, gfs_targets], -1)), -1)

@@ -71,10 +71,10 @@ class TransformerCMAX(TransformerBaseProps):
             cmax_targets_embeddings = self.conv_time_distributed(cmax_targets.unsqueeze(2))
             self.conv_time_distributed.requires_grad_(True)
 
-        whole_input_embedding = torch.cat([synop_inputs, self.time_2_vec_time_distributed(synop_inputs),
+        whole_input_embedding = torch.cat([synop_inputs, self.simple_2_vec_time_distributed(synop_inputs),
                                            cmax_embeddings, *dates_tensors[0]], -1)
         if is_train:
-            whole_target_embedding = torch.cat([all_synop_targets, self.time_2_vec_time_distributed(all_synop_targets),
+            whole_target_embedding = torch.cat([all_synop_targets, self.simple_2_vec_time_distributed(all_synop_targets),
                                             cmax_targets_embeddings, *dates_tensors[1]], -1)
 
         if self.config.experiment.with_dates_inputs:

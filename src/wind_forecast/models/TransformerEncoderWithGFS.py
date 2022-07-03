@@ -9,7 +9,7 @@ class Transformer(TransformerEncoderGFSBaseProps):
         super().__init__(config)
 
     def forward(self, synop_input, gfs_input):
-        time_embedding = self.time_2_vec_time_distributed(synop_input)
+        time_embedding = self.simple_2_vec_time_distributed(synop_input)
         x = torch.cat([synop_input, time_embedding], -1)
         x = self.pos_encoder(x) if self.use_pos_encoding else x
         x = self.encoder(x)

@@ -5,7 +5,7 @@ from torch import nn
 
 from wind_forecast.config.register import Config
 from wind_forecast.consts import BatchKeys
-from wind_forecast.models.Transformer import PositionalEncoding, Simple2Vec, TransformerEncoderGFSBaseProps
+from wind_forecast.models.Transformer import PositionalEncoding, TransformerEncoderGFSBaseProps
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 
 
@@ -14,8 +14,6 @@ class TransformerEncoderS2SWithGFSConvEmbedding(TransformerEncoderGFSBaseProps):
         super().__init__(config)
         assert self.future_sequence_length <= self.past_sequence_length, "Past sequence length can't be shorter than future sequence length for transformer encoder arch"
         self.embed_dim = (config.experiment.embedding_scale + 1) * self.features_length
-        self.simple_2_vec_time_distributed = TimeDistributed(
-            Simple2Vec(self.features_length, config.experiment.embedding_scale), batch_first=True)
         if config.experiment.with_dates_inputs:
             self.embed_dim += 6
 

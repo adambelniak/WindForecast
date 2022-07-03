@@ -104,16 +104,18 @@ class TransformerEncoderBaseProps(LightningModule):
         if config.experiment.with_dates_inputs and not self.self_output_test:
             self.embed_dim += 6 #sin and cos for hour, month and day of year
 
-        self.time_2_vec_time_distributed = TimeDistributed(Simple2Vec(self.features_length, self.time2vec_embedding_size), batch_first=True)
+        self.simple_2_vec_time_distributed = TimeDistributed(Simple2Vec(self.features_length,
+                                                                        self.time2vec_embedding_size),
+                                                             batch_first=True)
         self.pos_encoder = PositionalEncoding(self.embed_dim, self.dropout)
 
-        encoder_layer = nn.TransformerEncoderLayer(self.embed_dim, self.n_heads, self.ff_dim, self.dropout,
+        encoder_layer = nn.TransformerEncoderLayer(512, self.n_heads, self.ff_dim, self.dropout,
                                                    batch_first=True)
-        encoder_norm = nn.LayerNorm(self.embed_dim)
+        encoder_norm = nn.LayerNorm(512)
         self.encoder = nn.TransformerEncoder(encoder_layer, self.transformer_layers_num, encoder_norm)
 
         dense_layers = []
-        features = self.embed_dim
+        features = 512
         for neurons in self.transformer_head_dims:
             dense_layers.append(nn.Linear(in_features=features, out_features=neurons))
             features = neurons
@@ -136,22 +138,26 @@ class TransformerEncoderGFSBaseProps(TransformerEncoderBaseProps):
             gfs_params_len = len(gfs_params)
             param_names = [x['name'] for x in gfs_params]
             if "V GRD" in param_names and "U GRD" in param_names:
-                gfs_params_len += 1  # V and U will be expanded int velocity, sin and cos
+                gfs_params_len += 1  # V and U will be expanded into velocity, sin and cos
 
             self.features_length += gfs_params_len
             self.embed_dim += gfs_params_len * (config.experiment.time2vec_embedding_size + 1)
 
-            self.time_2_vec_time_distributed = TimeDistributed(
+            self.simple_2_vec_time_distributed = TimeDistributed(
                 Simple2Vec(self.features_length, self.time2vec_embedding_size), batch_first=True)
             self.pos_encoder = PositionalEncoding(self.embed_dim, self.dropout)
+            self.projection = None
+            if 512 != self.embed_dim:
+                self.projection = TimeDistributed(nn.Linear(self.embed_dim, 512), batch_first=True)
 
-            encoder_layer = nn.TransformerEncoderLayer(self.embed_dim, self.n_heads, self.ff_dim, self.dropout,
+            encoder_layer = nn.TransformerEncoderLayer(512, self.n_heads, self.ff_dim, self.dropout,
                                                        batch_first=True)
-            encoder_norm = nn.LayerNorm(self.embed_dim)
+            encoder_norm = nn.LayerNorm(512)
             self.encoder = nn.TransformerEncoder(encoder_layer, self.transformer_layers_num, encoder_norm)
 
         dense_layers = []
-        features = self.embed_dim + 1  # GFS target
+        # features = self.embed_dim + 1  # GFS target
+        features = 512
         for neurons in self.transformer_head_dims:
             dense_layers.append(nn.Linear(in_features=features, out_features=neurons))
             features = neurons
@@ -268,9 +274,9 @@ class Transformer(TransformerBaseProps):
             all_synop_targets = batch[BatchKeys.SYNOP_FUTURE_X.value].float()
         dates_tensors = None if self.config.experiment.with_dates_inputs is False else batch[BatchKeys.DATES_TENSORS.value]
 
-        whole_input_embedding = torch.cat([synop_inputs, self.time_2_vec_time_distributed(synop_inputs)], -1)
+        whole_input_embedding = torch.cat([synop_inputs, self.simple_2_vec_time_distributed(synop_inputs)], -1)
         if is_train:
-            whole_target_embedding = torch.cat([all_synop_targets, self.time_2_vec_time_distributed(all_synop_targets)], -1)
+            whole_target_embedding = torch.cat([all_synop_targets, self.simple_2_vec_time_distributed(all_synop_targets)], -1)
 
         if self.config.experiment.with_dates_inputs:
             whole_input_embedding = torch.cat([whole_input_embedding, *dates_tensors[0]], -1)

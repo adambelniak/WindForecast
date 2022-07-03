@@ -13,7 +13,7 @@ class TransformerEncoderS2SWithGFS(TransformerEncoderGFSBaseProps):
     def __init__(self, config: Config):
         super().__init__(config)
         dense_layers = []
-        features = self.embed_dim + 1  # GFS target
+        features = 512 + 1  # GFS target
         if self.config.experiment.with_dates_inputs:
             features += 6
         for neurons in self.transformer_head_dims:
@@ -36,12 +36,14 @@ class TransformerEncoderS2SWithGFS(TransformerEncoderGFSBaseProps):
         else:
             x = [synop_inputs]
 
-        whole_input_embedding = torch.cat([*x, self.time_2_vec_time_distributed(torch.cat(x, -1))], -1)
+        whole_input_embedding = torch.cat([*x, self.simple_2_vec_time_distributed(torch.cat(x, -1))], -1)
 
         if self.config.experiment.with_dates_inputs:
             whole_input_embedding = torch.cat([whole_input_embedding, *dates_tensors[0]], -1)
 
         x = self.pos_encoder(whole_input_embedding) if self.use_pos_encoding else whole_input_embedding
+        if self.projection is not None:
+            x = self.projection(x)
         x = self.encoder(x)
         x = x[:, -self.future_sequence_length:, :]
 

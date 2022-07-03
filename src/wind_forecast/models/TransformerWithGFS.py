@@ -33,9 +33,9 @@ class TransformerWithGFS(TransformerGFSBaseProps):
             if is_train:
                 y = [all_synop_targets]
 
-        whole_input_embedding = torch.cat([*x, self.time_2_vec_time_distributed(torch.cat(x, -1))], -1)
+        whole_input_embedding = torch.cat([*x, self.simple_2_vec_time_distributed(torch.cat(x, -1))], -1)
         if is_train:
-            whole_target_embedding = torch.cat([*y, self.time_2_vec_time_distributed(torch.cat(y, -1))], -1)
+            whole_target_embedding = torch.cat([*y, self.simple_2_vec_time_distributed(torch.cat(y, -1))], -1)
 
         if self.config.experiment.with_dates_inputs:
             whole_input_embedding = torch.cat([whole_input_embedding, *dates_tensors[0]], -1)

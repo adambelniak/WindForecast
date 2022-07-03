@@ -21,4 +21,4 @@ synop_from_year: 2017
 batch_size: 32
 use_gfs_data: True
 use_all_gfs_params: True
-sequence_length: 48
+sequence_length: 24

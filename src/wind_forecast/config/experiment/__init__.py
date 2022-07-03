@@ -111,6 +111,8 @@ class ExperimentSettings:
 
     lstm_num_layers: int = 4
 
+    lstm_hidden_state: int = 512
+
     epochs: int = 40
 
     synop_train_features: List = field(default_factory=lambda: SYNOP_TRAIN_FEATURES)
