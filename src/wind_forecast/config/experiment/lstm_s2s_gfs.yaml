@@ -13,7 +13,7 @@ datamodule:
   _target_: wind_forecast.datamodules.Sequence2SequenceDataModule.Sequence2SequenceDataModule
 
 model:
-  _target_: wind_forecast.models.LSTMS2SWithGFSModel.LSTMS2SWithGFSModel
+  _target_: wind_forecast.models.LSTMS2SModel.LSTMS2SModel
 
 system:
   _target_: wind_forecast.systems.S2SRegressorWithGFSInput.S2SRegressorWithGFSInput
