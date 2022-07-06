@@ -4,7 +4,7 @@ from torch import nn
 
 from wind_forecast.config.register import Config
 from wind_forecast.models.CMAXAutoencoder import CMAXEncoder
-from wind_forecast.models.TCNModel import TemporalBlock
+from wind_forecast.models.tcn.TCNModel import TemporalBlock
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 
 

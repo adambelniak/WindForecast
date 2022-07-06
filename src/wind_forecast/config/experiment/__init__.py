@@ -150,15 +150,27 @@ class ExperimentSettings:
 
     time2vec_embedding_size: int = 5
 
+    value2vec_embedding_size: int = 5
+
+    use_time2vec: bool = True
+
+    use_value2vec: bool = True
+
     embedding_scale: int = 5
 
     transformer_ff_dim: int = 1024
 
-    transformer_attention_layers: int = 6
+    transformer_d_model: int = 256
+
+    transformer_encoder_layers: int = 6
+
+    transformer_decoder_layers: int = 6
 
     transformer_attention_heads: int = 1
 
-    transformer_head_dims: List = field(default_factory=lambda: [64, 128, 32])
+    transformer_classification_head_dims: List = field(default_factory=lambda: [64, 128, 32])
+
+    spacetimeformer_intermediate_downsample_convs: int = 0
 
     with_dates_inputs: bool = True
 

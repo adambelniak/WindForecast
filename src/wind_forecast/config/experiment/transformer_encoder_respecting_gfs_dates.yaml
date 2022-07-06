@@ -13,7 +13,7 @@ datamodule:
   _target_: wind_forecast.datamodules.SequenceLimitedToGFSDatesDataModule.SequenceLimitedToGFSDatesDataModule
 
 model:
-  _target_: wind_forecast.models.TransformerEncoder.TransformerEncoder
+  _target_: wind_forecast.models.transformer.TransformerEncoder.TransformerEncoder
 
 system:
   _target_: wind_forecast.systems.Regressor.Regressor

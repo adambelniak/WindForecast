@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from pytorch_lightning import LightningModule
 from wind_forecast.config.register import Config
-from wind_forecast.models.TCNModel import TemporalBlock
+from wind_forecast.models.tcn.TCNModel import TemporalBlock
 
 
 class TemporalConvNet(LightningModule):

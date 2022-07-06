@@ -55,21 +55,29 @@ class BaseS2SRegressor(pl.LightningModule):
         self.target_param_index = [x for x in feature_names].index(target_param)
 
     def get_dates_tensor(self, input_dates, target_dates):
-        input_embed = self.dates_to_tensor(input_dates)
-        target_embed = self.dates_to_tensor(target_dates)
+        if self.cfg.experiment.use_time2vec:
+            # put day of year and hour as min-max values, they will be embedded via time2vec in model
+            input_embed = self.dates_to_min_max_tensor(input_dates)
+            target_embed = self.dates_to_min_max_tensor(target_dates)
+        else:
+            input_embed = self.dates_to_sine_tensor(input_dates)
+            target_embed = self.dates_to_sine_tensor(target_dates)
 
         return input_embed, target_embed
 
-    def dates_to_tensor(self, dates):
+    def dates_to_min_max_tensor(self, dates):
+        day_of_year_argument = (183 - np.array(
+            [[[pd.to_datetime(d).timetuple().tm_yday] for d in sublist] for sublist in dates])) / 183
+        hour_argument = (12 - np.array([[[pd.to_datetime(d).hour] for d in sublist] for sublist in dates])) / 12
+        return torch.Tensor(np.concatenate([day_of_year_argument, hour_argument], -1)).to(self.device)
+
+    def dates_to_sine_tensor(self, dates):
         day_of_year_argument = np.array([[[pd.to_datetime(d).timetuple().tm_yday] for d in sublist] for sublist in dates])
-        month_argument = np.array([[[pd.to_datetime(d).month] for d in sublist] for sublist in dates])
         hour_argument = np.array([[[pd.to_datetime(d).hour] for d in sublist] for sublist in dates])
         day_of_year_embed = day_of_year_argument / 365 * 2 * np.pi
-        month_embed = month_argument / 12 * 2 * np.pi
         hour_embed = hour_argument / 24 * 2 * np.pi
-        return torch.Tensor(np.array([np.sin(day_of_year_embed), np.cos(day_of_year_embed),
-                             np.sin(month_embed), np.cos(month_embed),
-                             np.sin(hour_embed), np.cos(hour_embed)])).to(self.device)
+        return torch.Tensor(np.concatenate([np.sin(day_of_year_embed), np.cos(day_of_year_embed),
+                             np.sin(hour_embed), np.cos(hour_embed)], axis=-1)).to(self.device)
 
     # -----------------------------------------------------------------------------------------------
     # Default PyTorch Lightning hooks

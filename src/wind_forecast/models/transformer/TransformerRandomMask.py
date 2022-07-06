@@ -4,7 +4,7 @@ import torch
 
 from wind_forecast.config.register import Config
 from wind_forecast.consts import BatchKeys
-from wind_forecast.models.Transformer import Transformer
+from wind_forecast.models.transformer.Transformer import Transformer
 
 
 # Not investigated and developed - performance not promising

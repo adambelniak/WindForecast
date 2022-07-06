@@ -1,28 +1,45 @@
 from typing import Dict
 
 import torch
-import torch.nn as nn
+from torch import nn
 
 from wind_forecast.config.register import Config
 from wind_forecast.consts import BatchKeys
-from wind_forecast.models.Transformer import TransformerEncoderGFSBaseProps
+from wind_forecast.models.transformer.Transformer import PositionalEncoding, TransformerEncoderGFSBaseProps
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 
 
-class TransformerEncoderS2SWithGFS(TransformerEncoderGFSBaseProps):
+# TODO - on hold
+class TransformerEncoderS2SWithGFSConvEmbedding(TransformerEncoderGFSBaseProps):
     def __init__(self, config: Config):
         super().__init__(config)
+        assert self.future_sequence_length <= self.past_sequence_length, "Past sequence length can't be shorter than future sequence length for transformer encoder arch"
+        self.conv_embed_dim = config.experiment.embedding_scale * self.features_length
+
+        self.features_embeds = nn.Conv1d(in_channels=self.features_length, out_channels=self.conv_embed_dim,
+                                         kernel_size=1)
+
+        encoder_layer = nn.TransformerEncoderLayer(d_model=self.embed_dim,
+                                                   nhead=config.experiment.transformer_attention_heads,
+                                                   dim_feedforward=config.experiment.transformer_ff_dim,
+                                                   dropout=config.experiment.dropout,
+                                                   batch_first=True)
+        encoder_norm = nn.LayerNorm(self.embed_dim)
+        self.pos_encoder = PositionalEncoding(self.embed_dim, self.dropout)
+        self.encoder = nn.TransformerEncoder(encoder_layer, config.experiment.transformer_encoder_layers,
+                                             encoder_norm)
         dense_layers = []
-        features = 512 + 1  # GFS target
         if self.config.experiment.with_dates_inputs:
-            features += 6
-        for neurons in self.transformer_head_dims:
+            features = self.embed_dim + 7
+        else:
+            features = self.embed_dim + 1
+
+        for neurons in config.experiment.transformer_classification_head_dims:
             dense_layers.append(nn.Linear(in_features=features, out_features=neurons))
             features = neurons
         dense_layers.append(nn.Linear(in_features=features, out_features=1))
         self.classification_head = nn.Sequential(*dense_layers)
         self.classification_head_time_distributed = TimeDistributed(self.classification_head, batch_first=True)
-        self.flatten = nn.Flatten()
 
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
         synop_inputs = batch[BatchKeys.SYNOP_PAST_X.value].float()
@@ -36,8 +53,8 @@ class TransformerEncoderS2SWithGFS(TransformerEncoderGFSBaseProps):
         else:
             x = [synop_inputs]
 
-        whole_input_embedding = torch.cat([*x, self.simple_2_vec_time_distributed(torch.cat(x, -1))], -1)
-
+        whole_input_embedding = torch.cat(
+            [*x, self.features_embeds((torch.cat(x, -1).permute(0, 2, 1))).permute(0, 2, 1)], -1)
         if self.config.experiment.with_dates_inputs:
             whole_input_embedding = torch.cat([whole_input_embedding, *dates_tensors[0]], -1)
 

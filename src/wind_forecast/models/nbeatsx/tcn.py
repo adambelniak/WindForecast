@@ -1,6 +1,6 @@
 import torch.nn as nn
 
-from wind_forecast.models.TCNModel import TemporalBlock
+from wind_forecast.models.tcn.TCNModel import TemporalBlock
 
 
 class TemporalConvNet(nn.Module):

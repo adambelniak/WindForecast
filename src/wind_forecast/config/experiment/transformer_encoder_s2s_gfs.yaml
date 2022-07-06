@@ -15,7 +15,7 @@ datamodule:
 use_gfs_data: True
 
 model:
-  _target_: wind_forecast.models.TransformerEncoderS2SWithGFS.TransformerEncoderS2SWithGFS
+  _target_: wind_forecast.models.transformer.TransformerEncoderS2SWithGFS.TransformerEncoderS2SWithGFS
 
 system:
   _target_: wind_forecast.systems.S2SRegressorWithGFSInput.S2SRegressorWithGFSInput
