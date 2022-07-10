@@ -1,0 +1,28 @@
+# Specific experiments settings
+# (default settings inherited from configs.experiment.ExperimentSettings)
+
+defaults:
+  - schema_experiment
+
+_tags_:
+  - SPACETIMEFORMER
+
+resume_checkpoint: ~
+
+datamodule:
+  _target_: wind_forecast.datamodules.Sequence2SequenceDataModule.Sequence2SequenceDataModule
+
+model:
+  _target_: wind_forecast.models.spacetimeformer.Spacetimeformer.Spacetimeformer
+
+system:
+  _target_: wind_forecast.systems.S2SRegressorWithGFSInput.S2SRegressorWithGFSInput
+
+synop_from_year: 2017
+sequence_length: 24
+use_gfs_data: True
+use_all_gfs_params: True
+transformer_d_model: 128
+transformer_ff_dim: 100
+transformer_encoder_layers: 4
+transformer_decoder_layers: 4
