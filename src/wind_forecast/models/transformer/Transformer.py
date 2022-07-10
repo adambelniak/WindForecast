@@ -114,7 +114,7 @@ class TransformerEncoderBaseProps(LightningModule):
 
         self.embed_dim = self.features_length * (self.value2vec_embedding_size + 1) + 2 * (self.time2vec_embedding_size + 1)
 
-        self.projection = TimeDistributed(nn.Linear(self.embed_dim, self.d_model), batch_first=True)
+        self.projection = nn.Linear(self.embed_dim, self.d_model)
 
         if self.use_time2vec:
             self.time_embed = TimeDistributed(Time2Vec(2, self.time2vec_embedding_size),
@@ -183,7 +183,7 @@ class TransformerEncoderGFSBaseProps(TransformerEncoderBaseProps):
 
             self.embed_dim = self.features_length * (self.value2vec_embedding_size + 1) + 2 * (self.time2vec_embedding_size + 1)
 
-            self.projection = TimeDistributed(nn.Linear(self.embed_dim, self.d_model), batch_first=True)
+            self.projection = nn.Linear(self.embed_dim, self.d_model)
 
             if self.use_value2vec:
                 self.value_embed = TimeDistributed(Simple2Vec(self.features_length, self.value2vec_embedding_size),
