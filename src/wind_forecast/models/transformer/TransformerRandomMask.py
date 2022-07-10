@@ -51,4 +51,4 @@ class TransformerRandomMask(Transformer):
                 pred = decoder_input[:, 1:, :]
             output = pred
 
-        return torch.squeeze(self.classification_head_time_distributed(output), -1)
+        return torch.squeeze(self.classification_head(output), -1)

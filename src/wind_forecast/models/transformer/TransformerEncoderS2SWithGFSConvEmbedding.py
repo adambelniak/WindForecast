@@ -6,7 +6,6 @@ from torch import nn
 from wind_forecast.config.register import Config
 from wind_forecast.consts import BatchKeys
 from wind_forecast.models.transformer.Transformer import PositionalEncoding, TransformerEncoderGFSBaseProps
-from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 
 
 # TODO - on hold
@@ -29,17 +28,16 @@ class TransformerEncoderS2SWithGFSConvEmbedding(TransformerEncoderGFSBaseProps):
         self.encoder = nn.TransformerEncoder(encoder_layer, config.experiment.transformer_encoder_layers,
                                              encoder_norm)
         dense_layers = []
-        if self.config.experiment.with_dates_inputs:
-            features = self.embed_dim + 7
-        else:
-            features = self.embed_dim + 1
-
+        features = self.embed_dim
         for neurons in config.experiment.transformer_classification_head_dims:
             dense_layers.append(nn.Linear(in_features=features, out_features=neurons))
             features = neurons
-        dense_layers.append(nn.Linear(in_features=features, out_features=1))
-        self.classification_head = nn.Sequential(*dense_layers)
-        self.classification_head_time_distributed = TimeDistributed(self.classification_head, batch_first=True)
+        dense_layers.append(nn.Linear(in_features=features, out_features=self.features_length))
+        self.forecaster = nn.Sequential(*dense_layers)
+        if config.experiment.with_dates_inputs:
+            self.classification_head = nn.Linear(self.features_length + 5, 1)
+        else:
+            self.classification_head = nn.Linear(self.features_length + 1, 1)
 
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
         synop_inputs = batch[BatchKeys.SYNOP_PAST_X.value].float()
@@ -61,10 +59,10 @@ class TransformerEncoderS2SWithGFSConvEmbedding(TransformerEncoderGFSBaseProps):
         x = self.pos_encoder(whole_input_embedding) if self.use_pos_encoding else whole_input_embedding
         if self.projection is not None:
             x = self.projection(x)
-        x = self.encoder(x)
-        x = x[:, -self.future_sequence_length:, :]
+        memory = self.encoder(x)
+        memory = memory[:, -self.future_sequence_length:, :]
 
         if self.config.experiment.with_dates_inputs:
-            return torch.squeeze(self.classification_head_time_distributed(torch.cat([x, gfs_targets, *dates_tensors[1]], -1)), -1)
+            return torch.squeeze(self.classification_head(torch.cat([self.forecaster(memory), gfs_targets, *dates_tensors[1]], -1)), -1)
         else:
-            return torch.squeeze(self.classification_head_time_distributed(torch.cat([x, gfs_targets], -1)), -1)
+            return torch.squeeze(self.classification_head(torch.cat([self.forecaster(memory), gfs_targets], -1)), -1)

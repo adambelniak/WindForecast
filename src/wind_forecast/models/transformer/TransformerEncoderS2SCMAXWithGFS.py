@@ -42,5 +42,5 @@ class TransformerEncoderS2SCMAXWithGFS(TransformerEncoderGFSBaseProps):
         memory = self.encoder(input_embedding)
         memory = memory[:, -self.future_sequence_length:, :]
 
-        return torch.squeeze(self.classification_head_time_distributed(torch.cat([memory, gfs_targets], -1)), -1)
+        return torch.squeeze(self.classification_head(torch.cat([self.forecaster(memory), gfs_targets], -1)), -1)
 

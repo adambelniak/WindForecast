@@ -17,4 +17,4 @@ class TransformerEncoderS2S(TransformerEncoderBaseProps):
         memory = self.encoder(input_embedding)
         memory = memory[:, -self.future_sequence_length:, :]
 
-        return torch.squeeze(self.classification_head_time_distributed(memory), -1)
+        return torch.squeeze(self.classification_head(memory), -1)

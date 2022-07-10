@@ -26,4 +26,4 @@ class TransformerWithGFS(TransformerGFSBaseProps):
         output = self.base_transformer_forward(epoch, stage, input_embedding,
                                                target_embedding if is_train else None, memory)
 
-        return torch.squeeze(self.classification_head_time_distributed(torch.cat([output, gfs_targets], -1)), -1)
+        return torch.squeeze(self.classification_head(torch.cat([self.forecaster(output), gfs_targets], -1)), -1)

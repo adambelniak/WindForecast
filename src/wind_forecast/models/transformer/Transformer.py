@@ -135,9 +135,10 @@ class TransformerEncoderBaseProps(LightningModule):
         for neurons in self.transformer_head_dims:
             dense_layers.append(nn.Linear(in_features=features, out_features=neurons))
             features = neurons
-        dense_layers.append(nn.Linear(in_features=features, out_features=1))
-        self.classification_head = nn.Sequential(*dense_layers)
-        self.classification_head_time_distributed = TimeDistributed(self.classification_head, batch_first=True)
+        dense_layers.append(nn.Linear(in_features=features, out_features=self.features_length))
+
+        self.forecaster = nn.Sequential(*dense_layers)
+        self.classification_head = nn.Linear(self.features_length, 1)
         self.flatten = nn.Flatten()
 
     def prepare_elements_for_embedding(self, batch, is_train):
@@ -196,13 +197,13 @@ class TransformerEncoderGFSBaseProps(TransformerEncoderBaseProps):
             self.encoder = nn.TransformerEncoder(encoder_layer, self.transformer_encoder_layers_num, encoder_norm)
 
         dense_layers = []
-        features = self.d_model + 1 # GFS target
+        features = self.d_model
         for neurons in self.transformer_head_dims:
             dense_layers.append(nn.Linear(in_features=features, out_features=neurons))
             features = neurons
-        dense_layers.append(nn.Linear(in_features=features, out_features=1))
-        self.classification_head = nn.Sequential(*dense_layers)
-        self.classification_head_time_distributed = TimeDistributed(self.classification_head, batch_first=True)
+        dense_layers.append(nn.Linear(in_features=features, out_features=self.features_length))
+        self.forecaster = nn.Sequential(*dense_layers)
+        self.classification_head = nn.Linear(self.features_length + 1, 1)
         self.flatten = nn.Flatten()
 
     def prepare_elements_for_embedding(self, batch, is_train):
@@ -415,4 +416,4 @@ class Transformer(TransformerBaseProps):
         output = self.base_transformer_forward(epoch, stage, input_embedding,
                                                target_embedding if is_train else None, memory)
 
-        return torch.squeeze(self.classification_head_time_distributed(output), -1)
+        return torch.squeeze(self.classification_head(self.forecaster(output)), -1)

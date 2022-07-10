@@ -58,4 +58,4 @@ class TransformerCMAX(TransformerBaseProps):
         memory = self.encoder(input_embedding)
         output = self.base_transformer_forward(epoch, stage, input_embedding, target_embedding if is_train else None, memory)
 
-        return torch.squeeze(self.classification_head_time_distributed(output), -1)
+        return torch.squeeze(self.classification_head(output), -1)
