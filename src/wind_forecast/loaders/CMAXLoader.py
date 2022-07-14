@@ -18,7 +18,7 @@ class CMAXLoader(metaclass=Singleton):
     def __init__(self) -> None:
         super().__init__()
         self.cmax_images = {}
-        self.pickle_dir = os.path.join(CMAX_DATASET_DIR, 'pkl')
+        self.pickle_dir = os.path.join(CMAX_DATASET_DIR, 'hours', 'pkl')
 
     @staticmethod
     def get_date_key(date):

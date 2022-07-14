@@ -8,8 +8,8 @@ import tqdm
 import warnings
 from gfs_common.common import plot_history
 from wind_forecast.consts import SYNOP_DATASETS_DIRECTORY
-from wind_forecast.models.S2SModel import create_model
-from wind_forecast.preprocess.gfs.gfs_preprocess_csv import prepare_gfs_sequence_dataset
+from legacy_code.models.S2SModel import create_model
+from legacy_code.preprocess.gfs.gfs_preprocess_csv import prepare_gfs_sequence_dataset
 from wind_forecast.preprocess.synop import consts
 from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset, get_normalization_values
 

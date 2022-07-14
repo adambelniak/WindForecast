@@ -1,6 +1,6 @@
 from tensorflow import keras
 
-# TODO rewrite to pytorch lightning
+# Deprecated
 
 
 def create_model(inputs, gfs_input, learning_rate: float, sequence_length: int):

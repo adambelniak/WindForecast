@@ -5,6 +5,7 @@ import sys
 from typing import Union, Dict
 
 from wind_forecast.loaders.GFSInterpolatedLoader import GFSInterpolatedLoader, Interpolator
+from wind_forecast.util.common_util import NormalizationType
 
 if sys.version_info <= (3, 8, 2):
     import pickle5 as pickle
@@ -17,13 +18,14 @@ import pandas as pd
 from tqdm import tqdm
 
 from wind_forecast.loaders.GFSLoader import GFSLoader
-from wind_forecast.preprocess.synop.consts import SYNOP_FEATURES
+from synop.consts import SYNOP_FEATURES
 from gfs_common.common import GFS_SPACE
 from scipy.interpolate import interpolate
 from gfs_archive_0_25.gfs_processor.Coords import Coords
 from wind_forecast.consts import NETCDF_FILE_REGEX, DATE_KEY_REGEX
 from gfs_archive_0_25.utils import get_nearest_coords
-from wind_forecast.util.common_util import prep_zeros_if_needed, NormalizationType
+from util.util import prep_zeros_if_needed
+
 from wind_forecast.util.logging import log
 
 GFS_DATASET_DIR = os.environ.get('GFS_DATASET_DIR')

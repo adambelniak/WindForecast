@@ -1,8 +1,8 @@
 from datetime import timedelta
 
 from wind_forecast.consts import CREATED_AT_COLUMN_NAME
-from wind_forecast.models.gfs_model import create_model
-from wind_forecast.preprocess.gfs.gfs_preprocess_csv import prepare_gfs_dataset_for_single_point_time
+from legacy_code.models.gfs_model import create_model
+from legacy_code.preprocess.gfs.gfs_preprocess_csv import prepare_gfs_dataset_for_single_point_time
 from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset
 import numpy as np
 

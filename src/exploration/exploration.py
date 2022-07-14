@@ -1,5 +1,4 @@
 import argparse
-import os
 import re
 from pathlib import Path
 
@@ -12,11 +11,13 @@ from tqdm import tqdm
 from gfs_archive_0_25.gfs_processor.own_logger import get_logger
 from gfs_archive_0_25.utils import prep_zeros_if_needed
 from wind_forecast.consts import SYNOP_DATASETS_DIRECTORY
-from wind_forecast.preprocess.synop.consts import SYNOP_FEATURES
-from wind_forecast.preprocess.synop.fetch_synop_data import download_list_of_station, get_localisation_id, \
+from synop.consts import SYNOP_FEATURES
+from synop.fetch_synop_data import download_list_of_station, get_localisation_id, \
     process_all_data
 from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset
 from wind_forecast.util.gfs_util import GFS_DATASET_DIR, get_available_numpy_files
+
+# TODO Adjust to changes in fetch_synop_data
 
 GFS_PARAMETERS = [
     {

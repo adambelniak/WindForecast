@@ -16,7 +16,7 @@ from datetime import datetime, timedelta
 import pandas as pd
 from tqdm import tqdm
 
-from wind_forecast.util.common_util import prep_zeros_if_needed
+from util.util import prep_zeros_if_needed
 from wind_forecast.consts import CMAX_NPY_FILENAME_FORMAT, CMAX_NPY_FILE_REGEX, DATE_KEY_REGEX
 from wind_forecast.util.logging import log
 
@@ -28,7 +28,8 @@ CMAX_MIN = 0
 
 def get_available_cmax_hours(from_year: int = 2015, to_year: int = 2022):
     meta_files_matcher = re.compile(r"(\d{4})(\d{2})_meta\.pkl")
-    pickle_dir = os.path.join(CMAX_DATASET_DIR, 'pkl')
+    cmax_hourly_dir = os.path.join(CMAX_DATASET_DIR, 'hours')
+    pickle_dir = os.path.join(cmax_hourly_dir, 'pkl')
     print(f"Scanning {[pickle_dir]} looking for CMAX meta files.")
     meta_files = [f.name for f in tqdm(os.scandir(pickle_dir)) if meta_files_matcher.match(f.name)
                   and from_year <= int(meta_files_matcher.match(f.name).group(1)) < to_year]
@@ -88,7 +89,7 @@ def get_cmax(id):
 
 
 def get_cmax_npy(id):
-    values = np.load(os.path.join(CMAX_DATASET_DIR, 'npy', id))
+    values = np.load(os.path.join(CMAX_DATASET_DIR, 'hours', 'npy', id))
     return values
 
 

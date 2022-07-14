@@ -1,0 +1,512 @@
+[
+  {
+    "param": "T CDC",
+    "level":  "LCY:0",
+    "hours_type": "average"
+  },
+  {
+    "param": "T CDC",
+    "level":  "MCY:0",
+    "hours_type": "average"
+  },
+  {
+    "param": "T CDC",
+    "level":  "HCY:0",
+    "hours_type": "average"
+  },
+  {
+    "param": "GUST",
+    "level": "SFC:0",
+    "hours_type": "point"
+  },
+  {
+    "param": "V GRD",
+    "level": "ISBL:1000",
+    "hours_type": "point"
+  },
+  {
+    "param": "V GRD",
+    "level": "ISBL:975",
+    "hours_type": "point"
+  },
+  {
+    "param": "V GRD",
+    "level": "ISBL:950",
+    "hours_type": "point"
+  },
+  {
+    "param": "V GRD",
+    "level": "ISBL:925",
+    "hours_type": "point"
+  },
+  {
+    "param": "V GRD",
+    "level": "ISBL:900",
+    "hours_type": "point"
+  },
+  {
+    "param": "V GRD",
+    "level": "ISBL:850",
+    "hours_type": "point"
+  },
+  {
+    "param": "V GRD",
+    "level": "ISBL:800",
+    "hours_type": "point"
+  },
+  {
+    "param": "V GRD",
+    "level": "ISBL:750",
+    "hours_type": "point"
+  },
+  {
+    "param": "V GRD",
+    "level": "ISBL:700",
+    "hours_type": "point"
+  },
+  {
+    "param": "V GRD",
+    "level": "ISBL:650",
+    "hours_type": "point"
+  },
+  {
+    "param": "V GRD",
+    "level": "ISBL:600",
+    "hours_type": "point"
+  },
+  {
+    "param": "V GRD",
+    "level": "ISBL:550",
+    "hours_type": "point"
+  },
+  {
+    "param": "V GRD",
+    "level": "ISBL:500",
+    "hours_type": "point"
+  },
+  {
+    "param": "V GRD",
+    "level": "ISBL:450",
+    "hours_type": "point"
+  },
+  {
+    "param": "V GRD",
+    "level": "ISBL:400",
+    "hours_type": "point"
+  },
+  {
+    "param": "V GRD",
+    "level": "ISBL:350",
+    "hours_type": "point"
+  },
+  {
+    "param": "V GRD",
+    "level": "ISBL:300",
+    "hours_type": "point"
+  },
+  {
+    "param": "V GRD",
+    "level": "ISBL:250",
+    "hours_type": "point"
+  },
+  {
+    "param": "V GRD",
+    "level": "ISBL:200",
+    "hours_type": "point"
+  },
+  {
+    "param": "V GRD",
+    "level": "HTGL:10",
+    "hours_type": "point"
+  },
+  {
+    "param": "U GRD",
+    "level": "ISBL:1000",
+    "hours_type": "point"
+  },
+  {
+    "param": "U GRD",
+    "level": "ISBL:975",
+    "hours_type": "point"
+  },
+  {
+    "param": "U GRD",
+    "level": "ISBL:950",
+    "hours_type": "point"
+  },
+  {
+    "param": "U GRD",
+    "level": "ISBL:925",
+    "hours_type": "point"
+  },
+  {
+    "param": "U GRD",
+    "level": "ISBL:900",
+    "hours_type": "point"
+  },
+  {
+    "param": "U GRD",
+    "level": "ISBL:850",
+    "hours_type": "point"
+  },
+  {
+    "param": "U GRD",
+    "level": "ISBL:800",
+    "hours_type": "point"
+  },
+  {
+    "param": "U GRD",
+    "level": "ISBL:750",
+    "hours_type": "point"
+  },
+  {
+    "param": "U GRD",
+    "level": "ISBL:700",
+    "hours_type": "point"
+  },
+  {
+    "param": "U GRD",
+    "level": "ISBL:650",
+    "hours_type": "point"
+  },
+  {
+    "param": "U GRD",
+    "level": "ISBL:600",
+    "hours_type": "point"
+  },
+  {
+    "param": "U GRD",
+    "level": "ISBL:550",
+    "hours_type": "point"
+  },
+  {
+    "param": "U GRD",
+    "level": "ISBL:500",
+    "hours_type": "point"
+  },
+  {
+    "param": "U GRD",
+    "level": "ISBL:450",
+    "hours_type": "point"
+  },
+  {
+    "param": "U GRD",
+    "level": "ISBL:400",
+    "hours_type": "point"
+  },
+  {
+    "param": "U GRD",
+    "level": "ISBL:350",
+    "hours_type": "point"
+  },
+  {
+    "param": "U GRD",
+    "level": "ISBL:300",
+    "hours_type": "point"
+  },
+  {
+    "param": "U GRD",
+    "level": "ISBL:250",
+    "hours_type": "point"
+  },
+  {
+    "param": "U GRD",
+    "level": "ISBL:200",
+    "hours_type": "point"
+  },
+  {
+    "param": "U GRD",
+    "level": "HTGL:10",
+    "hours_type": "point"
+  },
+  {
+    "param": "TMP",
+    "level": "ISBL:1000",
+    "hours_type": "point"
+  },
+  {
+    "param": "TMP",
+    "level": "ISBL:975",
+    "hours_type": "point"
+  },
+  {
+    "param": "TMP",
+    "level": "ISBL:950",
+    "hours_type": "point"
+  },
+  {
+    "param": "TMP",
+    "level": "ISBL:925",
+    "hours_type": "point"
+  },
+  {
+    "param": "TMP",
+    "level": "ISBL:900",
+    "hours_type": "point"
+  },
+  {
+    "param": "TMP",
+    "level": "ISBL:850",
+    "hours_type": "point"
+  },
+  {
+    "param": "TMP",
+    "level": "ISBL:800",
+    "hours_type": "point"
+  },
+  {
+    "param": "TMP",
+    "level": "ISBL:750",
+    "hours_type": "point"
+  },
+  {
+    "param": "TMP",
+    "level": "ISBL:700",
+    "hours_type": "point"
+  },
+  {
+    "param": "TMP",
+    "level": "ISBL:650",
+    "hours_type": "point"
+  },
+  {
+    "param": "TMP",
+    "level": "ISBL:600",
+    "hours_type": "point"
+  },
+  {
+    "param": "TMP",
+    "level": "ISBL:550",
+    "hours_type": "point"
+  },
+  {
+    "param": "TMP",
+    "level": "ISBL:500",
+    "hours_type": "point"
+  },
+  {
+    "param": "TMP",
+    "level": "ISBL:450",
+    "hours_type": "point"
+  },
+  {
+    "param": "TMP",
+    "level": "ISBL:400",
+    "hours_type": "point"
+  },
+  {
+    "param": "TMP",
+    "level": "ISBL:350",
+    "hours_type": "point"
+  },
+  {
+    "param": "TMP",
+    "level": "ISBL:300",
+    "hours_type": "point"
+  },
+  {
+    "param": "TMP",
+    "level": "ISBL:250",
+    "hours_type": "point"
+  },
+  {
+    "param": "TMP",
+    "level": "ISBL:200",
+    "hours_type": "point"
+  },
+  {
+    "param": "TMP",
+    "level": "HTGL:2",
+    "hours_type": "point"
+  },
+  {
+    "param": "PRATE",
+    "level": "SFC:0",
+    "hours_type": "average"
+  },
+  {
+    "param": "PRES",
+    "level": "SFC:0",
+    "hours_type": "point"
+  },
+  {
+    "param": "HGT",
+    "level": "ISBL:850",
+    "hours_type": "point"
+  },
+  {
+    "param": "HGT",
+    "level": "ISBL:700",
+    "hours_type": "point"
+  },
+  {
+    "param": "HGT",
+    "level": "ISBL:550",
+    "hours_type": "point"
+  },
+  {
+    "param": "HGT",
+    "level": "ISBL:300",
+    "hours_type": "point"
+  },
+  {
+    "param": "CAPE",
+    "level": "SFC:0",
+    "hours_type": "point"
+  },
+  {
+    "param": "CAPE",
+    "level": "SPDL:0,180",
+    "hours_type": "point"
+  },
+  {
+    "param": "CAPE",
+    "level": "SPDL:0,255",
+    "hours_type": "point"
+  },
+  {
+    "param": "CIN",
+    "level": "SFC:0",
+    "hours_type": "point"
+  },
+  {
+    "param": "CIN",
+    "level": "SPDL:0,180",
+    "hours_type": "point"
+  },
+  {
+    "param": "CIN",
+    "level": "SPDL:0,255",
+    "hours_type": "point"
+  },
+  {
+    "param": "LFT X",
+    "level": "SFC:0",
+    "hours_type": "point"
+  },
+  {
+    "param": "HLCY",
+    "level": "HGTL:0,3000",
+    "hours_type": "point"
+  },
+  {
+    "param": "V VEL",
+    "level": "ISBL:1000",
+    "hours_type": "point"
+  },
+  {
+    "param": "V VEL",
+    "level": "ISBL:950",
+    "hours_type": "point"
+  },
+  {
+    "param": "V VEL",
+    "level": "ISBL:900",
+    "hours_type": "point"
+  },
+  {
+    "param": "V VEL",
+    "level": "ISBL:850",
+    "hours_type": "point"
+  },
+  {
+    "param": "V VEL",
+    "level": "ISBL:800",
+    "hours_type": "point"
+  },
+  {
+    "param": "V VEL",
+    "level": "ISBL:700",
+    "hours_type": "point"
+  },
+  {
+    "param": "V VEL",
+    "level": "ISBL:600",
+    "hours_type": "point"
+  },
+  {
+    "param": "V VEL",
+    "level": "ISBL:500",
+    "hours_type": "point"
+  },
+  {
+    "param": "V VEL",
+    "level": "ISBL:400",
+    "hours_type": "point"
+  },
+  {
+    "param": "V VEL",
+    "level": "ISBL:300",
+    "hours_type": "point"
+  },
+  {
+    "param": "POT",
+    "level": "SIGL:0.995",
+    "hours_type": "point"
+  },
+  {
+    "param": "R H",
+    "level": "HTGL:2",
+    "hours_type": "point"
+  },
+  {
+    "param": "R H",
+    "level": "ISBL:1000",
+    "hours_type": "point"
+  },
+  {
+    "param": "R H",
+    "level": "ISBL:950",
+    "hours_type": "point"
+  },
+  {
+    "param": "R H",
+    "level": "ISBL:900",
+    "hours_type": "point"
+  },
+  {
+    "param": "R H",
+    "level": "ISBL:850",
+    "hours_type": "point"
+  },
+  {
+    "param": "R H",
+    "level": "ISBL:800",
+    "hours_type": "point"
+  },
+  {
+    "param": "R H",
+    "level": "ISBL:700",
+    "hours_type": "point"
+  },
+  {
+    "param": "R H",
+    "level": "ISBL:600",
+    "hours_type": "point"
+  },
+  {
+    "param": "R H",
+    "level": "ISBL:500",
+    "hours_type": "point"
+  },
+  {
+    "param": "R H",
+    "level": "ISBL:400",
+    "hours_type": "point"
+  },
+  {
+    "param": "R H",
+    "level": "ISBL:300",
+    "hours_type": "point"
+  },
+  {
+    "param": "DPT",
+    "level": "HTGL:2",
+    "hours_type": "point"
+  },
+  {
+    "param": "P WAT",
+    "level": "EATM:0",
+    "hours_type": "point"
+  }
+]

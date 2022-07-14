@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Sequence
 import os
 import numpy as np
-import pytz
 from pytorch_lightning.loggers import WandbLogger
 from torch.utils.data import Subset, random_split, Dataset
 from torch.utils.data.dataset import T_co
@@ -19,26 +18,6 @@ wandb_logger: WandbLogger = WandbLogger(
     save_dir=os.getenv('RUN_DIR'),
     log_model='all' if os.getenv('LOG_MODEL') == 'all' else True if os.getenv('LOG_MODEL') == 'True' else False
 )
-
-
-def prep_zeros_if_needed(value: str, number_of_zeros: int):
-    for i in range(number_of_zeros - len(value) + 1):
-        value = '0' + value
-    return value
-
-
-def utc_to_local(date):
-    return date.replace(tzinfo=pytz.utc).astimezone(pytz.timezone('Europe/Warsaw')).replace(tzinfo=None)
-
-
-def local_to_utc(date):
-    tz = pytz.timezone('Europe/Warsaw')
-    return tz.normalize(tz.localize(date)).astimezone(pytz.utc)
-
-
-def declination_of_earth(date):
-    day_of_year = date.timetuple().tm_yday
-    return 23.45 * np.sin(np.deg2rad(360.0 * (283.0 + day_of_year) / 365.0))
 
 
 class CustomSubset(Subset):
