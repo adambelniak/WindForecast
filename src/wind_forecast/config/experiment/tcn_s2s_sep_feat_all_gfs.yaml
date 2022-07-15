@@ -20,7 +20,7 @@ system:
 
 use_gfs_data: True
 use_all_gfs_params: True
-synop_from_year: 2017
+synop_from_year: 2016
 tcn_channels:
   - 16
   - 32

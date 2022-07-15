@@ -7,7 +7,7 @@ from omegaconf.omegaconf import MISSING
 
 # Experiment settings validation schema & default values
 
-from synop.consts import SYNOP_TRAIN_FEATURES, PERIODIC_FEATURES
+from synop.consts import SYNOP_TRAIN_FEATURES, SYNOP_PERIODIC_FEATURES
 from wind_forecast.util.common_util import NormalizationType
 
 
@@ -78,9 +78,9 @@ class ExperimentSettings:
     # synop_file: str = "WARSZAWA-OKECIE_375_data.csv"
     synop_file: str = "WARSZAWA-OKECIE_352200375_data.csv"
 
-    synop_from_year: int = 2017
+    synop_from_year: int = 2016
 
-    cmax_from_year: int = 2017
+    cmax_from_year: int = 2016
 
     synop_to_year: int = 2022
 
@@ -118,7 +118,7 @@ class ExperimentSettings:
     synop_train_features: List = field(default_factory=lambda: SYNOP_TRAIN_FEATURES)
 
     # Synop features which will be split into sin and cos during normalization phase
-    periodic_features: List = field(default_factory=lambda: PERIODIC_FEATURES)
+    synop_periodic_features: List = field(default_factory=lambda: SYNOP_PERIODIC_FEATURES)
 
     sequence_length: int = 24
 

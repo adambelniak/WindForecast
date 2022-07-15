@@ -107,7 +107,7 @@ class TransformerEncoderBaseProps(LightningModule):
         if self.self_output_test:
             self.features_length = 1
         else:
-            self.features_length = len(config.experiment.synop_train_features) + len(config.experiment.periodic_features)
+            self.features_length = len(config.experiment.synop_train_features) + len(config.experiment.synop_periodic_features)
 
         if self.use_time2vec and self.time2vec_embedding_size == 0:
             self.time2vec_embedding_size = self.features_length

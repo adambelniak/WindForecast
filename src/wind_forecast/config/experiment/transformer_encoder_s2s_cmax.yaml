@@ -20,7 +20,7 @@ system:
 
 batch_size: 5
 use_future_cmax: False
-synop_from_year: 2017
+synop_from_year: 2016
 cmax_from_year: 2017
 epochs: 40
 time2vec_embedding_size: 5

@@ -20,5 +20,5 @@ system:
 
 use_gfs_data: True
 view_test_result: False
-synop_from_year: 2017
+synop_from_year: 2016
 epochs: 0

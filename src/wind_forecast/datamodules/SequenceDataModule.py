@@ -41,7 +41,7 @@ class SequenceDataModule(Splittable):
         self.target_coords = config.experiment.target_coords
         self.synop_from_year = config.experiment.synop_from_year
         self.synop_to_year = config.experiment.synop_to_year
-        self.periodic_features = config.experiment.periodic_features
+        self.periodic_features = config.experiment.synop_periodic_features
         self.gfs_train_params = process_config(
             config.experiment.train_parameters_config_file) if config.experiment.use_all_gfs_params else None
         self.use_all_gfs_params = config.experiment.use_all_gfs_params
@@ -95,7 +95,7 @@ class SequenceDataModule(Splittable):
             dataset = SequenceDataset(config=self.config, synop_data=self.synop_data,
                                       synop_data_indices=self.synop_data_indices)
 
-        self.split_dataset(dataset, self.sequence_length)
+        self.split_dataset(self.config, dataset, self.sequence_length)
 
     def prepare_dataset_for_gfs(self):
         print("Preparing the dataset")

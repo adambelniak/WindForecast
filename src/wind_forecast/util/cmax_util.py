@@ -28,8 +28,7 @@ CMAX_MIN = 0
 
 def get_available_cmax_hours(from_year: int = 2015, to_year: int = 2022):
     meta_files_matcher = re.compile(r"(\d{4})(\d{2})_meta\.pkl")
-    cmax_hourly_dir = os.path.join(CMAX_DATASET_DIR, 'hours')
-    pickle_dir = os.path.join(cmax_hourly_dir, 'pkl')
+    pickle_dir = os.path.join(CMAX_DATASET_DIR, 'pkl')
     print(f"Scanning {[pickle_dir]} looking for CMAX meta files.")
     meta_files = [f.name for f in tqdm(os.scandir(pickle_dir)) if meta_files_matcher.match(f.name)
                   and from_year <= int(meta_files_matcher.match(f.name).group(1)) < to_year]
@@ -85,11 +84,6 @@ def get_cmax_values_for_sequence(ID: Union[np.datetime64, str], cmax_values, seq
 def get_cmax(id):
     cmax_loader = CMAXLoader()
     values = cmax_loader.get_cmax_image(id)
-    return values
-
-
-def get_cmax_npy(id):
-    values = np.load(os.path.join(CMAX_DATASET_DIR, 'hours', 'npy', id))
     return values
 
 
@@ -150,29 +144,27 @@ def initialize_synop_dates_for_sequence_with_cmax(cmax_IDs: [str], labels: pd.Da
     print("Preparing sequences of synop and CMAX files.")
     for date in tqdm(labels["date"]):
         cmax_date_key = CMAXLoader.get_date_key(date)
-        if cmax_date_key in cmax_IDs:
-            next_date = date + one_hour
-            next_cmax_date_key = CMAXLoader.get_date_key(next_date)
+        next_date = date + one_hour
+        next_cmax_date_key = CMAXLoader.get_date_key(next_date)
+        if len(labels[labels["date"] == next_date]) > 0 and cmax_date_key in cmax_IDs and next_cmax_date_key in cmax_IDs:
+            # next frame exists, so the sequence is continued
+            synop_dates.append(date)
 
-            if len(labels[labels["date"] == next_date]) > 0 and next_cmax_date_key in cmax_IDs:
-                # next frame exists, so the sequence is continued
-                synop_dates.append(date)
+        elif len(labels[labels["date"] == next_date]) > 0:
+            # there is no next frame for CMAX, so the sequence is broken. Remove past frames of sequence_length (and future_length if use_future_cmax)
+            for frame in range(0, sequence_length + (
+                    0 if not use_future_cmax else prediction_offset + future_seq_length) - (0 if cmax_date_key in cmax_IDs else 1)):
+                hours = timedelta(hours=frame)
+                date_to_remove = date - hours
 
-            elif len(labels[labels["date"] == next_date]) > 0:
-                # there is no next frame for CMAX, so the sequence is broken. Remove past frames of sequence_length (and future_length if use_future_cmax)
-                for frame in range(0, sequence_length + (
-                        0 if not use_future_cmax else prediction_offset + future_seq_length) - 1):
-                    hours = timedelta(hours=frame)
-                    date_to_remove = date - hours
-
-                    if date_to_remove in synop_dates:
-                        synop_dates.remove(date_to_remove)
-            else:
-                # there is no next frame for synop and/or CMAX , so the sequence is broken. Remove past frames of sequence_length AND future_seq_length
-                for frame in range(0, sequence_length + future_seq_length + prediction_offset - 1):
-                    hours = timedelta(hours=frame)
-                    date_to_remove = date - hours
-                    if date_to_remove in synop_dates:
-                        synop_dates.remove(date_to_remove)
+                if date_to_remove in synop_dates:
+                    synop_dates.remove(date_to_remove)
+        else:
+            # there is no next frame for synop and/or CMAX , so the sequence is broken. Remove past frames of sequence_length AND future_seq_length
+            for frame in range(0, sequence_length + future_seq_length + prediction_offset - (0 if cmax_date_key in cmax_IDs else 1)):
+                hours = timedelta(hours=frame)
+                date_to_remove = date - hours
+                if date_to_remove in synop_dates:
+                    synop_dates.remove(date_to_remove)
 
     return synop_dates

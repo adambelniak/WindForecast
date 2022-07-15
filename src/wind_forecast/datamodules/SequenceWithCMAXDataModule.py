@@ -78,7 +78,7 @@ class SequenceWithCMAXDataModule(SequenceDataModule):
                 cmax_dataset), f"CMAX and synop datasets lengths don't match: {len(synop_dataset)} vs {len(cmax_dataset)}"
             dataset = ConcatDatasets(synop_dataset, cmax_dataset)
 
-        self.split_dataset(dataset, self.sequence_length)
+        self.split_dataset(self.config, dataset, self.sequence_length)
 
     def train_dataloader(self):
         return DataLoader(self.dataset_train, batch_size=self.batch_size, shuffle=self.shuffle)

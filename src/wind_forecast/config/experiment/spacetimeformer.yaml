@@ -18,7 +18,7 @@ model:
 system:
   _target_: wind_forecast.systems.S2SRegressorWithGFSInput.S2SRegressorWithGFSInput
 
-synop_from_year: 2017
+synop_from_year: 2016
 sequence_length: 24
 use_gfs_data: True
 use_all_gfs_params: True

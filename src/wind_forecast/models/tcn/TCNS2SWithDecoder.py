@@ -23,7 +23,7 @@ class TemporalConvNetS2SWithDecoder(LightningModule):
         self.num_levels = len(self.tcn_channels)
         self.kernel_size = config.experiment.tcn_kernel_size
 
-        in_channels = len(config.experiment.synop_train_features) + len(config.experiment.periodic_features)
+        in_channels = len(config.experiment.synop_train_features) + len(config.experiment.synop_periodic_features)
         if self.use_gfs_on_input:
             gfs_params = process_config(config.experiment.train_parameters_config_file)
             gfs_params_len = len(gfs_params)

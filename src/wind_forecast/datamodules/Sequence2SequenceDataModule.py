@@ -62,7 +62,7 @@ class Sequence2SequenceDataModule(Splittable):
         self.gfs_util = GFSUtil(self.target_coords, self.sequence_length, self.future_sequence_length,
                                 self.prediction_offset, self.gfs_train_params, self.gfs_target_params)
 
-        self.periodic_features = config.experiment.periodic_features
+        self.periodic_features = config.experiment.synop_periodic_features
 
         self.synop_data = ...
         self.synop_data_indices = ...
@@ -71,6 +71,11 @@ class Sequence2SequenceDataModule(Splittable):
         self.synop_feature_names = ...
 
     def prepare_data(self, *args, **kwargs):
+        self.load_from_disk(self.config)
+
+        if self.initialized:
+            return
+
         self.synop_data = prepare_synop_dataset(self.synop_file,
                                                 list(list(zip(*self.train_params))[1]),
                                                 dataset_dir=SYNOP_DATASETS_DIRECTORY,
@@ -100,6 +105,8 @@ class Sequence2SequenceDataModule(Splittable):
         print(f"Synop std: {self.synop_std}")
 
     def setup(self, stage: Optional[str] = None):
+        if self.initialized:
+            return
         if self.get_from_cache(stage):
             return
 
@@ -123,7 +130,7 @@ class Sequence2SequenceDataModule(Splittable):
 
         dataset.set_mean(self.synop_mean)
         dataset.set_std(self.synop_std)
-        self.split_dataset(dataset, self.sequence_length)
+        self.split_dataset(self.config, dataset, self.sequence_length)
 
     def prepare_dataset_for_gfs(self):
         print("Preparing the dataset")

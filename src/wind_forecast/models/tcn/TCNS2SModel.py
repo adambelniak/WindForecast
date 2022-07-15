@@ -19,7 +19,7 @@ class TemporalConvNetS2S(EMDDecomposeable):
         self.future_sequence_length = config.experiment.future_sequence_length
         self.self_output_test = config.experiment.self_output_test
 
-        self.features_length = len(config.experiment.synop_train_features) + len(config.experiment.periodic_features)
+        self.features_length = len(config.experiment.synop_train_features) + len(config.experiment.synop_periodic_features)
         if config.experiment.with_dates_inputs:
             self.features_length += 6
         if self.use_gfs_on_inputs:

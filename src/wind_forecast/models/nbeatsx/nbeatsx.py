@@ -95,7 +95,7 @@ class Nbeatsx(pl.LightningModule):
         if "V GRD" in param_names and "U GRD" in param_names:
             n_gfs_features += 1  # V and U will be expanded int velocity, sin and cos
 
-        self.n_insample_t = len(config.experiment.synop_train_features) + n_gfs_features + len(config.experiment.periodic_features)
+        self.n_insample_t = len(config.experiment.synop_train_features) + n_gfs_features + len(config.experiment.synop_periodic_features)
         self.n_outsample_t = n_gfs_features
 
         block_list = self.create_stack()

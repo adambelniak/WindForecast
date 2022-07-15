@@ -17,7 +17,7 @@ class TCNS2SFeatureSeparableModel(LightningModule):
         self.use_gfs = config.experiment.use_gfs_data
         self.use_gfs_on_input = self.use_gfs and config.experiment.use_all_gfs_params
         self.future_sequence_length = config.experiment.future_sequence_length
-        self.synop_train_features_length = len(config.experiment.synop_train_features) + len(config.experiment.periodic_features)
+        self.synop_train_features_length = len(config.experiment.synop_train_features) + len(config.experiment.synop_periodic_features)
         num_channels = config.experiment.tcn_channels
         num_levels = len(num_channels)
         kernel_size = 3

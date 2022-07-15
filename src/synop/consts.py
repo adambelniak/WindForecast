@@ -75,7 +75,7 @@ AUTO_STATION_FEATURES = [
 ]
 
 # Synop features which will be split into sin and cos during normalization phase
-PERIODIC_FEATURES = [
+SYNOP_PERIODIC_FEATURES = [
     {
         'column': DIRECTION_COLUMN,
         'min': 0,

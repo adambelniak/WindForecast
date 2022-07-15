@@ -47,7 +47,7 @@ class TCNS2SCMAX(LightningModule):
     def create_tcn_layers(self, ):
         tcn_layers = []
         tcn_channels = self.config.experiment.tcn_channels
-        tcn_channels[0] += len(self.config.experiment.synop_train_features) + len(self.config.experiment.periodic_features)
+        tcn_channels[0] += len(self.config.experiment.synop_train_features) + len(self.config.experiment.synop_periodic_features)
         tcn_channels[0] += 6 if self.config.experiment.with_dates_inputs else 0
 
         if self.config.experiment.use_gfs_data and self.config.experiment.use_all_gfs_params:

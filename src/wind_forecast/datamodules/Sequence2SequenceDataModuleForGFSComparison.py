@@ -26,4 +26,4 @@ class Sequence2SequenceDataModuleForGFSComparison(Sequence2SequenceDataModule):
 
         dataset.set_mean(self.synop_mean)
         dataset.set_std(self.synop_std)
-        self.split_dataset(dataset, self.sequence_length)
+        self.split_dataset(self.config, dataset, self.sequence_length)

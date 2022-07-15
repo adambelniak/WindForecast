@@ -14,7 +14,7 @@ class TCNS2SWithDecoderModelWithAttention(TemporalConvNetS2SWithDecoder):
     def __init__(self, config: Config):
         super(TCNS2SWithDecoderModelWithAttention, self).__init__(config)
 
-        in_channels = len(config.experiment.synop_train_features) + len(config.experiment.periodic_features)
+        in_channels = len(config.experiment.synop_train_features) + len(config.experiment.synop_periodic_features)
         if self.use_gfs_on_input:
             gfs_params = process_config(config.experiment.train_parameters_config_file)
             gfs_params_len = len(gfs_params)

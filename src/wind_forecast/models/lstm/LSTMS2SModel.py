@@ -19,7 +19,7 @@ class LSTMS2SModel(LightningModule):
         self.config = config
         self.lstm_hidden_state = config.experiment.lstm_hidden_state
 
-        input_size = len(config.experiment.synop_train_features) + len(config.experiment.periodic_features)
+        input_size = len(config.experiment.synop_train_features) + len(config.experiment.synop_periodic_features)
         self.use_gfs = config.experiment.use_gfs_data
         self.use_all_gfs = self.use_gfs and config.experiment.use_all_gfs_params
 

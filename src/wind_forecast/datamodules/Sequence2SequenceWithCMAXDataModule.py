@@ -102,7 +102,7 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
         dataset.set_std([self.synop_std, 0])
         dataset.set_min([0, CMAX_MIN])
         dataset.set_max([0, CMAX_MAX])
-        self.split_dataset(dataset, self.sequence_length)
+        self.split_dataset(self.config, dataset, self.sequence_length)
 
     def collate_fn(self, x: List[Tuple]):
         s2s_data, cmax_data = [item[0] for item in x], [item[1] for item in x]

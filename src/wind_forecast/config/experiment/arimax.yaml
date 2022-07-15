@@ -21,7 +21,7 @@ system:
 train_parameters_config_file: Arimax.json
 use_gfs_data: True
 use_all_gfs_params: True
-synop_from_year: 2017
+synop_from_year: 2016
 skip_training: True
 epochs: 1
 batch_size: 1
