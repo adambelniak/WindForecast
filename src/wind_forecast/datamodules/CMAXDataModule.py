@@ -3,12 +3,12 @@ from typing import Optional
 from torch.utils.data import DataLoader
 
 from wind_forecast.config.register import Config
-from wind_forecast.datamodules.Splittable import Splittable
+from wind_forecast.datamodules.SplittableDataset import SplittableDataset
 from wind_forecast.datasets.CMAXDataset import CMAXDataset
-from wind_forecast.util.cmax_util import get_available_cmax_hours
+from wind_forecast.util.cmax_util import get_available_cmax_hours, date_from_cmax_date_key
 
 
-class CMAXDataModule(Splittable):
+class CMAXDataModule(SplittableDataset):
 
     def __init__(
             self,
@@ -28,7 +28,7 @@ class CMAXDataModule(Splittable):
     def setup(self, stage: Optional[str] = None):
         if self.get_from_cache(stage):
             return
-        dataset = CMAXDataset(config=self.config, IDs=self.cmax_IDs, normalize=True)
+        dataset = CMAXDataset(config=self.config, dates=[date_from_cmax_date_key(key) for key in self.cmax_IDs], normalize=True)
         self.split_dataset(self.config, dataset, self.sequence_length)
 
     def train_dataloader(self):

@@ -10,7 +10,7 @@ _tags_:
 resume_checkpoint: ~
 
 datamodule:
-  _target_: wind_forecast.datamodules.Sequence2SequenceDataModule.Sequence2SequenceDataModule
+  _target_: wind_forecast.datamodules.Sequence2SequenceWithCMAXDataModule.Sequence2SequenceWithCMAXDataModule
 
 model:
   _target_: wind_forecast.models.transformer.TransformerEncoderS2SWithGFS.TransformerEncoderS2SWithGFS

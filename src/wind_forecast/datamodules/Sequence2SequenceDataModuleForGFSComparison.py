@@ -14,6 +14,8 @@ class Sequence2SequenceDataModuleForGFSComparison(Sequence2SequenceDataModule):
         super().__init__(config)
 
     def setup(self, stage: Optional[str] = None):
+        if self.initialized:
+            return
         if self.get_from_cache(stage):
             return
 

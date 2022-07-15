@@ -25,6 +25,10 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
         self.synop_dates = ...
 
     def prepare_data(self, *args, **kwargs):
+        self.load_from_disk(self.config)
+
+        if self.initialized:
+            return
         self.synop_data = prepare_synop_dataset(self.synop_file,
                                                 list(list(zip(*self.train_params))[1]),
                                                 dataset_dir=SYNOP_DATASETS_DIRECTORY,
@@ -65,15 +69,15 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
         print(f"Synop std: {synop_std[self.target_param]}")
 
     def setup(self, stage: Optional[str] = None):
+        if self.initialized:
+            return
         if self.get_from_cache(stage):
             return
 
         if self.config.experiment.use_gfs_data:
             synop_inputs, all_gfs_input_data, gfs_target_data, all_gfs_target_data = self.prepare_dataset_for_gfs()
             self.synop_dates = self.synop_data.loc[self.synop_data_indices]['date'].values
-            cmax_dataset = CMAXDataset(config=self.config, IDs=self.cmax_available_ids,
-                                       synop_dates=self.synop_dates,
-                                       normalize=True)
+            cmax_dataset = CMAXDataset(config=self.config, dates=self.synop_dates, normalize=True)
             if self.use_all_gfs_params:
                 synop_dataset = Sequence2SequenceWithGFSDataset(self.config, self.synop_data,
                                                                 self.synop_data_indices,
@@ -88,9 +92,7 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
                 cmax_dataset), f"Synop and CMAX datasets lengths don't match: {len(synop_dataset)} vs {len(cmax_dataset)}"
             dataset = ConcatDatasets(synop_dataset, cmax_dataset)
         else:
-            cmax_dataset = CMAXDataset(config=self.config, IDs=self.cmax_available_ids,
-                                       synop_dates=self.synop_dates,
-                                       normalize=True)
+            cmax_dataset = CMAXDataset(config=self.config, dates=self.synop_dates, normalize=True)
             synop_dataset = Sequence2SequenceDataset(self.config, self.synop_data, self.synop_data_indices,
                                                      self.synop_feature_names)
             assert len(synop_dataset) == len(

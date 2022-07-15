@@ -1,3 +1,4 @@
+import hashlib
 import json
 import os
 import sys
@@ -16,7 +17,7 @@ from wind_forecast.datamodules.DataModulesCache import DataModulesCache
 from wind_forecast.util.common_util import split_dataset
 
 
-class Splittable(LightningDataModule):
+class SplittableDataset(LightningDataModule):
 
     def __init__(self, config: Config):
         super().__init__()
@@ -27,6 +28,9 @@ class Splittable(LightningDataModule):
         self.dataset_val = ...
         self.dataset_test = ...
         self.initialized = False
+
+    def hash_string(self, string: str):
+        return str(int(hashlib.sha1(string.encode("utf-8")).hexdigest(), 16) % (10 ** 8))
 
     def get_dataset_name(self, config: Config, stage: Optional[str] = None):
         exp = config.experiment
@@ -51,6 +55,7 @@ class Splittable(LightningDataModule):
                f"_{str(exp.cmax_normalization_type.value)}" \
                f"_{str(exp.cmax_sample_size)}" \
                f"_{str(exp.cmax_scaling_factor)}" \
+               f"_{str(exp.use_future_cmax)}" \
                f"_{str(os.getenv('RUN_MODE'))}"
 
         return name + f"_{stage}"
@@ -72,11 +77,11 @@ class Splittable(LightningDataModule):
         print('Dataset test len: ' + str(len(self.dataset_test)))
 
         train_dataset_name = self.get_dataset_name(config, 'fit')
-        train_dataset_name_hash = str(abs(hash(train_dataset_name)) % (10 ** 8))
+        train_dataset_name_hash = self.hash_string(train_dataset_name)
         val_dataset_name = self.get_dataset_name(config, 'validate')
-        val_dataset_name_hash = str(abs(hash(val_dataset_name)) % (10 ** 8))
+        val_dataset_name_hash = self.hash_string(val_dataset_name)
         test_dataset_name = self.get_dataset_name(config, 'test')
-        test_dataset_name_hash = str(abs(hash(test_dataset_name)) % (10 ** 8))
+        test_dataset_name_hash = self.hash_string(test_dataset_name)
 
         os.makedirs(PREPARED_DATASETS_DIRECTORY, exist_ok=True)
 
@@ -103,39 +108,32 @@ class Splittable(LightningDataModule):
         json.dump(dataset_hash_meta, open(datasets_meta_path, "w"))
 
     def load_from_disk(self, config: Config):
-        datasets_meta_path = os.path.join(PREPARED_DATASETS_DIRECTORY, "datasets_meta.json")
-        if os.path.exists(datasets_meta_path):
-            with open(datasets_meta_path) as f:
-                dataset_hash_meta = json.load(f)
-            train_dataset_name = self.get_dataset_name(config, 'fit')
-            if train_dataset_name not in dataset_hash_meta:
-                return
-            train_pickled_dataset = f"{os.path.join(PREPARED_DATASETS_DIRECTORY, dataset_hash_meta[train_dataset_name])}.pkl"
+        train_dataset_name = self.get_dataset_name(config, 'fit')
+        train_dataset_name_hash = self.hash_string(train_dataset_name)
+        train_pickled_dataset = f"{os.path.join(PREPARED_DATASETS_DIRECTORY, train_dataset_name_hash)}.pkl"
 
-            test_dataset_name = self.get_dataset_name(config, 'test')
-            if test_dataset_name not in dataset_hash_meta:
-                return
-            test_pickled_dataset = f"{os.path.join(PREPARED_DATASETS_DIRECTORY, dataset_hash_meta[test_dataset_name])}.pkl"
+        test_dataset_name = self.get_dataset_name(config, 'test')
+        test_dataset_name_hash = self.hash_string(test_dataset_name)
+        test_pickled_dataset = f"{os.path.join(PREPARED_DATASETS_DIRECTORY, test_dataset_name_hash)}.pkl"
 
-            if self.val_split > 0:
-                val_dataset_name = self.get_dataset_name(config, 'validate')
-                if val_dataset_name not in dataset_hash_meta:
-                    return
-                val_pickled_dataset = f"{os.path.join(PREPARED_DATASETS_DIRECTORY, dataset_hash_meta[val_dataset_name])}.pkl"
+        if self.val_split > 0:
+            val_dataset_name = self.get_dataset_name(config, 'validate')
+            val_dataset_name_hash = self.hash_string(val_dataset_name)
+            val_pickled_dataset = f"{os.path.join(PREPARED_DATASETS_DIRECTORY, val_dataset_name_hash)}.pkl"
 
-            if not os.path.exists(train_pickled_dataset) or not os.path.exists(test_pickled_dataset) or (
-                    self.val_split > 0 and not os.path.exists(val_pickled_dataset)):
-                return
+        if not os.path.exists(train_pickled_dataset) or not os.path.exists(test_pickled_dataset) or (
+                self.val_split > 0 and not os.path.exists(val_pickled_dataset)):
+            return
 
-            with open(train_pickled_dataset, 'rb') as f:
-                self.dataset_train = pickle.load(f)
-            with open(test_pickled_dataset, 'rb') as f:
-                self.dataset_test = pickle.load(f)
-            if self.val_split > 0:
-                with open(val_pickled_dataset, 'rb') as f:
-                    self.dataset_val = pickle.load(f)
+        with open(train_pickled_dataset, 'rb') as f:
+            self.dataset_train = pickle.load(f)
+        with open(test_pickled_dataset, 'rb') as f:
+            self.dataset_test = pickle.load(f)
+        if self.val_split > 0:
+            with open(val_pickled_dataset, 'rb') as f:
+                self.dataset_val = pickle.load(f)
 
-            self.initialized = True
+        self.initialized = True
 
     def get_from_cache(self, stage: Optional[str] = None):
         if stage == 'test':

@@ -11,7 +11,7 @@ from gfs_archive_0_25.gfs_processor.Coords import Coords
 from wind_forecast.config.register import Config
 from wind_forecast.consts import BatchKeys
 from wind_forecast.consts import SYNOP_DATASETS_DIRECTORY
-from wind_forecast.datamodules.Splittable import Splittable
+from wind_forecast.datamodules.SplittableDataset import SplittableDataset
 from wind_forecast.datasets.Sequence2SequenceDataset import Sequence2SequenceDataset
 from wind_forecast.datasets.Sequence2SequenceWithGFSDataset import Sequence2SequenceWithGFSDataset
 from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset, normalize_synop_data_for_training
@@ -21,7 +21,7 @@ from wind_forecast.util.gfs_util import add_param_to_train_params, target_param_
 from wind_forecast.util.synop_util import get_correct_dates_for_sequence
 
 
-class Sequence2SequenceDataModule(Splittable):
+class Sequence2SequenceDataModule(SplittableDataset):
 
     def __init__(
             self,
