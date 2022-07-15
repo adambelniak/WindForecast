@@ -47,18 +47,14 @@ class Sequence2SequenceDataModule(SplittableDataset):
         coords = config.experiment.target_coords
         self.target_coords = Coords(coords[0], coords[0], coords[1], coords[1])
 
-        self.use_all_gfs_params = config.experiment.use_all_gfs_params
-        self.gfs_train_params = process_config(
-            config.experiment.train_parameters_config_file) if self.use_all_gfs_params else None
-        self.gfs_target_params = self.gfs_train_params if self.use_all_gfs_params else target_param_to_gfs_name_level(
-            self.target_param)
+        self.gfs_train_params = process_config(config.experiment.train_parameters_config_file)
+        self.gfs_target_params = self.gfs_train_params
 
         self.gfs_target_param_indices = [self.gfs_train_params.index(param) for param in target_param_to_gfs_name_level(
-            self.target_param)] if self.use_all_gfs_params else None
+            self.target_param)]
 
         self.gfs_wind_components_indices = [self.gfs_train_params.index(param) for param in target_param_to_gfs_name_level(
-            'wind_direction')] if self.use_all_gfs_params else None
-
+            'wind_direction')]
         self.gfs_util = GFSUtil(self.target_coords, self.sequence_length, self.future_sequence_length,
                                 self.prediction_offset, self.gfs_train_params, self.gfs_target_params)
 
@@ -113,13 +109,9 @@ class Sequence2SequenceDataModule(SplittableDataset):
         if self.config.experiment.use_gfs_data:
             synop_inputs, all_gfs_input_data, gfs_target_data, all_gfs_target_data = self.prepare_dataset_for_gfs()
 
-            if self.use_all_gfs_params:
-                dataset = Sequence2SequenceWithGFSDataset(self.config, self.synop_data, self.synop_data_indices,
-                                                          self.synop_feature_names,
-                                                          gfs_target_data, all_gfs_target_data, all_gfs_input_data)
-            else:
-                dataset = Sequence2SequenceWithGFSDataset(self.config, self.synop_data, self.synop_data_indices,
-                                                          self.synop_feature_names, gfs_target_data)
+            dataset = Sequence2SequenceWithGFSDataset(self.config, self.synop_data, self.synop_data_indices,
+                                                      self.synop_feature_names, gfs_target_data,
+                                                      all_gfs_target_data, all_gfs_input_data)
 
         else:
             dataset = Sequence2SequenceDataset(self.config, self.synop_data, self.synop_data_indices,
@@ -139,19 +131,17 @@ class Sequence2SequenceDataModule(SplittableDataset):
             self.synop_data,
             self.synop_data_indices)
 
-        if self.use_all_gfs_params:  # normalize GFS parameters data
-            # save target data
-            gfs_target_data = all_gfs_target_data[:, :, self.gfs_target_param_indices]
+        # save target data
+        gfs_target_data = all_gfs_target_data[:, :, self.gfs_target_param_indices]
 
-            param_names = [x['name'] for x in self.gfs_train_params]
-            if "V GRD" in param_names and "U GRD" in param_names:
-                all_gfs_input_data = self.prepare_gfs_data_with_wind_components(all_gfs_input_data)
-                all_gfs_target_data = self.prepare_gfs_data_with_wind_components(all_gfs_target_data)
-            else:
-                all_gfs_input_data = normalize_gfs_data(all_gfs_input_data, self.normalization_type, (0, 1))
-                all_gfs_target_data = normalize_gfs_data(all_gfs_target_data, self.normalization_type, (0, 1))
+        # normalize GFS parameters data
+        param_names = [x['name'] for x in self.gfs_train_params]
+        if "V GRD" in param_names and "U GRD" in param_names:
+            all_gfs_input_data = self.prepare_gfs_data_with_wind_components(all_gfs_input_data)
+            all_gfs_target_data = self.prepare_gfs_data_with_wind_components(all_gfs_target_data)
         else:
-            gfs_target_data = all_gfs_target_data
+            all_gfs_input_data = normalize_gfs_data(all_gfs_input_data, self.normalization_type, (0, 1))
+            all_gfs_target_data = normalize_gfs_data(all_gfs_target_data, self.normalization_type, (0, 1))
 
         if self.target_param == "wind_velocity":
             # handle target wind_velocity forecast by GFS
@@ -171,12 +161,9 @@ class Sequence2SequenceDataModule(SplittableDataset):
         assert len(self.synop_data_indices) == len(
             all_gfs_target_data), f"len(all_gfs_target_data) should be {len(self.synop_data_indices)} but was {len(all_gfs_target_data)}"
 
-        if self.use_all_gfs_params:
-            assert len(self.synop_data_indices) == len(
-                all_gfs_input_data), f"len(all_gfs_input_data) should be {len(self.synop_data_indices)} but was {len(all_gfs_input_data)}"
-            return self.synop_data_indices, all_gfs_input_data, gfs_target_data, all_gfs_target_data
-
-        return self.synop_data_indices, None, gfs_target_data, None
+        assert len(self.synop_data_indices) == len(
+            all_gfs_input_data), f"len(all_gfs_input_data) should be {len(self.synop_data_indices)} but was {len(all_gfs_input_data)}"
+        return self.synop_data_indices, all_gfs_input_data, gfs_target_data, all_gfs_target_data
 
     def resolve_all_synop_data(self):
         synop_inputs = []
@@ -222,17 +209,11 @@ class Sequence2SequenceDataModule(SplittableDataset):
         }
 
         if self.config.experiment.use_gfs_data:
-            if self.use_all_gfs_params:
-                dict_data[BatchKeys.GFS_PAST_X.value] = all_data[4]
-                dict_data[BatchKeys.GFS_FUTURE_Y.value] = all_data[5]
-                dict_data[BatchKeys.GFS_FUTURE_X.value] = all_data[6]
-                dict_data[BatchKeys.DATES_PAST.value] = all_data[7]
-                dict_data[BatchKeys.DATES_FUTURE.value] = all_data[8]
-
-            else:
-                dict_data[BatchKeys.GFS_FUTURE_Y.value] = all_data[4]
-                dict_data[BatchKeys.DATES_PAST.value] = all_data[5]
-                dict_data[BatchKeys.DATES_FUTURE.value] = all_data[6]
+            dict_data[BatchKeys.GFS_PAST_X.value] = all_data[4]
+            dict_data[BatchKeys.GFS_FUTURE_Y.value] = all_data[5]
+            dict_data[BatchKeys.GFS_FUTURE_X.value] = all_data[6]
+            dict_data[BatchKeys.DATES_PAST.value] = all_data[7]
+            dict_data[BatchKeys.DATES_FUTURE.value] = all_data[8]
 
         else:
             dict_data[BatchKeys.DATES_PAST.value] = all_data[4]

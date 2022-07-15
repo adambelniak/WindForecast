@@ -78,16 +78,9 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
             synop_inputs, all_gfs_input_data, gfs_target_data, all_gfs_target_data = self.prepare_dataset_for_gfs()
             self.synop_dates = self.synop_data.loc[self.synop_data_indices]['date'].values
             cmax_dataset = CMAXDataset(config=self.config, dates=self.synop_dates, normalize=True)
-            if self.use_all_gfs_params:
-                synop_dataset = Sequence2SequenceWithGFSDataset(self.config, self.synop_data,
-                                                                self.synop_data_indices,
-                                                                self.synop_feature_names, gfs_target_data,
-                                                                all_gfs_target_data, all_gfs_input_data)
-            else:
-                synop_dataset = Sequence2SequenceWithGFSDataset(self.config, self.synop_data,
-                                                                self.synop_data_indices,
-                                                                self.synop_feature_names,
-                                                                gfs_target_data)
+            synop_dataset = Sequence2SequenceWithGFSDataset(self.config, self.synop_data, self.synop_data_indices,
+                                                            self.synop_feature_names, gfs_target_data,
+                                                            all_gfs_target_data, all_gfs_input_data)
             assert len(synop_dataset) == len(
                 cmax_dataset), f"Synop and CMAX datasets lengths don't match: {len(synop_dataset)} vs {len(cmax_dataset)}"
             dataset = ConcatDatasets(synop_dataset, cmax_dataset)
@@ -128,17 +121,11 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
             dict_data[BatchKeys.CMAX_PAST.value] = all_data[-1]
 
         if self.config.experiment.use_gfs_data:
-            if self.use_all_gfs_params:
-                dict_data[BatchKeys.GFS_PAST_X.value] = all_data[4]
-                dict_data[BatchKeys.GFS_FUTURE_Y.value] = all_data[5]
-                dict_data[BatchKeys.GFS_FUTURE_X.value] = all_data[6]
-                dict_data[BatchKeys.DATES_PAST.value] = all_data[7]
-                dict_data[BatchKeys.DATES_FUTURE.value] = all_data[8]
-
-            else:
-                dict_data[BatchKeys.GFS_FUTURE_Y.value] = all_data[4]
-                dict_data[BatchKeys.DATES_PAST.value] = all_data[5]
-                dict_data[BatchKeys.DATES_FUTURE.value] = all_data[6]
+            dict_data[BatchKeys.GFS_PAST_X.value] = all_data[4]
+            dict_data[BatchKeys.GFS_FUTURE_Y.value] = all_data[5]
+            dict_data[BatchKeys.GFS_FUTURE_X.value] = all_data[6]
+            dict_data[BatchKeys.DATES_PAST.value] = all_data[7]
+            dict_data[BatchKeys.DATES_FUTURE.value] = all_data[8]
 
         else:
             dict_data[BatchKeys.DATES_PAST.value] = all_data[4]
