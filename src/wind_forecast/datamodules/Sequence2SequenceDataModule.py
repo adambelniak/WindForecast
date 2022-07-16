@@ -11,17 +11,18 @@ from gfs_archive_0_25.gfs_processor.Coords import Coords
 from wind_forecast.config.register import Config
 from wind_forecast.consts import BatchKeys
 from wind_forecast.consts import SYNOP_DATASETS_DIRECTORY
-from wind_forecast.datamodules.SplittableDataset import SplittableDataset
+from wind_forecast.datamodules.SplittableDataModule import SplittableDataModule
 from wind_forecast.datasets.Sequence2SequenceDataset import Sequence2SequenceDataset
 from wind_forecast.datasets.Sequence2SequenceWithGFSDataset import Sequence2SequenceWithGFSDataset
 from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset, normalize_synop_data_for_training
 from wind_forecast.util.config import process_config
 from wind_forecast.util.gfs_util import add_param_to_train_params, target_param_to_gfs_name_level, normalize_gfs_data, \
     GFSUtil, extend_wind_components
+from wind_forecast.util.logging import log
 from wind_forecast.util.synop_util import get_correct_dates_for_sequence
 
 
-class Sequence2SequenceDataModule(SplittableDataset):
+class Sequence2SequenceDataModule(SplittableDataModule):
 
     def __init__(
             self,
@@ -59,6 +60,7 @@ class Sequence2SequenceDataModule(SplittableDataset):
                                 self.prediction_offset, self.gfs_train_params, self.gfs_target_params)
 
         self.periodic_features = config.experiment.synop_periodic_features
+        self.uses_future_sequences = True
 
         self.synop_data = ...
         self.synop_data_indices = ...
@@ -97,8 +99,8 @@ class Sequence2SequenceDataModule(SplittableDataset):
             self.normalization_type, self.periodic_features)
         self.synop_mean = mean[self.target_param]
         self.synop_std = std[self.target_param]
-        print(f"Synop mean: {self.synop_mean}")
-        print(f"Synop std: {self.synop_std}")
+        log.info(f"Synop mean: {self.synop_mean}")
+        log.info(f"Synop std: {self.synop_std}")
 
     def setup(self, stage: Optional[str] = None):
         if self.initialized:
@@ -125,7 +127,7 @@ class Sequence2SequenceDataModule(SplittableDataset):
         self.split_dataset(self.config, dataset, self.sequence_length)
 
     def prepare_dataset_for_gfs(self):
-        print("Preparing the dataset")
+        log.info("Preparing the dataset")
         # match GFS and synop sequences
         self.synop_data_indices, all_gfs_input_data, all_gfs_target_data = self.gfs_util.match_gfs_with_synop_sequence2sequence(
             self.synop_data,
@@ -199,8 +201,8 @@ class Sequence2SequenceDataModule(SplittableDataset):
         return DataLoader(self.dataset_test, batch_size=self.batch_size, collate_fn=self.collate_fn)
 
     def collate_fn(self, x: List[Tuple]):
-        tensors, dates = [item[:-2] for item in x], [item[-2:] for item in x]
-        all_data = [*default_collate(tensors), *list(zip(*dates))]
+        variables, dates = [item[:-2] for item in x], [item[-2:] for item in x]
+        all_data = [*default_collate(variables), *list(zip(*dates))]
         dict_data = {
             BatchKeys.SYNOP_PAST_Y.value: all_data[0],
             BatchKeys.SYNOP_PAST_X.value: all_data[1],

@@ -12,7 +12,6 @@ resume_checkpoint: ~
 datamodule:
   _target_: wind_forecast.datamodules.SequenceDataModule.SequenceDataModule
 
-use_gfs_data: True
 
 model:
   _target_: wind_forecast.models.transformer.TransformerEncoderWithGFS.Transformer
@@ -21,3 +20,4 @@ system:
   _target_: wind_forecast.systems.RegressorWithGFSInput.RegressorWithGFSInput
 
 use_pos_encoding: False
+use_gfs_data: True

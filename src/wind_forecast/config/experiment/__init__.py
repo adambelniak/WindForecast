@@ -95,13 +95,15 @@ class ExperimentSettings:
 
     use_all_gfs_params: bool = False
 
+    use_cmax_data: bool = False
+
     prediction_offset: int = 0
 
     data_dim_x: int = 53
 
     data_dim_y: int = 33
 
-    train_parameters_config_file: str = "TransformerConfig.json"
+    train_parameters_config_file: str = "CommonGFSConfig.json"
 
     cnn_input_size: Any = (33, 53)
 

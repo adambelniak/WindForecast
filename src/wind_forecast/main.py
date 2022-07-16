@@ -71,7 +71,7 @@ def run_tune(cfg: Config):
         sync_config=SyncConfig(sync_to_driver=False),
         name="tune")
 
-    print(analysis.best_config)
+    log.info(analysis.best_config)
 
 
 def run_training(cfg):

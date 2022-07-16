@@ -1,5 +1,3 @@
-from datetime import timedelta
-
 import pandas as pd
 import math
 
@@ -8,14 +6,14 @@ import numpy as np
 from wind_forecast.config.register import Config
 from wind_forecast.datasets.BaseDataset import BaseDataset
 from wind_forecast.util.cmax_util import get_mean_and_std_cmax, get_min_max_cmax, \
-    get_cmax_values_for_sequence
+    get_cmax_values_for_sequence, get_cmax_datekey_from_offset, date_from_cmax_date_key
 from wind_forecast.util.common_util import NormalizationType
 
 
 class CMAXDataset(BaseDataset):
     'Characterizes a dataset for PyTorch'
 
-    def __init__(self, config: Config, dates, normalize=True):
+    def __init__(self, config: Config, dates, normalize=True, use_future_values=True):
         super().__init__()
         self.config = config
         self.dim = config.experiment.cmax_sample_size
@@ -23,13 +21,13 @@ class CMAXDataset(BaseDataset):
         self.sequence_length = config.experiment.sequence_length
         self.future_sequence_length = config.experiment.future_sequence_length
         self.prediction_offset = config.experiment.prediction_offset
-        self.use_future_cmax = config.experiment.use_future_cmax
         self.data = dates
+        self.use_future_values = use_future_values
 
         self.cmax_values = {}
 
         if self.normalization_type == NormalizationType.STANDARD:
-            if self.use_future_cmax:
+            if use_future_values:
                 self.cmax_values, self.mean, self.std = get_mean_and_std_cmax(dates, self.dim,
                                                                               self.sequence_length,
                                                                               self.future_sequence_length,
@@ -39,7 +37,7 @@ class CMAXDataset(BaseDataset):
                                                                               self.sequence_length)
 
         else:
-            if self.use_future_cmax:
+            if use_future_values:
                 self.cmax_values, self.min, self.max = get_min_max_cmax(dates, self.sequence_length,
                                                                         self.future_sequence_length,
                                                                         self.prediction_offset)
@@ -61,7 +59,7 @@ class CMAXDataset(BaseDataset):
 
     def __data_generation(self, date: pd.Timestamp):
         # Initialization
-        if self.use_future_cmax:
+        if self.use_future_values:
             x = np.empty((self.sequence_length, math.ceil(self.dim[0] / self.config.experiment.cmax_scaling_factor),
                           math.ceil(self.dim[1] / self.config.experiment.cmax_scaling_factor)))
 
@@ -71,7 +69,7 @@ class CMAXDataset(BaseDataset):
 
             # Generate data
             x[:, ] = get_cmax_values_for_sequence(date, self.cmax_values, self.sequence_length)
-            first_future_id = date + timedelta(hours=self.sequence_length + self.prediction_offset)
+            first_future_id = date_from_cmax_date_key(get_cmax_datekey_from_offset(date, self.sequence_length + self.prediction_offset))
             y[:, ] = get_cmax_values_for_sequence(first_future_id, self.cmax_values, self.future_sequence_length)
 
             if self.normalize:

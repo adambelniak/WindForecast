@@ -10,15 +10,14 @@ _tags_:
 resume_checkpoint: ~
 
 datamodule:
-  _target_: wind_forecast.datamodules.Sequence2SequenceDataModuleForGFSComparison.Sequence2SequenceDataModuleForGFSComparison
+  _target_: wind_forecast.datamodules.Sequence2SequenceWithCMAXDataModule.Sequence2SequenceWithCMAXDataModule
 
 model:
-  _target_: wind_forecast.models.LSTMModel.LSTMModel
+  _target_: wind_forecast.models.lstm.LSTMModel.LSTMModel
 
 system:
   _target_: wind_forecast.systems.S2SGFSRegressor.S2SGFSRegressor
 
 use_gfs_data: True
 view_test_result: False
-synop_from_year: 2016
 epochs: 0

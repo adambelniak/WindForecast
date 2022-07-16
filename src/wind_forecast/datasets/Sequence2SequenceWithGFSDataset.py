@@ -2,12 +2,14 @@ from typing import List
 
 from wind_forecast.config.register import Config
 from wind_forecast.datasets.BaseDataset import BaseDataset
+from wind_forecast.util.logging import log
 
 
 class Sequence2SequenceWithGFSDataset(BaseDataset):
     'Characterizes a dataset for PyTorch'
 
-    def __init__(self, config: Config, synop_data, synop_data_indices, synop_feature_names: List[str], gfs_future_y, gfs_future_x=None, gfs_past_x=None):
+    def __init__(self, config: Config, synop_data, synop_data_indices, synop_feature_names: List[str], gfs_future_y,
+                 gfs_future_x=None, gfs_past_x=None):
         'Initialization'
         super().__init__()
         self.train_params = synop_feature_names
@@ -16,7 +18,7 @@ class Sequence2SequenceWithGFSDataset(BaseDataset):
         self.future_sequence_length = config.experiment.future_sequence_length
         self.prediction_offset = config.experiment.prediction_offset
         self.synop_data = synop_data
-        self.use_all_gfs_params = config.experiment.use_all_gfs_params
+        self.use_all_gfs_params = gfs_future_x is not None and gfs_past_x is not None
 
         if self.use_all_gfs_params:
             self.data = list(zip(synop_data_indices, gfs_past_x, gfs_future_y, gfs_future_x))
@@ -35,7 +37,7 @@ class Sequence2SequenceWithGFSDataset(BaseDataset):
             synop_index, gfs_future_y = self.data[index]
 
         if len(self.synop_data.loc[synop_index:synop_index + self.sequence_length - 1]['date']) < 24:
-            print(self.synop_data.loc[synop_index]['date'])
+            log.info(self.synop_data.loc[synop_index]['date'])
         synop_past_x = self.synop_data.loc[synop_index:synop_index + self.sequence_length - 1][self.train_params].to_numpy()
         synop_future_x = self.synop_data.loc[
                       synop_index + self.sequence_length + self.prediction_offset:synop_index + self.sequence_length + self.prediction_offset + self.future_sequence_length - 1][

@@ -9,6 +9,7 @@ from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_datase
 from wind_forecast.util.common_util import NormalizationType
 from wind_forecast.util.config import process_config
 from wind_forecast.util.gfs_util import GFSUtil, target_param_to_gfs_name_level
+from wind_forecast.util.logging import log
 
 
 class SingleGFSPointDataset(torch.utils.data.Dataset):
@@ -44,8 +45,8 @@ class SingleGFSPointDataset(torch.utils.data.Dataset):
 
         assert len(self.gfs_data) == len(self.targets)
         self.data = list(zip(self.gfs_data, self.targets))
-        print(synop_mean)
-        print(synop_std)
+        log.info(synop_mean)
+        log.info(synop_std)
 
     def __len__(self):
         """Denotes the total number of samples"""

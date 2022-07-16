@@ -8,6 +8,7 @@ from pytorch_lightning import LightningModule
 from wind_forecast.config.register import Config
 from wind_forecast.consts import BatchKeys
 from wind_forecast.util.config import process_config
+from wind_forecast.util.logging import log
 from .extra_layers import ConvBlock, Normalization, FoldForPred
 from .Encoder import Encoder, EncoderLayer
 from .Decoder import Decoder, DecoderLayer
@@ -222,20 +223,19 @@ class Spacetimeformer(LightningModule):
             emb_dropout=0.0,
         )
 
-        qprint = lambda _msg_: print(_msg_)
-        qprint(f"GlobalSelfAttn: {self.decoder.layers[0].global_self_attention}")
-        qprint(f"GlobalCrossAttn: {self.decoder.layers[0].global_cross_attention}")
-        qprint(f"LocalSelfAttn: {self.decoder.layers[0].local_self_attention}")
-        qprint(f"LocalCrossAttn: {self.decoder.layers[0].local_cross_attention}")
-        qprint(f"Using Embedding: spatio-temporal")
-        qprint(f"Time Emb Dim: {config.experiment.time2vec_embedding_size}")
-        qprint(f"Space Embedding: {self.dec_embedding.use_space}")
-        qprint(f"Time Embedding: {self.dec_embedding.use_time}")
-        qprint(f"Val Embedding: {self.dec_embedding.use_val}")
-        qprint(f"Given Embedding: {self.dec_embedding.use_given}")
-        qprint(f"Null Value: {self.dec_embedding.null_value}")
-        qprint(f"Pad Value: {self.dec_embedding.pad_value}")
-        qprint(f"Reconstruction Dropout: {self.enc_embedding.data_drop}")
+        log.info(f"GlobalSelfAttn: {self.decoder.layers[0].global_self_attention}")
+        log.info(f"GlobalCrossAttn: {self.decoder.layers[0].global_cross_attention}")
+        log.info(f"LocalSelfAttn: {self.decoder.layers[0].local_self_attention}")
+        log.info(f"LocalCrossAttn: {self.decoder.layers[0].local_cross_attention}")
+        log.info(f"Using Embedding: spatio-temporal")
+        log.info(f"Time Emb Dim: {config.experiment.time2vec_embedding_size}")
+        log.info(f"Space Embedding: {self.dec_embedding.use_space}")
+        log.info(f"Time Embedding: {self.dec_embedding.use_time}")
+        log.info(f"Val Embedding: {self.dec_embedding.use_val}")
+        log.info(f"Given Embedding: {self.dec_embedding.use_given}")
+        log.info(f"Null Value: {self.dec_embedding.null_value}")
+        log.info(f"Pad Value: {self.dec_embedding.pad_value}")
+        log.info(f"Reconstruction Dropout: {self.enc_embedding.data_drop}")
 
         out_dim = 1
         recon_dim = 1

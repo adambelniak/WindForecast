@@ -3,6 +3,8 @@ import json
 import os
 import sys
 
+from wind_forecast.util.logging import log
+
 if sys.version_info <= (3, 8, 2):
     import pickle5 as pickle
 else:
@@ -17,7 +19,7 @@ from wind_forecast.datamodules.DataModulesCache import DataModulesCache
 from wind_forecast.util.common_util import split_dataset
 
 
-class SplittableDataset(LightningDataModule):
+class SplittableDataModule(LightningDataModule):
 
     def __init__(self, config: Config):
         super().__init__()
@@ -27,6 +29,7 @@ class SplittableDataset(LightningDataModule):
         self.dataset_train = ...
         self.dataset_val = ...
         self.dataset_test = ...
+        self.uses_future_sequences = False
         self.initialized = False
 
     def hash_string(self, string: str):
@@ -39,8 +42,7 @@ class SplittableDataset(LightningDataModule):
                f"_{exp.synop_to_year}" \
                f"_{exp.target_parameter}" \
                f"_{str(exp.sequence_length)}" \
-               f"_{'-'.join([f[1] for f in exp.synop_train_features])}" \
-               f"_{str(exp.future_sequence_length)}" \
+               f"_{'-'.join([f[1] for f in exp.synop_train_features])}" + (f"_{str(exp.future_sequence_length)}" if self.uses_future_sequences else "") + ""\
                f"_{'-'.join([f.column[1] for f in exp.synop_periodic_features])}" \
                f"_{str(exp.dataset_split_mode)}" \
                f"_{str(exp.prediction_offset)}" \
@@ -49,13 +51,12 @@ class SplittableDataset(LightningDataModule):
                f"_{str(exp.val_split)}" \
                f"_{str(exp.normalization_type.value)}" \
                f"_{str(exp.use_gfs_data)}" \
-               f"_{str(exp.use_all_gfs_params)}" \
                f"_{str(exp.cmax_from_year)}" \
                f"_{str(exp.cmax_to_year)}" \
                f"_{str(exp.cmax_normalization_type.value)}" \
                f"_{str(exp.cmax_sample_size)}" \
                f"_{str(exp.cmax_scaling_factor)}" \
-               f"_{str(exp.use_future_cmax)}" \
+               f"_{str(self.uses_future_sequences)}" \
                f"_{str(os.getenv('RUN_MODE'))}"
 
         return name + f"_{stage}"
@@ -72,9 +73,9 @@ class SplittableDataset(LightningDataModule):
             self.dataset_train, self.dataset_test = datasets
             self.dataset_val = None
 
-        print('Dataset train len: ' + str(len(self.dataset_train)))
-        print('Dataset val len: ' + ('0' if self.dataset_val is None else str(len(self.dataset_val))))
-        print('Dataset test len: ' + str(len(self.dataset_test)))
+        log.info('Dataset train len: ' + str(len(self.dataset_train)))
+        log.info('Dataset val len: ' + ('0' if self.dataset_val is None else str(len(self.dataset_val))))
+        log.info('Dataset test len: ' + str(len(self.dataset_test)))
 
         train_dataset_name = self.get_dataset_name(config, 'fit')
         train_dataset_name_hash = self.hash_string(train_dataset_name)

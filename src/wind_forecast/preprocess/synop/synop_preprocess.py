@@ -10,8 +10,7 @@ from wind_forecast.util.common_util import NormalizationType
 
 
 def get_normalization_values(data: pd.DataFrame,
-                             normalization_type: NormalizationType = NormalizationType.STANDARD) -> (
-pd.DataFrame, float, float):
+                             normalization_type: NormalizationType = NormalizationType.STANDARD) -> (pd.DataFrame, float, float):
     if normalization_type == NormalizationType.STANDARD:
         data_mean = data.mean(axis=0)
         data_std = data.std(axis=0)

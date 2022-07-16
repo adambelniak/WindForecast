@@ -10,7 +10,7 @@ _tags_:
 resume_checkpoint: ~
 
 datamodule:
-  _target_: wind_forecast.datamodules.Sequence2SequenceDataModule.Sequence2SequenceDataModule
+  _target_: wind_forecast.datamodules.Sequence2SequenceWithCMAXDataModule.Sequence2SequenceWithCMAXDataModule
 
 model:
   _target_: wind_forecast.models.TCNS2SFeatureSeparableModel.TCNS2SFeatureSeparableModel
@@ -19,8 +19,6 @@ system:
   _target_: wind_forecast.systems.S2SRegressorWithGFSInput.S2SRegressorWithGFSInput
 
 use_gfs_data: True
-synop_from_year: 2016
 tcn_channels:
   - 16
   - 32
-train_parameters_config_file: TCNConfig.json

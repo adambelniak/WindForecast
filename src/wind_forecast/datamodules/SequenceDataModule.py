@@ -9,17 +9,18 @@ from tqdm import tqdm
 from gfs_archive_0_25.gfs_processor.Coords import Coords
 from wind_forecast.config.register import Config
 from wind_forecast.consts import SYNOP_DATASETS_DIRECTORY
-from wind_forecast.datamodules.SplittableDataset import SplittableDataset
+from wind_forecast.datamodules.SplittableDataModule import SplittableDataModule
 from wind_forecast.datasets.SequenceDataset import SequenceDataset
 from wind_forecast.datasets.SequenceWithGFSDataset import SequenceWithGFSDataset
 from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset, normalize_synop_data_for_training
 from wind_forecast.util.config import process_config
 from wind_forecast.util.gfs_util import add_param_to_train_params, normalize_gfs_data, \
     target_param_to_gfs_name_level, GFSUtil
+from wind_forecast.util.logging import log
 from wind_forecast.util.synop_util import get_correct_dates_for_sequence
 
 
-class SequenceDataModule(SplittableDataset):
+class SequenceDataModule(SplittableDataModule):
 
     def __init__(
             self,
@@ -78,8 +79,8 @@ class SequenceDataModule(SplittableDataset):
             self.sequence_length + self.prediction_offset,
             self.normalization_type,
             self.periodic_features)
-        print(f"Synop mean: {synop_mean[self.target_param]}")
-        print(f"Synop std: {synop_std[self.target_param]}")
+        log.info(f"Synop mean: {synop_mean[self.target_param]}")
+        log.info(f"Synop std: {synop_std[self.target_param]}")
 
     def setup(self, stage: Optional[str] = None):
         if self.get_from_cache(stage):
@@ -98,7 +99,7 @@ class SequenceDataModule(SplittableDataset):
         self.split_dataset(self.config, dataset, self.sequence_length)
 
     def prepare_dataset_for_gfs(self):
-        print("Preparing the dataset")
+        log.info("Preparing the dataset")
         synop_inputs, all_synop_targets = self.resolve_all_synop_data()
 
         all_gfs_input_data = ...

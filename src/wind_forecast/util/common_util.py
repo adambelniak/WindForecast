@@ -11,6 +11,8 @@ from tqdm import tqdm
 from wandb.sdk.wandb_run import Run
 import errno
 
+from wind_forecast.util.logging import log
+
 wandb_logger: WandbLogger = WandbLogger(
     project=os.getenv('WANDB_PROJECT'),
     entity=os.getenv('WANDB_ENTITY'),
@@ -70,7 +72,7 @@ def sequence_aware_split_randomly(dataset, val_split: float, test_split: float, 
     test_indexes_to_choose_from = [i for i in train_indexes if i <= len(train_indexes) - chunk_length]
     test_indexes = []
 
-    print("Splitting dataset into train and test/val datasets")
+    log.info("Splitting dataset into train and test/val datasets")
     for _ in tqdm(range(test_ranges)):
         train_indexes, test_indexes, test_indexes_to_choose_from = do_random_choice(train_indexes, test_indexes,
                                                                                     test_indexes_to_choose_from,
@@ -152,9 +154,7 @@ def get_pretrained_artifact_path(pretrained_artifact: str):
 
         path = pretrained_artifact[len(wandb_prefix):]
         artifact_path, checkpoint_path = path.split('@')
-        print(artifact_path)
         artifact_name = artifact_path.split('/')[-1].replace(':', '-')
-        print(artifact_name)
 
         os.makedirs(f'artifacts/{artifact_name}', exist_ok=True)
 

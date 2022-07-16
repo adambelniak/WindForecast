@@ -31,8 +31,7 @@ Each output file consist of one parameter forecast for one time frame.
 
 #### 4. convert_gfs_files.py
 Scans GFS_DATASET_DIR for .npy files and for each offset between 3 and 39 and each parameter creates a .pkl file.  
-.pkl files are used in experiments by GFSLoader for faster data reading. It is planned to boost the reading even more by saving all the data used  
-by given configuration (like local cache, no second processing needed).
+.pkl files are used in experiments by GFSLoader for faster data reading.
 
 
 ## Deprecated

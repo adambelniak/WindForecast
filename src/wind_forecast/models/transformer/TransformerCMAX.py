@@ -37,7 +37,7 @@ class TransformerCMAX(TransformerBaseProps):
 
         cmax_inputs = batch[BatchKeys.CMAX_PAST.value].float()
         if is_train:
-            cmax_targets = batch[BatchKeys.CMAX_TARGETS.value].float()
+            cmax_targets = batch[BatchKeys.CMAX_FUTURE.value].float()
 
         cmax_embeddings = self.conv_time_distributed(cmax_inputs.unsqueeze(2))
         if is_train:

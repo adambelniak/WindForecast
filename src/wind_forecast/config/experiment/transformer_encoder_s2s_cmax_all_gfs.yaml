@@ -20,10 +20,7 @@ system:
 
 batch_size: 1
 use_gfs_data: True
+use_cmax_data: True
 use_future_cmax: False
-synop_from_year: 2016
-cmax_from_year: 2017
 use_all_gfs_params: True
-train_parameters_config_file: TransformerConfig.json
 epochs: 40
-time2vec_embedding_size: 5

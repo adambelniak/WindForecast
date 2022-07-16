@@ -6,8 +6,7 @@ from datetime import datetime
 import h5py
 from tqdm import tqdm
 import numpy as np
-# from radar.fetch_radar_CMAX import CMAX_DATASET_DIR
-CMAX_DATASET_DIR='D:\\WindForecast\\cmax'
+from radar.fetch_radar_CMAX import CMAX_DATASET_DIR
 from skimage.measure import block_reduce
 import sys
 if sys.version_info <= (3, 8, 2):

@@ -11,9 +11,8 @@ resume_checkpoint: ~
 #resume_checkpoint: wandb://mbelniak/wind-forecast/model-3qklp9mb:v53@model.ckpt
 
 datamodule:
-  _target_: wind_forecast.datamodules.Sequence2SequenceDataModule.Sequence2SequenceDataModule
+  _target_: wind_forecast.datamodules.Sequence2SequenceWithCMAXDataModule.Sequence2SequenceWithCMAXDataModule
 
-use_gfs_data: True
 
 model:
   _target_: wind_forecast.models.transformer.TransformerWithGFS.TransformerWithGFS
@@ -21,6 +20,5 @@ model:
 system:
   _target_: wind_forecast.systems.S2SRegressorWithGFSInput.S2SRegressorWithGFSInput
 
-synop_from_year: 2016
+use_gfs_data: True
 use_all_gfs_params: True
-train_parameters_config_file: TransformerConfig.json

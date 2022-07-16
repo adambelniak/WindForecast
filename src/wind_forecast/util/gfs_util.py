@@ -51,7 +51,7 @@ class GFSUtil:
         new_features = []
         gfs_loader = GFSLoader()
         removed_indices = []
-        print("Matching GFS with synop data")
+        log.info("Matching GFS with synop data")
 
         for index, value in tqdm(enumerate(targets)):
             date = value[0]
@@ -83,7 +83,7 @@ class GFSUtil:
         gfs_inputs = []
         gfs_targets = []
 
-        print("Matching GFS with synop data")
+        log.info("Matching GFS with synop data")
 
         for index in tqdm(synop_data_indices):
             dates = synop_data.loc[index:index + self.past_sequence_length - 1]['date']
@@ -119,15 +119,16 @@ class GFSUtil:
     def get_next_gfs_values(self, dates: [datetime], gfs_params: list, future_dates: bool):
         next_gfs_values = []
         first_date = dates.values[0]
+        last_date = dates.values[-1]
         gfs_values = []
         x_values = []
         # there should be at least and at most 1 gfs forecast ahead and behind which will help in interpolation
-        dates_3_hours_before = [pd.Timestamp(dates.values[0]).to_pydatetime() - timedelta(hours=3),
-                                pd.Timestamp(dates.values[0]).to_pydatetime() - timedelta(hours=2),
-                                pd.Timestamp(dates.values[0]).to_pydatetime() - timedelta(hours=1)]
-        dates_3_hours_after = [pd.Timestamp(dates.values[-1]).to_pydatetime() + timedelta(hours=1),
-                               pd.Timestamp(dates.values[-1]).to_pydatetime() + timedelta(hours=2),
-                               pd.Timestamp(dates.values[-1]).to_pydatetime() + timedelta(hours=3)]
+        dates_3_hours_before = [pd.Timestamp(first_date).to_pydatetime() - timedelta(hours=3),
+                                pd.Timestamp(first_date).to_pydatetime() - timedelta(hours=2),
+                                pd.Timestamp(first_date).to_pydatetime() - timedelta(hours=1)]
+        dates_3_hours_after = [pd.Timestamp(last_date).to_pydatetime() + timedelta(hours=1),
+                               pd.Timestamp(last_date).to_pydatetime() + timedelta(hours=2),
+                               pd.Timestamp(last_date).to_pydatetime() + timedelta(hours=3)]
         for index, date in enumerate(dates_3_hours_before):
             value = self.get_gfs_values_for_date(pd.Timestamp(date), future_dates, gfs_params, first_date)
             if value is not None and len(value) != 0:
@@ -208,7 +209,7 @@ def get_available_gfs_date_keys(features: list, prediction_offset: int, sequence
             meta_files_matcher = re.compile(
                 rf"{feature['name']}_{feature['level']}_{prep_zeros_if_needed(str(offset), 2)}_meta\.pkl")
             pickle_dir = os.path.join(GFS_DATASET_DIR, 'pkl')
-            print(f"Scanning {[pickle_dir]} looking for CMAX meta files.")
+            log.info(f"Scanning {[pickle_dir]} looking for CMAX meta files.")
             meta_files = [f.name for f in tqdm(os.scandir(pickle_dir)) if meta_files_matcher.match(f.name)]
             date_keys = []
             for meta_file in meta_files:

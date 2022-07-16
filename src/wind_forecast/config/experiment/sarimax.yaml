@@ -10,7 +10,7 @@ _tags_:
 resume_checkpoint: ~
 
 datamodule:
-  _target_: wind_forecast.datamodules.Sequence2SequenceDataModule.Sequence2SequenceDataModule
+  _target_: wind_forecast.datamodules.Sequence2SequenceWithCMAXDataModule.Sequence2SequenceWithCMAXDataModule
 
 model:
   _target_: wind_forecast.models.Sarimax.Sarimax
@@ -21,7 +21,6 @@ system:
 train_parameters_config_file: Sarimax.json
 use_gfs_data: True
 use_all_gfs_params: True
-synop_from_year: 2016
 skip_training: True
 epochs: 1
 batch_size: 1

@@ -130,7 +130,7 @@ def prepare_coordinates(coords_data):
 
 
 def read_params_from_input_file(path):
-    print("Reading gfs parameters from " + path)
+    logger.info("Reading gfs parameters from " + path)
     if os.path.exists(path):
         with open(path) as f:
             return json.load(f)
@@ -221,7 +221,7 @@ def send_prepared_requests(kwargs):
                 request_db.loc[index, REQUEST_STATUS_FIELD] = RequestStatus.FAILED.value
         logger.info(response)
     request_db.to_csv(REQ_ID_PATH)
-    print("Sending requests done. Waiting for next scheduler trigger.")
+    logger.info("Sending requests done. Waiting for next scheduler trigger.")
 
 
 def prepare_and_start_processor(**kwargs):

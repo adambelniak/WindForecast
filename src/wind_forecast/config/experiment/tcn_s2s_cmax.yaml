@@ -19,9 +19,8 @@ system:
   _target_: wind_forecast.systems.BaseS2SRegressor.BaseS2SRegressor
 
 batch_size: 5
+use_cmax_data: True
 use_future_cmax: False
-synop_from_year: 2016
-cmax_from_year: 2017
 tcn_channels:
   - 32
   - 64

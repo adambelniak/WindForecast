@@ -15,6 +15,8 @@ rdams-client.py -get_control_file_template <dsnnn.n>
 rdams-client.py -help
 ```
 """
+from gfs_archive_0_25.gfs_processor.own_logger import logger
+
 __version__ = '2.0.0'
 __author__ = 'Doug Schuster (schuster@ucar.edu), Riley Conroy (rpconroy@ucar.edu)'
 
@@ -58,7 +60,7 @@ def query(args=None):
     func,params = get_selected_function(args_dict)
     result = func(params)
     if not args.noprint:
-        print(json.dumps(result, indent=3))
+        logger.info(json.dumps(result, indent=3))
     return result
 
 def add_ds_str(ds_num):
@@ -69,7 +71,7 @@ def add_ds_str(ds_num):
     if ds_num[0:2] != 'ds':
         ds_num = 'ds' + ds_num
     if len(ds_num) != 7:
-        print("'" + ds_num + "' is not valid.")
+        logger.info("'" + ds_num + "' is not valid.")
         sys.exit()
     return ds_num
 
@@ -212,7 +214,7 @@ def check_status(ret, pwfile=DEFAULT_AUTH_FILE):
         None
     """
     if ret.status_code == 401: # Not Authorized
-        print(ret.content)
+        logger.info(ret.content)
         if not USE_NETRC:
             os.remove(pwfile)
         exit(1)
@@ -249,7 +251,7 @@ def download_files(filelist, out_dir='./', cookie_file=None):
     for _file in filelist:
         file_base = os.path.basename(_file)
         out_file = out_dir + file_base
-        print('Downloading',file_base)
+        logger.info('Downloading',file_base)
         req = requests.get(_file, cookies=cookies, allow_redirects=True, stream=True)
         filesize = int(req.headers['Content-length'])
         with open(out_file, 'wb') as outfile:
@@ -259,7 +261,6 @@ def download_files(filelist, out_dir='./', cookie_file=None):
                 if chunk_size < filesize:
                     check_file_status(out_file, filesize)
         check_file_status(out_file, filesize)
-        print()
 
 def get_authentication(pwfile=DEFAULT_AUTH_FILE):
     """Attempts to get authentication.
@@ -298,8 +299,8 @@ def get_cookies(username=None, password=None):
     values = {'email' : username, 'passwd' : password, 'action' : 'login'}
     ret = requests.post(login_url, data=values)
     if ret.status_code != 200:
-        print('Bad Authentication')
-        print(ret.text)
+        logger.info('Bad Authentication')
+        logger.info(ret.text)
         exit(1)
     return ret.cookies
 
@@ -520,7 +521,7 @@ def write_control_file_template(ds, write_location='./'):
 
     template_filename = write_location + add_ds_str(ds) + '_control.ctl'
     if os.path.exists(template_filename):
-        print(template_filename + " already exists.\nExiting")
+        logger.info(template_filename + " already exists.\nExiting")
         exit(1)
     with open(template_filename, 'w') as fh:
         fh.write(control_str)

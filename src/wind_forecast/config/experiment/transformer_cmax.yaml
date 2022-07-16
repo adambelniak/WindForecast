@@ -18,8 +18,6 @@ model:
 system:
   _target_: wind_forecast.systems.S2SRegressorWithGFSInput.S2SRegressorWithGFSInput
 
-synop_from_year: 2016
-cmax_from_year: 2017
+use_cmax_data: True
 use_future_cmax: True
 batch_size: 5
-time2vec_embedding_size: 5

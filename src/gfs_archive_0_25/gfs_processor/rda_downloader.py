@@ -97,7 +97,7 @@ def check_request_actual_status(index_in_db, request, request_db):
         logger.info("Status of request {0} is {1}".format(req_id, request_status))
         if request_status == RequestStatus.ERROR.value:
             request_db.loc[index_in_db, REQUEST_STATUS_FIELD] = RequestStatus.ERROR.value
-            print(res)
+            logger.info(res)
 
         if request_status == RequestStatus.COMPLETED.value:
             request_db.loc[index_in_db, REQUEST_STATUS_FIELD] = RequestStatus.COMPLETED.value
@@ -136,7 +136,7 @@ def processor(purge_requests: bool, tidy: bool):
     logger.info("Starting rda download processor")
     request_db = read_pseudo_rda_request_db()
     print_db_stats(request_db)
-    print("Checking actual status of pending requests...")
+    logger.info("Checking actual status of pending requests...")
 
     not_completed = request_db[request_db[REQUEST_STATUS_FIELD] == RequestStatus.SENT.value]
 
@@ -164,7 +164,7 @@ def processor(purge_requests: bool, tidy: bool):
                 request_db.loc[index, REQUEST_STATUS_FIELD] = RequestStatus.PURGED.value
         request_db.to_csv(REQ_ID_PATH)
 
-    print("Done. Waiting for next scheduler trigger.")
+    logger.info("Done. Waiting for next scheduler trigger.")
 
 
 def scheduler(purge_done=False, tidy=False):

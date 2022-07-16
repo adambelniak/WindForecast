@@ -13,6 +13,7 @@ from wind_forecast.datasets.Sequence2SequenceWithGFSDataset import Sequence2Sequ
 from wind_forecast.preprocess.synop.synop_preprocess import normalize_synop_data_for_training, prepare_synop_dataset
 from wind_forecast.util.cmax_util import get_available_cmax_hours, \
     initialize_synop_dates_for_sequence_with_cmax, CMAX_MIN, CMAX_MAX
+from wind_forecast.util.logging import log
 
 
 class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
@@ -46,7 +47,7 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
                                                                          self.sequence_length,
                                                                          self.future_sequence_length,
                                                                          self.prediction_offset,
-                                                                         self.use_future_cmax)
+                                                                         True)
 
         self.synop_data = self.synop_data.reset_index()
 
@@ -65,8 +66,8 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
 
         self.synop_mean = synop_mean[self.target_param]
         self.synop_std = synop_std[self.target_param]
-        print(f"Synop mean: {synop_mean[self.target_param]}")
-        print(f"Synop std: {synop_std[self.target_param]}")
+        log.info(f"Synop mean: {synop_mean[self.target_param]}")
+        log.info(f"Synop std: {synop_std[self.target_param]}")
 
     def setup(self, stage: Optional[str] = None):
         if self.initialized:
@@ -77,21 +78,26 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
         if self.config.experiment.use_gfs_data:
             synop_inputs, all_gfs_input_data, gfs_target_data, all_gfs_target_data = self.prepare_dataset_for_gfs()
             self.synop_dates = self.synop_data.loc[self.synop_data_indices]['date'].values
-            cmax_dataset = CMAXDataset(config=self.config, dates=self.synop_dates, normalize=True)
             synop_dataset = Sequence2SequenceWithGFSDataset(self.config, self.synop_data, self.synop_data_indices,
                                                             self.synop_feature_names, gfs_target_data,
                                                             all_gfs_target_data, all_gfs_input_data)
-            assert len(synop_dataset) == len(
-                cmax_dataset), f"Synop and CMAX datasets lengths don't match: {len(synop_dataset)} vs {len(cmax_dataset)}"
-            dataset = ConcatDatasets(synop_dataset, cmax_dataset)
+            if self.config.experiment.use_cmax_data:
+                cmax_dataset = CMAXDataset(config=self.config, dates=self.synop_dates, normalize=True)
+                assert len(synop_dataset) == len(
+                    cmax_dataset), f"Synop and CMAX datasets lengths don't match: {len(synop_dataset)} vs {len(cmax_dataset)}"
+                dataset = ConcatDatasets(synop_dataset, cmax_dataset)
+            else:
+                dataset = synop_dataset
         else:
-            cmax_dataset = CMAXDataset(config=self.config, dates=self.synop_dates, normalize=True)
             synop_dataset = Sequence2SequenceDataset(self.config, self.synop_data, self.synop_data_indices,
                                                      self.synop_feature_names)
-            assert len(synop_dataset) == len(
-                cmax_dataset), f"Synop and CMAX datasets lengths don't match: {len(synop_dataset)} vs {len(cmax_dataset)}"
-
-            dataset = ConcatDatasets(synop_dataset, cmax_dataset)
+            if self.config.experiment.use_cmax_data:
+                cmax_dataset = CMAXDataset(config=self.config, dates=self.synop_dates, normalize=True)
+                assert len(synop_dataset) == len(
+                    cmax_dataset), f"Synop and CMAX datasets lengths don't match: {len(synop_dataset)} vs {len(cmax_dataset)}"
+                dataset = ConcatDatasets(synop_dataset, cmax_dataset)
+            else:
+                dataset = synop_dataset
 
         dataset.set_mean([self.synop_mean, 0])
         dataset.set_std([self.synop_std, 0])
@@ -100,12 +106,15 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
         self.split_dataset(self.config, dataset, self.sequence_length)
 
     def collate_fn(self, x: List[Tuple]):
+        if not self.config.experiment.use_cmax_data:
+            return super().collate_fn(x)
+
         s2s_data, cmax_data = [item[0] for item in x], [item[1] for item in x]
-        tensors, dates = [item[:-2] for item in s2s_data], [item[-2:] for item in s2s_data]
+        variables, dates = [item[:-2] for item in s2s_data], [item[-2:] for item in s2s_data]
         if self.use_future_cmax:
-            all_data = [*default_collate(tensors), *list(zip(*dates)), *default_collate(cmax_data)]
+            all_data = [*default_collate(variables), *list(zip(*dates)), *default_collate(cmax_data)]
         else:
-            all_data = [*default_collate(tensors), *list(zip(*dates)), torch.Tensor(cmax_data)]
+            all_data = [*default_collate(variables), *list(zip(*dates)), torch.Tensor(cmax_data)]
 
         dict_data = {
             BatchKeys.SYNOP_PAST_Y.value: all_data[0],
@@ -114,11 +123,8 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
             BatchKeys.SYNOP_FUTURE_X.value: all_data[3]
         }
 
-        if self.config.experiment.use_future_cmax:
-            dict_data[BatchKeys.CMAX_PAST.value] = all_data[-2]
-            dict_data[BatchKeys.CMAX_TARGETS.value] = all_data[-1]
-        else:
-            dict_data[BatchKeys.CMAX_PAST.value] = all_data[-1]
+        dict_data[BatchKeys.CMAX_PAST.value] = all_data[-2]
+        dict_data[BatchKeys.CMAX_FUTURE.value] = all_data[-1]
 
         if self.config.experiment.use_gfs_data:
             dict_data[BatchKeys.GFS_PAST_X.value] = all_data[4]

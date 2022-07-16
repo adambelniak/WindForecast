@@ -12,6 +12,7 @@ from wind_forecast.datasets.SequenceWithGFSDataset import SequenceWithGFSDataset
 from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset, normalize_synop_data_for_training
 from wind_forecast.util.cmax_util import get_available_cmax_hours, \
     initialize_synop_dates_for_sequence_with_cmax
+from wind_forecast.util.logging import log
 
 
 class SequenceWithCMAXDataModule(SequenceDataModule):
@@ -51,15 +52,14 @@ class SequenceWithCMAXDataModule(SequenceDataModule):
             self.feature_names,
             self.sequence_length + self.prediction_offset,
             self.normalization_type)
-        print(f"Synop mean: {synop_mean[self.target_param]}")
-        print(f"Synop std: {synop_std[self.target_param]}")
+        log.info(f"Synop mean: {synop_mean[self.target_param]}")
+        log.info(f"Synop std: {synop_std[self.target_param]}")
 
     def setup(self, stage: Optional[str] = None):
         if self.get_from_cache(stage):
             return
 
-        cmax_dataset = CMAXDataset(config=self.config, IDs=self.cmax_available_ids, synop_dates=self.synop_dates,
-                                   normalize=True)
+        cmax_dataset = CMAXDataset(self.config, self.synop_dates, True, False)
         if self.config.experiment.use_gfs_data:
             synop_inputs, all_gfs_input_data, gfs_target_data, synop_targets = self.prepare_dataset_for_gfs()
 

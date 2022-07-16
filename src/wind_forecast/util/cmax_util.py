@@ -28,7 +28,7 @@ CMAX_MIN = 0
 def get_available_cmax_hours(from_year: int = 2015, to_year: int = 2022):
     meta_files_matcher = re.compile(r"(\d{4})(\d{2})_meta\.pkl")
     pickle_dir = os.path.join(CMAX_DATASET_DIR, 'pkl')
-    print(f"Scanning {[pickle_dir]} looking for CMAX meta files.")
+    log.info(f"Scanning {[pickle_dir]} looking for CMAX meta files.")
     meta_files = [f.name for f in tqdm(os.scandir(pickle_dir)) if meta_files_matcher.match(f.name)
                   and from_year <= int(meta_files_matcher.match(f.name).group(1)) < to_year]
     date_keys = []
@@ -135,7 +135,7 @@ def initialize_synop_dates_for_sequence_with_cmax(cmax_IDs: [str], labels: pd.Da
                                                   use_future_cmax: bool = False):
     synop_dates = []
     one_hour = timedelta(hours=1)
-    print("Preparing sequences of synop and CMAX files.")
+    log.info("Preparing sequences of synop and CMAX files.")
     for date in tqdm(labels["date"]):
         cmax_date_key = CMAXLoader.get_date_key(date)
         next_date = date + one_hour
@@ -149,7 +149,7 @@ def initialize_synop_dates_for_sequence_with_cmax(cmax_IDs: [str], labels: pd.Da
             # there is no next frame for CMAX, so the sequence is broken. Remove past frames of sequence_length (and future_length if use_future_cmax)
             for frame in range(0, sequence_length + (
                     0 if not use_future_cmax else prediction_offset + future_seq_length) - (
-                                  0 if cmax_date_key in cmax_IDs else 1)):
+                                  1 if cmax_date_key in cmax_IDs else 0)):
                 hours = timedelta(hours=frame)
                 date_to_remove = date - hours
 
@@ -158,7 +158,7 @@ def initialize_synop_dates_for_sequence_with_cmax(cmax_IDs: [str], labels: pd.Da
         else:
             # there is no next frame for synop and/or CMAX , so the sequence is broken. Remove past frames of sequence_length AND future_seq_length
             for frame in range(0, sequence_length + future_seq_length + prediction_offset - (
-            0 if cmax_date_key in cmax_IDs else 1)):
+            1 if cmax_date_key in cmax_IDs else 0)):
                 hours = timedelta(hours=frame)
                 date_to_remove = date - hours
                 if date_to_remove in synop_dates:
