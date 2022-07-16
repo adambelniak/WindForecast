@@ -112,7 +112,7 @@ class TransformerEncoderBaseProps(LightningModule):
         if self.use_time2vec and self.time2vec_embedding_size == 0:
             self.time2vec_embedding_size = self.features_length
 
-        self.dates_dim = 2 * self.time2vec_embedding_size if self. use_time2vec else 2
+        self.dates_dim = 2 * self.time2vec_embedding_size if self.use_time2vec else 2
 
         if self.use_time2vec:
             self.time_embed = TimeDistributed(Time2Vec(2, self.time2vec_embedding_size),

@@ -37,7 +37,7 @@ class TransformerEncoderS2SWithGFSConvEmbedding(TransformerEncoderGFSBaseProps):
             x = [synop_inputs]
 
         input_elements = torch.cat(
-            [*x, self.features_embeds((torch.cat(x, -1).permute(0, 2, 1))).permute(0, 2, 1)], -1)
+            [self.features_embeds((torch.cat(x, -1).permute(0, 2, 1))).permute(0, 2, 1)], -1)
         if self.config.experiment.with_dates_inputs:
             if self.use_time2vec:
                 input_elements = torch.cat([input_elements, self.time_embed(dates_tensors[0])], -1)
