@@ -13,7 +13,7 @@ datamodule:
   _target_: wind_forecast.datamodules.SequenceDataModule.SequenceDataModule
 
 model:
-  _target_: wind_forecast.models.TCNModel.TemporalConvNet
+  _target_: wind_forecast.models.tcn.TCNModel.TemporalConvNet
 
 system:
   _target_: wind_forecast.systems.Regressor.Regressor

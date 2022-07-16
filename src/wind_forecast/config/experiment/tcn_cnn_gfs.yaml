@@ -13,7 +13,7 @@ datamodule:
   _target_: wind_forecast.datamodules.MultiChannelSpatialSubregionSequenceDataModule.MultiChannelSpatialSubregionSequenceDataModule
 
 model:
-  _target_: wind_forecast.models.TCNWithCNNModel.TCNWithCNNModel
+  _target_: wind_forecast.models.tcn.TCNWithCNNModel.TCNWithCNNModel
 
 system:
   _target_: wind_forecast.systems.Regressor.Regressor

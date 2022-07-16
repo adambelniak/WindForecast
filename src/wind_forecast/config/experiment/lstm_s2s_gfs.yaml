@@ -13,11 +13,10 @@ datamodule:
   _target_: wind_forecast.datamodules.Sequence2SequenceWithCMAXDataModule.Sequence2SequenceWithCMAXDataModule
 
 model:
-  _target_: wind_forecast.models.LSTMS2SModel.LSTMS2SModel
+  _target_: wind_forecast.models.lstm.LSTMS2SModel.LSTMS2SModel
 
 system:
   _target_: wind_forecast.systems.S2SRegressorWithGFSInput.S2SRegressorWithGFSInput
-synop_from_year: 2016
 batch_size: 32
 use_gfs_data: True
 use_all_gfs_params: True

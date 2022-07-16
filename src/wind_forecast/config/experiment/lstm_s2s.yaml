@@ -13,7 +13,7 @@ datamodule:
   _target_: wind_forecast.datamodules.Sequence2SequenceWithCMAXDataModule.Sequence2SequenceWithCMAXDataModule
 
 model:
-  _target_: wind_forecast.models.LSTMS2SModel.LSTMS2SModel
+  _target_: wind_forecast.models.lstm.LSTMS2SModel.LSTMS2SModel
 
 system:
   _target_: wind_forecast.systems.BaseS2SRegressor.BaseS2SRegressor

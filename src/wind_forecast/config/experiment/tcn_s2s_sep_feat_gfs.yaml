@@ -13,7 +13,7 @@ datamodule:
   _target_: wind_forecast.datamodules.Sequence2SequenceWithCMAXDataModule.Sequence2SequenceWithCMAXDataModule
 
 model:
-  _target_: wind_forecast.models.TCNS2SFeatureSeparableModel.TCNS2SFeatureSeparableModel
+  _target_: wind_forecast.models.tcn.TCNS2SFeatureSeparableModel.TCNS2SFeatureSeparableModel
 
 system:
   _target_: wind_forecast.systems.S2SRegressorWithGFSInput.S2SRegressorWithGFSInput

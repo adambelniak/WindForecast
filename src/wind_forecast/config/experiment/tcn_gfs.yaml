@@ -15,7 +15,7 @@ datamodule:
 use_gfs_data: True
 
 model:
-  _target_: wind_forecast.models.TCNModelWithGFS.TemporalConvNet
+  _target_: wind_forecast.models.tcn.TCNModelWithGFS.TemporalConvNet
 
 system:
   _target_: wind_forecast.systems.RegressorWithGFSInput.RegressorWithGFSInput
