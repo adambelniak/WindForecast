@@ -7,7 +7,7 @@ from torch import nn
 from wind_forecast.config.register import Config
 from wind_forecast.consts import BatchKeys
 from wind_forecast.models.CMAXAutoencoder import CMAXEncoder, get_pretrained_encoder
-from wind_forecast.models.transformer.Transformer import PositionalEncoding, Time2Vec, TransformerGFSBaseProps
+from wind_forecast.models.transformer.Transformer import PositionalEncoding, TransformerGFSBaseProps
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 
 

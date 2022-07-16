@@ -7,6 +7,7 @@ from wind_forecast.config.register import Config
 from wind_forecast.consts import BatchKeys
 from wind_forecast.models.CMAXAutoencoder import CMAXEncoder, get_pretrained_encoder
 from wind_forecast.models.tcn.TCNModel import TemporalBlock
+from wind_forecast.models.transformer.Transformer import Time2Vec
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 from wind_forecast.util.config import process_config
 
@@ -17,6 +18,11 @@ class TCNS2SCMAX(LightningModule):
         self.config = config
         self.future_sequence_length = config.experiment.future_sequence_length
         self.conv_encoder = CMAXEncoder(config)
+        self.use_time2vec = config.experiment.use_time2vec
+        self.time2vec_embedding_size = config.experiment.time2vec_embedding_size
+
+        if self.use_time2vec:
+            self.time_embed = TimeDistributed(Time2Vec(2, self.time2vec_embedding_size), batch_first=True)
 
         if config.experiment.use_pretrained_cmax_autoencoder:
             get_pretrained_encoder(self.conv, config)
@@ -28,10 +34,7 @@ class TCNS2SCMAX(LightningModule):
                                            batch_first=True)
         self.tcn = self.create_tcn_layers()
 
-        if self.config.experiment.with_dates_inputs:
-            features = config.experiment.tcn_channels[-1] + 6
-        else:
-            features = config.experiment.tcn_channels[-1]
+        features = config.experiment.tcn_channels[-1]
 
         if self.config.experiment.use_gfs_data:
             features += 1
@@ -44,14 +47,16 @@ class TCNS2SCMAX(LightningModule):
 
         self.linear_time_distributed = TimeDistributed(linear, batch_first=True)
 
-    def create_tcn_layers(self, ):
+    def create_tcn_layers(self):
         tcn_layers = []
         tcn_channels = self.config.experiment.tcn_channels
         tcn_channels[0] += len(self.config.experiment.synop_train_features) + len(self.config.experiment.synop_periodic_features)
-        tcn_channels[0] += 6 if self.config.experiment.with_dates_inputs else 0
+
+        if self.config.experiment.with_dates_inputs:
+            tcn_channels[0] += 2 if not self.use_time2vec else 2 * self.time2vec_embedding_size
 
         if self.config.experiment.use_gfs_data and self.config.experiment.use_all_gfs_params:
-            gfs_params = process_config(config.experiment.train_parameters_config_file)
+            gfs_params = process_config(self.config.experiment.train_parameters_config_file)
             gfs_params_len = len(gfs_params)
             param_names = [x['name'] for x in gfs_params]
             if "V GRD" in param_names and "U GRD" in param_names:
@@ -72,17 +77,20 @@ class TCNS2SCMAX(LightningModule):
         synop_inputs = batch[BatchKeys.SYNOP_PAST_X.value].float()
         cmax_inputs = batch[BatchKeys.CMAX_PAST.value].float()
 
-        dates_embedding = None if self.config.experiment.with_dates_inputs is False else batch[
+        dates = None if self.config.experiment.with_dates_inputs is False else batch[
             BatchKeys.DATES_TENSORS.value]
         gfs_targets = None if self.config.experiment.use_gfs_data is False else batch[
             BatchKeys.GFS_FUTURE_Y.value].float()
 
         if self.config.experiment.with_dates_inputs:
+            dates_embedding = dates[0]
+            if self.use_time2vec:
+                dates_embedding = self.time_embed(dates[0])
             if self.config.experiment.use_gfs_data and self.config.experiment.use_all_gfs_params:
                 gfs_inputs = batch[BatchKeys.GFS_PAST_X.value].float()
-                x = [synop_inputs, gfs_inputs, *dates_embedding[0]]
+                x = [synop_inputs, gfs_inputs, dates_embedding]
             else:
-                x = [synop_inputs, *dates_embedding[0]]
+                x = [synop_inputs, dates_embedding]
         else:
             if self.config.experiment.use_gfs_data and self.config.experiment.use_all_gfs_params:
                 gfs_inputs = batch[BatchKeys.GFS_PAST_X.value].float()
@@ -96,11 +104,6 @@ class TCNS2SCMAX(LightningModule):
         x = self.tcn(x.permute(0, 2, 1)).permute(0, 2, 1)
         mem = x[:, -self.future_sequence_length:, :]
 
-        if self.config.experiment.with_dates_inputs:
-            if self.config.experiment.use_gfs_data:
-                return self.linear_time_distributed(torch.cat([mem, gfs_targets, *dates_embedding[1]], -1)).squeeze(-1)
-            return self.linear_time_distributed(torch.cat([mem, *dates_embedding[1]], -1)).squeeze(-1)
-        else:
-            if self.config.experiment.use_gfs_data:
-                return self.linear_time_distributed(torch.cat([mem, gfs_targets], -1)).squeeze(-1)
-            return self.linear_time_distributed(mem).squeeze(-1)
+        if self.config.experiment.use_gfs_data:
+            return self.linear_time_distributed(torch.cat([mem, gfs_targets], -1)).squeeze(-1)
+        return self.linear_time_distributed(mem).squeeze(-1)

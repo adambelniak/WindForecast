@@ -112,7 +112,7 @@ class TransformerEncoderBaseProps(LightningModule):
         if self.use_time2vec and self.time2vec_embedding_size == 0:
             self.time2vec_embedding_size = self.features_length
 
-        self.embed_dim = self.features_length * (self.value2vec_embedding_size + 1) + 2 * (self.time2vec_embedding_size + 1)
+        self.embed_dim = self.features_length * (self.value2vec_embedding_size + 1) + 2 * self.time2vec_embedding_size
 
         self.projection = nn.Linear(self.embed_dim, self.d_model)
 
@@ -153,7 +153,7 @@ class TransformerEncoderBaseProps(LightningModule):
 
         if self.config.experiment.with_dates_inputs:
             if self.use_time2vec:
-                input_elements = torch.cat([input_elements, dates_tensors[0], self.time_embed(dates_tensors[0])], -1)
+                input_elements = torch.cat([input_elements, self.time_embed(dates_tensors[0])], -1)
             else:
                 input_elements = torch.cat([input_elements, dates_tensors[0]], -1)
 
@@ -181,7 +181,7 @@ class TransformerEncoderGFSBaseProps(TransformerEncoderBaseProps):
             if self.use_time2vec and self.time2vec_embedding_size == 0:
                 self.time2vec_embedding_size = self.features_length
 
-            self.embed_dim = self.features_length * (self.value2vec_embedding_size + 1) + 2 * (self.time2vec_embedding_size + 1)
+            self.embed_dim = self.features_length * (self.value2vec_embedding_size + 1) + 2 * self.time2vec_embedding_size
 
             self.projection = nn.Linear(self.embed_dim, self.d_model)
 
@@ -224,7 +224,7 @@ class TransformerEncoderGFSBaseProps(TransformerEncoderBaseProps):
 
         if self.config.experiment.with_dates_inputs:
             if self.use_time2vec:
-                input_elements = torch.cat([input_elements, dates_tensors[0], self.time_embed(dates_tensors[0])], -1)
+                input_elements = torch.cat([input_elements, self.time_embed(dates_tensors[0])], -1)
             else:
                 input_elements = torch.cat([input_elements, dates_tensors[0]], -1)
 
@@ -261,13 +261,13 @@ class TransformerBaseProps(TransformerEncoderBaseProps):
 
         if self.config.experiment.with_dates_inputs:
             if self.use_time2vec:
-                input_elements = torch.cat([input_elements, dates_tensors[0], self.time_embed(dates_tensors[0])], -1)
+                input_elements = torch.cat([input_elements, self.time_embed(dates_tensors[0])], -1)
             else:
                 input_elements = torch.cat([input_elements, dates_tensors[0]], -1)
 
             if is_train:
                 if self.use_time2vec:
-                    target_elements = torch.cat([target_elements, dates_tensors[1], self.time_embed(dates_tensors[1])], -1)
+                    target_elements = torch.cat([target_elements, self.time_embed(dates_tensors[1])], -1)
                 else:
                     target_elements = torch.cat([target_elements, dates_tensors[1]], -1)
 
@@ -346,13 +346,13 @@ class TransformerGFSBaseProps(TransformerEncoderGFSBaseProps):
 
         if self.config.experiment.with_dates_inputs:
             if self.use_time2vec:
-                input_elements = torch.cat([input_elements, dates_tensors[0], self.time_embed(dates_tensors[0])], -1)
+                input_elements = torch.cat([input_elements, self.time_embed(dates_tensors[0])], -1)
             else:
                 input_elements = torch.cat([input_elements, dates_tensors[0]], -1)
 
             if is_train:
                 if self.use_time2vec:
-                    target_elements = torch.cat([target_elements, dates_tensors[1], self.time_embed(dates_tensors[1])], -1)
+                    target_elements = torch.cat([target_elements, self.time_embed(dates_tensors[1])], -1)
                 else:
                     target_elements = torch.cat([target_elements, dates_tensors[1]], -1)
 

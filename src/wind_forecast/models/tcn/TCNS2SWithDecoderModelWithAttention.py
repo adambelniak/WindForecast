@@ -24,7 +24,7 @@ class TCNS2SWithDecoderModelWithAttention(TemporalConvNetS2SWithDecoder):
             in_channels += gfs_params_len
 
         if config.experiment.with_dates_inputs:
-            in_channels += 6
+            in_channels += 2 if not self.use_time2vec else 2 * self.time2vec_embedding_size
 
         tcn_layers = []
 
@@ -57,14 +57,17 @@ class TCNS2SWithDecoderModelWithAttention(TemporalConvNetS2SWithDecoder):
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
         synop_inputs = batch[BatchKeys.SYNOP_PAST_X.value].float()
         gfs_targets = None if not self.use_gfs else batch[BatchKeys.GFS_FUTURE_Y.value].float()
-        dates_embedding = None if self.config.experiment.with_dates_inputs is False else batch[BatchKeys.DATES_TENSORS.value]
+        dates = None if self.config.experiment.with_dates_inputs is False else batch[BatchKeys.DATES_TENSORS.value]
 
         if self.config.experiment.with_dates_inputs:
+            dates_embedding = dates[0]
+            if self.use_time2vec:
+                dates_embedding = self.time_embed(dates[0])
             if self.use_gfs_on_input:
                 gfs_inputs = batch[BatchKeys.GFS_PAST_X.value].float()
-                x = [synop_inputs, gfs_inputs, *dates_embedding[0]]
+                x = [synop_inputs, gfs_inputs, dates_embedding]
             else:
-                x = [synop_inputs, *dates_embedding[0]]
+                x = [synop_inputs, dates_embedding]
         else:
             if self.use_gfs_on_input:
                 gfs_inputs = batch[BatchKeys.GFS_PAST_X.value].float()
@@ -77,14 +80,6 @@ class TCNS2SWithDecoderModelWithAttention(TemporalConvNetS2SWithDecoder):
         mem = self.hidden_space_lin(x.permute(0, 2, 1)).permute(0, 2, 1)
         y = self.decoder(mem)
 
-        if self.config.experiment.with_dates_inputs:
-            if self.use_gfs:
-                return self.linear_time_distributed(torch.cat(
-                    [y.permute(0, 2, 1)[:, -self.future_sequence_length:, :], gfs_targets, *dates_embedding[1]],
-                    -1)).squeeze(-1)
-            return self.linear_time_distributed(
-                torch.cat([y.permute(0, 2, 1)[:, -self.future_sequence_length:, :], *dates_embedding[1]], -1)).squeeze(
-                -1)
         if self.use_gfs:
             return self.linear_time_distributed(
                 torch.cat([y.permute(0, 2, 1)[:, -self.future_sequence_length:, :], gfs_targets], -1)).squeeze(-1)
