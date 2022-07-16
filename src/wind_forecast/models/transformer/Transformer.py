@@ -93,7 +93,7 @@ class TransformerEncoderBaseProps(LightningModule):
             self.value2vec_embedding_size = 0
 
         self.self_output_test = config.experiment.self_output_test
-        self.d_model = config.experiment.transformer_d_model
+        # self.d_model = config.experiment.transformer_d_model
         if self.self_output_test:
             assert self.past_sequence_length == self.future_sequence_length, \
                 "past_sequence_length must be equal future_sequence_length for self_output_test"
@@ -114,7 +114,7 @@ class TransformerEncoderBaseProps(LightningModule):
 
         self.embed_dim = self.features_length * (self.value2vec_embedding_size + 1) + 2 * self.time2vec_embedding_size
 
-        self.projection = nn.Linear(self.embed_dim, self.d_model)
+        # self.projection = nn.Linear(self.embed_dim, self.d_model)
 
         if self.use_time2vec:
             self.time_embed = TimeDistributed(Time2Vec(2, self.time2vec_embedding_size),
@@ -123,15 +123,15 @@ class TransformerEncoderBaseProps(LightningModule):
             self.value_embed = TimeDistributed(Simple2Vec(self.features_length, self.value2vec_embedding_size),
                                                batch_first=True)
 
-        self.pos_encoder = PositionalEncoding(self.d_model, self.dropout)
+        self.pos_encoder = PositionalEncoding(self.embed_dim, self.dropout)
 
-        encoder_layer = nn.TransformerEncoderLayer(self.d_model, self.n_heads, self.ff_dim, self.dropout,
+        encoder_layer = nn.TransformerEncoderLayer(self.embed_dim, self.n_heads, self.ff_dim, self.dropout,
                                                    batch_first=True)
-        encoder_norm = nn.LayerNorm(self.d_model)
+        encoder_norm = nn.LayerNorm(self.embed_dim)
         self.encoder = nn.TransformerEncoder(encoder_layer, self.transformer_encoder_layers_num, encoder_norm)
 
         dense_layers = []
-        features = self.d_model
+        features = self.embed_dim
         for neurons in self.transformer_head_dims:
             dense_layers.append(nn.Linear(in_features=features, out_features=neurons))
             features = neurons
@@ -183,7 +183,7 @@ class TransformerEncoderGFSBaseProps(TransformerEncoderBaseProps):
 
             self.embed_dim = self.features_length * (self.value2vec_embedding_size + 1) + 2 * self.time2vec_embedding_size
 
-            self.projection = nn.Linear(self.embed_dim, self.d_model)
+            # self.projection = nn.Linear(self.embed_dim, self.d_model)
 
             if self.use_value2vec:
                 self.value_embed = TimeDistributed(Simple2Vec(self.features_length, self.value2vec_embedding_size),
@@ -191,13 +191,13 @@ class TransformerEncoderGFSBaseProps(TransformerEncoderBaseProps):
 
             self.pos_encoder = PositionalEncoding(self.embed_dim, self.dropout)
 
-            encoder_layer = nn.TransformerEncoderLayer(self.d_model, self.n_heads, self.ff_dim, self.dropout,
+            encoder_layer = nn.TransformerEncoderLayer(self.embed_dim, self.n_heads, self.ff_dim, self.dropout,
                                                        batch_first=True)
-            encoder_norm = nn.LayerNorm(self.d_model)
+            encoder_norm = nn.LayerNorm(self.embed_dim)
             self.encoder = nn.TransformerEncoder(encoder_layer, self.transformer_encoder_layers_num, encoder_norm)
 
         dense_layers = []
-        features = self.d_model
+        features = self.embed_dim
         for neurons in self.transformer_head_dims:
             dense_layers.append(nn.Linear(in_features=features, out_features=neurons))
             features = neurons
