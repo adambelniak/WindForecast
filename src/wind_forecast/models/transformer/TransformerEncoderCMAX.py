@@ -27,16 +27,17 @@ class TransformerEncoderCMAX(TransformerEncoderBaseProps):
         self.conv_time_distributed = TimeDistributed(self.conv, batch_first=True)
 
         self.embed_dim += conv_W * conv_H * out_channels
+        self.head_input_dim = self.embed_dim
         self.pos_encoder = PositionalEncoding(self.embed_dim, self.dropout)
-        self.projection = TimeDistributed(nn.Linear(self.embed_dim, self.d_model), batch_first=True)
+        self.create_encoder()
+        self.create_head()
 
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
         input_elements, target_elements = self.prepare_elements_for_embedding(batch, False)
         cmax_inputs = batch[BatchKeys.CMAX_PAST.value].float()
         cmax_embeddings = self.conv_time_distributed(cmax_inputs.unsqueeze(2))
         input_elements = torch.cat([input_elements, cmax_embeddings], -1)
-        input_embedding = self.projection(input_elements)
-        input_embedding = self.pos_encoder(input_embedding) if self.use_pos_encoding else input_embedding
+        input_embedding = self.pos_encoder(input_elements) if self.use_pos_encoding else input_elements
 
         memory = self.encoder(input_embedding)
         memory = self.flatten(memory)  # flat vector of synop_features out

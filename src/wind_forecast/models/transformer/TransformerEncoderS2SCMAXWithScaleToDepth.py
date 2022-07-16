@@ -2,7 +2,6 @@ import math
 from typing import Dict
 
 import torch
-from torch import nn
 
 from wind_forecast.config.register import Config
 from wind_forecast.consts import BatchKeys
@@ -28,8 +27,10 @@ class TransformerEncoderS2SCMAXWithScaleToDepth(TransformerEncoderBaseProps):
         self.conv_time_distributed = TimeDistributed(self.conv, batch_first=True)
 
         self.embed_dim += conv_W * conv_H * out_channels
-        self.pos_encoder = PositionalEncoding(self.d_model, self.dropout)
-        self.projection = TimeDistributed(nn.Linear(self.embed_dim, self.d_model), batch_first=True)
+        self.head_input_dim = self.embed_dim
+        self.pos_encoder = PositionalEncoding(self.embed_dim, self.dropout)
+        self.create_encoder()
+        self.create_head()
 
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
         input_elements, target_elements = self.prepare_elements_for_embedding(batch, False)
@@ -43,8 +44,7 @@ class TransformerEncoderS2SCMAXWithScaleToDepth(TransformerEncoderBaseProps):
         cmax_embeddings = self.conv_time_distributed(cmax)
 
         input_elements = torch.cat([input_elements, cmax_embeddings], -1)
-        input_embedding = self.projection(input_elements)
-        input_embedding = self.pos_encoder(input_embedding) if self.use_pos_encoding else input_embedding
+        input_embedding = self.pos_encoder(input_elements) if self.use_pos_encoding else input_elements
         memory = self.encoder(input_embedding)
         memory = memory[:, -self.future_sequence_length:, :]
 

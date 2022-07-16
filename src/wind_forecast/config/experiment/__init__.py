@@ -158,7 +158,7 @@ class ExperimentSettings:
 
     use_value2vec: bool = True
 
-    embedding_scale: int = 5
+    conv_embedding_scale: int = 5
 
     transformer_ff_dim: int = 1024
 

@@ -112,9 +112,7 @@ class TransformerEncoderBaseProps(LightningModule):
         if self.use_time2vec and self.time2vec_embedding_size == 0:
             self.time2vec_embedding_size = self.features_length
 
-        self.embed_dim = self.features_length * (self.value2vec_embedding_size + 1) + 2 * self.time2vec_embedding_size
-
-        # self.projection = nn.Linear(self.embed_dim, self.d_model)
+        self.dates_dim = 2 * self.time2vec_embedding_size if self. use_time2vec else 2
 
         if self.use_time2vec:
             self.time_embed = TimeDistributed(Time2Vec(2, self.time2vec_embedding_size),
@@ -123,23 +121,28 @@ class TransformerEncoderBaseProps(LightningModule):
             self.value_embed = TimeDistributed(Simple2Vec(self.features_length, self.value2vec_embedding_size),
                                                batch_first=True)
 
+        self.embed_dim = self.features_length * (self.value2vec_embedding_size + 1) + self.dates_dim
         self.pos_encoder = PositionalEncoding(self.embed_dim, self.dropout)
+        self.create_encoder()
+        self.head_input_dim = self.embed_dim
+        self.create_head()
+        self.flatten = nn.Flatten()
 
+    def create_encoder(self):
         encoder_layer = nn.TransformerEncoderLayer(self.embed_dim, self.n_heads, self.ff_dim, self.dropout,
                                                    batch_first=True)
         encoder_norm = nn.LayerNorm(self.embed_dim)
         self.encoder = nn.TransformerEncoder(encoder_layer, self.transformer_encoder_layers_num, encoder_norm)
 
+    def create_head(self):
         dense_layers = []
-        features = self.embed_dim
+        features = self.head_input_dim
         for neurons in self.transformer_head_dims:
             dense_layers.append(nn.Linear(in_features=features, out_features=neurons))
             features = neurons
-        dense_layers.append(nn.Linear(in_features=features, out_features=self.features_length))
+        dense_layers.append(nn.Linear(in_features=features, out_features=1))
 
-        self.forecaster = nn.Sequential(*dense_layers)
-        self.classification_head = nn.Linear(self.features_length, 1)
-        self.flatten = nn.Flatten()
+        self.classification_head = nn.Sequential(*dense_layers)
 
     def prepare_elements_for_embedding(self, batch, is_train):
         synop_inputs = batch[BatchKeys.SYNOP_PAST_X.value].float()
@@ -181,29 +184,18 @@ class TransformerEncoderGFSBaseProps(TransformerEncoderBaseProps):
             if self.use_time2vec and self.time2vec_embedding_size == 0:
                 self.time2vec_embedding_size = self.features_length
 
-            self.embed_dim = self.features_length * (self.value2vec_embedding_size + 1) + 2 * self.time2vec_embedding_size
-
-            # self.projection = nn.Linear(self.embed_dim, self.d_model)
+            self.dates_dim = 2 * self.time2vec_embedding_size if self.use_time2vec else 2
 
             if self.use_value2vec:
                 self.value_embed = TimeDistributed(Simple2Vec(self.features_length, self.value2vec_embedding_size),
                                                    batch_first=True)
 
+            self.embed_dim = self.features_length * (self.value2vec_embedding_size + 1) + self.dates_dim
             self.pos_encoder = PositionalEncoding(self.embed_dim, self.dropout)
+            self.create_encoder()
 
-            encoder_layer = nn.TransformerEncoderLayer(self.embed_dim, self.n_heads, self.ff_dim, self.dropout,
-                                                       batch_first=True)
-            encoder_norm = nn.LayerNorm(self.embed_dim)
-            self.encoder = nn.TransformerEncoder(encoder_layer, self.transformer_encoder_layers_num, encoder_norm)
-
-        dense_layers = []
-        features = self.embed_dim
-        for neurons in self.transformer_head_dims:
-            dense_layers.append(nn.Linear(in_features=features, out_features=neurons))
-            features = neurons
-        dense_layers.append(nn.Linear(in_features=features, out_features=self.features_length))
-        self.forecaster = nn.Sequential(*dense_layers)
-        self.classification_head = nn.Linear(self.features_length + 1, 1)
+        self.head_input_dim = self.embed_dim + 1
+        self.create_head()
         self.flatten = nn.Flatten()
 
     def prepare_elements_for_embedding(self, batch, is_train):
@@ -234,10 +226,13 @@ class TransformerEncoderGFSBaseProps(TransformerEncoderBaseProps):
 class TransformerBaseProps(TransformerEncoderBaseProps):
     def __init__(self, config: Config):
         super().__init__(config)
+        self.transformer_decoder_layers_num = self.config.experiment.transformer_decoder_layers
+        self.create_decoder()
+
+    def create_decoder(self):
         decoder_layer = nn.TransformerDecoderLayer(self.embed_dim, self.n_heads, self.ff_dim, self.dropout,
                                                    batch_first=True)
         decoder_norm = nn.LayerNorm(self.embed_dim)
-        self.transformer_decoder_layers_num = config.experiment.transformer_decoder_layers
 
         self.decoder = nn.TransformerDecoder(decoder_layer, self.transformer_decoder_layers_num, decoder_norm)
 
@@ -314,10 +309,14 @@ class TransformerBaseProps(TransformerEncoderBaseProps):
 class TransformerGFSBaseProps(TransformerEncoderGFSBaseProps):
     def __init__(self, config: Config):
         super().__init__(config)
+        self.transformer_decoder_layers_num = self.config.experiment.transformer_decoder_layers
+        self.create_decoder()
+
+    def create_decoder(self):
         decoder_layer = nn.TransformerDecoderLayer(self.embed_dim, self.n_heads, self.ff_dim, self.dropout,
                                                    batch_first=True)
-        self.transformer_decoder_layers_num = config.experiment.transformer_decoder_layers
         decoder_norm = nn.LayerNorm(self.embed_dim)
+
         self.decoder = nn.TransformerDecoder(decoder_layer, self.transformer_decoder_layers_num, decoder_norm)
 
     def prepare_elements_for_embedding(self, batch, is_train):
@@ -406,11 +405,9 @@ class Transformer(TransformerBaseProps):
         is_train = stage not in ['test', 'predict', 'validate']
         input_elements, target_elements = self.prepare_elements_for_embedding(batch, is_train)
 
-        input_embedding = self.projection(input_elements)
-        input_embedding = self.pos_encoder(input_embedding) if self.use_pos_encoding else input_embedding
+        input_embedding = self.pos_encoder(input_elements) if self.use_pos_encoding else input_elements
         if is_train:
-            target_embedding = self.projection(target_elements)
-            target_embedding = self.pos_encoder(target_embedding) if self.use_pos_encoding else target_embedding
+            target_embedding = self.pos_encoder(target_elements) if self.use_pos_encoding else target_elements
 
         memory = self.encoder(input_embedding)
         output = self.base_transformer_forward(epoch, stage, input_embedding,
