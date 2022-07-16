@@ -20,7 +20,7 @@ from tqdm import tqdm
 from wind_forecast.loaders.GFSLoader import GFSLoader
 from synop.consts import SYNOP_FEATURES
 from gfs_common.common import GFS_SPACE
-from scipy.interpolate import interpolate
+from scipy.interpolate import CubicSpline
 from gfs_archive_0_25.gfs_processor.Coords import Coords
 from wind_forecast.consts import NETCDF_FILE_REGEX, DATE_KEY_REGEX
 from gfs_archive_0_25.utils import get_nearest_coords
@@ -118,23 +118,26 @@ class GFSUtil:
 
     def get_next_gfs_values(self, dates: [datetime], gfs_params: list, future_dates: bool):
         next_gfs_values = []
-        first_date = dates.values[0]
-        last_date = dates.values[-1]
+        first_date = pd.Timestamp(dates.values[0]).to_pydatetime()
+        last_date = pd.Timestamp(dates.values[-1]).to_pydatetime()
         gfs_values = []
         x_values = []
         # there should be at least and at most 1 gfs forecast ahead and behind which will help in interpolation
-        dates_3_hours_before = [pd.Timestamp(first_date).to_pydatetime() - timedelta(hours=3),
-                                pd.Timestamp(first_date).to_pydatetime() - timedelta(hours=2),
-                                pd.Timestamp(first_date).to_pydatetime() - timedelta(hours=1)]
-        dates_3_hours_after = [pd.Timestamp(last_date).to_pydatetime() + timedelta(hours=1),
-                               pd.Timestamp(last_date).to_pydatetime() + timedelta(hours=2),
-                               pd.Timestamp(last_date).to_pydatetime() + timedelta(hours=3)]
+        dates_3_hours_before = [first_date - timedelta(hours=3),
+                                first_date - timedelta(hours=2),
+                                first_date - timedelta(hours=1)]
+        dates_3_hours_after = [last_date + timedelta(hours=1),
+                               last_date + timedelta(hours=2),
+                               last_date + timedelta(hours=3)]
         for index, date in enumerate(dates_3_hours_before):
-            value = self.get_gfs_values_for_date(pd.Timestamp(date), future_dates, gfs_params, first_date)
-            if value is not None and len(value) != 0:
-                x_values.append(index - 3)
-                gfs_values.append(value)
-                break
+            value = self.get_gfs_values_for_date(date, future_dates, gfs_params, first_date)
+            if value is not None:
+                if len(value) != 0:
+                    x_values.append(index - 3)
+                    gfs_values.append(value)
+                    break
+                elif index == 2:
+                    return None
 
         for index, date in enumerate(dates):
             # get real forecast values for hours which match the GFS forecast hour (if mod_offset == 0)
@@ -148,14 +151,26 @@ class GFSUtil:
                     return None
 
         for index, date in enumerate(dates_3_hours_after):
-            value = self.get_gfs_values_for_date(pd.Timestamp(date), future_dates, gfs_params, first_date)
-            if value is not None and len(value) != 0:
-                x_values.append(index + len(dates))
-                gfs_values.append(value)
-                break
+            value = self.get_gfs_values_for_date(date, future_dates, gfs_params, first_date)
+            if value is not None:
+                if len(value) != 0:
+                    x_values.append(index + len(dates))
+                    gfs_values.append(value)
+                    break
+            elif index == 2:
+                return None
 
         for index, param in enumerate(gfs_params):
-            values = np.interp(np.arange(len(dates)), x_values, [gfs_values[i][index] for i in range(len(gfs_values))])
+            if param['interpolation'] == 'polynomial':
+                interpolator = CubicSpline(x_values, [gfs_values[i][index] for i in range(len(gfs_values))])
+                values = interpolator(np.arange(len(dates)))
+            else:
+                values = np.interp(np.arange(len(dates)), x_values, [gfs_values[i][index] for i in range(len(gfs_values))])
+
+            if 'min' in param:
+                values = [param['min'] if val < param['min'] else val for val in values]
+            if 'max' in param:
+                values = [param['max'] if val > param['max'] else val for val in values]
 
             next_gfs_values.append(values)
 
@@ -165,12 +180,14 @@ class GFSUtil:
         Return values for all params only if there is a forecast for this exact date and hour.
         Otherwise, if the date does not match the forecast date return None, but if the date match and still there's no 
         forecast, return an empty array.
+        current_date is when we start forecasting - we can't use the forecast from the future.
     """
-    def get_gfs_values_for_date(self, date: datetime, future_date: bool, gfs_params: list, first_date: datetime):
+    def get_gfs_values_for_date(self, date: datetime, future_date: bool, gfs_params: list, current_date: datetime):
         if future_date:
-            offset = self.prediction_offset + int(divmod((date - first_date).total_seconds(), 3600)[0])
+            offset = self.prediction_offset + int(divmod((date - current_date).total_seconds(), 3600)[0])
             offset = max(3, offset)
         else:
+            # for past dates we assume we can use any closest forecast
             offset = 3
         gfs_date, gfs_offset, mod_offset = get_forecast_date_and_offset_for_prediction_date(date, offset)
 
@@ -404,16 +421,6 @@ def get_gfs_lat_lon_from_coords(gfs_coords: [[float]], original_coords: Coords):
     return lat, lon
 
 
-def get_point_from_GFS_slice_for_coords(gfs_data: np.ndarray, coords: Coords):
-    nearest_coords = get_nearest_coords(coords)
-    lat_index = int((GFS_SPACE.nlat - nearest_coords.slat) * 4)
-    lon_index = int((GFS_SPACE.elon - nearest_coords.wlon) * 4)
-
-    return interpolate.interp2d(nearest_coords[0], nearest_coords[1],
-                                gfs_data[lat_index:lat_index + 2, lon_index:lon_index + 2])(
-        coords.nlat, coords.elon).item()
-
-
 def get_indices_of_GFS_slice_for_coords(coords: Coords):
     nearest_coords_NW = get_nearest_coords(Coords(coords.nlat, coords.nlat, coords.wlon, coords.wlon))
     nearest_coords_SE = get_nearest_coords(Coords(coords.slat, coords.slat, coords.elon, coords.elon))
@@ -446,35 +453,29 @@ def target_param_to_gfs_name_level(target_param: str):
     return {
         "temperature": [{
             "name": "TMP",
-            "level": "HTGL_2",
-            "interpolation": "linear"
+            "level": "HTGL_2"
         }],
         "wind_velocity": [{
             "name": "V GRD",
-            "level": "HTGL_10",
-            "interpolation": "linear"
+            "level": "HTGL_10"
         },
             {
                 "name": "U GRD",
-                "level": "HTGL_10",
-                "interpolation": "linear"
+                "level": "HTGL_10"
             }
         ],
         "wind_direction": [{
             "name": "V GRD",
-            "level": "HTGL_10",
-            "interpolation": "linear"
+            "level": "HTGL_10"
         },
             {
                 "name": "U GRD",
-                "level": "HTGL_10",
-                "interpolation": "linear"
+                "level": "HTGL_10"
             }
         ],
         "wind_gust": [{
             "name": "GUST",
-            "level": "SFC_0",
-            "interpolation": "linear"
+            "level": "SFC_0"
         }]
     }[target_param]
 

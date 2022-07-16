@@ -43,6 +43,9 @@ class Interpolator(metaclass=Singleton):
         return f_x_y
 
 
+"""
+Interpolates values in a space dimension
+"""
 class GFSInterpolatedLoader:
     def __init__(self, target_point: Coords) -> None:
         super().__init__()

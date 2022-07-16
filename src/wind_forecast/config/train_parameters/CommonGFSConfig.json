@@ -3,77 +3,89 @@
     {
       "name": "T CDC",
       "level": "LCY_0",
-      "interpolation": "linear"
+      "interpolation": "polynomial",
+      "min": 0,
+      "max": 100
     },
     {
       "name": "T CDC",
       "level": "MCY_0",
-      "interpolation": "linear"
+      "interpolation": "polynomial",
+      "min": 0,
+      "max": 100
     },
     {
       "name": "T CDC",
       "level": "HCY_0",
-      "interpolation": "linear"
+      "interpolation": "polynomial",
+      "min": 0,
+      "max": 100
     },
     {
       "name": "V GRD",
       "level": "HTGL_10",
-      "interpolation": "linear"
+      "interpolation": "polynomial"
     },
     {
       "name": "U GRD",
       "level": "HTGL_10",
-      "interpolation": "linear"
+      "interpolation": "polynomial"
     },
     {
       "name": "TMP",
       "level": "ISBL_850",
-      "interpolation": "linear"
+      "interpolation": "polynomial"
     },
     {
       "name": "TMP",
       "level": "HTGL_2",
-      "interpolation": "linear"
+      "interpolation": "polynomial"
     },
     {
       "name": "PRATE",
       "level": "SFC_0",
-      "interpolation": "linear"
+      "interpolation": "polynomial",
+      "min": 0
     },
     {
       "name": "PRES",
       "level": "SFC_0",
-      "interpolation": "linear"
+      "interpolation": "polynomial"
     },
     {
       "name": "R H",
       "level": "HTGL_2",
-      "interpolation": "linear"
+      "interpolation": "polynomial",
+      "min": 0,
+      "max": 100
     },
     {
       "name": "R H",
       "level": "ISBL_700",
-      "interpolation": "linear"
+      "interpolation": "polynomial",
+      "min": 0,
+      "max": 100
     },
     {
       "name": "DPT",
       "level": "HTGL_2",
-      "interpolation": "linear"
+      "interpolation": "polynomial"
     },
         {
       "name": "HGT",
       "level": "ISBL_500",
-      "interpolation": "linear"
+      "interpolation": "polynomial"
     },
         {
       "name": "TMP",
       "level": "ISBL_700",
-      "interpolation": "linear"
+      "interpolation": "polynomial"
     },
     {
       "name": "GUST",
       "level": "SFC_0",
-      "interpolation": "linear"
+      "interpolation": "polynomial",
+      "min": 0
     }
 
   ]

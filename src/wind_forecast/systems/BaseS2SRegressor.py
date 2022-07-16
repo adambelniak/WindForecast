@@ -204,11 +204,10 @@ class BaseS2SRegressor(pl.LightningModule):
             Metric values for a given batch.
         """
 
-        if self.cfg.experiment.with_dates_inputs:
-            dates_inputs = batch[BatchKeys.DATES_PAST.value]
-            dates_targets = batch[BatchKeys.DATES_FUTURE.value]
-            dates_embeddings = self.get_dates_tensor(dates_inputs, dates_targets)
-            batch[BatchKeys.DATES_TENSORS.value] = dates_embeddings
+        dates_inputs = batch[BatchKeys.DATES_PAST.value]
+        dates_targets = batch[BatchKeys.DATES_FUTURE.value]
+        dates_embeddings = self.get_dates_tensor(dates_inputs, dates_targets)
+        batch[BatchKeys.DATES_TENSORS.value] = dates_embeddings
 
         outputs = self.forward(batch, self.current_epoch, 'fit')
         targets = batch[BatchKeys.SYNOP_FUTURE_Y.value]
@@ -273,11 +272,10 @@ class BaseS2SRegressor(pl.LightningModule):
         dict[str, torch.Tensor]
             Metric values for a given batch.
         """
-        if self.cfg.experiment.with_dates_inputs:
-            dates_inputs = batch[BatchKeys.DATES_PAST.value]
-            dates_targets = batch[BatchKeys.DATES_FUTURE.value]
-            dates_embeddings = self.get_dates_tensor(dates_inputs, dates_targets)
-            batch[BatchKeys.DATES_TENSORS.value] = dates_embeddings
+        dates_inputs = batch[BatchKeys.DATES_PAST.value]
+        dates_targets = batch[BatchKeys.DATES_FUTURE.value]
+        dates_embeddings = self.get_dates_tensor(dates_inputs, dates_targets)
+        batch[BatchKeys.DATES_TENSORS.value] = dates_embeddings
 
         outputs = self.forward(batch, self.current_epoch, 'test')
         targets = batch[BatchKeys.SYNOP_FUTURE_Y.value]
@@ -340,11 +338,10 @@ class BaseS2SRegressor(pl.LightningModule):
         dict[str, torch.Tensor]
             Metric values for a given batch.
         """
-        if self.cfg.experiment.with_dates_inputs:
-            dates_inputs = batch[BatchKeys.DATES_PAST.value]
-            dates_targets = batch[BatchKeys.DATES_FUTURE.value]
-            dates_embeddings = self.get_dates_tensor(dates_inputs, dates_targets)
-            batch[BatchKeys.DATES_TENSORS.value] = dates_embeddings
+        dates_inputs = batch[BatchKeys.DATES_PAST.value]
+        dates_targets = batch[BatchKeys.DATES_FUTURE.value]
+        dates_embeddings = self.get_dates_tensor(dates_inputs, dates_targets)
+        batch[BatchKeys.DATES_TENSORS.value] = dates_embeddings
 
         outputs = self.forward(batch, self.current_epoch, 'test')
         targets = batch[BatchKeys.SYNOP_FUTURE_Y.value]
@@ -355,12 +352,8 @@ class BaseS2SRegressor(pl.LightningModule):
         self.test_mase(outputs.squeeze(), targets.float().squeeze(), synop_past_targets)
 
         synop_inputs = batch[BatchKeys.SYNOP_PAST_X.value]
-        if self.cfg.experiment.with_dates_inputs:
-            dates_inputs = batch[BatchKeys.DATES_PAST.value]
-            dates_targets = batch[BatchKeys.DATES_FUTURE.value]
-        else:
-            dates_inputs = None
-            dates_targets = None
+        dates_inputs = batch[BatchKeys.DATES_PAST.value]
+        dates_targets = batch[BatchKeys.DATES_FUTURE.value]
 
         return {BatchKeys.SYNOP_FUTURE_Y.value: targets,
                 'output': outputs,
@@ -401,12 +394,8 @@ class BaseS2SRegressor(pl.LightningModule):
 
         inputs = [item for sublist in [x[BatchKeys.SYNOP_PAST_Y.value] for x in outputs] for item in sublist]
 
-        if self.cfg.experiment.with_dates_inputs:
-            inputs_dates = [item for sublist in [x[BatchKeys.DATES_PAST.value] for x in outputs] for item in sublist]
-            labels_dates = [item for sublist in [x[BatchKeys.DATES_FUTURE.value] for x in outputs] for item in sublist]
-        else:
-            inputs_dates = None
-            labels_dates = None
+        inputs_dates = [item for sublist in [x[BatchKeys.DATES_PAST.value] for x in outputs] for item in sublist]
+        labels_dates = [item for sublist in [x[BatchKeys.DATES_FUTURE.value] for x in outputs] for item in sublist]
 
         self.test_results = {'labels': copy.deepcopy(labels),
                              'output': copy.deepcopy(out),

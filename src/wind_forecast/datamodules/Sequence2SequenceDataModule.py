@@ -51,10 +51,13 @@ class Sequence2SequenceDataModule(SplittableDataModule):
         self.gfs_train_params = process_config(config.experiment.train_parameters_config_file)
         self.gfs_target_params = self.gfs_train_params
 
-        self.gfs_target_param_indices = [self.gfs_train_params.index(param) for param in target_param_to_gfs_name_level(
-            self.target_param)]
+        self.gfs_target_param_indices = [[{'name': param['name'], 'level': param['level']}
+                                          for param in self.gfs_train_params].index(param)
+                                         for param in target_param_to_gfs_name_level(self.target_param)]
 
-        self.gfs_wind_components_indices = [self.gfs_train_params.index(param) for param in target_param_to_gfs_name_level(
+        self.gfs_wind_components_indices = [[{'name': param['name'], 'level': param['level']}
+                                            for param in self.gfs_train_params].index(param)
+                                            for param in target_param_to_gfs_name_level(
             'wind_direction')]
         self.gfs_util = GFSUtil(self.target_coords, self.sequence_length, self.future_sequence_length,
                                 self.prediction_offset, self.gfs_train_params, self.gfs_target_params)

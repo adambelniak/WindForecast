@@ -1,4 +1,6 @@
 from __future__ import annotations
+
+import copy
 import math
 from typing import List, Dict, Any
 
@@ -48,6 +50,8 @@ class S2SGFSRegressor(BaseS2SRegressor):
         dict[str, torch.Tensor]
             Metric values for a given batch.
         """
+        dates_inputs = batch[BatchKeys.DATES_PAST.value]
+        dates_targets = batch[BatchKeys.DATES_FUTURE.value]
         outputs = batch[BatchKeys.GFS_FUTURE_Y.value]
         targets = batch[BatchKeys.SYNOP_FUTURE_Y.value]
         synop_past_targets = batch[BatchKeys.SYNOP_PAST_Y.value]
@@ -56,7 +60,12 @@ class S2SGFSRegressor(BaseS2SRegressor):
         self.test_mae(outputs.squeeze(), targets.float().squeeze())
         self.test_mase(outputs.squeeze(), targets.float().squeeze(), synop_past_targets)
 
-        return {}
+        return {BatchKeys.SYNOP_FUTURE_Y.value: targets,
+                'output': outputs,
+                BatchKeys.SYNOP_PAST_Y.value: synop_past_targets[:, :],
+                BatchKeys.DATES_PAST.value: dates_inputs,
+                BatchKeys.DATES_FUTURE.value: dates_targets,
+                BatchKeys.GFS_FUTURE_Y.value: outputs}
 
     def test_epoch_end(self, outputs: List[Any]) -> None:
         """
@@ -79,5 +88,24 @@ class S2SGFSRegressor(BaseS2SRegressor):
         self.test_mse.reset()
         self.test_mae.reset()
         self.test_mase.reset()
+
+        # save results to view
+        labels = [item for sublist in [x[BatchKeys.SYNOP_FUTURE_Y.value] for x in outputs] for item in sublist]
+
+        out = [item for sublist in [x['output'] for x in outputs] for item in sublist]
+
+        inputs = [item for sublist in [x[BatchKeys.SYNOP_PAST_Y.value] for x in outputs] for item in sublist]
+
+        gfs_targets = [item for sublist in [x[BatchKeys.GFS_FUTURE_Y.value] for x in outputs] for item in sublist]
+
+        inputs_dates = [item for sublist in [x[BatchKeys.DATES_PAST.value] for x in outputs] for item in sublist]
+        labels_dates = [item for sublist in [x[BatchKeys.DATES_FUTURE.value] for x in outputs] for item in sublist]
+
+        self.test_results = {'labels': copy.deepcopy(labels),
+                             'output': copy.deepcopy(out),
+                             'inputs': copy.deepcopy(inputs),
+                             'inputs_dates': copy.deepcopy(inputs_dates),
+                             'targets_dates': copy.deepcopy(labels_dates),
+                             'gfs_targets': copy.deepcopy(gfs_targets)}
 
         self.logger.log_metrics(metrics, step=step)
