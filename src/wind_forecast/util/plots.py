@@ -29,7 +29,7 @@ def plot_results(system, config: Config, mean, std):
             if type(mean) == list:
                 mean = mean[0]
             if type(std) == list:
-                mean = std[0]
+                std = std[0]
             out_series = (np.array(out_series) * std + mean).tolist()
             truth_series = (np.array(truth_series) * std + mean).tolist()
             if config.experiment.use_gfs_data:
