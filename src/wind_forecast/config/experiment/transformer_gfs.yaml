@@ -22,3 +22,4 @@ system:
 
 use_gfs_data: True
 use_all_gfs_params: True
+dropout: 0.2

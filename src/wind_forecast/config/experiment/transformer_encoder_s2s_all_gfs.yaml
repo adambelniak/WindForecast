@@ -21,4 +21,4 @@ system:
 use_gfs_data: True
 use_all_gfs_params: True
 use_pos_encoding: False
-dropout: 0.1
+dropout: 0.2

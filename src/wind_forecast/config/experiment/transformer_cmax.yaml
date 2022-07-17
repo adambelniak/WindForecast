@@ -20,4 +20,5 @@ system:
 
 use_cmax_data: True
 use_future_cmax: True
-batch_size: 5
+dropout: 0.2
+

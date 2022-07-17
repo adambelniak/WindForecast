@@ -21,3 +21,4 @@ system:
 
 use_gfs_data: True
 use_pos_encoding: False
+dropout: 0.2

@@ -17,3 +17,4 @@ model:
 
 system:
   _target_: wind_forecast.systems.BaseS2SRegressor.BaseS2SRegressor
+dropout: 0.2
