@@ -21,4 +21,3 @@ system:
 epochs: 30
 use_gfs_data: True
 use_all_gfs_params: True
-train_parameters_config_file: NBeatsx.json

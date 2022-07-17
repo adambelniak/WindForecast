@@ -4,7 +4,7 @@ YEAR = (2, 'year')
 MONTH = (3, 'month')
 DAY = (4, 'day')
 HOUR = (5, 'hour')
-VISIBILITY = (15, "visibility")
+VISIBILITY = (17, "visibility")
 CLOUD_COVER = (21, "cloud_cover")
 DIRECTION_COLUMN = (23, 'wind_direction')
 VELOCITY_COLUMN = (25, 'wind_velocity')
@@ -59,7 +59,6 @@ SYNOP_TRAIN_FEATURES = [
     DEW_POINT,
     PRESSURE,
     PRECIPITATION_6H,
-    PRECIPITATION_TYPE,
     LOWER_CLOUDS
 ]
 
