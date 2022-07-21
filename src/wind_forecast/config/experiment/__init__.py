@@ -38,6 +38,8 @@ class ExperimentSettings:
     # Enable initial validation before training
     validate_before_training: bool = False
 
+    check_val_every_n_epoch: int = 1
+
     # ----------------------------------------------------------------------------------------------
     # Data loading settings
     # ----------------------------------------------------------------------------------------------
@@ -91,6 +93,8 @@ class ExperimentSettings:
 
     target_parameter: str = "temperature"
 
+    load_gfs_data: bool = True
+
     use_gfs_data: bool = False
 
     use_all_gfs_params: bool = False
@@ -114,6 +118,8 @@ class ExperimentSettings:
     lstm_num_layers: int = 4
 
     lstm_hidden_state: int = 512
+
+    lstm_classification_head_dims: List = field(default_factory=lambda: [64, 128, 32])
 
     epochs: int = 40
 
@@ -218,7 +224,7 @@ class ExperimentSettings:
     # Exogenous channels for non-interpretable exogenous basis.
     nbeats_exogenous_n_channels: int = 16
 
-    arima_p: int = 0
+    arima_p: int = 1
     arima_d: int = 1
     arima_q: int = 1
     sarima_P: int = 0

@@ -4,6 +4,7 @@ from typing import Dict
 import torch
 from wind_forecast.config.register import Config
 from wind_forecast.consts import BatchKeys
+from wind_forecast.embed.prepare_embeddings import get_embeddings
 from wind_forecast.models.CMAXAutoencoder import CMAXEncoder, get_pretrained_encoder
 from wind_forecast.models.transformer.Transformer import TransformerEncoderBaseProps, PositionalEncoding
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
@@ -31,7 +32,10 @@ class TransformerEncoderS2SCMAX(TransformerEncoderBaseProps):
         self.create_head()
 
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
-        input_elements, target_elements = self.prepare_elements_for_embedding(batch, False)
+        input_elements, target_elements = get_embeddings(batch, self.config.experiment.with_dates_inputs,
+                                                         self.time_embed if self.use_time2vec else None,
+                                                         self.value_embed if self.use_value2vec else None,
+                                                         False, False)
         cmax_inputs = batch[BatchKeys.CMAX_PAST.value].float()
         cmax_embeddings = self.conv_time_distributed(cmax_inputs.unsqueeze(2))
 

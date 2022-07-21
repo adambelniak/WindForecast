@@ -47,7 +47,7 @@ class TCNS2SFeatureSeparableModel(LightningModule):
                 tcn_dnn_layers = []
                 for i in range(num_levels):
                     dilation_size = 2 ** i
-                    # 2 input channels - a pair of synop variables
+                    # 2 input channels - a pair of synop variables + time variables
                     in_channels = (2 if not self.config.experiment.with_dates_inputs else
                                    (4 if not self.use_time2vec else 2 + 2 * self.time2vec_embedding_size)) if i == 0 else\
                         num_channels[i - 1]

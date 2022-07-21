@@ -111,7 +111,7 @@ class Sequence2SequenceDataModule(SplittableDataModule):
         if self.get_from_cache(stage):
             return
 
-        if self.config.experiment.use_gfs_data:
+        if self.config.experiment.load_gfs_data:
             synop_inputs, all_gfs_input_data, gfs_target_data, all_gfs_target_data = self.prepare_dataset_for_gfs()
 
             dataset = Sequence2SequenceWithGFSDataset(self.config, self.synop_data, self.synop_data_indices,
@@ -213,7 +213,7 @@ class Sequence2SequenceDataModule(SplittableDataModule):
             BatchKeys.SYNOP_FUTURE_X.value: all_data[3]
         }
 
-        if self.config.experiment.use_gfs_data:
+        if self.config.experiment.load_gfs_data:
             dict_data[BatchKeys.GFS_PAST_X.value] = all_data[4]
             dict_data[BatchKeys.GFS_FUTURE_Y.value] = all_data[5]
             dict_data[BatchKeys.GFS_FUTURE_X.value] = all_data[6]

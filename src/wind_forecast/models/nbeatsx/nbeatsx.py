@@ -32,8 +32,10 @@ import torch as t
 from wind_forecast.config.register import Config
 from wind_forecast.consts import BatchKeys
 from wind_forecast.models.nbeatsx.nbeatsx_model import ExogenousBasisInterpretable, ExogenousBasisWavenet, \
-    ExogenousBasisTCN
+    ExogenousBasisTCN, GenericBasis
 from wind_forecast.models.nbeatsx.nbeatsx_model import NBeatsx, NBeatsBlock, IdentityBasis, TrendBasis, SeasonalityBasis
+from wind_forecast.models.transformer.Transformer import Time2Vec, Simple2Vec
+from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 from wind_forecast.util.config import process_config
 
 
@@ -59,6 +61,7 @@ class Nbeatsx(pl.LightningModule):
     SEASONALITY_BLOCK = 'seasonality'
     TREND_BLOCK = 'trend'
     IDENTITY_BLOCK = 'identity'
+    GENERIC_BLOCK = 'generic'
 
     def __init__(self, config: Config):
         super(Nbeatsx, self).__init__()
@@ -66,6 +69,7 @@ class Nbeatsx(pl.LightningModule):
         N-BEATSx model.
         """
 
+        self.config = config
         self.activation = config.experiment.nbeats_activation
         self.initialization = 'glorot_normal'
         if self.activation == 'selu': self.initialization = 'lecun_normal'
@@ -73,7 +77,7 @@ class Nbeatsx(pl.LightningModule):
         # ------------------------ Model Attributes ------------------------#
         # Architecture parameters
         self.future_sequence_length = config.experiment.future_sequence_length
-        self.input_size = config.experiment.sequence_length
+        self.past_sequence_length = config.experiment.sequence_length
         self.shared_weights = config.experiment.nbeats_shared_weights
         self.stack_types = config.experiment.nbeats_stack_types
         self.n_blocks = config.experiment.nbeats_num_blocks
@@ -86,24 +90,46 @@ class Nbeatsx(pl.LightningModule):
         # Regularization and optimization parameters
         self.batch_normalization = True
         self.dropout = config.experiment.dropout
+        self.use_gfs = config.experiment.use_gfs_data
+        self.time2vec_embedding_size = config.experiment.time2vec_embedding_size
+        self.use_time2vec = config.experiment.use_time2vec and config.experiment.with_dates_inputs
+
         # No static features in our case
         self.x_s_n_hidden, self.n_x_s = 0, 0
 
-        gfs_params = process_config(config.experiment.train_parameters_config_file)
-        n_gfs_features = len(gfs_params)
-        param_names = [x['name'] for x in gfs_params]
-        if "V GRD" in param_names and "U GRD" in param_names:
-            n_gfs_features += 1  # V and U will be expanded int velocity, sin and cos
+        if self.use_gfs:
+            gfs_params = process_config(config.experiment.train_parameters_config_file)
+            n_gfs_features = len(gfs_params)
+            param_names = [x['name'] for x in gfs_params]
+            if "V GRD" in param_names and "U GRD" in param_names:
+                n_gfs_features += 1  # V and U will be expanded int velocity, sin and cos
 
-        self.n_insample_t = len(config.experiment.synop_train_features) + n_gfs_features + len(config.experiment.synop_periodic_features)
-        self.n_outsample_t = n_gfs_features
+            self.n_insample_t = len(config.experiment.synop_train_features) + n_gfs_features + len(
+                config.experiment.synop_periodic_features)
+            self.n_outsample_t = n_gfs_features
+        else:
+            self.n_insample_t = len(config.experiment.synop_train_features) + len(
+                config.experiment.synop_periodic_features)
+            self.n_outsample_t = 0
 
-        block_list = self.create_stack()
+        if self.use_time2vec and self.time2vec_embedding_size == 0:
+            self.time2vec_embedding_size = self.features_length
+
+        self.dates_dim = 2 * self.time2vec_embedding_size if self.use_time2vec else 2
+
+        if self.use_time2vec:
+            self.time_embed = TimeDistributed(Time2Vec(2, self.time2vec_embedding_size), batch_first=True)
+
+        if config.experiment.with_dates_inputs:
+            self.n_insample_t = self.n_insample_t + self.dates_dim
+            self.n_outsample_t = self.n_outsample_t + self.dates_dim if self.use_gfs else 0
+
+        block_list = self.create_stacks()
 
         self.model = NBeatsx(t.nn.ModuleList(block_list))
 
-    def create_stack(self):
-        x_t_n_inputs = self.input_size
+    def create_stacks(self):
+        x_t_n_inputs = self.past_sequence_length
 
         # ------------------------ Model Definition ------------------------#
         block_list = []
@@ -127,9 +153,9 @@ class Nbeatsx(pl.LightningModule):
                                                    n_insample_t=self.n_insample_t,
                                                    theta_n_dim=4 * int(
                                                        np.ceil(self.n_harmonics / 2 * self.future_sequence_length) - (
-                                                                   self.n_harmonics - 1)),
+                                                               self.n_harmonics - 1)),
                                                    basis=SeasonalityBasis(harmonics=self.n_harmonics,
-                                                                          backcast_size=self.input_size,
+                                                                          backcast_size=self.past_sequence_length,
                                                                           forecast_size=self.future_sequence_length),
                                                    n_layers=self.n_layers[i],
                                                    theta_n_hidden=list(self.n_hidden[i]),
@@ -143,7 +169,7 @@ class Nbeatsx(pl.LightningModule):
                                                    n_insample_t=self.n_insample_t,
                                                    theta_n_dim=2 * (self.n_polynomials + 1),
                                                    basis=TrendBasis(degree_of_polynomial=self.n_polynomials,
-                                                                    backcast_size=self.input_size,
+                                                                    backcast_size=self.past_sequence_length,
                                                                     forecast_size=self.future_sequence_length),
                                                    n_layers=self.n_layers[i],
                                                    theta_n_hidden=list(self.n_hidden[i]),
@@ -155,9 +181,22 @@ class Nbeatsx(pl.LightningModule):
                                                    x_s_n_inputs=self.n_x_s,
                                                    x_s_n_hidden=self.x_s_n_hidden,
                                                    n_insample_t=self.n_insample_t,
-                                                   theta_n_dim=self.input_size + self.future_sequence_length,
-                                                   basis=IdentityBasis(backcast_size=self.input_size,
+                                                   theta_n_dim=self.past_sequence_length + self.future_sequence_length,
+                                                   basis=IdentityBasis(backcast_size=self.past_sequence_length,
                                                                        forecast_size=self.future_sequence_length),
+                                                   n_layers=self.n_layers[i],
+                                                   theta_n_hidden=list(self.n_hidden[i]),
+                                                   batch_normalization=batch_normalization_block,
+                                                   dropout_prob=self.dropout,
+                                                   activation=self.activation)
+                    elif self.stack_types[i] == 'generic':
+                        nbeats_block = NBeatsBlock(x_t_n_inputs=x_t_n_inputs,
+                                                   x_s_n_inputs=self.n_x_s,
+                                                   x_s_n_hidden=self.x_s_n_hidden,
+                                                   n_insample_t=self.n_insample_t,
+                                                   theta_n_dim=self.past_sequence_length + self.future_sequence_length,
+                                                   basis=GenericBasis(backcast_size=self.past_sequence_length,
+                                                                      forecast_size=self.future_sequence_length),
                                                    n_layers=self.n_layers[i],
                                                    theta_n_hidden=list(self.n_hidden[i]),
                                                    batch_normalization=batch_normalization_block,
@@ -181,7 +220,12 @@ class Nbeatsx(pl.LightningModule):
                                                    x_s_n_hidden=self.x_s_n_hidden,
                                                    n_insample_t=self.n_insample_t,
                                                    theta_n_dim=2 * self.exogenous_n_channels,
-                                                   basis=ExogenousBasisTCN(self.exogenous_n_channels, self.n_insample_t, self.n_outsample_t, dropout_prob=self.dropout),
+                                                   basis=ExogenousBasisTCN(self.exogenous_n_channels,
+                                                                           self.n_insample_t,
+                                                                           self.n_outsample_t,
+                                                                           dropout_prob=self.dropout,
+                                                                           theta_n_dim=2 * self.exogenous_n_channels,
+                                                                           forecast_size=0 if self.n_outsample_t > 0 else self.future_sequence_length),
                                                    n_layers=self.n_layers[i],
                                                    theta_n_hidden=list(self.n_hidden[i]),
                                                    batch_normalization=batch_normalization_block,
@@ -208,11 +252,40 @@ class Nbeatsx(pl.LightningModule):
         return block_list
 
     def forward(self, batch: Dict[str, t.Tensor], epoch: int, stage=None) -> t.Tensor:
-        synop_inputs = batch[BatchKeys.SYNOP_PAST_X.value].float().permute(0, 2, 1)
+        insample_elements, outsample_elements = get_embeddings(batch, self.config.experiment.with_dates_inputs,
+                                                               self.time_embed if self.use_time2vec else None,
+                                                               self.use_gfs)
         synop_past_targets = batch[BatchKeys.SYNOP_PAST_Y.value].float()
-        gfs_inputs = batch[BatchKeys.GFS_PAST_X.value].float().permute(0, 2, 1)
-        gfs_all_targets = batch[BatchKeys.GFS_FUTURE_X.value].float().permute(0, 2, 1)
 
         # No static features in my case
         return self.model(x_s=t.Tensor([]), insample_y=synop_past_targets,
-                          insample_x_t=t.cat([synop_inputs, gfs_inputs], 1), outsample_x_t=gfs_all_targets)
+                          insample_x_t=insample_elements.permute(0,2,1),
+                          outsample_x_t=outsample_elements.permute(0,2,1) if self.use_gfs else None)
+
+
+def get_embeddings(batch, with_dates, time_embed, with_gfs_params):
+    synop_inputs = batch[BatchKeys.SYNOP_PAST_X.value].float()
+
+    dates_tensors = None if with_dates is False else batch[BatchKeys.DATES_TENSORS.value]
+
+    if with_gfs_params:
+        gfs_inputs = batch[BatchKeys.GFS_PAST_X.value].float()
+        input_elements = t.cat([synop_inputs, gfs_inputs], -1)
+        all_gfs_targets = batch[BatchKeys.GFS_FUTURE_X.value].float()
+        target_elements = all_gfs_targets
+    else:
+        input_elements = synop_inputs
+
+    if with_dates:
+        if time_embed is not None:
+            input_elements = t.cat([input_elements, time_embed(dates_tensors[0])], -1)
+        else:
+            input_elements = t.cat([input_elements, dates_tensors[0]], -1)
+
+        if with_gfs_params:
+            if time_embed is not None:
+                target_elements = t.cat([target_elements, time_embed(dates_tensors[1])], -1)
+            else:
+                target_elements = t.cat([target_elements, dates_tensors[1]], -1)
+
+    return input_elements, target_elements if with_gfs_params else None

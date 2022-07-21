@@ -13,17 +13,9 @@ datamodule:
   _target_: wind_forecast.datamodules.Sequence2SequenceWithCMAXDataModule.Sequence2SequenceWithCMAXDataModule
 
 model:
-  _target_: wind_forecast.models.NBEATS.NBEATS
+  _target_: wind_forecast.models.nbeatsx.nbeatsx.Nbeatsx
 
 system:
   _target_: wind_forecast.systems.BaseS2SRegressor.BaseS2SRegressor
 
 epochs: 20
-nbeats_stack_types:
-  - generic
-nbeats_num_blocks:
-  - 30
-nbeats_num_layers:
-  - 4
-nbeats_num_hidden:
-  - 512

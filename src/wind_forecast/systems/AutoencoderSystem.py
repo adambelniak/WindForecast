@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import math
 from typing import Any, Tuple, Union, List
-import copy
 
 import pytorch_lightning as pl
 import torch

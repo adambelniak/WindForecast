@@ -218,7 +218,7 @@ class Embedding(nn.Module):
         input_original = input.clone()
         input_original = Flatten(input_original)
         input = self.data_drop(input)
-        input = Flatten(input)
+        input = Flatten(input)  # batch len dy -> batch (dy len) 1
         mask = self.make_mask(input)
 
         # concat time_emb, y --> FF --> val_time_emb

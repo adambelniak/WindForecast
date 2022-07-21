@@ -2,63 +2,33 @@ import math
 from typing import Dict
 
 import torch
-from pytorch_lightning import LightningModule
 from torch import nn
 
 from wind_forecast.config.register import Config
 from wind_forecast.consts import BatchKeys
 from wind_forecast.embed.prepare_embeddings import get_embeddings
-from wind_forecast.models.transformer.Transformer import Simple2Vec, Time2Vec
-from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
-from wind_forecast.util.config import process_config
+from wind_forecast.models.CMAXAutoencoder import CMAXEncoder, get_pretrained_encoder
+from wind_forecast.models.lstm.LSTMS2SModel import LSTMS2SModel
 
 
-class LSTMS2SModel(LightningModule):
+class LSTMS2SModelCMAX(LSTMS2SModel):
 
     def __init__(self, config: Config):
-        super(LSTMS2SModel, self).__init__()
+        super().__init__(config)
         self.config = config
-        self.lstm_hidden_state = config.experiment.lstm_hidden_state
 
-        self.sequence_length = config.experiment.sequence_length
-        self.future_sequence_length = config.experiment.future_sequence_length
-        self.teacher_forcing_epoch_num = config.experiment.teacher_forcing_epoch_num
-        self.gradual_teacher_forcing = config.experiment.gradual_teacher_forcing
-        self.dropout = config.experiment.dropout
-        self.features_length = len(config.experiment.synop_train_features) + len(config.experiment.synop_periodic_features)
-        self.use_gfs = config.experiment.use_gfs_data
-        self.time2vec_embedding_size = config.experiment.time2vec_embedding_size
-        self.value2vec_embedding_size = config.experiment.value2vec_embedding_size
-        self.use_time2vec = config.experiment.use_time2vec and config.experiment.with_dates_inputs
-        self.use_value2vec = config.experiment.use_value2vec and self.value2vec_embedding_size > 0
+        conv_H = config.experiment.cmax_h
+        conv_W = config.experiment.cmax_w
+        out_channels = config.experiment.cnn_filters[-1]
+        self.conv = CMAXEncoder(config)
+        for _ in config.experiment.cnn_filters:
+            conv_W = math.ceil(conv_W / 2)
+            conv_H = math.ceil(conv_H / 2)
 
-        if not self.use_value2vec:
-            self.value2vec_embedding_size = 0
+        if config.experiment.use_pretrained_cmax_autoencoder:
+            get_pretrained_encoder(self.conv, config)
 
-        if self.use_gfs:
-            gfs_params = process_config(config.experiment.train_parameters_config_file)
-            gfs_params_len = len(gfs_params)
-            param_names = [x['name'] for x in gfs_params]
-            if "V GRD" in param_names and "U GRD" in param_names:
-                gfs_params_len += 1  # V and U will be expanded int velocity, sin and cos
-            self.features_length += gfs_params_len
-
-        if self.use_time2vec and self.time2vec_embedding_size == 0:
-            self.time2vec_embedding_size = self.features_length
-
-        self.dates_dim = 2 * self.time2vec_embedding_size if self.use_time2vec else 2
-
-        if self.use_time2vec:
-            self.time_embed = TimeDistributed(Time2Vec(2, self.time2vec_embedding_size), batch_first=True)
-
-        if self.use_value2vec:
-            self.value_embed = TimeDistributed(Simple2Vec(self.features_length, self.value2vec_embedding_size),
-                                               batch_first=True)
-
-        if config.experiment.with_dates_inputs:
-            self.embed_dim = self.features_length * (self.value2vec_embedding_size + 1) + self.dates_dim
-        else:
-            self.embed_dim = self.features_length * (self.value2vec_embedding_size + 1)
+        self.embed_dim += conv_W * conv_H * out_channels
 
         self.encoder_lstm = nn.LSTM(input_size=self.embed_dim, hidden_size=self.lstm_hidden_state, batch_first=True,
                                     dropout=self.dropout, num_layers=config.experiment.lstm_num_layers,
@@ -88,6 +58,21 @@ class LSTMS2SModel(LightningModule):
                                                          self.use_gfs, is_train)
         if self.use_gfs:
             gfs_targets = batch[BatchKeys.GFS_FUTURE_Y.value].float()
+
+        cmax_inputs = batch[BatchKeys.CMAX_PAST.value].float()
+        if is_train:
+            cmax_targets = batch[BatchKeys.CMAX_FUTURE.value].float()
+
+        cmax_embeddings = self.conv_time_distributed(cmax_inputs.unsqueeze(2))
+        if is_train:
+            self.conv_time_distributed.requires_grad_(False)
+            cmax_targets_embeddings = self.conv_time_distributed(cmax_targets.unsqueeze(2))
+            self.conv_time_distributed.requires_grad_(True)
+
+        input_elements = torch.cat([input_elements, cmax_embeddings], -1)
+        if is_train:
+            target_elements = torch.cat([target_elements, cmax_targets_embeddings], -1)
+
         _, state = self.encoder_lstm(input_elements)
 
         if epoch < self.teacher_forcing_epoch_num and is_train:

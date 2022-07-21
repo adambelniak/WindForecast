@@ -16,13 +16,18 @@ import pandas as pd
 from tqdm import tqdm
 
 from util.util import prep_zeros_if_needed
-from wind_forecast.consts import CMAX_NPY_FILENAME_FORMAT, CMAX_NPY_FILE_REGEX, DATE_KEY_REGEX
+from wind_forecast.consts import CMAX_NPY_FILENAME_FORMAT, CMAX_NPY_FILE_REGEX, DATE_KEY_REGEX, CMAX_H5_FILE_REGEX
 from wind_forecast.util.logging import log
 
 CMAX_DATASET_DIR = os.environ.get('CMAX_DATASET_DIR')
 CMAX_DATASET_DIR = 'data' if CMAX_DATASET_DIR is None else CMAX_DATASET_DIR
 CMAX_MAX = 255
 CMAX_MIN = 0
+
+
+def get_available_cmax_h5(from_year: int = 2015, to_year: int = 2022):
+    matcher = re.compile(CMAX_H5_FILE_REGEX)
+    return [f.name for f in tqdm(os.scandir(CMAX_DATASET_DIR)) if matcher.match(f.name)]
 
 
 def get_available_cmax_hours(from_year: int = 2015, to_year: int = 2022):

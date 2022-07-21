@@ -115,7 +115,8 @@ def run_training(cfg):
         callbacks=[checkpointer],
         resume_from_checkpoint=resume_path,
         checkpoint_callback=True if cfg.experiment.save_checkpoints else False,
-        num_sanity_val_steps=-1 if cfg.experiment.validate_before_training else 0
+        num_sanity_val_steps=-1 if cfg.experiment.validate_before_training else 0,
+        check_val_every_n_epoch=cfg.experiment.check_val_every_n_epoch
     )
 
     if not cfg.experiment.skip_training:

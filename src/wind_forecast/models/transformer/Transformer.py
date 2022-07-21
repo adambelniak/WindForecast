@@ -7,6 +7,7 @@ from torch import nn
 
 from wind_forecast.config.register import Config
 from wind_forecast.consts import BatchKeys
+from wind_forecast.embed.prepare_embeddings import get_embeddings
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 from wind_forecast.util.config import process_config
 
@@ -144,24 +145,6 @@ class TransformerEncoderBaseProps(LightningModule):
 
         self.classification_head = nn.Sequential(*dense_layers)
 
-    def prepare_elements_for_embedding(self, batch, is_train):
-        synop_inputs = batch[BatchKeys.SYNOP_PAST_X.value].float()
-        dates_tensors = None if self.config.experiment.with_dates_inputs is False else batch[
-            BatchKeys.DATES_TENSORS.value]
-
-        if self.use_value2vec:
-            input_elements = torch.cat([synop_inputs, self.value_embed(synop_inputs)], -1)
-        else:
-            input_elements = synop_inputs
-
-        if self.config.experiment.with_dates_inputs:
-            if self.use_time2vec:
-                input_elements = torch.cat([input_elements, self.time_embed(dates_tensors[0])], -1)
-            else:
-                input_elements = torch.cat([input_elements, dates_tensors[0]], -1)
-
-        return input_elements, None
-
     def generate_mask(self, sequence_length: int) -> torch.Tensor:
         mask = (torch.triu(torch.ones(sequence_length, sequence_length)) == 1).transpose(0, 1)
         mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
@@ -171,56 +154,32 @@ class TransformerEncoderBaseProps(LightningModule):
 class TransformerEncoderGFSBaseProps(TransformerEncoderBaseProps):
     def __init__(self, config: Config):
         super().__init__(config)
-        if config.experiment.use_all_gfs_params:
-            gfs_params = process_config(config.experiment.train_parameters_config_file)
-            gfs_params_len = len(gfs_params)
-            param_names = [x['name'] for x in gfs_params]
-            if "V GRD" in param_names and "U GRD" in param_names:
-                gfs_params_len += 1  # V and U will be expanded into velocity, sin and cos
 
-            if not self.self_output_test:
-                self.features_length += gfs_params_len
+        gfs_params = process_config(config.experiment.train_parameters_config_file)
+        gfs_params_len = len(gfs_params)
+        param_names = [x['name'] for x in gfs_params]
+        if "V GRD" in param_names and "U GRD" in param_names:
+            gfs_params_len += 1  # V and U will be expanded into velocity, sin and cos
 
-            if self.use_time2vec and self.time2vec_embedding_size == 0:
-                self.time2vec_embedding_size = self.features_length
+        if not self.self_output_test:
+            self.features_length += gfs_params_len
 
-            self.dates_dim = 2 * self.time2vec_embedding_size if self.use_time2vec else 2
+        if self.use_time2vec and self.time2vec_embedding_size == 0:
+            self.time2vec_embedding_size = self.features_length
 
-            if self.use_value2vec:
-                self.value_embed = TimeDistributed(Simple2Vec(self.features_length, self.value2vec_embedding_size),
-                                                   batch_first=True)
+        self.dates_dim = 2 * self.time2vec_embedding_size if self.use_time2vec else 2
 
-            self.embed_dim = self.features_length * (self.value2vec_embedding_size + 1) + self.dates_dim
-            self.pos_encoder = PositionalEncoding(self.embed_dim, self.dropout)
-            self.create_encoder()
+        if self.use_value2vec:
+            self.value_embed = TimeDistributed(Simple2Vec(self.features_length, self.value2vec_embedding_size),
+                                               batch_first=True)
+
+        self.embed_dim = self.features_length * (self.value2vec_embedding_size + 1) + self.dates_dim
+        self.pos_encoder = PositionalEncoding(self.embed_dim, self.dropout)
+        self.create_encoder()
 
         self.head_input_dim = self.embed_dim + 1
         self.create_head()
         self.flatten = nn.Flatten()
-
-    def prepare_elements_for_embedding(self, batch, is_train):
-        synop_inputs = batch[BatchKeys.SYNOP_PAST_X.value].float()
-
-        dates_tensors = None if self.config.experiment.with_dates_inputs is False else batch[
-            BatchKeys.DATES_TENSORS.value]
-
-        if self.config.experiment.use_all_gfs_params:
-            gfs_inputs = batch[BatchKeys.GFS_PAST_X.value].float()
-            input_elements = torch.cat([synop_inputs, gfs_inputs], -1)
-
-        else:
-            input_elements = synop_inputs
-
-        if self.use_value2vec:
-            input_elements = torch.cat([input_elements, self.value_embed(input_elements)], -1)
-
-        if self.config.experiment.with_dates_inputs:
-            if self.use_time2vec:
-                input_elements = torch.cat([input_elements, self.time_embed(dates_tensors[0])], -1)
-            else:
-                input_elements = torch.cat([input_elements, dates_tensors[0]], -1)
-
-        return input_elements, None
 
 
 class TransformerBaseProps(TransformerEncoderBaseProps):
@@ -235,38 +194,6 @@ class TransformerBaseProps(TransformerEncoderBaseProps):
         decoder_norm = nn.LayerNorm(self.embed_dim)
 
         self.decoder = nn.TransformerDecoder(decoder_layer, self.transformer_decoder_layers_num, decoder_norm)
-
-    def prepare_elements_for_embedding(self, batch, is_train):
-        synop_inputs = batch[BatchKeys.SYNOP_PAST_X.value].float()
-        if is_train:
-            all_synop_targets = batch[BatchKeys.SYNOP_FUTURE_X.value].float()
-        dates_tensors = None if self.config.experiment.with_dates_inputs is False else batch[
-            BatchKeys.DATES_TENSORS.value]
-
-        if self.use_value2vec:
-            input_elements = torch.cat([synop_inputs, self.value_embed(synop_inputs)], -1)
-        else:
-            input_elements = synop_inputs
-
-        if is_train:
-            if self.use_value2vec:
-                target_elements = torch.cat([all_synop_targets, self.value_embed(all_synop_targets)], -1)
-            else:
-                target_elements = all_synop_targets
-
-        if self.config.experiment.with_dates_inputs:
-            if self.use_time2vec:
-                input_elements = torch.cat([input_elements, self.time_embed(dates_tensors[0])], -1)
-            else:
-                input_elements = torch.cat([input_elements, dates_tensors[0]], -1)
-
-            if is_train:
-                if self.use_time2vec:
-                    target_elements = torch.cat([target_elements, self.time_embed(dates_tensors[1])], -1)
-                else:
-                    target_elements = torch.cat([target_elements, dates_tensors[1]], -1)
-
-        return input_elements, target_elements if is_train else None
 
     def inference(self, inference_length: int, decoder_input: torch.Tensor, memory: torch.Tensor):
         pred = None
@@ -319,44 +246,6 @@ class TransformerGFSBaseProps(TransformerEncoderGFSBaseProps):
 
         self.decoder = nn.TransformerDecoder(decoder_layer, self.transformer_decoder_layers_num, decoder_norm)
 
-    def prepare_elements_for_embedding(self, batch, is_train):
-        synop_inputs = batch[BatchKeys.SYNOP_PAST_X.value].float()
-
-        if is_train:
-            all_synop_targets = batch[BatchKeys.SYNOP_FUTURE_X.value].float()
-        dates_tensors = None if self.config.experiment.with_dates_inputs is False else batch[
-            BatchKeys.DATES_TENSORS.value]
-
-        if self.config.experiment.use_all_gfs_params:
-            gfs_inputs = batch[BatchKeys.GFS_PAST_X.value].float()
-            input_elements = torch.cat([synop_inputs, gfs_inputs], -1)
-            if is_train:
-                all_gfs_targets = batch[BatchKeys.GFS_FUTURE_X.value].float()
-                target_elements = torch.cat([all_synop_targets, all_gfs_targets], -1)
-        else:
-            input_elements = synop_inputs
-            if is_train:
-                target_elements = all_synop_targets
-
-        if self.use_value2vec:
-            input_elements = torch.cat([input_elements, self.value_embed(input_elements)], -1)
-            if is_train:
-                target_elements = torch.cat([target_elements, self.value_embed(target_elements)], -1)
-
-        if self.config.experiment.with_dates_inputs:
-            if self.use_time2vec:
-                input_elements = torch.cat([input_elements, self.time_embed(dates_tensors[0])], -1)
-            else:
-                input_elements = torch.cat([input_elements, dates_tensors[0]], -1)
-
-            if is_train:
-                if self.use_time2vec:
-                    target_elements = torch.cat([target_elements, self.time_embed(dates_tensors[1])], -1)
-                else:
-                    target_elements = torch.cat([target_elements, dates_tensors[1]], -1)
-
-        return input_elements, target_elements if is_train else None
-
     def inference(self, inference_length: int, decoder_input: torch.Tensor, memory: torch.Tensor):
         pred = None
         for frame in range(inference_length):  # do normal prediction for the beginning frames
@@ -403,7 +292,10 @@ class Transformer(TransformerBaseProps):
 
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
         is_train = stage not in ['test', 'predict', 'validate']
-        input_elements, target_elements = self.prepare_elements_for_embedding(batch, is_train)
+        input_elements, target_elements = get_embeddings(batch, self.config.experiment.with_dates_inputs,
+                                                         self.time_embed if self.use_time2vec else None,
+                                                         self.value_embed if self.use_value2vec else None,
+                                                         False, is_train)
 
         input_embedding = self.pos_encoder(input_elements) if self.use_pos_encoding else input_elements
         if is_train:

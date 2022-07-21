@@ -50,7 +50,7 @@ class SplittableDataModule(LightningDataModule):
                f"_{str(exp.test_split)}" \
                f"_{str(exp.val_split)}" \
                f"_{str(exp.normalization_type.value)}" \
-               f"_{str(exp.use_gfs_data)}" \
+               f"_{str(exp.load_gfs_data)}" \
                f"_{str(exp.cmax_from_year)}" \
                f"_{str(exp.cmax_to_year)}" \
                f"_{str(exp.cmax_normalization_type.value)}" \

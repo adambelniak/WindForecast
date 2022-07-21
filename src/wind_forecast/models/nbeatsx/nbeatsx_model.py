@@ -49,7 +49,8 @@ class NBeatsBlock(nn.Module):
     N-BEATS block which takes a basis function as an argument.
     """
 
-    def __init__(self, x_t_n_inputs: int, x_s_n_inputs: int, x_s_n_hidden: int, n_insample_t: int, theta_n_dim: int, basis: nn.Module,
+    def __init__(self, x_t_n_inputs: int, x_s_n_inputs: int, x_s_n_hidden: int, n_insample_t: int, theta_n_dim: int,
+                 basis: nn.Module,
                  n_layers: int, theta_n_hidden: list, batch_normalization: bool,
                  dropout_prob: float, activation: str):
         """
@@ -104,7 +105,8 @@ class NBeatsBlock(nn.Module):
         # Compute local projection weights and projection
         theta = self.layers(t.cat([insample_y,
                                    insample_x_t.contiguous().view(insample_x_t.size()[0],
-                                                                  insample_x_t.size()[1] * insample_x_t.size()[2])], -1))
+                                                                  insample_x_t.size()[1] * insample_x_t.size()[2])],
+                                  -1))
         backcast, forecast = self.basis(theta, insample_x_t, outsample_x_t)
 
         return backcast, forecast
@@ -170,6 +172,20 @@ class IdentityBasis(nn.Module):
     def forward(self, theta: t.Tensor, insample_x_t: t.Tensor, outsample_x_t: t.Tensor) -> Tuple[t.Tensor, t.Tensor]:
         backcast = theta[:, :self.backcast_size]
         forecast = theta[:, -self.forecast_size:]
+        return backcast, forecast
+
+
+class GenericBasis(nn.Module):
+    def __init__(self, backcast_size: int, forecast_size: int):
+        super().__init__()
+        self.forecast_size = forecast_size
+        self.backcast_size = backcast_size
+        self.forecast_linear = nn.Linear(in_features=backcast_size + forecast_size, out_features=forecast_size)
+        self.backcast_linear = nn.Linear(in_features=backcast_size + forecast_size, out_features=backcast_size)
+
+    def forward(self, theta: t.Tensor, insample_x_t: t.Tensor, outsample_x_t: t.Tensor) -> Tuple[t.Tensor, t.Tensor]:
+        backcast = self.backcast_linear(theta)
+        forecast = self.forecast_linear(theta)
         return backcast, forecast
 
 
@@ -292,26 +308,37 @@ class ExogenousBasisWavenet(nn.Module):
 
 class ExogenousBasisTCN(nn.Module):
     def __init__(self, out_features, insample_features, outsample_features, num_levels=4, kernel_size=3,
-                 dropout_prob=0):
+                 dropout_prob=0, theta_n_dim=0, forecast_size=0):
         super().__init__()
         n_channels = num_levels * [out_features]
         self.insample_tcn = TemporalConvNet(num_inputs=insample_features, num_channels=n_channels,
                                             kernel_size=kernel_size,
                                             dropout=dropout_prob)
-        self.outsample_tcn = TemporalConvNet(num_inputs=outsample_features, num_channels=n_channels,
-                                             kernel_size=kernel_size,
-                                             dropout=dropout_prob)
+        if outsample_features > 0:
+            self.outsample_tcn = TemporalConvNet(num_inputs=outsample_features, num_channels=n_channels,
+                                                 kernel_size=kernel_size,
+                                                 dropout=dropout_prob)
+        else:
+            # no outsample features, so use generic basis for forecast
+            assert theta_n_dim > 0, "theta_n_dim must be bigger than 0 if no outsample features available"
+            assert forecast_size > 0, "forecast_size must be bigger than 0 if no outsample features available"
+            self.outsample_tcn = nn.Linear(in_features=theta_n_dim // 2, out_features=forecast_size)
 
     def transform(self, insample_x_t, outsample_x_t):
         backcast_basis = self.insample_tcn(insample_x_t)[:]
         forecast_basis = self.outsample_tcn(outsample_x_t)[:]
-
         return backcast_basis, forecast_basis
 
     def forward(self, theta: t.Tensor, insample_x_t: t.Tensor, outsample_x_t: t.Tensor) -> Tuple[t.Tensor, t.Tensor]:
-        backcast_basis, forecast_basis = self.transform(insample_x_t, outsample_x_t)
+        if outsample_x_t is not None:
+            backcast_basis, forecast_basis = self.transform(insample_x_t, outsample_x_t)
+            cut_point = forecast_basis.shape[1]
+            backcast = t.einsum('bp,bpt->bt', theta[:, cut_point:], backcast_basis)
+            forecast = t.einsum('bp,bpt->bt', theta[:, :cut_point], forecast_basis)
+        else:
+            cut_point = theta.size(1) // 2
+            backcast_basis, forecast_basis = self.transform(insample_x_t, theta[:, :cut_point])
+            backcast = t.einsum('bp,bpt->bt', theta[:, cut_point:], backcast_basis)
+            forecast = forecast_basis
 
-        cut_point = forecast_basis.shape[1]
-        backcast = t.einsum('bp,bpt->bt', theta[:, cut_point:], backcast_basis)
-        forecast = t.einsum('bp,bpt->bt', theta[:, :cut_point], forecast_basis)
         return backcast, forecast

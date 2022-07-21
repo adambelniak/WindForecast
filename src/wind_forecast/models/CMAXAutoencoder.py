@@ -106,7 +106,13 @@ class CMAXAutoencoder(LightningModule):
         self.decoder = CMAXDecoder(config, input_shape=self.encoder.get_output_shape())
 
     def forward(self, cmax_inputs):
+        if len(cmax_inputs.size()) == 3:
+            # 1 channel
+            cmax_inputs = cmax_inputs.unsqueeze(1)
         hidden = self.encoder(cmax_inputs)
-        return self.decoder(hidden)
+        if len(cmax_inputs.size()) == 3:
+            return self.decoder(hidden)
+
+        return self.decoder(hidden).squeeze()
 
 

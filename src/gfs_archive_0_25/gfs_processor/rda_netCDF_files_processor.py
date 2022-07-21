@@ -165,7 +165,8 @@ def process_netCDF_files_to_csv(output_dir: str):
 
 def process_netCDF_files(mode: str, output_dir: str):
     for param in GFS_PARAMETERS:
-        name, level = param
+        name = param['name']
+        level = param['level']
         logger.info(f"Converting parameter {name} {level}")
         if name == 'T CDC':
             param_name_dir = 'L CDC' if level == 'LCY_0' else 'M CDC' if level == 'MCY_0' else 'H CDC'

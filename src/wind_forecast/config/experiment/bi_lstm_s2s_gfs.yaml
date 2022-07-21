@@ -13,14 +13,12 @@ datamodule:
   _target_: wind_forecast.datamodules.Sequence2SequenceWithCMAXDataModule.Sequence2SequenceWithCMAXDataModule
 
 model:
-  _target_: wind_forecast.models.BiLSTMS2SWithGFSModel.BiLSTMS2SWithGFSModel
+  _target_: wind_forecast.models.lstm.BiLSTMS2S.BiLSTMS2S
 
 system:
   _target_: wind_forecast.systems.S2SRegressorWithGFSInput.S2SRegressorWithGFSInput
-synop_from_year: 2016
 batch_size: 32
 use_gfs_data: True
 use_all_gfs_params: True
 teacher_forcing_epoch_num: 0
-dropout: 0.8
-epochs: 30
+epochs: 20

@@ -5,7 +5,7 @@ defaults:
   - schema_experiment
 
 _tags_:
-  - GFS
+  - BI_LSTM_S2S_CMAX
 
 resume_checkpoint: ~
 
@@ -13,11 +13,10 @@ datamodule:
   _target_: wind_forecast.datamodules.Sequence2SequenceWithCMAXDataModule.Sequence2SequenceWithCMAXDataModule
 
 model:
-  _target_: wind_forecast.models.lstm.LSTMModel.LSTMModel
+  _target_: wind_forecast.models.lstm.BiLSTMS2SCMAX.BiLSTMS2SCMAX
 
 system:
-  _target_: wind_forecast.systems.S2SGFSRegressor.S2SGFSRegressor
-
-use_gfs_data: True
-view_test_result: True
-skip_training: True
+  _target_: wind_forecast.systems.BaseS2SRegressor.BaseS2SRegressor
+batch_size: 32
+teacher_forcing_epoch_num: 0
+epochs: 20

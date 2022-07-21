@@ -2,28 +2,21 @@ from typing import Dict
 
 import torch
 import torch.nn as nn
-from pytorch_lightning import LightningModule
+
 from wind_forecast.config.register import Config
 from wind_forecast.consts import BatchKeys
+from wind_forecast.embed.prepare_embeddings import get_embeddings
 from wind_forecast.models.CMAXAutoencoder import CMAXEncoder, get_pretrained_encoder
 from wind_forecast.models.tcn.TCNModel import TemporalBlock
-from wind_forecast.models.transformer.Transformer import Time2Vec
+from wind_forecast.models.tcn.TCNS2SModel import TemporalConvNetS2S
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 from wind_forecast.util.config import process_config
 
 
-class TCNS2SCMAX(LightningModule):
+class TCNS2SCMAX(TemporalConvNetS2S):
     def __init__(self, config: Config):
-        super(TCNS2SCMAX, self).__init__()
-        self.config = config
-        self.future_sequence_length = config.experiment.future_sequence_length
+        super().__init__(config)
         self.conv_encoder = CMAXEncoder(config)
-        self.use_time2vec = config.experiment.use_time2vec
-        self.time2vec_embedding_size = config.experiment.time2vec_embedding_size
-
-        if self.use_time2vec:
-            self.time_embed = TimeDistributed(Time2Vec(2, self.time2vec_embedding_size), batch_first=True)
-
         if config.experiment.use_pretrained_cmax_autoencoder:
             get_pretrained_encoder(self.conv, config)
 
@@ -74,36 +67,21 @@ class TCNS2SCMAX(LightningModule):
         return nn.Sequential(*tcn_layers)
 
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
-        synop_inputs = batch[BatchKeys.SYNOP_PAST_X.value].float()
+        input_elements, target_elements = get_embeddings(batch, self.config.experiment.with_dates_inputs,
+                                                         self.time_embed if self.use_time2vec else None,
+                                                         self.value_embed if self.use_value2vec else None,
+                                                         self.use_gfs, False)
         cmax_inputs = batch[BatchKeys.CMAX_PAST.value].float()
 
-        dates = None if self.config.experiment.with_dates_inputs is False else batch[
-            BatchKeys.DATES_TENSORS.value]
-        gfs_targets = None if self.config.experiment.use_gfs_data is False else batch[
-            BatchKeys.GFS_FUTURE_Y.value].float()
-
-        if self.config.experiment.with_dates_inputs:
-            dates_embedding = dates[0]
-            if self.use_time2vec:
-                dates_embedding = self.time_embed(dates[0])
-            if self.config.experiment.use_gfs_data and self.config.experiment.use_all_gfs_params:
-                gfs_inputs = batch[BatchKeys.GFS_PAST_X.value].float()
-                x = [synop_inputs, gfs_inputs, dates_embedding]
-            else:
-                x = [synop_inputs, dates_embedding]
-        else:
-            if self.config.experiment.use_gfs_data and self.config.experiment.use_all_gfs_params:
-                gfs_inputs = batch[BatchKeys.GFS_PAST_X.value].float()
-                x = [synop_inputs, gfs_inputs]
-            else:
-                x = [synop_inputs]
+        if self.use_gfs:
+            gfs_targets = batch[BatchKeys.GFS_FUTURE_Y.value].float()
 
         cmax_embedding = self.cnn(cmax_inputs.unsqueeze(2))
         cmax_embedding = self.cnn_lin_tcn(cmax_embedding)
-        x = torch.cat([*x, cmax_embedding], dim=-1)
+        x = torch.cat([input_elements, cmax_embedding], dim=-1)
         x = self.tcn(x.permute(0, 2, 1)).permute(0, 2, 1)
         mem = x[:, -self.future_sequence_length:, :]
 
-        if self.config.experiment.use_gfs_data:
-            return self.linear_time_distributed(torch.cat([mem, gfs_targets], -1)).squeeze(-1)
-        return self.linear_time_distributed(mem).squeeze(-1)
+        if self.use_gfs:
+            return self.classification_head(torch.cat([mem, gfs_targets], -1)).squeeze(-1)
+        return self.classification_head(mem).squeeze(-1)
