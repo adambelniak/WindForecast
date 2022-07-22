@@ -169,7 +169,7 @@ class Sequence2SequenceDataModule(SplittableDataModule):
                                                                     -velocity[0] / (math.sqrt(velocity[0] ** 2 + velocity[1] ** 2))], -1,
                                                   gfs_past_y)
 
-        if self.target_param != "wind_direction":
+        else:
             self.gfs_mean = np.mean(np.concatenate([gfs_past_y, gfs_future_y], 0), axis=(0, 1))
             self.gfs_std = np.std(np.concatenate([gfs_past_y, gfs_future_y], 0), axis=(0, 1))
             gfs_future_y = (gfs_future_y - self.gfs_mean) / self.gfs_std

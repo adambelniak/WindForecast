@@ -36,7 +36,7 @@ def plot_results(system, config: Config, mean, std, gfs_mean, gfs_std):
                 if config.experiment.differential_forecast:
                     out_series = (np.array(out_series) * std + gfs_out_series).tolist()
                 else:
-                    out_series = (np.array(out_series) * std + mean - K_TO_C).tolist()
+                    out_series = (np.array(out_series) * std + mean).tolist()
                 gfs_out_series = gfs_out_series.tolist()
 
         ax.plot(output_dates, out_series, label='prediction')

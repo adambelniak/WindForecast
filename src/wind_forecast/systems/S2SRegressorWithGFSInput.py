@@ -52,9 +52,9 @@ class S2SRegressorWithGFSInput(BaseS2SRegressor):
 
         gfs_targets = batch[BatchKeys.GFS_FUTURE_Y.value]
 
-        return {BatchKeys.SYNOP_FUTURE_Y.value: targets,
+        return {BatchKeys.SYNOP_FUTURE_Y.value: batch[BatchKeys.SYNOP_FUTURE_Y.value].float().squeeze(),
                 'output': outputs.squeeze(),
-                BatchKeys.SYNOP_PAST_Y.value: past_targets[:, :],
+                BatchKeys.SYNOP_PAST_Y.value: batch[BatchKeys.SYNOP_PAST_Y.value].float().squeeze()[:, :],
                 BatchKeys.DATES_PAST.value: dates_inputs,
                 BatchKeys.DATES_FUTURE.value: dates_targets,
                 BatchKeys.GFS_FUTURE_Y.value: gfs_targets.squeeze()
