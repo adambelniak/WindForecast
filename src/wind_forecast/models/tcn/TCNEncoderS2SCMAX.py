@@ -7,13 +7,13 @@ from wind_forecast.config.register import Config
 from wind_forecast.consts import BatchKeys
 from wind_forecast.embed.prepare_embeddings import get_embeddings
 from wind_forecast.models.CMAXAutoencoder import CMAXEncoder, get_pretrained_encoder
-from wind_forecast.models.tcn.TCNModel import TemporalBlock
-from wind_forecast.models.tcn.TCNS2SModel import TemporalConvNetS2S
+from wind_forecast.models.tcn.TCNEncoder import TemporalBlock
+from wind_forecast.models.tcn.TCNEncoderS2S import TCNEncoderS2S
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 from wind_forecast.util.config import process_config
 
 
-class TCNS2SCMAX(TemporalConvNetS2S):
+class TCNEncoderS2SCMAX(TCNEncoderS2S):
     def __init__(self, config: Config):
         super().__init__(config)
         self.conv_encoder = CMAXEncoder(config)

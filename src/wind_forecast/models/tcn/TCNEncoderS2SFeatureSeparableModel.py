@@ -5,15 +5,15 @@ import torch.nn as nn
 from pytorch_lightning import LightningModule
 from wind_forecast.config.register import Config
 from wind_forecast.consts import BatchKeys
-from wind_forecast.models.tcn.TCNModel import TemporalBlock
+from wind_forecast.models.tcn.TCNEncoder import TemporalBlock
 from wind_forecast.models.transformer.Transformer import Time2Vec
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 from wind_forecast.util.config import process_config
 
 
-class TCNS2SFeatureSeparableModel(LightningModule):
+class TCNEncoderS2SFeatureSeparableModel(LightningModule):
     def __init__(self, config: Config):
-        super(TCNS2SFeatureSeparableModel, self).__init__()
+        super(TCNEncoderS2SFeatureSeparableModel, self).__init__()
         self.config = config
         self.use_gfs = config.experiment.use_gfs_data
         self.use_gfs_on_input = self.use_gfs and config.experiment.use_all_gfs_params

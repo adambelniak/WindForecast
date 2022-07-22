@@ -69,6 +69,8 @@ class Sequence2SequenceDataModule(SplittableDataModule):
         self.synop_data_indices = ...
         self.synop_mean = ...
         self.synop_std = ...
+        self.gfs_mean = ...
+        self.gfs_std = ...
         self.synop_feature_names = ...
 
     def prepare_data(self, *args, **kwargs):
@@ -112,11 +114,11 @@ class Sequence2SequenceDataModule(SplittableDataModule):
             return
 
         if self.config.experiment.load_gfs_data:
-            synop_inputs, all_gfs_input_data, gfs_target_data, all_gfs_target_data = self.prepare_dataset_for_gfs()
+            synop_inputs, gfs_past_y, gfs_past_x, gfs_future_y, gfs_future_x = self.prepare_dataset_for_gfs()
 
             dataset = Sequence2SequenceWithGFSDataset(self.config, self.synop_data, self.synop_data_indices,
-                                                      self.synop_feature_names, gfs_target_data,
-                                                      all_gfs_target_data, all_gfs_input_data)
+                                                      self.synop_feature_names, gfs_future_y, gfs_past_y,
+                                                            gfs_future_x, gfs_past_x)
 
         else:
             dataset = Sequence2SequenceDataset(self.config, self.synop_data, self.synop_data_indices,
@@ -127,48 +129,58 @@ class Sequence2SequenceDataModule(SplittableDataModule):
 
         dataset.set_mean(self.synop_mean)
         dataset.set_std(self.synop_std)
+        dataset.set_gfs_std(self.gfs_std)
+        dataset.set_gfs_mean(self.gfs_mean)
         self.split_dataset(self.config, dataset, self.sequence_length)
 
     def prepare_dataset_for_gfs(self):
         log.info("Preparing the dataset")
         # match GFS and synop sequences
-        self.synop_data_indices, all_gfs_input_data, all_gfs_target_data = self.gfs_util.match_gfs_with_synop_sequence2sequence(
+        self.synop_data_indices, gfs_past_x, gfs_future_x = self.gfs_util.match_gfs_with_synop_sequence2sequence(
             self.synop_data,
             self.synop_data_indices)
 
         # save target data
-        gfs_target_data = all_gfs_target_data[:, :, self.gfs_target_param_indices]
+        gfs_future_y = gfs_future_x[:, :, self.gfs_target_param_indices]
+        gfs_past_y = gfs_past_x[:, :, self.gfs_target_param_indices]
 
         # normalize GFS parameters data
         param_names = [x['name'] for x in self.gfs_train_params]
         if "V GRD" in param_names and "U GRD" in param_names:
-            all_gfs_input_data = self.prepare_gfs_data_with_wind_components(all_gfs_input_data)
-            all_gfs_target_data = self.prepare_gfs_data_with_wind_components(all_gfs_target_data)
+            gfs_past_x = self.prepare_gfs_data_with_wind_components(gfs_past_x)
+            gfs_future_x = self.prepare_gfs_data_with_wind_components(gfs_future_x)
         else:
-            all_gfs_input_data = normalize_gfs_data(all_gfs_input_data, self.normalization_type, (0, 1))
-            all_gfs_target_data = normalize_gfs_data(all_gfs_target_data, self.normalization_type, (0, 1))
+            gfs_past_x = normalize_gfs_data(gfs_past_x, self.normalization_type, (0, 1))
+            gfs_future_x = normalize_gfs_data(gfs_future_x, self.normalization_type, (0, 1))
 
         if self.target_param == "wind_velocity":
             # handle target wind_velocity forecast by GFS
             # velocity[0] is V GRD (northward), velocity[1] is U GRD (eastward)
-            gfs_target_data = np.apply_along_axis(lambda velocity: [math.sqrt(velocity[0] ** 2 + velocity[1] ** 2)], -1,
-                                                  gfs_target_data)
+            gfs_future_y = np.apply_along_axis(lambda velocity: [math.sqrt(velocity[0] ** 2 + velocity[1] ** 2)], -1,
+                                                  gfs_future_y)
+            gfs_past_y = np.apply_along_axis(lambda velocity: [math.sqrt(velocity[0] ** 2 + velocity[1] ** 2)], -1,
+                                                  gfs_past_y)
         if self.target_param == "wind_direction":
             # set sin and cos components as targets, do not normalize them
-            gfs_target_data = np.apply_along_axis(lambda velocity: [-velocity[1] / (math.sqrt(velocity[0] ** 2 + velocity[1] ** 2)),
+            gfs_future_y = np.apply_along_axis(lambda velocity: [-velocity[1] / (math.sqrt(velocity[0] ** 2 + velocity[1] ** 2)),
                                                                     -velocity[0] / (math.sqrt(velocity[0] ** 2 + velocity[1] ** 2))], -1,
-                                                  gfs_target_data)
+                                                  gfs_future_y)
+            gfs_past_y = np.apply_along_axis(lambda velocity: [-velocity[1] / (math.sqrt(velocity[0] ** 2 + velocity[1] ** 2)),
+                                                                    -velocity[0] / (math.sqrt(velocity[0] ** 2 + velocity[1] ** 2))], -1,
+                                                  gfs_past_y)
 
         if self.target_param != "wind_direction":
-            gfs_target_data = (gfs_target_data - np.mean(gfs_target_data, axis=(0, 1))) / np.std(gfs_target_data,
-                                                                                             axis=(0, 1))
+            self.gfs_mean = np.mean(np.concatenate([gfs_past_y, gfs_future_y], 0), axis=(0, 1))
+            self.gfs_std = np.std(np.concatenate([gfs_past_y, gfs_future_y], 0), axis=(0, 1))
+            gfs_future_y = (gfs_future_y - self.gfs_mean) / self.gfs_std
+            gfs_past_y = (gfs_past_y - self.gfs_mean) / self.gfs_std
 
         assert len(self.synop_data_indices) == len(
-            all_gfs_target_data), f"len(all_gfs_target_data) should be {len(self.synop_data_indices)} but was {len(all_gfs_target_data)}"
+            gfs_future_x), f"len(all_gfs_target_data) should be {len(self.synop_data_indices)} but was {len(gfs_future_x)}"
 
         assert len(self.synop_data_indices) == len(
-            all_gfs_input_data), f"len(all_gfs_input_data) should be {len(self.synop_data_indices)} but was {len(all_gfs_input_data)}"
-        return self.synop_data_indices, all_gfs_input_data, gfs_target_data, all_gfs_target_data
+            gfs_past_x), f"len(all_gfs_input_data) should be {len(self.synop_data_indices)} but was {len(gfs_past_x)}"
+        return self.synop_data_indices, gfs_past_y, gfs_past_x, gfs_future_y, gfs_future_x
 
     def resolve_all_synop_data(self):
         synop_inputs = []
@@ -215,10 +227,20 @@ class Sequence2SequenceDataModule(SplittableDataModule):
 
         if self.config.experiment.load_gfs_data:
             dict_data[BatchKeys.GFS_PAST_X.value] = all_data[4]
-            dict_data[BatchKeys.GFS_FUTURE_Y.value] = all_data[5]
+            dict_data[BatchKeys.GFS_PAST_Y.value] = all_data[5]
             dict_data[BatchKeys.GFS_FUTURE_X.value] = all_data[6]
-            dict_data[BatchKeys.DATES_PAST.value] = all_data[7]
-            dict_data[BatchKeys.DATES_FUTURE.value] = all_data[8]
+            dict_data[BatchKeys.GFS_FUTURE_Y.value] = all_data[7]
+            dict_data[BatchKeys.DATES_PAST.value] = all_data[8]
+            dict_data[BatchKeys.DATES_FUTURE.value] = all_data[9]
+            if self.config.experiment.differential_forecast:
+                gfs_past_y = dict_data[BatchKeys.GFS_PAST_Y.value] * self.dataset_train.gfs_std + self.dataset_train.gfs_mean - 273.15
+                gfs_future_y = dict_data[BatchKeys.GFS_FUTURE_Y.value] * self.dataset_train.gfs_std + self.dataset_train.gfs_mean - 273.15
+                synop_past_y = dict_data[BatchKeys.SYNOP_PAST_Y.value].unsqueeze(-1) * self.dataset_train.std + self.dataset_train.mean
+                synop_future_y = dict_data[BatchKeys.SYNOP_FUTURE_Y.value].unsqueeze(-1) * self.dataset_train.std + self.dataset_train.mean
+                diff_past = gfs_past_y - synop_past_y
+                diff_future = gfs_future_y - synop_future_y
+                dict_data[BatchKeys.GFS_SYNOP_PAST_DIFF.value] = diff_past / self.dataset_train.std
+                dict_data[BatchKeys.GFS_SYNOP_FUTURE_DIFF.value] = diff_future / self.dataset_train.std
 
         else:
             dict_data[BatchKeys.DATES_PAST.value] = all_data[4]

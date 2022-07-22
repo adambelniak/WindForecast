@@ -36,12 +36,16 @@ class S2SRegressorWithGFSInput(BaseS2SRegressor):
         batch[BatchKeys.DATES_TENSORS.value] = dates_embeddings
 
         outputs = self.forward(batch, self.current_epoch, 'test')
-        targets = batch[BatchKeys.SYNOP_FUTURE_Y.value]
-        synop_past_targets = batch[BatchKeys.SYNOP_PAST_Y.value]
+        past_targets = batch[BatchKeys.SYNOP_PAST_Y.value].float().squeeze()
+        targets = batch[BatchKeys.SYNOP_FUTURE_Y.value].float().squeeze()
 
-        self.test_mse(outputs.squeeze(), targets.float().squeeze())
-        self.test_mae(outputs.squeeze(), targets.float().squeeze())
-        self.test_mase(outputs, targets.float(), synop_past_targets)
+        if self.cfg.experiment.differential_forecast:
+            targets = batch[BatchKeys.GFS_SYNOP_FUTURE_DIFF.value].float().squeeze()
+            past_targets = batch[BatchKeys.GFS_SYNOP_PAST_DIFF.value].float().squeeze()
+
+        self.test_mse(outputs.squeeze(), targets)
+        self.test_mae(outputs.squeeze(), targets)
+        self.test_mase(outputs, targets, past_targets)
 
         dates_inputs = batch[BatchKeys.DATES_PAST.value]
         dates_targets = batch[BatchKeys.DATES_FUTURE.value]
@@ -49,11 +53,11 @@ class S2SRegressorWithGFSInput(BaseS2SRegressor):
         gfs_targets = batch[BatchKeys.GFS_FUTURE_Y.value]
 
         return {BatchKeys.SYNOP_FUTURE_Y.value: targets,
-                'output': outputs,
-                BatchKeys.SYNOP_PAST_Y.value: synop_past_targets[:, :],
+                'output': outputs.squeeze(),
+                BatchKeys.SYNOP_PAST_Y.value: past_targets[:, :],
                 BatchKeys.DATES_PAST.value: dates_inputs,
                 BatchKeys.DATES_FUTURE.value: dates_targets,
-                BatchKeys.GFS_FUTURE_Y.value: gfs_targets
+                BatchKeys.GFS_FUTURE_Y.value: gfs_targets.squeeze()
                 }
 
     def test_epoch_end(self, outputs: List[Any]) -> None:

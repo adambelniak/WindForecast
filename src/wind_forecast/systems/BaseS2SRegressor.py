@@ -210,16 +210,21 @@ class BaseS2SRegressor(pl.LightningModule):
         batch[BatchKeys.DATES_TENSORS.value] = dates_embeddings
 
         outputs = self.forward(batch, self.current_epoch, 'fit')
-        targets = batch[BatchKeys.SYNOP_FUTURE_Y.value]
-        synop_past_targets = batch[BatchKeys.SYNOP_PAST_Y.value]
+        past_targets = batch[BatchKeys.SYNOP_PAST_Y.value].float().squeeze()
+        targets = batch[BatchKeys.SYNOP_FUTURE_Y.value].float().squeeze()
+        if self.cfg.experiment.differential_forecast:
+            targets = batch[BatchKeys.GFS_SYNOP_FUTURE_DIFF.value].float().squeeze()
+            past_targets = batch[BatchKeys.GFS_SYNOP_PAST_DIFF.value].float().squeeze()
+
         self.train_mse(outputs, targets)
         self.train_mae(outputs, targets)
-        self.train_mase(outputs, targets, synop_past_targets)
+        self.train_mase(outputs, targets, past_targets)
+
         if self.cfg.optim.loss != 'mase':
-            loss = self.calculate_loss(outputs, targets.float())
+            loss = self.calculate_loss(outputs, targets)
         else:
             loss = MASE()
-            loss = loss(outputs, targets, synop_past_targets)
+            loss = loss(outputs, targets, past_targets)
         return {
             'loss': loss
             # no need to return 'train_mse' here since it is always available as `self.train_mse`
@@ -278,12 +283,15 @@ class BaseS2SRegressor(pl.LightningModule):
         batch[BatchKeys.DATES_TENSORS.value] = dates_embeddings
 
         outputs = self.forward(batch, self.current_epoch, 'test')
-        targets = batch[BatchKeys.SYNOP_FUTURE_Y.value]
-        synop_past_targets = batch[BatchKeys.SYNOP_PAST_Y.value]
+        past_targets = batch[BatchKeys.SYNOP_PAST_Y.value].float().squeeze()
+        targets = batch[BatchKeys.SYNOP_FUTURE_Y.value].float().squeeze()
+        if self.cfg.experiment.differential_forecast:
+            targets = batch[BatchKeys.GFS_SYNOP_FUTURE_DIFF.value].float().squeeze()
+            past_targets = batch[BatchKeys.GFS_SYNOP_PAST_DIFF.value].float().squeeze()
 
-        self.val_mse(outputs.squeeze(), targets.float().squeeze())
-        self.val_mae(outputs.squeeze(), targets.float().squeeze())
-        self.val_mase(outputs.squeeze(), targets.float().squeeze(), synop_past_targets)
+        self.val_mse(outputs.squeeze(), targets)
+        self.val_mae(outputs.squeeze(), targets)
+        self.val_mase(outputs.squeeze(), targets, past_targets)
 
         return {
             # 'additional_metric': ...
@@ -344,20 +352,24 @@ class BaseS2SRegressor(pl.LightningModule):
         batch[BatchKeys.DATES_TENSORS.value] = dates_embeddings
 
         outputs = self.forward(batch, self.current_epoch, 'test')
-        targets = batch[BatchKeys.SYNOP_FUTURE_Y.value]
-        synop_past_targets = batch[BatchKeys.SYNOP_PAST_Y.value]
+        past_targets = batch[BatchKeys.SYNOP_PAST_Y.value].float().squeeze()
+        targets = batch[BatchKeys.SYNOP_FUTURE_Y.value].float().squeeze()
 
-        self.test_mse(outputs.squeeze(), targets.float().squeeze())
-        self.test_mae(outputs.squeeze(), targets.float().squeeze())
-        self.test_mase(outputs.squeeze(), targets.float().squeeze(), synop_past_targets)
+        if self.cfg.experiment.differential_forecast:
+            targets = batch[BatchKeys.GFS_SYNOP_FUTURE_DIFF.value].float().squeeze()
+            past_targets = batch[BatchKeys.GFS_SYNOP_PAST_DIFF.value].float().squeeze()
+
+        self.test_mse(outputs.squeeze(), targets)
+        self.test_mae(outputs.squeeze(), targets)
+        self.test_mase(outputs.squeeze(), targets, past_targets)
 
         synop_inputs = batch[BatchKeys.SYNOP_PAST_X.value]
         dates_inputs = batch[BatchKeys.DATES_PAST.value]
         dates_targets = batch[BatchKeys.DATES_FUTURE.value]
 
         return {BatchKeys.SYNOP_FUTURE_Y.value: targets,
-                'output': outputs,
-                BatchKeys.SYNOP_PAST_Y.value: synop_past_targets[:, :],
+                'output': outputs.squeeze(),
+                BatchKeys.SYNOP_PAST_Y.value: past_targets[:, :],
                 BatchKeys.SYNOP_PAST_X.value: synop_inputs[:, :, self.target_param_index],
                 BatchKeys.DATES_PAST.value: dates_inputs,
                 BatchKeys.DATES_FUTURE.value: dates_targets

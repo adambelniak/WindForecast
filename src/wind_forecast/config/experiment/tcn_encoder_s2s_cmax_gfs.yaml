@@ -5,7 +5,7 @@ defaults:
   - schema_experiment
 
 _tags_:
-  - TCN_S2S_CMAX_GFS
+  - TCN_ENCODER_S2S_CMAX_GFS
 
 resume_checkpoint: ~
 
@@ -13,7 +13,7 @@ datamodule:
   _target_: wind_forecast.datamodules.Sequence2SequenceWithCMAXDataModule.Sequence2SequenceWithCMAXDataModule
 
 model:
-  _target_: wind_forecast.models.tcn.TCNS2SCMAX.TCNS2SCMAX
+  _target_: wind_forecast.models.tcn.TCNEncoderS2SCMAX.TCNEncoderS2SCMAX
 
 system:
   _target_: wind_forecast.systems.S2SRegressorWithGFSInput.S2SRegressorWithGFSInput

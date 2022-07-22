@@ -1,19 +1,13 @@
-from typing import Dict
-
-import torch
 import torch.nn as nn
 
 from wind_forecast.config.register import Config
-from wind_forecast.consts import BatchKeys
-from wind_forecast.embed.prepare_embeddings import get_embeddings
-from wind_forecast.models.tcn.TCNModel import TemporalBlockWithAttention
-from wind_forecast.models.tcn.TCNS2SWithDecoder import TemporalConvNetS2SWithDecoder
-from wind_forecast.util.config import process_config
+from wind_forecast.models.tcn.TCNEncoder import TemporalBlockWithAttention
+from wind_forecast.models.tcn.TCNS2S import TCNS2S
 
 
-class TCNS2SWithDecoderModelWithAttention(TemporalConvNetS2SWithDecoder):
+class TCNS2SAttention(TCNS2S):
     def __init__(self, config: Config):
-        super(TCNS2SWithDecoderModelWithAttention, self).__init__(config)
+        super(TCNS2SAttention, self).__init__(config)
 
         tcn_layers = []
         in_channels = 1 if self.self_output_test or self.config.experiment.emd_decompose else self.embed_dim

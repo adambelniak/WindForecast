@@ -2,12 +2,12 @@ import torch
 import torch.nn as nn
 from pytorch_lightning import LightningModule
 from wind_forecast.config.register import Config
-from wind_forecast.models.tcn.TCNModel import TemporalBlock
+from wind_forecast.models.tcn.TCNEncoder import TemporalBlock
 
 
-class TemporalConvNet(LightningModule):
+class TCNEncoderWithGFS(LightningModule):
     def __init__(self, config: Config):
-        super(TemporalConvNet, self).__init__()
+        super(TCNEncoderWithGFS, self).__init__()
         layers = []
         num_channels = config.experiment.tcn_channels
         num_levels = len(num_channels)

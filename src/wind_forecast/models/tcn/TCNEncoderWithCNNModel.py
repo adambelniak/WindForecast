@@ -4,13 +4,13 @@ from torch import nn
 
 from wind_forecast.config.register import Config
 from wind_forecast.models.CMAXAutoencoder import CMAXEncoder
-from wind_forecast.models.tcn.TCNModel import TemporalBlock
+from wind_forecast.models.tcn.TCNEncoder import TemporalBlock
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 
 
-class TCNWithCNNModel(LightningModule):
+class TCNEncoderWithCNNModel(LightningModule):
     def __init__(self, cfg: Config):
-        super(TCNWithCNNModel, self).__init__()
+        super(TCNEncoderWithCNNModel, self).__init__()
         self.cfg = cfg
         cnn_lin_tcn_in_features = cfg.experiment.cnn_lin_tcn_in_features
 

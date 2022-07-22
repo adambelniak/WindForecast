@@ -131,6 +131,12 @@ def run_training(cfg):
 
     mean = datamodule.dataset_test.mean
     std = datamodule.dataset_test.std
+    if cfg.experiment.use_gfs_data:
+        gfs_mean = datamodule.dataset_test.gfs_mean
+        gfs_std = datamodule.dataset_test.gfs_std
+    else:
+        gfs_mean = None
+        gfs_std = None
 
     if mean is not None:
         if type(mean) == list:
@@ -148,7 +154,7 @@ def run_training(cfg):
     wandb_logger.log_metrics(metrics, step=system.current_epoch)
 
     if cfg.experiment.view_test_result:
-        plot_results(system, cfg, mean, std)
+        plot_results(system, cfg, mean, std, gfs_mean, gfs_std)
 
     if trainer.interrupted:  # type: ignore
         log.info(f'[bold red]>>> Training interrupted.')

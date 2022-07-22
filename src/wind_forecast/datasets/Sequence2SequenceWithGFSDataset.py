@@ -9,7 +9,7 @@ class Sequence2SequenceWithGFSDataset(BaseDataset):
     'Characterizes a dataset for PyTorch'
 
     def __init__(self, config: Config, synop_data, synop_data_indices, synop_feature_names: List[str], gfs_future_y,
-                 gfs_future_x=None, gfs_past_x=None):
+                 gfs_past_y, gfs_future_x=None, gfs_past_x=None):
         'Initialization'
         super().__init__()
         self.train_params = synop_feature_names
@@ -21,7 +21,7 @@ class Sequence2SequenceWithGFSDataset(BaseDataset):
         self.use_all_gfs_params = gfs_future_x is not None and gfs_past_x is not None
 
         if self.use_all_gfs_params:
-            self.data = list(zip(synop_data_indices, gfs_past_x, gfs_future_y, gfs_future_x))
+            self.data = list(zip(synop_data_indices, gfs_past_x, gfs_past_y, gfs_future_x, gfs_future_y))
         else:
             self.data = list(zip(synop_data_indices, gfs_future_y))
 
@@ -32,7 +32,7 @@ class Sequence2SequenceWithGFSDataset(BaseDataset):
     def __getitem__(self, index):
         'Generates one sample of data'
         if self.use_all_gfs_params:
-            synop_index, gfs_past_x, gfs_future_y, gfs_future_x = self.data[index]
+            synop_index, gfs_past_x, gfs_past_y, gfs_future_x, gfs_future_y = self.data[index]
         else:
             synop_index, gfs_future_y = self.data[index]
 
@@ -54,7 +54,7 @@ class Sequence2SequenceWithGFSDataset(BaseDataset):
                   :synop_index + self.sequence_length + self.prediction_offset + self.future_sequence_length - 1]['date']
 
         if self.use_all_gfs_params:
-            return synop_past_y, synop_past_x, synop_future_y, synop_future_x, gfs_past_x,\
-                   gfs_future_y, gfs_future_x, inputs_dates, target_dates
+            return synop_past_y, synop_past_x, synop_future_y, synop_future_x, gfs_past_x, gfs_past_y,\
+                   gfs_future_x, gfs_future_y, inputs_dates, target_dates
 
         return synop_past_y, synop_past_x, synop_future_y, synop_future_x, gfs_future_y, inputs_dates, target_dates

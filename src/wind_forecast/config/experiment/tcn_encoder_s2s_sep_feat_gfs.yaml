@@ -5,7 +5,7 @@ defaults:
   - schema_experiment
 
 _tags_:
-  - TCN_S2S_DECODER_ALL_GFS
+  - TCN_ENCODER_S2S_SEP_FEAT_ALL_GFS
 
 resume_checkpoint: ~
 
@@ -13,10 +13,13 @@ datamodule:
   _target_: wind_forecast.datamodules.Sequence2SequenceWithCMAXDataModule.Sequence2SequenceWithCMAXDataModule
 
 model:
-  _target_: wind_forecast.models.tcn.TCNS2SWithDecoder.TemporalConvNetS2SWithDecoder
+  _target_: wind_forecast.models.tcn.TCNEncoderS2SFeatureSeparableModel.TCNEncoderS2SFeatureSeparableModel
 
 system:
   _target_: wind_forecast.systems.S2SRegressorWithGFSInput.S2SRegressorWithGFSInput
 
-use_all_gfs_params: True
 use_gfs_data: True
+use_all_gfs_params: True
+tcn_channels:
+  - 16
+  - 32

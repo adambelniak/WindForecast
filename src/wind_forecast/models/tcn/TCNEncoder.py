@@ -57,9 +57,9 @@ class TemporalBlockWithAttention(nn.Module):
         return self.relu(y + res)
 
 
-class TemporalConvNet(LightningModule):
+class TCNEncoder(LightningModule):
     def __init__(self, config: Config):
-        super(TemporalConvNet, self).__init__()
+        super(TCNEncoder, self).__init__()
         layers = []
         num_channels = config.experiment.tcn_channels
         num_levels = len(num_channels)

@@ -5,9 +5,9 @@ import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+K_TO_C = 273.15
 
-
-def plot_results(system, config: Config, mean, std):
+def plot_results(system, config: Config, mean, std, gfs_mean, gfs_std):
     for index in np.random.choice(np.arange(len(system.test_results['output'])), min(40, len(system.test_results['output'])), replace=False):
         fig, ax = plt.subplots()
         inputs_dates = [pd.to_datetime(pd.Timestamp(d)) for d in system.test_results['inputs_dates'][index]]
@@ -30,10 +30,14 @@ def plot_results(system, config: Config, mean, std):
                 mean = mean[0]
             if type(std) == list:
                 std = std[0]
-            out_series = (np.array(out_series) * std + mean).tolist()
             truth_series = (np.array(truth_series) * std + mean).tolist()
             if config.experiment.use_gfs_data:
-                gfs_out_series = (np.array(gfs_out_series) * std + mean).tolist()
+                gfs_out_series = np.array(gfs_out_series) * gfs_std + gfs_mean - K_TO_C
+                if config.experiment.differential_forecast:
+                    out_series = (np.array(out_series) * std + gfs_out_series).tolist()
+                else:
+                    out_series = (np.array(out_series) * std + mean - K_TO_C).tolist()
+                gfs_out_series = gfs_out_series.tolist()
 
         ax.plot(output_dates, out_series, label='prediction')
 

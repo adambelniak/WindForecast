@@ -6,11 +6,11 @@ import torch.nn as nn
 from wind_forecast.config.register import Config
 from wind_forecast.consts import BatchKeys
 from wind_forecast.embed.prepare_embeddings import get_embeddings
-from wind_forecast.models.tcn.TCNModel import TemporalBlock
-from wind_forecast.models.tcn.TCNS2SModel import TemporalConvNetS2S
+from wind_forecast.models.tcn.TCNEncoder import TemporalBlock
+from wind_forecast.models.tcn.TCNEncoderS2S import TCNEncoderS2S
 
 
-class TemporalConvNetS2SWithDecoder(TemporalConvNetS2S):
+class TCNS2S(TCNEncoderS2S):
     def __init__(self, config: Config):
         super().__init__(config)
 

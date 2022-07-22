@@ -5,17 +5,17 @@ import torch.nn as nn
 from wind_forecast.config.register import Config
 from wind_forecast.consts import BatchKeys
 from wind_forecast.embed.prepare_embeddings import get_embeddings
-from wind_forecast.models.tcn.TCNModel import TemporalBlock
 from wind_forecast.models.decomposeable.Decomposeable import EMDDecomposeable
+from wind_forecast.models.tcn.TCNEncoder import TemporalBlock
 from wind_forecast.models.transformer.Transformer import Time2Vec, Simple2Vec
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 from wind_forecast.util.config import process_config
 
 
 # EMD not examined so far
-class TemporalConvNetS2S(EMDDecomposeable):
+class TCNEncoderS2S(EMDDecomposeable):
     def __init__(self, config: Config):
-        super(TemporalConvNetS2S, self).__init__(config.experiment.emd_decompose_trials)
+        super(TCNEncoderS2S, self).__init__(config.experiment.emd_decompose_trials)
         self.config = config
         self.dropout = config.experiment.dropout
         self.use_gfs = config.experiment.use_gfs_data

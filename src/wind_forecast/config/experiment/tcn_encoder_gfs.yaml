@@ -5,7 +5,7 @@ defaults:
   - schema_experiment
 
 _tags_:
-  - TCN_GFS
+  - TCN_ENCODER_GFS
 
 resume_checkpoint: ~
 
@@ -15,7 +15,7 @@ datamodule:
 use_gfs_data: True
 
 model:
-  _target_: wind_forecast.models.tcn.TCNModelWithGFS.TemporalConvNet
+  _target_: wind_forecast.models.tcn.TCNEncoderWithGFS.TCNEncoderWithGFS
 
 system:
   _target_: wind_forecast.systems.RegressorWithGFSInput.RegressorWithGFSInput

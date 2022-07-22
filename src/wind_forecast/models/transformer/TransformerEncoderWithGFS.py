@@ -7,6 +7,7 @@ from wind_forecast.consts import BatchKeys
 from wind_forecast.embed.prepare_embeddings import get_embeddings
 from wind_forecast.models.transformer.Transformer import TransformerEncoderGFSBaseProps
 
+
 class Transformer(TransformerEncoderGFSBaseProps):
     def __init__(self, config: Config):
         super().__init__(config)
