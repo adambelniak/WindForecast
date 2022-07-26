@@ -19,5 +19,5 @@ system:
   _target_: wind_forecast.systems.S2SGFSRegressor.S2SGFSRegressor
 
 use_gfs_data: True
-view_test_result: True
+view_test_result: False
 skip_training: True

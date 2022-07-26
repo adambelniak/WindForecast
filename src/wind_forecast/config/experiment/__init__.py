@@ -93,7 +93,7 @@ class ExperimentSettings:
 
     target_parameter: str = "temperature"
 
-    differential_forecast: bool = True
+    differential_forecast: bool = False
 
     load_gfs_data: bool = True
 

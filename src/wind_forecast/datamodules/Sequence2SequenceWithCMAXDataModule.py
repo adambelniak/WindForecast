@@ -136,8 +136,9 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
             dict_data[BatchKeys.DATES_PAST.value] = all_data[8]
             dict_data[BatchKeys.DATES_FUTURE.value] = all_data[9]
             if self.config.experiment.differential_forecast:
-                gfs_past_y = dict_data[BatchKeys.GFS_PAST_Y.value] * self.dataset_train.gfs_std + self.dataset_train.gfs_mean - 273.15
-                gfs_future_y = dict_data[BatchKeys.GFS_FUTURE_Y.value] * self.dataset_train.gfs_std + self.dataset_train.gfs_mean - 273.15
+                K_TO_C = 273.15 if self.config.experiment.target_parameter == 'temperature' else 0
+                gfs_past_y = dict_data[BatchKeys.GFS_PAST_Y.value] * self.dataset_train.gfs_std + self.dataset_train.gfs_mean - K_TO_C
+                gfs_future_y = dict_data[BatchKeys.GFS_FUTURE_Y.value] * self.dataset_train.gfs_std + self.dataset_train.gfs_mean - K_TO_C
                 synop_past_y = dict_data[BatchKeys.SYNOP_PAST_Y.value].unsqueeze(-1) * self.dataset_train.std + self.dataset_train.mean
                 synop_future_y = dict_data[BatchKeys.SYNOP_FUTURE_Y.value].unsqueeze(-1) * self.dataset_train.std + self.dataset_train.mean
                 diff_past = gfs_past_y - synop_past_y

@@ -211,6 +211,7 @@ class TransformerBaseProps(TransformerEncoderBaseProps):
     def base_transformer_forward(self, epoch, stage, input_embedding, target_embedding, memory):
         if epoch < self.teacher_forcing_epoch_num and stage in [None, 'fit']:
             # Teacher forcing - masked targets as decoder inputs
+            # TODO - first do teacher forcing, then inference
             if self.gradual_teacher_forcing:
                 first_taught = math.floor(epoch / self.teacher_forcing_epoch_num * target_embedding.size(1))
                 decoder_input = input_embedding[:, -1:, :]  # SOS - last input frame

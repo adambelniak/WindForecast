@@ -5,9 +5,9 @@ import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-K_TO_C = 273.15
 
 def plot_results(system, config: Config, mean, std, gfs_mean, gfs_std):
+    K_TO_C = 273.15 if config.experiment.target_parameter == 'temperature' else 0
     for index in np.random.choice(np.arange(len(system.test_results['output'])), min(40, len(system.test_results['output'])), replace=False):
         fig, ax = plt.subplots()
         inputs_dates = [pd.to_datetime(pd.Timestamp(d)) for d in system.test_results['inputs_dates'][index]]

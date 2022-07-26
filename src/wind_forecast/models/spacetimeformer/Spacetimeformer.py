@@ -78,8 +78,6 @@ class Spacetimeformer(LightningModule):
     ):
         super().__init__()
         self.use_gfs = config.experiment.use_gfs_data
-        if self.use_gfs:
-            assert config.experiment.use_all_gfs_params, "experiment.use_all_gfs_params needs to be true if experiment.use_gfs_params for spacetimeformer"
         self.features_length = len(config.experiment.synop_train_features) + len(config.experiment.synop_periodic_features)
         self.future_sequence_length = config.experiment.future_sequence_length
         assert self.future_sequence_length <= config.experiment.sequence_length

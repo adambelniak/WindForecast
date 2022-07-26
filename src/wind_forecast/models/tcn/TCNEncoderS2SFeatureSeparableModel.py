@@ -11,6 +11,7 @@ from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 from wind_forecast.util.config import process_config
 
 
+# Not sure if it will be described in thesis
 class TCNEncoderS2SFeatureSeparableModel(LightningModule):
     def __init__(self, config: Config):
         super(TCNEncoderS2SFeatureSeparableModel, self).__init__()

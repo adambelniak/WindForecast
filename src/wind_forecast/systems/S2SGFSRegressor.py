@@ -53,19 +53,14 @@ class S2SGFSRegressor(BaseS2SRegressor):
         dates_inputs = batch[BatchKeys.DATES_PAST.value]
         dates_targets = batch[BatchKeys.DATES_FUTURE.value]
         outputs = batch[BatchKeys.GFS_FUTURE_Y.value]
-        synop_past_targets = batch[BatchKeys.SYNOP_PAST_Y.value]
-        past_targets = batch[BatchKeys.SYNOP_PAST_Y.value]
-        synop_targets = batch[BatchKeys.SYNOP_FUTURE_Y.value]
         targets = batch[BatchKeys.SYNOP_FUTURE_Y.value]
-        if self.cfg.experiment.use_gfs_data and self.cfg.experiment.differential_forecast:
-            past_targets = batch[BatchKeys.GFS_SYNOP_PAST_DIFF.value]
-            targets = batch[BatchKeys.GFS_SYNOP_FUTURE_DIFF.value]
+        synop_past_targets = batch[BatchKeys.SYNOP_PAST_Y.value]
 
         self.test_mse(outputs.squeeze(), targets.float().squeeze())
         self.test_mae(outputs.squeeze(), targets.float().squeeze())
-        self.test_mase(outputs.squeeze(), targets.float().squeeze(), past_targets)
+        self.test_mase(outputs.squeeze(), targets.float().squeeze(), synop_past_targets)
 
-        return {BatchKeys.SYNOP_FUTURE_Y.value: synop_targets,
+        return {BatchKeys.SYNOP_FUTURE_Y.value: targets,
                 'output': outputs,
                 BatchKeys.SYNOP_PAST_Y.value: synop_past_targets[:, :],
                 BatchKeys.DATES_PAST.value: dates_inputs,
