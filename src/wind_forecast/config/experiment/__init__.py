@@ -206,7 +206,7 @@ class ExperimentSettings:
 
     # List of stack types.
     # Subset from ['seasonality', 'trend', 'identity', 'exogenous', 'exogenous_tcn', 'exogenous_wavenet']
-    nbeats_stack_types: List = field(default_factory=lambda: ['identity', 'exogenous_tcn'])
+    nbeats_stack_types: List = field(default_factory=lambda: ['generic', 'exogenous_tcn'])
 
     # If True, repeats first block.
     nbeats_shared_weights: bool = False

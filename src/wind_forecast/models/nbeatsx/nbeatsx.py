@@ -34,7 +34,7 @@ from wind_forecast.consts import BatchKeys
 from wind_forecast.models.nbeatsx.nbeatsx_model import ExogenousBasisInterpretable, ExogenousBasisWavenet, \
     ExogenousBasisTCN, GenericBasis
 from wind_forecast.models.nbeatsx.nbeatsx_model import NBeatsx, NBeatsBlock, IdentityBasis, TrendBasis, SeasonalityBasis
-from wind_forecast.models.transformer.Transformer import Time2Vec, Simple2Vec
+from wind_forecast.models.transformer.Transformer import Time2Vec
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 from wind_forecast.util.config import process_config
 
