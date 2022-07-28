@@ -3,7 +3,6 @@ from typing import cast
 
 import hydra
 import pytorch_lightning as pl
-from pathlib import Path
 import setproctitle
 import wandb
 from hydra.utils import instantiate
@@ -12,6 +11,7 @@ from pytorch_lightning import LightningDataModule, LightningModule
 from pytorch_lightning.loggers import WandbLogger
 from ray.tune import SyncConfig
 from ray.tune.integration.pytorch_lightning import TuneReportCallback
+from ray.tune.schedulers import ASHAScheduler
 from wandb.sdk.wandb_run import Run
 from ray import tune
 
@@ -46,7 +46,7 @@ def run_tune(cfg: Config):
     config = {}
 
     for param in cfg.tune.params.keys():
-        config[param] = tune.grid_search(list(cfg.tune.params[param]))
+        config[param] = tune.choice(list(cfg.tune.params[param]))
 
     # Create main system (system = models + training regime)
     system: LightningModule = instantiate(cfg.experiment.system, cfg)
@@ -58,12 +58,18 @@ def run_tune(cfg: Config):
         cfg=cfg,
         model=system)
 
+    scheduler = ASHAScheduler(
+        max_t=cfg.experiment.epochs,
+        grace_period=1,
+        reduction_factor=2)
+
     analysis = tune.run(
         trainable,
         resources_per_trial={
             "cpu": 4,
             "gpu": cfg.lightning.gpus
         },
+        scheduler=scheduler,
         metric="loss",
         mode="min",
         config=config,
