@@ -2,18 +2,16 @@ import os
 from typing import cast
 
 import hydra
+import optuna
 import pytorch_lightning as pl
 import setproctitle
 import wandb
 from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
+from optuna.integration import PyTorchLightningPruningCallback
 from pytorch_lightning import LightningDataModule, LightningModule
 from pytorch_lightning.loggers import WandbLogger
-from ray.tune import SyncConfig
-from ray.tune.integration.pytorch_lightning import TuneReportCallback
-from ray.tune.schedulers import ASHAScheduler
 from wandb.sdk.wandb_run import Run
-from ray import tune
 
 from wind_forecast.config.register import Config, register_configs, get_tags
 from wind_forecast.util.callbacks import CustomCheckpointer, get_resume_checkpoint
@@ -25,59 +23,50 @@ from wind_forecast.util.common_util import wandb_logger
 os.environ['KMP_DUPLICATE_LIB_OK']='True'
 
 
-def train_for_tune(tune_config, cfg: Config, model):
-    metrics = {"loss": "ptl/val_loss"}
-
-    for param in tune_config.keys():
-        cfg.experiment.__setattr__(param, tune_config[param])
-
-    dm = instantiate(cfg.experiment.datamodule, cfg)
-    trainer: pl.Trainer = instantiate(
-        cfg.lightning,
-        max_epochs=cfg.experiment.epochs,
-        gpus=cfg.lightning.gpus,
-        callbacks=[TuneReportCallback(metrics, on="validation_end")],
-        checkpoint_callback=False
-    )
-    trainer.fit(model, dm)
-
-
 def run_tune(cfg: Config):
     config = {}
 
-    for param in cfg.tune.params.keys():
-        config[param] = tune.choice(list(cfg.tune.params[param]))
+    def objective(trial: optuna.trial.Trial):
+        for param in cfg.tune.params.keys():
+            config[param] = trial.suggest_categorical(param, list(cfg.tune.params[param]))
+        config['dropout'] = trial.suggest_uniform('dropout', 0.1, 0.6)
 
-    # Create main system (system = models + training regime)
-    system: LightningModule = instantiate(cfg.experiment.system, cfg)
-    log.info(f'[bold yellow]\\[init] System architecture:')
-    log.info(system)
+        for param in config.keys():
+            cfg.experiment.__setattr__(param, config[param])
 
-    trainable = tune.with_parameters(
-        train_for_tune,
-        cfg=cfg,
-        model=system)
+        # Create main system (system = models + training regime)
+        system: LightningModule = instantiate(cfg.experiment.system, cfg)
+        log.info(f'[bold yellow]\\[init] System architecture:')
+        log.info(system)
+        dm = instantiate(cfg.experiment.datamodule, cfg)
 
-    scheduler = ASHAScheduler(
-        max_t=cfg.experiment.epochs,
-        grace_period=1,
-        reduction_factor=2)
+        trainer: pl.Trainer = instantiate(
+            cfg.lightning,
+            logger=True,
+            max_epochs=cfg.experiment.epochs,
+            gpus=cfg.lightning.gpus,
+            callbacks=[PyTorchLightningPruningCallback(trial, monitor="ptl/val_loss")],
+            checkpoint_callback=False,
+            num_sanity_val_steps=-1 if cfg.experiment.validate_before_training else 0,
+            check_val_every_n_epoch=cfg.experiment.check_val_every_n_epoch
+        )
+        trainer.fit(system, dm)
 
-    analysis = tune.run(
-        trainable,
-        resources_per_trial={
-            "cpu": 4,
-            "gpu": cfg.lightning.gpus
-        },
-        scheduler=scheduler,
-        metric="loss",
-        mode="min",
-        config=config,
-        num_samples=1,
-        sync_config=SyncConfig(sync_to_driver=False),
-        name="tune")
+        return trainer.logged_metrics["ptl/val_loss"]
 
-    log.info(analysis.best_config)
+    study = optuna.create_study(direction="minimize", pruner=optuna.pruners.MedianPruner())
+    study.optimize(objective, n_trials=cfg.tune.trials)
+
+    print("Number of finished trials: {}".format(len(study.trials)))
+
+    print("Best trial:")
+    trial = study.best_trial
+
+    print("  Value: {}".format(trial.value))
+
+    print("  Params: ")
+    for key, value in trial.params.items():
+        print("    {}: {}".format(key, value))
 
 
 def run_training(cfg):
@@ -181,8 +170,9 @@ def main(cfg: Config):
                                                                'config', 'train_parameters',
                                                                cfg.experiment.train_parameters_config_file)
 
-    if RUN_MODE == 'tune':
+    if RUN_MODE in ['tune', 'tune_debug']:
         cfg.tune_mode = True
+        cfg.debug_mode = True
         run_tune(cfg)
     else:
         run_training(cfg)

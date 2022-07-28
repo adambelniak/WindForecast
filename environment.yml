@@ -1,6 +1,6 @@
 name: wind-forecast
 dependencies:
-  - python=3.8
+  - python=3.8.2
   - conda-forge::jupyterlab
   - conda-forge::jupyterlab-lsp
   - conda-forge::python-language-server

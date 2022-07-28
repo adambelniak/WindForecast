@@ -7,3 +7,5 @@ from typing import Any
 @dataclass
 class TuneSettings:
     params: Any = field(default_factory=lambda: {})
+
+    trials: int = 20

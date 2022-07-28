@@ -86,7 +86,7 @@ class Sequence2SequenceDataModule(SplittableDataModule):
                                                 to_year=self.synop_to_year,
                                                 norm=False)
 
-        if self.config.debug_mode or self.config.tune_mode:
+        if self.config.debug_mode:
             self.synop_data = self.synop_data.head(self.sequence_length * 20)
 
         dates = get_correct_dates_for_sequence(self.synop_data, self.sequence_length, self.future_sequence_length,

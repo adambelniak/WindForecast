@@ -31,10 +31,9 @@ hydra-configs-pytorch-lightning
 setproctitle
 h5py
 scikit-image
-pickle5
 pytorch_forecasting
 statsmodels==0.13.2
-ray[tune]
+optuna
 plotly
 EMD-signal
 einops
