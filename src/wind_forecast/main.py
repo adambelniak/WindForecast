@@ -34,7 +34,7 @@ def run_tune(cfg: Config):
         for param in config.keys():
             cfg.experiment.__setattr__(param, config[param])
 
-        if cfg.optim.lambda_lr is not None:
+        if 'lambda_lr' in cfg.optim:
             cfg.optim.__setattr__('starting_lr', trial.suggest_loguniform('starting_lr', 0.000001, 0.001))
             cfg.optim.__setattr__('final_lr', trial.suggest_loguniform('final_lr', 0.000001, 0.001))
             cfg.optim.__setattr__('warmup_epochs', trial.suggest_int('warmup_epochs', 0, cfg.experiment.epochs))
