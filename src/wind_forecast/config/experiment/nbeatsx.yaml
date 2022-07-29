@@ -20,4 +20,3 @@ system:
 
 epochs: 20
 use_gfs_data: True
-use_all_gfs_params: True
