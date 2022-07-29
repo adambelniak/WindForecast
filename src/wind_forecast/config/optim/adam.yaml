@@ -14,4 +14,4 @@ optimizer:
   amsgrad: false
 
 scheduler: ~
-lr: 0.001
+base_lr: 0.001

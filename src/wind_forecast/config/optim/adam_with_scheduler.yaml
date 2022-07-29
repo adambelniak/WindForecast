@@ -19,4 +19,4 @@ scheduler:
 lambda_lr:
   _target_: wind_forecast.lr_schedulers.transformer_lr_scheduler.TransformerLRScheduler
 
-lr: 0.001
+base_lr: 0.001
