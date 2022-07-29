@@ -21,5 +21,4 @@ system:
   _target_: wind_forecast.systems.S2SRegressorWithGFSInput.S2SRegressorWithGFSInput
 
 use_gfs_data: True
-use_all_gfs_params: True
 dropout: 0.2

@@ -20,7 +20,6 @@ system:
 
 train_parameters_config_file: Sarimax.json
 use_gfs_data: True
-use_all_gfs_params: True
 skip_training: True
 epochs: 1
 batch_size: 1
