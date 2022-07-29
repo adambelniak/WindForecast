@@ -18,5 +18,4 @@ model:
 system:
   _target_: wind_forecast.systems.S2SRegressorWithGFSInput.S2SRegressorWithGFSInput
 
-use_all_gfs_params: True
 use_gfs_data: True

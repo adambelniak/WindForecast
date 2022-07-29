@@ -19,5 +19,4 @@ system:
   _target_: wind_forecast.systems.BaseS2SRegressor.BaseS2SRegressor
 batch_size: 32
 use_gfs_data: True
-use_all_gfs_params: True
 teacher_forcing_epoch_num: 0

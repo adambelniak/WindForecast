@@ -17,7 +17,6 @@ class TCNEncoderS2SFeatureSeparableModel(LightningModule):
         super(TCNEncoderS2SFeatureSeparableModel, self).__init__()
         self.config = config
         self.use_gfs = config.experiment.use_gfs_data
-        self.use_gfs_on_input = self.use_gfs and config.experiment.use_all_gfs_params
         self.future_sequence_length = config.experiment.future_sequence_length
         self.synop_train_features_length = len(config.experiment.synop_train_features) + len(config.experiment.synop_periodic_features)
         self.use_time2vec = config.experiment.use_time2vec
@@ -29,7 +28,7 @@ class TCNEncoderS2SFeatureSeparableModel(LightningModule):
         num_channels = config.experiment.tcn_channels
         num_levels = len(num_channels)
         kernel_size = 3
-        if self.use_gfs_on_input:
+        if self.use_gfs:
             gfs_params = process_config(config.experiment.train_parameters_config_file)
             gfs_params_len = len(gfs_params)
             param_names = [x['name'] for x in gfs_params]
@@ -81,7 +80,7 @@ class TCNEncoderS2SFeatureSeparableModel(LightningModule):
             BatchKeys.DATES_TENSORS.value]
         gfs_targets = None if not self.use_gfs else batch[BatchKeys.GFS_FUTURE_Y.value].float()
 
-        if self.use_gfs_on_input:
+        if self.use_gfs:
             gfs_inputs = batch[BatchKeys.GFS_PAST_X.value].float()
             all_inputs = torch.cat([synop_inputs, gfs_inputs], -1)
         else:
