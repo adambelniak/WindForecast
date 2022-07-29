@@ -1,1 +1,1 @@
-python -m wind_forecast.main experiment=nbeatsx tune=nbeatsx epochs=10 optim=adam experiment.target_parameter=temperature
+python -m wind_forecast.main experiment=nbeatsx tune=nbeatsx experiment.epochs=10 optim=adam experiment.target_parameter=temperature
