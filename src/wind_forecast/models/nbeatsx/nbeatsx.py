@@ -82,7 +82,7 @@ class Nbeatsx(pl.LightningModule):
         self.stack_types = config.experiment.nbeats_stack_types
         self.n_blocks = config.experiment.nbeats_num_blocks
         self.n_layers = config.experiment.nbeats_num_layers
-        self.n_hidden = len(self.stack_types) * [len(self.n_layers) * [config.experiment.nbeats_num_hidden]]
+        self.n_hidden = [layers * [config.experiment.nbeats_num_hidden] for layers in self.n_layers]
         self.n_harmonics = 0
         self.n_polynomials = 0
         self.exogenous_n_channels = config.experiment.nbeats_exogenous_n_channels
