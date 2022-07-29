@@ -180,7 +180,8 @@ def main(cfg: Config):
 
     if RUN_MODE in ['tune', 'tune_debug']:
         cfg.tune_mode = True
-        cfg.debug_mode = True
+        if RUN_MODE == 'tune_debug':
+            cfg.debug_mode = True
         run_tune(cfg)
     else:
         run_training(cfg)
