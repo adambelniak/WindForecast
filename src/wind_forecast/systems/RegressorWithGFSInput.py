@@ -86,6 +86,7 @@ class RegressorWithGFSInput(pl.LightningModule):
         optimizer: Optimizer = instantiate(
             self.cfg.optim.optimizer,
             params=self.parameters(),
+            lr=self.cfg.optim.base_lr,
             _convert_='all'
         )
 
@@ -95,7 +96,7 @@ class RegressorWithGFSInput(pl.LightningModule):
                                     warmup_epochs=self.cfg.optim.warmup_epochs,
                                     decay_epochs=self.cfg.optim.decay_epochs,
                                     starting_lr=self.cfg.optim.starting_lr,
-                                    base_lr=self.cfg.optim.lr,
+                                    base_lr=self.cfg.optim.base_lr,
                                     final_lr=self.cfg.optim.final_lr)
 
             scheduler: _LRScheduler = instantiate(  # type: ignore

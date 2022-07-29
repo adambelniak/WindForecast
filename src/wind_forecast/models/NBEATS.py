@@ -15,7 +15,7 @@ class NBEATS(LightningModule):
         self.model = NBeats(stack_types=list(config.experiment.nbeats_stack_types),
                             num_blocks=list(config.experiment.nbeats_num_blocks),
                             num_block_layers=list(config.experiment.nbeats_num_layers),
-                            widths=list(config.experiment.nbeats_num_hidden),
+                            widths=len(config.experiment.nbeats_stack_types) * [len(config.experiment.nbeats_num_layers) * list(config.experiment.nbeats_num_hidden)],
                             expansion_coefficient_lengths=list(config.experiment.nbeats_expansion_coefficient_lengths),
                             dropout=config.experiment.dropout,
                             prediction_length=config.experiment.future_sequence_length,

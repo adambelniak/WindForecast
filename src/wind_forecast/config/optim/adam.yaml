@@ -9,9 +9,9 @@ optimizer:
   _target_: torch.optim.Adam
   params: ~
 
-  lr: 0.001
   weight_decay: 0
   betas: [0.9, 0.999]
   amsgrad: false
 
 scheduler: ~
+lr: 0.001

@@ -80,6 +80,7 @@ class AutoencoderSystem(pl.LightningModule):
         """
         optimizer: Optimizer = instantiate(
             self.cfg.optim.optimizer,
+            lr=self.cfg.optim.base_lr,
             params=self.parameters(),
             _convert_='all'
         )
@@ -90,7 +91,7 @@ class AutoencoderSystem(pl.LightningModule):
                                     warmup_epochs=self.cfg.optim.warmup_epochs,
                                     decay_epochs=self.cfg.optim.decay_epochs,
                                     starting_lr=self.cfg.optim.starting_lr,
-                                    base_lr=self.cfg.optim.lr,
+                                    base_lr=self.cfg.optim.base_lr,
                                     final_lr=self.cfg.optim.final_lr)
 
             scheduler: _LRScheduler = instantiate(  # type: ignore

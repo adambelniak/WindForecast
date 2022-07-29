@@ -24,15 +24,23 @@ os.environ['KMP_DUPLICATE_LIB_OK']='True'
 
 
 def run_tune(cfg: Config):
-    config = {}
 
     def objective(trial: optuna.trial.Trial):
+        config = {}
         for param in cfg.tune.params.keys():
             config[param] = trial.suggest_categorical(param, list(cfg.tune.params[param]))
         config['dropout'] = trial.suggest_uniform('dropout', 0.1, 0.6)
 
         for param in config.keys():
             cfg.experiment.__setattr__(param, config[param])
+
+        if cfg.optim.lambda_lr is not None:
+            cfg.optim.__setattr__('starting_lr', trial.suggest_loguniform('starting_lr', 0.000001, 0.001))
+            cfg.optim.__setattr__('final_lr', trial.suggest_loguniform('final_lr', 0.000001, 0.001))
+            cfg.optim.__setattr__('warmup_epochs', trial.suggest_int('warmup_epochs', 0, cfg.experiment.epochs))
+            cfg.optim.__setattr__('decay_epochs', trial.suggest_int('decay_epochs', 0, cfg.experiment.epochs))
+
+        cfg.optim.__setattr__('base_lr', trial.suggest_loguniform('base_lr', 0.000001, 0.001))
 
         # Create main system (system = models + training regime)
         system: LightningModule = instantiate(cfg.experiment.system, cfg)

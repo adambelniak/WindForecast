@@ -16,6 +16,7 @@ class ExperimentSettings:
     # ----------------------------------------------------------------------------------------------
     # General experiment settings
     # ----------------------------------------------------------------------------------------------
+
     # wandb tags
     _tags_: Optional[List[str]] = None
 
@@ -40,9 +41,19 @@ class ExperimentSettings:
 
     check_val_every_n_epoch: int = 1
 
+    # Run test only
+    skip_training: bool = False
+
+    epochs: int = 40
+
+    dropout: float = 0.5
+
+    view_test_result: bool = True
+
     # ----------------------------------------------------------------------------------------------
     # Data loading settings
     # ----------------------------------------------------------------------------------------------
+
     # Training batch size
     batch_size: int = 128
 
@@ -60,6 +71,7 @@ class ExperimentSettings:
     # ----------------------------------------------------------------------------------------------
     # Dataset specific settings
     # ----------------------------------------------------------------------------------------------
+
     # Lightning DataModule to use
     datamodule: Any = MISSING
 
@@ -70,9 +82,6 @@ class ExperimentSettings:
     val_split: float = .2
 
     test_split: float = .2
-
-    # Run test only
-    skip_training: bool = False
 
     # classic or random
     dataset_split_mode: str = 'classic'
@@ -88,20 +97,28 @@ class ExperimentSettings:
 
     cmax_to_year: int = 2022
 
+    load_gfs_data: bool = True
+
+    use_gfs_data: bool = False
+
+    use_cmax_data: bool = False
+
+    use_future_cmax: bool = False
+
+    dates_tensor_size: int = 4
+
+    with_dates_inputs: bool = True
+
+    # ----------------------------------------------------------------------------------------------
+    # Experiment specific settings
+    # ----------------------------------------------------------------------------------------------
+
     # pass alone target on input to see if model is capable of reproducing it
     self_output_test: bool = False
 
     target_parameter: str = "temperature"
 
     differential_forecast: bool = False
-
-    load_gfs_data: bool = True
-
-    use_gfs_data: bool = False
-
-    use_all_gfs_params: bool = False
-
-    use_cmax_data: bool = False
 
     prediction_offset: int = 0
 
@@ -110,20 +127,6 @@ class ExperimentSettings:
     data_dim_y: int = 33
 
     train_parameters_config_file: str = "CommonGFSConfig.json"
-
-    cnn_input_size: Any = (33, 53)
-
-    cnn_ff_input_dim: List = field(default_factory=lambda: [1600, 256])
-
-    cnn_filters: List = field(default_factory=lambda: [16, 32, 32, 32, 32, 16])
-
-    lstm_num_layers: int = 4
-
-    lstm_hidden_state: int = 512
-
-    lstm_classification_head_dims: List = field(default_factory=lambda: [64, 128, 32])
-
-    epochs: int = 40
 
     synop_train_features: List = field(default_factory=lambda: SYNOP_TRAIN_FEATURES)
 
@@ -136,55 +139,11 @@ class ExperimentSettings:
 
     target_coords: Any = (52.1831174, 20.9875259)
 
-    tcn_channels: List = field(default_factory=lambda: [32, 64])
+    # ----------------------------------------------------------------------------------------------
+    # CMAX autoencoder settings
+    # ----------------------------------------------------------------------------------------------
 
-    cnn_lin_tcn_in_features: int = 256
-
-    tcn_kernel_size: int = 3
-
-    tcn_input_features: int = 1600
-
-    subregion_nlat: float = 53
-
-    subregion_slat: float = 51
-
-    subregion_elon: float = 22
-
-    subregion_wlon: float = 20
-
-    dropout: float = 0.5
-
-    teacher_forcing_epoch_num: int = 40
-
-    gradual_teacher_forcing: bool = True
-
-    time2vec_embedding_size: int = 5
-
-    value2vec_embedding_size: int = 5
-
-    use_time2vec: bool = True
-
-    use_value2vec: bool = True
-
-    conv_embedding_scale: int = 5
-
-    transformer_ff_dim: int = 1024
-
-    transformer_d_model: int = 256
-
-    transformer_encoder_layers: int = 6
-
-    transformer_decoder_layers: int = 6
-
-    transformer_attention_heads: int = 1
-
-    transformer_classification_head_dims: List = field(default_factory=lambda: [64, 128, 32])
-
-    spacetimeformer_intermediate_downsample_convs: int = 0
-
-    with_dates_inputs: bool = True
-
-    use_pos_encoding: bool = True
+    cnn_filters: List = field(default_factory=lambda: [16, 32, 32, 32, 32, 16])
 
     cmax_sample_size: Any = (900, 900)
 
@@ -198,11 +157,61 @@ class ExperimentSettings:
 
     STD_scaling_factor: int = 5
 
-    use_future_cmax: bool = False
+    # ----------------------------------------------------------------------------------------------
+    # LSTM settings
+    # ----------------------------------------------------------------------------------------------
 
-    view_test_result: bool = True
+    lstm_num_layers: int = 4
 
-    dates_tensor_size: int = 4
+    lstm_hidden_state: int = 512
+
+    lstm_classification_head_dims: List = field(default_factory=lambda: [64, 128, 32])
+
+    # ----------------------------------------------------------------------------------------------
+    # TCN settings
+    # ----------------------------------------------------------------------------------------------
+
+    tcn_channels: List = field(default_factory=lambda: [32, 64])
+
+    tcn_kernel_size: int = 3
+
+    tcn_input_features: int = 1600
+
+    emd_decompose: bool = False
+
+    emd_decompose_trials: int = 10
+
+    # ----------------------------------------------------------------------------------------------
+    # Transformer settings
+    # ----------------------------------------------------------------------------------------------
+
+    teacher_forcing_epoch_num: int = 40
+
+    gradual_teacher_forcing: bool = True
+
+    transformer_ff_dim: int = 1024
+
+    transformer_d_model: int = 256
+
+    transformer_encoder_layers: int = 6
+
+    transformer_decoder_layers: int = 6
+
+    transformer_attention_heads: int = 1
+
+    transformer_classification_head_dims: List = field(default_factory=lambda: [64, 128, 32])
+
+    use_pos_encoding: bool = True
+
+    # ----------------------------------------------------------------------------------------------
+    # Spacetimeformer settings
+    # ----------------------------------------------------------------------------------------------
+
+    spacetimeformer_intermediate_downsample_convs: int = 0
+
+    # ----------------------------------------------------------------------------------------------
+    # NBeats settings
+    # ----------------------------------------------------------------------------------------------
 
     # List of stack types.
     # Subset from ['seasonality', 'trend', 'identity', 'exogenous', 'exogenous_tcn', 'exogenous_wavenet']
@@ -219,12 +228,16 @@ class ExperimentSettings:
 
     nbeats_num_layers: List = field(default_factory=lambda: [4, 4])
 
-    nbeats_num_hidden: List = field(default_factory=lambda: [[256, 256, 256, 256], [256, 256, 256, 256]])
+    nbeats_num_hidden: int = 256
 
     nbeats_expansion_coefficient_lengths: List = field(default_factory=lambda: [32])
 
     # Exogenous channels for non-interpretable exogenous basis.
     nbeats_exogenous_n_channels: int = 16
+
+    # ----------------------------------------------------------------------------------------------
+    # Arima settings
+    # ----------------------------------------------------------------------------------------------
 
     arima_p: int = 1
     arima_d: int = 1
@@ -234,6 +247,26 @@ class ExperimentSettings:
     sarima_Q: int = 1
     sarima_M: int = 24
 
-    emd_decompose: bool = False
+    # ----------------------------------------------------------------------------------------------
+    # Embedding settings
+    # ----------------------------------------------------------------------------------------------
 
-    emd_decompose_trials: int = 10
+    time2vec_embedding_size: int = 5
+
+    value2vec_embedding_size: int = 5
+
+    use_time2vec: bool = True
+
+    use_value2vec: bool = True
+
+    # ----------------------------------------------------------------------------------------------
+    # Other settings
+    # ----------------------------------------------------------------------------------------------
+
+    subregion_nlat: float = 53
+
+    subregion_slat: float = 51
+
+    subregion_elon: float = 22
+
+    subregion_wlon: float = 20

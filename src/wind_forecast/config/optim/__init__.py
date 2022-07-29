@@ -19,7 +19,7 @@ class OptimSettings:
 
     scheduler: Optional[Any] = MISSING
 
-    lr: float = 0.0001
+    base_lr: float = 0.0001
 
     weight_decay = 0
 

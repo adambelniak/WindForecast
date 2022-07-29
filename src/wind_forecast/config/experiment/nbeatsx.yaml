@@ -18,6 +18,6 @@ model:
 system:
   _target_: wind_forecast.systems.S2SRegressorWithGFSInput.S2SRegressorWithGFSInput
 
-epochs: 30
+epochs: 20
 use_gfs_data: True
 use_all_gfs_params: True
