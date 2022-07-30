@@ -63,6 +63,9 @@ class LSTMS2SModel(LightningModule):
         else:
             self.embed_dim = self.features_length * (self.value2vec_embedding_factor + 1)
 
+        if self.embed_dim >= self.lstm_hidden_state:
+            self.lstm_hidden_state = self.embed_dim + 1  # proj_size has to be smaller than hidden_size
+
         self.encoder_lstm = nn.LSTM(input_size=self.embed_dim, hidden_size=self.lstm_hidden_state, batch_first=True,
                                     dropout=self.dropout, num_layers=config.experiment.lstm_num_layers,
                                     proj_size=self.embed_dim)

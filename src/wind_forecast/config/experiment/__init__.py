@@ -232,12 +232,12 @@ class ExperimentSettings:
 
     nbeats_num_layers: List = field(default_factory=lambda: [4, 4])
 
-    nbeats_num_hidden: int = 256
+    nbeats_num_hidden: int = 32
 
     nbeats_expansion_coefficient_lengths: List = field(default_factory=lambda: [32])
 
     # Exogenous channels for non-interpretable exogenous basis.
-    nbeats_exogenous_n_channels: int = 16
+    nbeats_exogenous_n_channels: int = 32
 
     # ----------------------------------------------------------------------------------------------
     # Arima settings
