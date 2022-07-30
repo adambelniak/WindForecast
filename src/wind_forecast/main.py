@@ -23,9 +23,33 @@ from wind_forecast.util.common_util import wandb_logger
 os.environ['KMP_DUPLICATE_LIB_OK']='True'
 
 
+def log_dataset_metrics(datamodule: LightningDataModule):
+    metrics = {
+        'train_dataset_length': len(datamodule.dataset_train),
+        'test_dataset_length': len(datamodule.dataset_test)
+    }
+
+    mean = datamodule.dataset_test.mean
+    std = datamodule.dataset_test.std
+
+    if mean is not None:
+        if type(mean) == list:
+            for index, m in enumerate(mean):
+                metrics[f"target_mean_{str(index)}"] = m
+        else:
+            metrics['target_mean'] = mean
+    if std is not None:
+        if type(std) == list:
+            for index, s in enumerate(std):
+                metrics[f"target_std_{str(index)}"] = s
+        else:
+            metrics['target_std'] = std
+
+    wandb_logger.log_metrics(metrics)
+
 def run_tune(cfg: Config):
 
-    def objective(trial: optuna.trial.Trial):
+    def objective(trial: optuna.trial.Trial, datamodule: LightningDataModule):
         config = {}
         for param in cfg.tune.params.keys():
             config[param] = trial.suggest_categorical(param, list(cfg.tune.params[param]))
@@ -43,16 +67,27 @@ def run_tune(cfg: Config):
         cfg.optim.__setattr__('base_lr', trial.suggest_loguniform('base_lr', 0.000001, 0.001))
         trial_cfg = dict(trial.params)
         trial_cfg['trial.number'] = trial.number
+
+        RUN_NAME=os.getenv('RUN_NAME') + '-' + str(trial.number)
         wandb.init(project=os.getenv('WANDB_PROJECT') + '-optuna',
                    entity=os.getenv('WANDB_ENTITY'),
-                   name=os.getenv('RUN_NAME'),
+                   name=RUN_NAME,
                    config=trial_cfg,
                    reinit=True)
+
+        run: Run = wandb_logger.experiment  # type: ignore
+
+        # Setup logging & checkpointing
+        tags = get_tags(cast(DictConfig, cfg))
+        run.tags = tags
+        run.notes = str(cfg.notes)
+        wandb_logger.log_hyperparams(OmegaConf.to_container(cfg, resolve=True))  # type: ignore
+        log.info(f'[bold yellow][{RUN_NAME} / {run.id}]: [bold white]{",".join(tags)}')
+
         # Create main system (system = models + training regime)
         system: LightningModule = instantiate(cfg.experiment.system, cfg)
         log.info(f'[bold yellow]\\[init] System architecture:')
         log.info(system)
-        dm = instantiate(cfg.experiment.datamodule, cfg)
 
         trainer: pl.Trainer = instantiate(
             cfg.lightning,
@@ -64,17 +99,19 @@ def run_tune(cfg: Config):
             num_sanity_val_steps=-1 if cfg.experiment.validate_before_training else 0,
             check_val_every_n_epoch=cfg.experiment.check_val_every_n_epoch
         )
-        trainer.fit(system, dm)
+        trainer.fit(system, datamodule)
 
         val_accuracy = trainer.logged_metrics["ptl/val_loss"]
-        wandb.run.summary["final accuracy"] = val_accuracy
-        wandb.run.summary["state"] = "completed"
-        wandb.finish(quiet=True)
+        run.summary["final accuracy"] = val_accuracy
+        run.summary["state"] = "completed"
+        run.finish(quiet=True)
 
         return val_accuracy
 
+    datamodule = instantiate(cfg.experiment.datamodule, cfg)
+
     study = optuna.create_study(direction="minimize", pruner=optuna.pruners.MedianPruner())
-    study.optimize(objective, n_trials=cfg.tune.trials)
+    study.optimize(lambda trial: objective(trial, datamodule), n_trials=cfg.tune.trials)
 
     log.info("Number of finished trials: {}".format(len(study.trials)))
 
@@ -141,13 +178,8 @@ def run_training(cfg):
 
     trainer.test(system, datamodule=datamodule)
 
-    metrics = {
-        'train_dataset_length': len(datamodule.dataset_train),
-        'test_dataset_length': len(datamodule.dataset_test)
-    }
+    log_dataset_metrics(datamodule)
 
-    mean = datamodule.dataset_test.mean
-    std = datamodule.dataset_test.std
     if cfg.experiment.use_gfs_data:
         gfs_mean = datamodule.dataset_test.gfs_mean
         gfs_std = datamodule.dataset_test.gfs_std
@@ -155,20 +187,8 @@ def run_training(cfg):
         gfs_mean = None
         gfs_std = None
 
-    if mean is not None:
-        if type(mean) == list:
-            for index, m in enumerate(mean):
-                metrics[f"target_mean_{str(index)}"] = m
-        else:
-            metrics['target_mean'] = mean
-    if std is not None:
-        if type(std) == list:
-            for index, s in enumerate(std):
-                metrics[f"target_std_{str(index)}"] = s
-        else:
-            metrics['target_std'] = std
-
-    wandb_logger.log_metrics(metrics, step=system.current_epoch)
+    mean = datamodule.dataset_test.mean
+    std = datamodule.dataset_test.std
 
     if cfg.experiment.view_test_result:
         plot_results(system, cfg, mean, std, gfs_mean, gfs_std)
