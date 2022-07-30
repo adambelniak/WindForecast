@@ -8,4 +8,4 @@ from typing import Any
 class TuneSettings:
     params: Any = field(default_factory=lambda: {})
 
-    trials: int = 20
+    trials: int = 50

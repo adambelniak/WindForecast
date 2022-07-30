@@ -53,18 +53,22 @@ def run_tune(cfg: Config):
         config = {}
         for param in cfg.tune.params.keys():
             config[param] = trial.suggest_categorical(param, list(cfg.tune.params[param]))
-        config['dropout'] = trial.suggest_uniform('dropout', 0.1, 0.6)
+        config['dropout'] = trial.suggest_uniform('dropout', 0, 0.8)
 
         for param in config.keys():
             cfg.experiment.__setattr__(param, config[param])
 
         if 'lambda_lr' in cfg.optim:
-            cfg.optim.__setattr__('starting_lr', trial.suggest_loguniform('starting_lr', 0.000001, 0.001))
-            cfg.optim.__setattr__('final_lr', trial.suggest_loguniform('final_lr', 0.000001, 0.001))
+            cfg.optim.__setattr__('starting_lr', trial.suggest_loguniform('starting_lr', 0.000001, 0.01))
+            cfg.optim.__setattr__('final_lr', trial.suggest_loguniform('final_lr', 0.000001, 0.01))
             cfg.optim.__setattr__('warmup_epochs', trial.suggest_int('warmup_epochs', 0, cfg.experiment.epochs))
             cfg.optim.__setattr__('decay_epochs', trial.suggest_int('decay_epochs', 0, cfg.experiment.epochs))
+        if cfg.experiment.use_value2vec:
+            cfg.optim.__setattr__('value2vec_embedding_size', trial.suggest_int('value2vec_embedding_size', 1, 20))
+        if cfg.experiment.use_time2vec:
+            cfg.optim.__setattr__('time2vec_embedding_size', trial.suggest_int('time2vec_embedding_size', 1, 20))
 
-        cfg.optim.__setattr__('base_lr', trial.suggest_loguniform('base_lr', 0.000001, 0.001))
+        cfg.optim.__setattr__('base_lr', trial.suggest_loguniform('base_lr', 0.000001, 0.01))
         config = OmegaConf.to_container(cfg, resolve=True)
         config['trial.number'] = trial.number
 
@@ -112,12 +116,12 @@ def run_tune(cfg: Config):
             log.info(f'[bold red]>>> Tuning interrupted.')
             run.finish(exit_code=255)
 
-        val_accuracy = trainer.logged_metrics["ptl/val_loss"]
-        run.summary["final accuracy"] = val_accuracy
+        val_loss = trainer.logged_metrics["ptl/val_loss"]
+        run.summary["final loss"] = val_loss
         run.summary["state"] = "completed"
         run.finish(quiet=True)
 
-        return val_accuracy
+        return val_loss
 
     datamodule = instantiate(cfg.experiment.datamodule, cfg)
 
