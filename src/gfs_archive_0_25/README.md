@@ -33,6 +33,7 @@ Each output file consist of one parameter forecast for one time frame.
 Scans GFS_DATASET_DIR for .npy files and for each offset between 3 and 39 and each parameter creates a .pkl file.  
 .pkl files are used in experiments by GFSLoader for faster data reading.
 
+**For running experiments, GFS_DATASET_DIR should point to a folder containing `pkl` folder with prepared .pkl files.**
 
 ## Deprecated
 ### grib_to_csv.py
