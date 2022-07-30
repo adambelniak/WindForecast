@@ -19,8 +19,8 @@ from wind_forecast.util.logging import log
 from wind_forecast.util.plots import plot_results
 from wind_forecast.util.rundir import setup_rundir
 
-from wind_forecast.util.common_util import wandb_logger
-os.environ['KMP_DUPLICATE_LIB_OK']='True'
+os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
+wandb_logger: WandbLogger
 
 
 def log_dataset_metrics(datamodule: LightningDataModule):
@@ -47,8 +47,8 @@ def log_dataset_metrics(datamodule: LightningDataModule):
 
     wandb_logger.log_metrics(metrics)
 
-def run_tune(cfg: Config):
 
+def run_tune(cfg: Config):
     def objective(trial: optuna.trial.Trial, datamodule: LightningDataModule):
         config = {}
         for param in cfg.tune.params.keys():
@@ -65,14 +65,22 @@ def run_tune(cfg: Config):
             cfg.optim.__setattr__('decay_epochs', trial.suggest_int('decay_epochs', 0, cfg.experiment.epochs))
 
         cfg.optim.__setattr__('base_lr', trial.suggest_loguniform('base_lr', 0.000001, 0.001))
-        trial_cfg = dict(trial.params)
-        trial_cfg['trial.number'] = trial.number
+        config = OmegaConf.to_container(cfg, resolve=True)
+        config['trial.number'] = trial.number
 
-        RUN_NAME=os.getenv('RUN_NAME') + '-' + str(trial.number)
-        wandb.init(project=os.getenv('WANDB_PROJECT') + '-optuna',
-                   entity=os.getenv('WANDB_ENTITY'),
+        RUN_NAME = os.getenv('RUN_NAME') + '-' + str(trial.number)
+        WANDB_PROJECT = os.getenv('WANDB_PROJECT')
+        WANDB_ENTITY = os.getenv('WANDB_ENTITY')
+        wandb_logger = WandbLogger(
+            project=WANDB_PROJECT,
+            entity=WANDB_ENTITY,
+            name=RUN_NAME,
+            save_dir=os.getenv('RUN_DIR')
+        )
+        wandb.init(project=WANDB_PROJECT,
+                   entity=WANDB_ENTITY,
                    name=RUN_NAME,
-                   config=trial_cfg,
+                   config=config,
                    reinit=True)
 
         run: Run = wandb_logger.experiment  # type: ignore
@@ -81,7 +89,6 @@ def run_tune(cfg: Config):
         tags = get_tags(cast(DictConfig, cfg))
         run.tags = tags
         run.notes = str(cfg.notes)
-        wandb_logger.log_hyperparams(OmegaConf.to_container(cfg, resolve=True))  # type: ignore
         log.info(f'[bold yellow][{RUN_NAME} / {run.id}]: [bold white]{",".join(tags)}')
 
         # Create main system (system = models + training regime)
@@ -91,7 +98,7 @@ def run_tune(cfg: Config):
 
         trainer: pl.Trainer = instantiate(
             cfg.lightning,
-            logger=True,
+            logger=wandb_logger,
             max_epochs=cfg.experiment.epochs,
             gpus=cfg.lightning.gpus,
             callbacks=[PyTorchLightningPruningCallback(trial, monitor="ptl/val_loss")],
@@ -100,6 +107,10 @@ def run_tune(cfg: Config):
             check_val_every_n_epoch=cfg.experiment.check_val_every_n_epoch
         )
         trainer.fit(system, datamodule)
+
+        if trainer.interrupted:  # type: ignore
+            log.info(f'[bold red]>>> Tuning interrupted.')
+            run.finish(exit_code=255)
 
         val_accuracy = trainer.logged_metrics["ptl/val_loss"]
         run.summary["final accuracy"] = val_accuracy
@@ -126,10 +137,21 @@ def run_tune(cfg: Config):
 
 
 def run_training(cfg):
+    WANDB_PROJECT = os.getenv('WANDB_PROJECT')
+    WANDB_ENTITY = os.getenv('WANDB_ENTITY')
     RUN_NAME = os.getenv('RUN_NAME')
-    wandb.init(project=os.getenv('WANDB_PROJECT'),
-               entity=os.getenv('WANDB_ENTITY'),
-               name=os.getenv('RUN_NAME'))
+
+    wandb_logger = WandbLogger(
+        project=WANDB_PROJECT,
+        entity=WANDB_ENTITY,
+        name=RUN_NAME,
+        save_dir=os.getenv('RUN_DIR'),
+        log_model='all' if os.getenv('LOG_MODEL') == 'all' else True if os.getenv('LOG_MODEL') == 'True' else False
+    )
+    wandb.init(project=WANDB_PROJECT,
+               entity=WANDB_ENTITY,
+               name=RUN_NAME)
+
     log.info(f'[bold yellow]\\[init] Run name --> {RUN_NAME}')
 
     run: Run = wandb_logger.experiment  # type: ignore
@@ -203,6 +225,10 @@ def main(cfg: Config):
     RUN_MODE = os.getenv('RUN_MODE', '').lower()
     if RUN_MODE == 'debug':
         cfg.debug_mode = True
+    elif RUN_MODE in ['tune', 'tune_debug']:
+        cfg.tune_mode = True
+        if RUN_MODE == 'tune_debug':
+            cfg.debug_mode = True
 
     log.info(f'\\[init] Loaded config:\n{OmegaConf.to_yaml(cfg, resolve=True)}')
 
@@ -212,10 +238,7 @@ def main(cfg: Config):
                                                                'config', 'train_parameters',
                                                                cfg.experiment.train_parameters_config_file)
 
-    if RUN_MODE in ['tune', 'tune_debug']:
-        cfg.tune_mode = True
-        if RUN_MODE == 'tune_debug':
-            cfg.debug_mode = True
+    if cfg.tune_mode:
         run_tune(cfg)
     else:
         run_training(cfg)
@@ -223,9 +246,6 @@ def main(cfg: Config):
 
 if __name__ == '__main__':
     setup_rundir()
-
-    # Init logger from source dir (code base) before switching to run dir (results)
-    wandb_logger.experiment  # type: ignore
 
     # Instantiate default Hydra config with environment variables & switch working dir
     register_configs()

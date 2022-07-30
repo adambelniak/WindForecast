@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Sequence
 import os
 import numpy as np
+import wandb
 from pytorch_lightning.loggers import WandbLogger
 from torch.utils.data import Subset, random_split, Dataset
 from torch.utils.data.dataset import T_co
@@ -12,14 +13,6 @@ from wandb.sdk.wandb_run import Run
 import errno
 
 from wind_forecast.util.logging import log
-
-wandb_logger: WandbLogger = WandbLogger(
-    project=os.getenv('WANDB_PROJECT'),
-    entity=os.getenv('WANDB_ENTITY'),
-    name=os.getenv('RUN_NAME'),
-    save_dir=os.getenv('RUN_DIR'),
-    log_model='all' if os.getenv('LOG_MODEL') == 'all' else True if os.getenv('LOG_MODEL') == 'True' else False
-)
 
 
 class CustomSubset(Subset):
@@ -141,7 +134,7 @@ def split_dataset(dataset, val_split=0, test_split=0.2, chunk_length=20, split_m
 
 
 def get_pretrained_artifact_path(pretrained_artifact: str):
-    run: Run = wandb_logger.experiment  # type: ignore
+    run: Run = wandb.run  # type: ignore
 
     if pretrained_artifact is None:
         raise ValueError('pretrained_artifact must be set to use pretrained artifact!')
@@ -163,12 +156,12 @@ def get_pretrained_artifact_path(pretrained_artifact: str):
         artifact = run.use_artifact(artifact_path, type='model')  # type: ignore
         artifact.download(root=f'artifacts/{artifact_name}')  # type: ignore
 
-        pretrained_artifact_path = f'artifacts/{artifact_name}/{checkpoint_path}'
+        pretrained_artifact = f'artifacts/{artifact_name}/{checkpoint_path}'
 
-    if not Path(pretrained_artifact_path).exists():
-        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), pretrained_artifact_path)
+    if not Path(pretrained_artifact).exists():
+        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), pretrained_artifact)
 
-    return pretrained_artifact_path
+    return pretrained_artifact
 
 
 class NormalizationType(Enum):
