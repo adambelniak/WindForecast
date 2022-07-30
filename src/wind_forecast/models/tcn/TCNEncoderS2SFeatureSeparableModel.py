@@ -6,7 +6,7 @@ from pytorch_lightning import LightningModule
 from wind_forecast.config.register import Config
 from wind_forecast.consts import BatchKeys
 from wind_forecast.models.tcn.TCNEncoder import TemporalBlock
-from wind_forecast.models.transformer.Transformer import Time2Vec
+from wind_forecast.models.time2vec.Time2Vec import Time2Vec
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 from wind_forecast.util.config import process_config
 
@@ -23,7 +23,8 @@ class TCNEncoderS2SFeatureSeparableModel(LightningModule):
         self.time2vec_embedding_size = config.experiment.time2vec_embedding_size
 
         if self.use_time2vec:
-            self.time_embed = TimeDistributed(Time2Vec(2, self.time2vec_embedding_size), batch_first=True)
+            self.time_embed = TimeDistributed(Time2Vec( self.config.experiment.dates_tensor_size,
+                                                        self.time2vec_embedding_size), batch_first=True)
 
         num_channels = config.experiment.tcn_channels
         num_levels = len(num_channels)

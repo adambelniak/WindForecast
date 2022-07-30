@@ -6,52 +6,11 @@ from pytorch_lightning import LightningModule
 from torch import nn
 
 from wind_forecast.config.register import Config
-from wind_forecast.consts import BatchKeys
 from wind_forecast.embed.prepare_embeddings import get_embeddings
+from wind_forecast.models.simple2vec.Simple2Vec import Simple2Vec
+from wind_forecast.models.time2vec.Time2Vec import Time2Vec
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 from wind_forecast.util.config import process_config
-
-
-class Time2Vec(nn.Module):
-    def __init__(self, num_features: int, embedding_size: int):
-        super().__init__()
-        self.time2vec_dim = embedding_size - 1
-        # trend
-        self.wb = nn.Parameter(data=torch.empty(size=(num_features,)), requires_grad=True)
-        self.bb = nn.Parameter(data=torch.empty(size=(num_features,)), requires_grad=True)
-
-        # periodic
-        self.wa = nn.Parameter(data=torch.empty(size=(1, num_features, self.time2vec_dim)), requires_grad=True)
-        self.ba = nn.Parameter(data=torch.empty(size=(1, num_features, self.time2vec_dim)), requires_grad=True)
-
-        self.wb.data.uniform_(-1, 1)
-        self.bb.data.uniform_(-1, 1)
-        self.wa.data.uniform_(-1, 1)
-        self.ba.data.uniform_(-1, 1)
-
-    def forward(self, inputs):
-        bias = torch.mul(self.wb, inputs) + self.bb
-        dp = torch.mul(torch.unsqueeze(inputs, -1), self.wa) + self.ba
-        wgts = torch.sin(dp)
-
-        ret = torch.cat([torch.unsqueeze(bias, -1), wgts], -1)
-        ret = torch.reshape(ret, (-1, inputs.shape[1] * (self.time2vec_dim + 1)))
-        return ret
-
-
-class Simple2Vec(nn.Module):
-    def __init__(self, num_features: int, embedding_size: int):
-        super().__init__()
-        self.simple2vec_dim = embedding_size
-        self.wa = nn.Parameter(data=torch.empty(size=(1, num_features, self.simple2vec_dim)), requires_grad=True)
-        self.ba = nn.Parameter(data=torch.empty(size=(1, num_features, self.simple2vec_dim)), requires_grad=True)
-
-        self.wa.data.uniform_(-1, 1)
-        self.ba.data.uniform_(-1, 1)
-
-    def forward(self, inputs):
-        dp = torch.mul(torch.unsqueeze(inputs, -1), self.wa) + self.ba
-        return torch.reshape(dp, (-1, inputs.shape[1] * self.simple2vec_dim))
 
 
 class PositionalEncoding(nn.Module):
@@ -113,10 +72,11 @@ class TransformerEncoderBaseProps(LightningModule):
         if self.use_time2vec and self.time2vec_embedding_size == 0:
             self.time2vec_embedding_size = self.features_length
 
-        self.dates_dim = 2 * self.time2vec_embedding_size if self.use_time2vec else 2
+        self.dates_dim = self.config.experiment.dates_tensor_size * self.time2vec_embedding_size if self.use_time2vec \
+            else self.config.experiment.dates_tensor_size * 2
 
         if self.use_time2vec:
-            self.time_embed = TimeDistributed(Time2Vec(2, self.time2vec_embedding_size),
+            self.time_embed = TimeDistributed(Time2Vec( self.config.experiment.dates_tensor_size, self.time2vec_embedding_size),
                                               batch_first=True)
         if self.use_value2vec:
             self.value_embed = TimeDistributed(Simple2Vec(self.features_length, self.value2vec_embedding_size),

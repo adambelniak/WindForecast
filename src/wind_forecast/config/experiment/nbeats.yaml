@@ -19,3 +19,4 @@ system:
   _target_: wind_forecast.systems.BaseS2SRegressor.BaseS2SRegressor
 
 epochs: 20
+use_value2vec: False

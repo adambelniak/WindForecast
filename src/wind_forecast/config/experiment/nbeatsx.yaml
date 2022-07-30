@@ -20,3 +20,4 @@ system:
 
 epochs: 20
 use_gfs_data: True
+use_value2vec: False

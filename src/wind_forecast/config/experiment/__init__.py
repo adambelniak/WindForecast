@@ -105,7 +105,7 @@ class ExperimentSettings:
 
     use_future_cmax: bool = False
 
-    dates_tensor_size: int = 4
+    dates_tensor_size: int = 2 # date in year and hour
 
     with_dates_inputs: bool = True
 

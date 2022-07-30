@@ -34,7 +34,7 @@ from wind_forecast.consts import BatchKeys
 from wind_forecast.models.nbeatsx.nbeatsx_model import ExogenousBasisInterpretable, ExogenousBasisWavenet, \
     ExogenousBasisTCN, GenericBasis
 from wind_forecast.models.nbeatsx.nbeatsx_model import NBeatsx, NBeatsBlock, IdentityBasis, TrendBasis, SeasonalityBasis
-from wind_forecast.models.transformer.Transformer import Time2Vec
+from wind_forecast.models.time2vec.Time2Vec import Time2Vec
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 from wind_forecast.util.config import process_config
 
@@ -115,10 +115,12 @@ class Nbeatsx(pl.LightningModule):
         if self.use_time2vec and self.time2vec_embedding_size == 0:
             self.time2vec_embedding_size = self.features_length
 
-        self.dates_dim = 2 * self.time2vec_embedding_size if self.use_time2vec else 2
+        self.dates_dim = self.config.experiment.dates_tensor_size * self.time2vec_embedding_size if self.use_time2vec\
+            else self.config.experiment.dates_tensor_size * 2
 
         if self.use_time2vec:
-            self.time_embed = TimeDistributed(Time2Vec(2, self.time2vec_embedding_size), batch_first=True)
+            self.time_embed = TimeDistributed(Time2Vec(self.config.experiment.dates_tensor_size,
+                                                       self.time2vec_embedding_size), batch_first=True)
 
         if config.experiment.with_dates_inputs:
             self.n_insample_t = self.n_insample_t + self.dates_dim

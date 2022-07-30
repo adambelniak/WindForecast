@@ -55,6 +55,10 @@ def run_tune(cfg: Config):
             config[param] = trial.suggest_categorical(param, list(cfg.tune.params[param]))
         config['dropout'] = trial.suggest_uniform('dropout', 0, 0.8)
 
+        if cfg.experiment.use_value2vec:
+            config['value2vec_embedding_size'] = trial.suggest_int('value2vec_embedding_size', 1, 20)
+        if cfg.experiment.use_time2vec:
+            config['time2vec_embedding_size'] = trial.suggest_int('time2vec_embedding_size', 1, 20)
         for param in config.keys():
             cfg.experiment.__setattr__(param, config[param])
 
@@ -63,14 +67,12 @@ def run_tune(cfg: Config):
             cfg.optim.__setattr__('final_lr', trial.suggest_loguniform('final_lr', 0.000001, 0.01))
             cfg.optim.__setattr__('warmup_epochs', trial.suggest_int('warmup_epochs', 0, cfg.experiment.epochs))
             cfg.optim.__setattr__('decay_epochs', trial.suggest_int('decay_epochs', 0, cfg.experiment.epochs))
-        if cfg.experiment.use_value2vec:
-            cfg.optim.__setattr__('value2vec_embedding_size', trial.suggest_int('value2vec_embedding_size', 1, 20))
-        if cfg.experiment.use_time2vec:
-            cfg.optim.__setattr__('time2vec_embedding_size', trial.suggest_int('time2vec_embedding_size', 1, 20))
 
         cfg.optim.__setattr__('base_lr', trial.suggest_loguniform('base_lr', 0.000001, 0.01))
         config = OmegaConf.to_container(cfg, resolve=True)
         config['trial.number'] = trial.number
+
+        log.info(f'\\[init] Loaded config:\n{OmegaConf.to_yaml(cfg, resolve=True)}')
 
         RUN_NAME = os.getenv('RUN_NAME') + '-' + str(trial.number)
         WANDB_PROJECT = os.getenv('WANDB_PROJECT')
@@ -97,8 +99,6 @@ def run_tune(cfg: Config):
 
         # Create main system (system = models + training regime)
         system: LightningModule = instantiate(cfg.experiment.system, cfg)
-        log.info(f'[bold yellow]\\[init] System architecture:')
-        log.info(system)
 
         trainer: pl.Trainer = instantiate(
             cfg.lightning,
@@ -169,9 +169,7 @@ def run_training(cfg):
 
     setproctitle.setproctitle(f'{RUN_NAME} ({os.getenv("WANDB_PROJECT")})')  # type: ignore
 
-    log.info(f'[bold white]Overriding cfg.lightning settings with derived values:')
-    log.info(f' >>> num_sanity_val_steps = {-1 if cfg.experiment.validate_before_training else 0}\n')
-
+    log.info(f'\\[init] Loaded config:\n{OmegaConf.to_yaml(cfg, resolve=True)}')
     # Create main system (system = models + training regime)
     system: LightningModule = instantiate(cfg.experiment.system, cfg)
     log.info(f'[bold yellow]\\[init] System architecture:')
@@ -233,8 +231,6 @@ def main(cfg: Config):
         cfg.tune_mode = True
         if RUN_MODE == 'tune_debug':
             cfg.debug_mode = True
-
-    log.info(f'\\[init] Loaded config:\n{OmegaConf.to_yaml(cfg, resolve=True)}')
 
     pl.seed_everything(cfg.experiment.seed)
 
