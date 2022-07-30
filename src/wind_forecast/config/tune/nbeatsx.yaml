@@ -24,9 +24,9 @@ params:
   nbeats_exogenous_n_channels:
     - 16
     - 32
-  time2vec_embedding_size:
+  use_value2vec:
     - True
     - False
-  value2vec_embedding_size:
+  use_time2vec:
     - True
     - False
