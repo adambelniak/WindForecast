@@ -41,7 +41,13 @@ def run_tune(cfg: Config):
             cfg.optim.__setattr__('decay_epochs', trial.suggest_int('decay_epochs', 0, cfg.experiment.epochs))
 
         cfg.optim.__setattr__('base_lr', trial.suggest_loguniform('base_lr', 0.000001, 0.001))
-
+        trial_cfg = dict(trial.params)
+        trial_cfg['trial.number'] = trial.number
+        wandb.init(project=os.getenv('WANDB_PROJECT') + '-optuna',
+                   entity=os.getenv('WANDB_ENTITY'),
+                   name=os.getenv('RUN_NAME'),
+                   config=trial_cfg,
+                   reinit=True)
         # Create main system (system = models + training regime)
         system: LightningModule = instantiate(cfg.experiment.system, cfg)
         log.info(f'[bold yellow]\\[init] System architecture:')
@@ -60,25 +66,33 @@ def run_tune(cfg: Config):
         )
         trainer.fit(system, dm)
 
-        return trainer.logged_metrics["ptl/val_loss"]
+        val_accuracy = trainer.logged_metrics["ptl/val_loss"]
+        wandb.run.summary["final accuracy"] = val_accuracy
+        wandb.run.summary["state"] = "completed"
+        wandb.finish(quiet=True)
+
+        return val_accuracy
 
     study = optuna.create_study(direction="minimize", pruner=optuna.pruners.MedianPruner())
     study.optimize(objective, n_trials=cfg.tune.trials)
 
-    print("Number of finished trials: {}".format(len(study.trials)))
+    log.info("Number of finished trials: {}".format(len(study.trials)))
 
-    print("Best trial:")
+    log.info("Best trial:")
     trial = study.best_trial
 
-    print("  Value: {}".format(trial.value))
+    log.info("  Value: {}".format(trial.value))
 
-    print("  Params: ")
+    log.info("  Params: ")
     for key, value in trial.params.items():
-        print("    {}: {}".format(key, value))
+        log.info("    {}: {}".format(key, value))
 
 
 def run_training(cfg):
     RUN_NAME = os.getenv('RUN_NAME')
+    wandb.init(project=os.getenv('WANDB_PROJECT'),
+               entity=os.getenv('WANDB_ENTITY'),
+               name=os.getenv('RUN_NAME'))
     log.info(f'[bold yellow]\\[init] Run name --> {RUN_NAME}')
 
     run: Run = wandb_logger.experiment  # type: ignore
@@ -189,10 +203,6 @@ def main(cfg: Config):
 
 if __name__ == '__main__':
     setup_rundir()
-
-    wandb.init(project=os.getenv('WANDB_PROJECT'),
-               entity=os.getenv('WANDB_ENTITY'),
-               name=os.getenv('RUN_NAME'))
 
     # Init logger from source dir (code base) before switching to run dir (results)
     wandb_logger.experiment  # type: ignore

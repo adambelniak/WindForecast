@@ -23,10 +23,6 @@ class OptimSettings:
 
     weight_decay = 0
 
-    beta1 = 0.9
-
-    beta2 = 0.999
-
     lambda_lr: Any = MISSING
 
     starting_lr: float = 0.0001
