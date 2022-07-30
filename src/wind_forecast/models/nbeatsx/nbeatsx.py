@@ -91,7 +91,7 @@ class Nbeatsx(pl.LightningModule):
         self.batch_normalization = True
         self.dropout = config.experiment.dropout
         self.use_gfs = config.experiment.use_gfs_data
-        self.time2vec_embedding_size = config.experiment.time2vec_embedding_size
+        self.time2vec_embedding_factor = config.experiment.time2vec_embedding_factor
         self.use_time2vec = config.experiment.use_time2vec and config.experiment.with_dates_inputs
 
         # No static features in our case
@@ -112,15 +112,15 @@ class Nbeatsx(pl.LightningModule):
                 config.experiment.synop_periodic_features)
             self.n_outsample_t = 0
 
-        if self.use_time2vec and self.time2vec_embedding_size == 0:
-            self.time2vec_embedding_size = self.features_length
+        if self.use_time2vec and self.time2vec_embedding_factor == 0:
+            self.time2vec_embedding_factor = self.features_length
 
-        self.dates_dim = self.config.experiment.dates_tensor_size * self.time2vec_embedding_size if self.use_time2vec\
+        self.dates_dim = self.config.experiment.dates_tensor_size * self.time2vec_embedding_factor if self.use_time2vec\
             else self.config.experiment.dates_tensor_size * 2
 
         if self.use_time2vec:
             self.time_embed = TimeDistributed(Time2Vec(self.config.experiment.dates_tensor_size,
-                                                       self.time2vec_embedding_size), batch_first=True)
+                                                       self.time2vec_embedding_factor), batch_first=True)
 
         if config.experiment.with_dates_inputs:
             self.n_insample_t = self.n_insample_t + self.dates_dim

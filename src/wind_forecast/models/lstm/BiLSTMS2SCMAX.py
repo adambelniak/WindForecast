@@ -40,7 +40,7 @@ class BiLSTMS2SCMAX(BiLSTMS2S):
             features += 1
 
         dense_layers = []
-        for neurons in self.config.experiment.lstm_classification_head_dims:
+        for neurons in self.config.experiment.classification_head_dims:
             dense_layers.append(nn.Linear(in_features=features, out_features=neurons))
             features = neurons
         dense_layers.append(nn.Linear(in_features=features, out_features=1))

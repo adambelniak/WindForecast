@@ -26,13 +26,18 @@ class TCNS2S(TCNEncoderS2S):
             in_channels = out_channels
 
         self.decoder = nn.Sequential(*tcn_layers)
-        self.classification_head = nn.Sequential(
-            nn.Linear(in_features=self.embed_dim + (1 if self.use_gfs else 0), out_features=64),
-            nn.ReLU(),
-            nn.Linear(in_features=64, out_features=32),
-            nn.ReLU(),
-            nn.Linear(in_features=32, out_features=1)
-        )
+
+        features = self.embed_dim
+        if self.use_gfs:
+            features += 1
+
+        dense_layers = []
+        for neurons in self.config.experiment.classification_head_dims:
+            dense_layers.append(nn.Linear(in_features=features, out_features=neurons))
+            features = neurons
+        dense_layers.append(nn.Linear(in_features=features, out_features=1))
+
+        self.classification_head = nn.Sequential(*dense_layers)
 
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
         input_elements, target_elements = get_embeddings(batch, self.config.experiment.with_dates_inputs,

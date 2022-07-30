@@ -1,1 +1,14 @@
+python -m wind_forecast.main experiment=bi_lstm_s2s_gfs tune=bi_lstm_s2s_gfs experiment.epochs=10 optim=adam experiment.target_parameter=temperature
+python -m wind_forecast.main experiment=lstm_s2s_gfs tune=lstm_s2s_gfs experiment.epochs=10 optim=adam experiment.target_parameter=temperature
+python -m wind_forecast.main experiment=tcn_encoder_s2s_gfs tune=tcn_encoder_s2s_gfs experiment.epochs=10 optim=adam experiment.target_parameter=temperature
+python -m wind_forecast.main experiment=tcn_s2s_gfs tune=tcn_s2s_gfs experiment.epochs=10 optim=adam experiment.target_parameter=temperature
+python -m wind_forecast.main experiment=tcn_s2s_gfs_attention tune=tcn_s2s_gfs_attention experiment.epochs=10 optim=adam experiment.target_parameter=temperature
+python -m wind_forecast.main experiment=transformer_gfs tune=transformer_gfs experiment.epochs=80 optim=adam experiment.target_parameter=temperature
+python -m wind_forecast.main experiment=transformer_encoder_s2s_gfs tune=transformer_encoder_s2s_gfs experiment.epochs=10 optim=adam experiment.target_parameter=temperature
+python -m wind_forecast.main experiment=spacetimeformer_gfs tune=spacetimeformer_gfs experiment.epochs=10 optim=adam experiment.target_parameter=temperature
 python -m wind_forecast.main experiment=nbeatsx tune=nbeatsx experiment.epochs=10 optim=adam experiment.target_parameter=temperature
+
+python -m wind_forecast.main experiment=arimax tune=arimax experiment.target_parameter=temperature
+python -m wind_forecast.main experiment=sarimax tune=sarimax experiment.target_parameter=temperature
+python -m wind_forecast.main experiment=sarimax tune=sarimax experiment.target_parameter=temperature experiment.sequence_length=48
+python -m wind_forecast.main experiment=sarimax tune=sarimax experiment.target_parameter=temperature experiment.sequence_length=72

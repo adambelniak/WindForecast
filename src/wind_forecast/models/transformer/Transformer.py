@@ -44,16 +44,15 @@ class TransformerEncoderBaseProps(LightningModule):
         self.future_sequence_length = config.experiment.future_sequence_length
         self.teacher_forcing_epoch_num = config.experiment.teacher_forcing_epoch_num
         self.gradual_teacher_forcing = config.experiment.gradual_teacher_forcing
-        self.time2vec_embedding_size = config.experiment.time2vec_embedding_size
-        self.value2vec_embedding_size = config.experiment.value2vec_embedding_size
+        self.time2vec_embedding_factor = config.experiment.time2vec_embedding_factor
+        self.value2vec_embedding_factor = config.experiment.value2vec_embedding_factor
         self.use_time2vec = config.experiment.use_time2vec and config.experiment.with_dates_inputs
-        self.use_value2vec = config.experiment.use_value2vec and self.value2vec_embedding_size > 0
+        self.use_value2vec = config.experiment.use_value2vec and self.value2vec_embedding_factor > 0
 
         if not self.use_value2vec:
-            self.value2vec_embedding_size = 0
+            self.value2vec_embedding_factor = 0
 
         self.self_output_test = config.experiment.self_output_test
-        # self.d_model = config.experiment.transformer_d_model
         if self.self_output_test:
             assert self.past_sequence_length == self.future_sequence_length, \
                 "past_sequence_length must be equal future_sequence_length for self_output_test"
@@ -62,27 +61,27 @@ class TransformerEncoderBaseProps(LightningModule):
         self.ff_dim = config.experiment.transformer_ff_dim
         self.transformer_encoder_layers_num = config.experiment.transformer_encoder_layers
 
-        self.transformer_head_dims = config.experiment.transformer_classification_head_dims
+        self.transformer_head_dims = config.experiment.classification_head_dims
 
         if self.self_output_test:
             self.features_length = 1
         else:
             self.features_length = len(config.experiment.synop_train_features) + len(config.experiment.synop_periodic_features)
 
-        if self.use_time2vec and self.time2vec_embedding_size == 0:
-            self.time2vec_embedding_size = self.features_length
+        if self.use_time2vec and self.time2vec_embedding_factor == 0:
+            self.time2vec_embedding_factor = self.features_length
 
-        self.dates_dim = self.config.experiment.dates_tensor_size * self.time2vec_embedding_size if self.use_time2vec \
+        self.dates_dim = self.config.experiment.dates_tensor_size * self.time2vec_embedding_factor if self.use_time2vec \
             else self.config.experiment.dates_tensor_size * 2
 
         if self.use_time2vec:
-            self.time_embed = TimeDistributed(Time2Vec( self.config.experiment.dates_tensor_size, self.time2vec_embedding_size),
+            self.time_embed = TimeDistributed(Time2Vec( self.config.experiment.dates_tensor_size, self.time2vec_embedding_factor),
                                               batch_first=True)
         if self.use_value2vec:
-            self.value_embed = TimeDistributed(Simple2Vec(self.features_length, self.value2vec_embedding_size),
+            self.value_embed = TimeDistributed(Simple2Vec(self.features_length, self.value2vec_embedding_factor),
                                                batch_first=True)
 
-        self.embed_dim = self.features_length * (self.value2vec_embedding_size + 1) + self.dates_dim
+        self.embed_dim = self.features_length * (self.value2vec_embedding_factor + 1) + self.dates_dim
         self.pos_encoder = PositionalEncoding(self.embed_dim, self.dropout)
         self.create_encoder()
         self.head_input_dim = self.embed_dim
@@ -124,16 +123,16 @@ class TransformerEncoderGFSBaseProps(TransformerEncoderBaseProps):
         if not self.self_output_test:
             self.features_length += gfs_params_len
 
-        if self.use_time2vec and self.time2vec_embedding_size == 0:
-            self.time2vec_embedding_size = self.features_length
+        if self.use_time2vec and self.time2vec_embedding_factor == 0:
+            self.time2vec_embedding_factor = self.features_length
 
-        self.dates_dim = 2 * self.time2vec_embedding_size if self.use_time2vec else 2
+        self.dates_dim = 2 * self.time2vec_embedding_factor if self.use_time2vec else 2
 
         if self.use_value2vec:
-            self.value_embed = TimeDistributed(Simple2Vec(self.features_length, self.value2vec_embedding_size),
+            self.value_embed = TimeDistributed(Simple2Vec(self.features_length, self.value2vec_embedding_factor),
                                                batch_first=True)
 
-        self.embed_dim = self.features_length * (self.value2vec_embedding_size + 1) + self.dates_dim
+        self.embed_dim = self.features_length * (self.value2vec_embedding_factor + 1) + self.dates_dim
         self.pos_encoder = PositionalEncoding(self.embed_dim, self.dropout)
         self.create_encoder()
 

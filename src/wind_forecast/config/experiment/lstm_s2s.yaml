@@ -17,4 +17,3 @@ model:
 
 system:
   _target_: wind_forecast.systems.BaseS2SRegressor.BaseS2SRegressor
-batch_size: 32

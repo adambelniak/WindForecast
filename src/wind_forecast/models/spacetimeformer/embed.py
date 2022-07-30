@@ -53,10 +53,11 @@ class Embedding(nn.Module):
         position_emb="abs",
         data_dropout=None,
         max_seq_len=None,
-        use_val: bool = True,
-        use_time: bool = True,
+        use_val_embed: bool = True,
+        use_time_embed: bool = True,
         use_space: bool = True,
         use_given: bool = True,
+        use_position_emb: bool = True
     ):
         super().__init__()
 
@@ -68,22 +69,26 @@ class Embedding(nn.Module):
 
         self.method = method
 
-
-        time_dim = time_emb_dim * d_time_features
-        self.time_emb = Time2Vec(d_time_features, embed_dim=time_dim)
+        if use_time_embed:
+            time_dim = time_emb_dim * d_time_features
+            self.time_emb = Time2Vec(d_time_features, embed_dim=time_dim)
+        else:
+            time_dim = d_time_features
 
         assert position_emb in ["t2v", "abs"]
         self.max_seq_len = max_seq_len
         self.position_emb = position_emb
-        if self.position_emb == "t2v":
-            # standard periodic pos emb but w/ learnable coeffs
-            self.local_emb = Time2Vec(1, embed_dim=d_model + 1)
-        elif self.position_emb == "abs":
-            # lookup-based learnable pos emb
-            assert max_seq_len is not None
-            self.local_emb = nn.Embedding(
-                num_embeddings=max_seq_len, embedding_dim=d_model
-            )
+        self.use_position_emb = use_position_emb
+        if self.use_position_emb:
+            if self.position_emb == "t2v":
+                # standard periodic pos emb but w/ learnable coeffs
+                self.local_emb = Time2Vec(1, embed_dim=d_model + 1)
+            elif self.position_emb == "abs":
+                # lookup-based learnable pos emb
+                assert max_seq_len is not None
+                self.local_emb = nn.Embedding(
+                    num_embeddings=max_seq_len, embedding_dim=d_model
+                )
 
         y_emb_inp_dim = d_input if self.method == "temporal" else 1
         self.val_time_emb = nn.Linear(y_emb_inp_dim + time_dim, d_model)
@@ -107,8 +112,8 @@ class Embedding(nn.Module):
         self.is_encoder = is_encoder
 
         # turning off parts of the embedding is only really here for ablation studies
-        self.use_val = use_val
-        self.use_time = use_time
+        self.use_val_embed = use_val_embed
+        self.use_time_embed = use_time_embed
         self.use_given = use_given
         self.use_space = use_space
 
@@ -142,27 +147,28 @@ class Embedding(nn.Module):
             input = self.data_drop(input)
         mask = self.make_mask(input)
 
-        # position embedding ("local_emb")
-        local_pos = torch.arange(length).to(input.device)
-        if self.position_emb == "t2v":
-            # first idx of Time2Vec output is unbounded so we drop it to
-            # reuse code as a learnable pos embb
-            local_emb = self.local_emb(
-                local_pos.view(1, -1, 1).repeat(bs, 1, 1).float()
-            )[:, :, 1:]
-        elif self.position_emb == "abs":
-            assert length <= self.max_seq_len
-            local_emb = self.local_emb(local_pos.long().view(1, -1).repeat(bs, 1))
+        if self.use_position_emb:
+            # position embedding ("local_emb")
+            local_pos = torch.arange(length).to(input.device)
+            if self.position_emb == "t2v":
+                # first idx of Time2Vec output is unbounded so we drop it to
+                # reuse code as a learnable pos embb
+                position_emb = self.local_emb(
+                    local_pos.view(1, -1, 1).repeat(bs, 1, 1).float()
+                )[:, :, 1:]
+            elif self.position_emb == "abs":
+                assert length <= self.max_seq_len
+                position_emb = self.local_emb(local_pos.long().view(1, -1).repeat(bs, 1))
 
         # time embedding (Time2Vec)
-        if not self.use_time:
-            dates = torch.zeros_like(dates)
-        time_emb = self.time_emb(dates)
-        if not self.use_val:
-            input = torch.zeros_like(input)
+        time_emb = dates
+        if self.use_time_embed:
+            time_emb = self.time_emb(dates)
+
         # concat time emb to value --> FF --> val_time_emb
-        val_time_inp = torch.cat((time_emb, input), dim=-1)
-        val_time_emb = self.val_time_emb(val_time_inp)
+        val_time_emb = torch.cat((time_emb, input), dim=-1)
+        if self.use_val_embed:
+            val_time_emb = self.val_time_emb(val_time_emb)
 
         # "given" embedding. not important for temporal emb
         # when not using a start token
@@ -171,7 +177,10 @@ class Embedding(nn.Module):
             given[:, self.start_token_len :] = 0
         given_emb = self.given_emb(given)
 
-        emb = local_emb + val_time_emb + given_emb
+        if self.use_position_emb:
+            emb = position_emb + val_time_emb + given_emb
+        else:
+            emb = val_time_emb + given_emb
 
         if self.is_encoder:
             # shorten the sequence
@@ -188,42 +197,35 @@ class Embedding(nn.Module):
         # here to create artificially long (length x dim) spatiotemporal sequence
         batch, length, d_input = input.shape
 
-        # position emb ("local_emb")
-        local_pos = repeat(
-            torch.arange(length).to(input.device), f"length -> {batch} ({d_input} length)"
-        )
-        if self.position_emb == "t2v":
-            # periodic pos emb
-            local_emb = self.local_emb(local_pos.float().unsqueeze(-1).float())[
-                :, :, 1:
-            ]
-        elif self.position_emb == "abs":
-            # lookup pos emb
-            local_emb = self.local_emb(local_pos.long())
+        if self.use_position_emb:
+            # position emb ("local_emb")
+            local_pos = repeat(
+                torch.arange(length).to(input.device), f"length -> {batch} ({d_input} length)"
+            )
+            if self.position_emb == "t2v":
+                # periodic pos emb
+                position_emb = self.local_emb(local_pos.float().unsqueeze(-1).float())[
+                    :, :, 1:
+                ]
+            elif self.position_emb == "abs":
+                # lookup pos emb
+                position_emb = self.local_emb(local_pos.long())
 
         # time emb
-        if not self.use_time:
-            dates = torch.zeros_like(dates)
-        dates = torch.nan_to_num(dates)
         dates = repeat(dates, f"batch len x_dim -> batch ({d_input} len) x_dim")
-        time_emb = self.time_emb(dates)
-
-        # protect against NaNs in y, but keep track for Given emb
-        true_null = torch.isnan(input)
-        input = torch.nan_to_num(input)
-        if not self.use_val:
-            input = torch.zeros_like(input)
+        time_emb = dates
+        if self.use_time_embed:
+            time_emb = self.time_emb(dates)
 
         # keep track of pre-dropout y for given emb
-        input_original = input.clone()
-        input_original = Flatten(input_original)
         input = self.data_drop(input)
         input = Flatten(input)  # batch len dy -> batch (dy len) 1
         mask = self.make_mask(input)
 
         # concat time_emb, y --> FF --> val_time_emb
-        val_time_inp = torch.cat((time_emb, input), dim=-1)
-        val_time_emb = self.val_time_emb(val_time_inp)
+        val_time_emb = torch.cat((time_emb, input), dim=-1)
+        if self.use_val_embed:
+            val_time_emb = self.val_time_emb(val_time_emb)
 
         # "given" embedding
         if self.use_given:
@@ -232,14 +234,8 @@ class Embedding(nn.Module):
                 # mask missing values that need prediction...
                 given[:, self.start_token_len :, :] = 0  # (False)
 
-            # if y was NaN, set Given = False
-            given *= ~true_null
-
             # flatten now to make the rest easier to figure out
             given = rearrange(given, "batch len dy -> batch (dy len)")
-
-            # use given embeddings to identify data that was dropped out
-            given *= (input == input_original).squeeze(-1)
 
             if self.null_value is not None:
                 # mask null values that were set to a magic number in the dataset itself
@@ -250,7 +246,10 @@ class Embedding(nn.Module):
         else:
             given_emb = 0.0
 
-        val_time_emb = local_emb + val_time_emb + given_emb
+        if self.use_position_emb:
+            val_time_emb = position_emb + val_time_emb + given_emb
+        else:
+            val_time_emb = val_time_emb + given_emb
 
         if self.is_encoder:
             for conv in self.downsize_convs:

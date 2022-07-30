@@ -46,7 +46,7 @@ class TCNEncoderS2SCMAX(TCNEncoderS2S):
         tcn_channels[0] += len(self.config.experiment.synop_train_features) + len(self.config.experiment.synop_periodic_features)
 
         if self.config.experiment.with_dates_inputs:
-            tcn_channels[0] += 2 if not self.use_time2vec else 2 * self.time2vec_embedding_size
+            tcn_channels[0] += 2 if not self.use_time2vec else 2 * self.time2vec_embedding_factor
 
         if self.config.experiment.use_gfs_data:
             gfs_params = process_config(self.config.experiment.train_parameters_config_file)

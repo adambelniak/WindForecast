@@ -18,7 +18,7 @@ model:
 system:
   _target_: wind_forecast.systems.S2SRegressorWithGFSInput.S2SRegressorWithGFSInput
 
-use_gfs_data: False
+use_gfs_data: True
 transformer_ff_dim: 100
 transformer_encoder_layers: 4
 transformer_decoder_layers: 4

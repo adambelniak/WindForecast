@@ -20,11 +20,11 @@ class TCNEncoderS2SFeatureSeparableModel(LightningModule):
         self.future_sequence_length = config.experiment.future_sequence_length
         self.synop_train_features_length = len(config.experiment.synop_train_features) + len(config.experiment.synop_periodic_features)
         self.use_time2vec = config.experiment.use_time2vec
-        self.time2vec_embedding_size = config.experiment.time2vec_embedding_size
+        self.time2vec_embedding_factor = config.experiment.time2vec_embedding_factor
 
         if self.use_time2vec:
             self.time_embed = TimeDistributed(Time2Vec( self.config.experiment.dates_tensor_size,
-                                                        self.time2vec_embedding_size), batch_first=True)
+                                                        self.time2vec_embedding_factor), batch_first=True)
 
         num_channels = config.experiment.tcn_channels
         num_levels = len(num_channels)
@@ -50,7 +50,7 @@ class TCNEncoderS2SFeatureSeparableModel(LightningModule):
                     dilation_size = 2 ** i
                     # 2 input channels - a pair of synop variables + time variables
                     in_channels = (2 if not self.config.experiment.with_dates_inputs else
-                                   (4 if not self.use_time2vec else 2 + 2 * self.time2vec_embedding_size)) if i == 0 else\
+                                   (4 if not self.use_time2vec else 2 + 2 * self.time2vec_embedding_factor)) if i == 0 else\
                         num_channels[i - 1]
                     out_channels = num_channels[i]
                     tcn_dnn_layers += [TemporalBlock(in_channels, out_channels, kernel_size, dilation=dilation_size,

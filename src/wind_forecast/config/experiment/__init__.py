@@ -140,6 +140,12 @@ class ExperimentSettings:
     target_coords: Any = (52.1831174, 20.9875259)
 
     # ----------------------------------------------------------------------------------------------
+    # Model settings
+    # ----------------------------------------------------------------------------------------------
+
+    classification_head_dims: List = field(default_factory=lambda: [64, 128, 32])
+
+    # ----------------------------------------------------------------------------------------------
     # CMAX autoencoder settings
     # ----------------------------------------------------------------------------------------------
 
@@ -165,8 +171,6 @@ class ExperimentSettings:
 
     lstm_hidden_state: int = 512
 
-    lstm_classification_head_dims: List = field(default_factory=lambda: [64, 128, 32])
-
     # ----------------------------------------------------------------------------------------------
     # TCN settings
     # ----------------------------------------------------------------------------------------------
@@ -175,6 +179,7 @@ class ExperimentSettings:
 
     tcn_kernel_size: int = 3
 
+    # Not used in S2S
     tcn_input_features: int = 1600
 
     emd_decompose: bool = False
@@ -191,6 +196,7 @@ class ExperimentSettings:
 
     transformer_ff_dim: int = 1024
 
+    # not used - creating fixed embeddings resulted in much worse performance
     transformer_d_model: int = 256
 
     transformer_encoder_layers: int = 6
@@ -198,8 +204,6 @@ class ExperimentSettings:
     transformer_decoder_layers: int = 6
 
     transformer_attention_heads: int = 1
-
-    transformer_classification_head_dims: List = field(default_factory=lambda: [64, 128, 32])
 
     use_pos_encoding: bool = True
 
@@ -251,9 +255,9 @@ class ExperimentSettings:
     # Embedding settings
     # ----------------------------------------------------------------------------------------------
 
-    time2vec_embedding_size: int = 5
+    time2vec_embedding_factor: int = 5
 
-    value2vec_embedding_size: int = 5
+    value2vec_embedding_factor: int = 5
 
     use_time2vec: bool = True
 

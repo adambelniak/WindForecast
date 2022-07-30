@@ -1,0 +1,30 @@
+defaults:
+  - schema_tune
+
+params:
+  use_time2vec:
+    - True
+    - False
+  use_value2vec:
+    - True
+    - False
+  teacher_forcing_epoch_num:
+    - 0
+    - 20
+    - 40
+    - 60
+    - 80
+  transformer_ff_dim:
+    - 128
+    - 256
+    - 512
+  transformer_encoder_layers:
+    - 2
+    - 4
+    - 6
+    - 8
+  transformer_decoder_layers:
+    - 2
+    - 4
+    - 6
+    - 8

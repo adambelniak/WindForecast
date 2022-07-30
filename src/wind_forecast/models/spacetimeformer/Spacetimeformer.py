@@ -81,6 +81,7 @@ class Spacetimeformer(LightningModule):
         self.features_length = len(config.experiment.synop_train_features) + len(config.experiment.synop_periodic_features)
         self.future_sequence_length = config.experiment.future_sequence_length
         assert self.future_sequence_length <= config.experiment.sequence_length
+
         if config.experiment.use_gfs_data:
             gfs_params = process_config(config.experiment.train_parameters_config_file)
             gfs_params_len = len(gfs_params)
@@ -96,14 +97,17 @@ class Spacetimeformer(LightningModule):
         split_length_into = self.features_length
 
         self.start_token_len = 0
+        time_dim = config.experiment.dates_tensor_size * config.experiment.time2vec_embedding_factor if config.experiment.use_time2vec \
+            else 2 * config.experiment.dates_tensor_size
+
+        self.token_dim = (1 + time_dim) * (config.experiment.value2vec_embedding_factor if config.experiment.use_value2vec else 1)
 
         # embeddings. seperate enc/dec in case the variable indices are not aligned
         self.enc_embedding = Embedding(
-            # Generally, y means target sequence and x means variables, but in spacetimeformer it's the other way round :/
             d_input=self.features_length,
-            d_time_features=2,
-            d_model=config.experiment.transformer_d_model,
-            time_emb_dim=config.experiment.time2vec_embedding_size,
+            d_time_features=config.experiment.dates_tensor_size if config.experiment.use_time2vec else time_dim,
+            d_model=self.token_dim,
+            time_emb_dim=config.experiment.time2vec_embedding_factor,
             downsample_convs=0,
             method='spatio-temporal',
             null_value=None,
@@ -112,16 +116,16 @@ class Spacetimeformer(LightningModule):
             position_emb='t2v',
             max_seq_len=None,
             data_dropout=None,
-            use_val=True,
-            use_time=True,
+            use_val_embed=config.experiment.use_value2vec,
+            use_time_embed=config.experiment.use_time2vec,
             use_space=True,
             use_given=True
         )
         self.dec_embedding = Embedding(
             d_input=self.features_length,
-            d_time_features=2,
-            d_model=config.experiment.transformer_d_model,
-            time_emb_dim=config.experiment.time2vec_embedding_size,
+            d_time_features=config.experiment.dates_tensor_size if config.experiment.use_time2vec else time_dim,
+            d_model=self.token_dim,
+            time_emb_dim=config.experiment.time2vec_embedding_factor,
             downsample_convs=0,
             method='spatio-temporal',
             null_value=None,
@@ -130,15 +134,15 @@ class Spacetimeformer(LightningModule):
             position_emb='t2v',
             max_seq_len=None,
             data_dropout=None,
-            use_val=True,
-            use_time=True,
+            use_val_embed=config.experiment.use_value2vec,
+            use_time_embed=config.experiment.use_time2vec,
             use_space=True,
             use_given=True
         )
 
         # Select Attention Mechanisms
         attn_kwargs = {
-            "d_model": config.experiment.transformer_d_model,
+            "d_model": self.token_dim,
             "n_heads": config.experiment.transformer_attention_heads,
             "d_qk": 20,
             "d_v": 20,
@@ -160,7 +164,7 @@ class Spacetimeformer(LightningModule):
                         'performer',
                         **attn_kwargs,
                     ),
-                    d_model=config.experiment.transformer_d_model,
+                    d_model=self.token_dim,
                     d_yc=self.features_length,
                     time_windows=1,
                     # encoder layers alternate using shifted windows, if applicable
@@ -174,10 +178,10 @@ class Spacetimeformer(LightningModule):
                 for l in range(self.transformer_encoder_layers_num)
             ],
             conv_layers=[
-                ConvBlock(split_length_into=split_length_into, d_model=config.experiment.transformer_d_model)
+                ConvBlock(split_length_into=split_length_into, d_model=self.token_dim)
                 for l in range(config.experiment.spacetimeformer_intermediate_downsample_convs)
             ],
-            norm_layer=Normalization('batch', d_model=config.experiment.transformer_d_model),
+            norm_layer=Normalization('batch', d_model=self.token_dim),
             emb_dropout=0.0,
         )
 
@@ -201,7 +205,7 @@ class Spacetimeformer(LightningModule):
                         'performer',
                         **attn_kwargs,
                     ),
-                    d_model=config.experiment.transformer_d_model,
+                    d_model=self.token_dim,
                     time_windows=1,
                     # decoder layers alternate using shifted windows, if applicable
                     time_window_offset=2 if (l % 2 == 1) else 0,
@@ -217,52 +221,49 @@ class Spacetimeformer(LightningModule):
                 )
                 for l in range(self.transformer_decoder_layers_num)
             ],
-            norm_layer=Normalization('batch', d_model=config.experiment.transformer_d_model),
+            norm_layer=Normalization('batch', d_model=self.token_dim),
             emb_dropout=0.0,
         )
 
-        log.info(f"GlobalSelfAttn: {self.decoder.layers[0].global_self_attention}")
-        log.info(f"GlobalCrossAttn: {self.decoder.layers[0].global_cross_attention}")
-        log.info(f"LocalSelfAttn: {self.decoder.layers[0].local_self_attention}")
-        log.info(f"LocalCrossAttn: {self.decoder.layers[0].local_cross_attention}")
-        log.info(f"Using Embedding: spatio-temporal")
-        log.info(f"Time Emb Dim: {config.experiment.time2vec_embedding_size}")
-        log.info(f"Space Embedding: {self.dec_embedding.use_space}")
-        log.info(f"Time Embedding: {self.dec_embedding.use_time}")
-        log.info(f"Val Embedding: {self.dec_embedding.use_val}")
-        log.info(f"Given Embedding: {self.dec_embedding.use_given}")
-        log.info(f"Null Value: {self.dec_embedding.null_value}")
-        log.info(f"Pad Value: {self.dec_embedding.pad_value}")
-        log.info(f"Reconstruction Dropout: {self.enc_embedding.data_drop}")
-
-        out_dim = 1
-        recon_dim = 1
-
         # final linear layers turn Transformer output into predictions
-        self.forecaster = nn.Linear(config.experiment.transformer_d_model, out_dim, bias=True)
-        self.classification_head = nn.Linear(self.features_length + (1 if self.use_gfs else 0), out_dim, bias=True)
-        self.reconstructor = nn.Linear(config.experiment.transformer_d_model, recon_dim, bias=True)
-        self.classifier = nn.Linear(config.experiment.transformer_d_model, out_dim, bias=True)
+        # transform tokens into 1-dimensional outputs to allow folding them
+        self.forecaster = nn.Linear(self.token_dim, 1, bias=True)
+        features = self.features_length
+        if self.use_gfs:
+            features += 1
+
+        dense_layers = []
+        for neurons in config.experiment.classification_head_dims:
+            dense_layers.append(nn.Linear(in_features=features, out_features=neurons))
+            features = neurons
+        dense_layers.append(nn.Linear(in_features=features, out_features=1))
+
+        self.classification_head = nn.Sequential(*dense_layers)
+        # self.reconstructor = nn.Linear(config.experiment.transformer_d_model, recon_dim, bias=True)
+        # self.classifier = nn.Linear(config.experiment.transformer_d_model, out_dim, bias=True)
 
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
         # We have x as variables and y as target, but spacetimeformer has it te other way round. TODO redo it
         is_train = stage not in ['test', 'predict', 'validate']
         synop_inputs = batch[BatchKeys.SYNOP_PAST_X.value].float()
-        gfs_inputs = batch[BatchKeys.GFS_PAST_X.value].float()
+        if self.use_gfs:
+            gfs_inputs = batch[BatchKeys.GFS_PAST_X.value].float()
+
         if is_train:
             synop_targets = batch[BatchKeys.SYNOP_FUTURE_X.value].float()
-            gfs_targets = batch[BatchKeys.GFS_FUTURE_X.value].float()
+            if self.use_gfs:
+                gfs_targets = batch[BatchKeys.GFS_FUTURE_X.value].float()
         else:
             # zero values for validation and inference
             synop_targets = torch.zeros_like(synop_inputs).to(self.device)
-            gfs_targets = torch.zeros_like(gfs_inputs).to(self.device)
+            if self.use_gfs:
+                gfs_targets = torch.zeros_like(gfs_inputs).to(self.device)
 
         dates = batch[BatchKeys.DATES_TENSORS.value]
-        gfs_preds = batch[BatchKeys.GFS_FUTURE_Y.value].float()
 
+        inputs = torch.cat([synop_inputs, gfs_inputs], -1) if self.use_gfs else synop_inputs
         # embed context sequence
-        enc_vt_emb, enc_s_emb, enc_var_idxs, enc_mask_seq = self.enc_embedding(
-            input=torch.cat([synop_inputs, gfs_inputs], -1), dates=dates[0])
+        enc_vt_emb, enc_s_emb, enc_var_idxs, enc_mask_seq = self.enc_embedding(input=inputs, dates=dates[0])
 
         # encode context sequence
         enc_out, enc_self_attns = self.encoder(
@@ -272,9 +273,9 @@ class Spacetimeformer(LightningModule):
             output_attn=False
         )
 
+        inputs = torch.cat([synop_targets, gfs_targets], -1) if self.use_gfs else synop_targets
         # embed target sequence
-        dec_vt_emb, dec_s_emb, _, dec_mask_seq = self.dec_embedding(input=torch.cat([synop_targets, gfs_targets], -1),
-                                                                    dates=dates[1])
+        dec_vt_emb, dec_s_emb, _, dec_mask_seq = self.dec_embedding(input=inputs, dates=dates[1])
         if enc_mask_seq is not None:
             enc_dec_mask_seq = enc_mask_seq.clone()
         else:
@@ -298,6 +299,7 @@ class Spacetimeformer(LightningModule):
         forecast_out = forecast_out[:, self.start_token_len : self.future_sequence_length, :]
 
         if self.use_gfs:
+            gfs_preds = batch[BatchKeys.GFS_FUTURE_Y.value].float()
             return torch.squeeze(self.classification_head(torch.cat([forecast_out, gfs_preds], -1)), -1)
 
         return torch.squeeze(self.classification_head(forecast_out), -1)

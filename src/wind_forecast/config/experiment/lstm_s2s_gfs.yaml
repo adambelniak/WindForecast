@@ -17,6 +17,5 @@ model:
 
 system:
   _target_: wind_forecast.systems.S2SRegressorWithGFSInput.S2SRegressorWithGFSInput
-batch_size: 32
 use_gfs_data: True
 teacher_forcing_epoch_num: 0

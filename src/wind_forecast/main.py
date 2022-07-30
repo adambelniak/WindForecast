@@ -50,25 +50,31 @@ def log_dataset_metrics(datamodule: LightningDataModule):
 
 def run_tune(cfg: Config):
     def objective(trial: optuna.trial.Trial, datamodule: LightningDataModule):
-        config = {}
+        config_exp = {}
+        config_optim = {}
         for param in cfg.tune.params.keys():
-            config[param] = trial.suggest_categorical(param, list(cfg.tune.params[param]))
-        config['dropout'] = trial.suggest_uniform('dropout', 0, 0.8)
+            config_exp[param] = trial.suggest_categorical(param, list(cfg.tune.params[param]))
 
-        if cfg.experiment.use_value2vec:
-            config['value2vec_embedding_size'] = trial.suggest_int('value2vec_embedding_size', 1, 20)
-        if cfg.experiment.use_time2vec:
-            config['time2vec_embedding_size'] = trial.suggest_int('time2vec_embedding_size', 1, 20)
-        for param in config.keys():
-            cfg.experiment.__setattr__(param, config[param])
+        if all(tag not in ['ARIMAX', 'SARIMAX'] for tag in cfg.experiment._tags_):
+            config_exp['dropout'] = trial.suggest_uniform('dropout', 0, 0.8)
+            if cfg.experiment.use_value2vec:
+                config_exp['value2vec_embedding_factor'] = trial.suggest_int('value2vec_embedding_factor', 1, 20)
+            if cfg.experiment.use_time2vec:
+                config_exp['time2vec_embedding_factor'] = trial.suggest_int('time2vec_embedding_factor', 1, 20)
 
-        if 'lambda_lr' in cfg.optim:
-            cfg.optim.__setattr__('starting_lr', trial.suggest_loguniform('starting_lr', 0.000001, 0.01))
-            cfg.optim.__setattr__('final_lr', trial.suggest_loguniform('final_lr', 0.000001, 0.01))
-            cfg.optim.__setattr__('warmup_epochs', trial.suggest_int('warmup_epochs', 0, cfg.experiment.epochs))
-            cfg.optim.__setattr__('decay_epochs', trial.suggest_int('decay_epochs', 0, cfg.experiment.epochs))
+            config_optim['base_lr'] = trial.suggest_loguniform('base_lr', 0.000001, 0.01)
+            if 'lambda_lr' in cfg.optim:
+                config_optim['starting_lr'] = trial.suggest_loguniform('starting_lr', 0.000001, 0.01)
+                config_optim['final_lr'] = trial.suggest_loguniform('final_lr', 0.000001, 0.01)
+                config_optim['warmup_epochs'] = trial.suggest_int('warmup_epochs', 0, cfg.experiment.epochs)
+                config_optim['decay_epochs'] = trial.suggest_int('decay_epochs', 0, cfg.experiment.epochs)
 
-        cfg.optim.__setattr__('base_lr', trial.suggest_loguniform('base_lr', 0.000001, 0.01))
+        for param in config_exp.keys():
+            cfg.experiment.__setattr__(param, config_exp[param])
+
+        for param in config_optim.keys():
+            cfg.optim.__setattr__(param, config_optim[param])
+
         config = OmegaConf.to_container(cfg, resolve=True)
         config['trial.number'] = trial.number
 
