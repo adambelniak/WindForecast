@@ -125,7 +125,7 @@ def run_tune(cfg: Config):
 
     datamodule = instantiate(cfg.experiment.datamodule, cfg)
 
-    study = optuna.create_study(direction="minimize", pruner=optuna.pruners.MedianPruner())
+    study = optuna.create_study(direction="minimize", pruner=optuna.pruners.MedianPruner(n_warmup_steps=cfg.experiment.epochs // 4))
     study.optimize(lambda trial: objective(trial, datamodule), n_trials=cfg.tune.trials)
 
     log.info("Number of finished trials: {}".format(len(study.trials)))
