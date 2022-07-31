@@ -129,9 +129,14 @@ def run_tune(cfg: Config):
 
         return val_loss
 
+    epochs = cfg.experiment.epochs
     datamodule = instantiate(cfg.experiment.datamodule, cfg)
 
-    study = optuna.create_study(direction="minimize", pruner=optuna.pruners.MedianPruner(n_warmup_steps=cfg.experiment.epochs // 4))
+    study = optuna.create_study(direction="minimize",
+                                pruner=optuna.pruners.PatientPruner(optuna.pruners.MedianPruner(
+                                    n_warmup_steps=int(epochs * cfg.tune.prune_after_warmup_steps)),
+                                    patience=int(epochs * cfg.tune.pruning_patience_factor),
+                                    min_delta=cfg.tune.patient_pruning_min_delta))
     study.optimize(lambda trial: objective(trial, datamodule), n_trials=cfg.tune.trials)
 
     log.info("Number of finished trials: {}".format(len(study.trials)))
