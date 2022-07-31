@@ -8,7 +8,7 @@ from torch import nn
 from wind_forecast.config.register import Config
 from wind_forecast.consts import BatchKeys
 from wind_forecast.embed.prepare_embeddings import get_embeddings
-from wind_forecast.models.simple2vec.Simple2Vec import Simple2Vec
+from wind_forecast.models.value2vec.Value2Vec import Value2Vec
 from wind_forecast.models.time2vec.Time2Vec import Time2Vec
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 from wind_forecast.util.config import process_config
@@ -55,7 +55,7 @@ class LSTMS2SModel(LightningModule):
                                                        self.time2vec_embedding_factor), batch_first=True)
 
         if self.use_value2vec:
-            self.value_embed = TimeDistributed(Simple2Vec(self.features_length, self.value2vec_embedding_factor),
+            self.value_embed = TimeDistributed(Value2Vec(self.features_length, self.value2vec_embedding_factor),
                                                batch_first=True)
 
         if config.experiment.with_dates_inputs:

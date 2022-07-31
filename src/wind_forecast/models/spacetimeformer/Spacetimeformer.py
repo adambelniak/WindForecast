@@ -8,7 +8,6 @@ from pytorch_lightning import LightningModule
 from wind_forecast.config.register import Config
 from wind_forecast.consts import BatchKeys
 from wind_forecast.util.config import process_config
-from wind_forecast.util.logging import log
 from .extra_layers import ConvBlock, Normalization, FoldForPred
 from .Encoder import Encoder, EncoderLayer
 from .Decoder import Decoder, DecoderLayer
@@ -41,10 +40,6 @@ dropout_attn_out: float = 0.0,
 dropout_ff: float = 0.2,
 dropout_qkv: float = 0.0,
 pos_emb_type: str = "abs",
-global_self_attn: str = "performer",
-local_self_attn: str = "performer",
-global_cross_attn: str = "performer",
-local_cross_attn: str = "performer",
 performer_attn_kernel: str = "relu",
 performer_redraw_interval: int = 1000,
 attn_time_windows: int = 1,
@@ -62,13 +57,7 @@ out_dim: int = None,
 use_val: bool = True,
 use_time: bool = True,
 use_space: bool = True,
-use_given: bool = True,
-recon_mask_skip_all: float = 1.0,
-recon_mask_max_seq_len: int = 5,
-recon_mask_drop_seq: float = 0.1,
-recon_mask_drop_standard: float = 0.2,
-recon_mask_drop_full: float = 0.05,
-verbose: bool = True
+use_given: bool = True
 """
 
 class Spacetimeformer(LightningModule):
@@ -100,7 +89,7 @@ class Spacetimeformer(LightningModule):
         time_dim = config.experiment.dates_tensor_size * config.experiment.time2vec_embedding_factor if config.experiment.use_time2vec \
             else 2 * config.experiment.dates_tensor_size
 
-        self.token_dim = (1 + time_dim) * (config.experiment.value2vec_embedding_factor if config.experiment.use_value2vec else 1)
+        self.token_dim = time_dim + (config.experiment.value2vec_embedding_factor + 1 if config.experiment.use_value2vec else 1)
 
         # embeddings. seperate enc/dec in case the variable indices are not aligned
         self.enc_embedding = Embedding(
@@ -108,6 +97,7 @@ class Spacetimeformer(LightningModule):
             d_time_features=config.experiment.dates_tensor_size if config.experiment.use_time2vec else time_dim,
             d_model=self.token_dim,
             time_emb_dim=config.experiment.time2vec_embedding_factor,
+            value_emb_dim=config.experiment.value2vec_embedding_factor,
             downsample_convs=0,
             method='spatio-temporal',
             null_value=None,
@@ -126,6 +116,7 @@ class Spacetimeformer(LightningModule):
             d_time_features=config.experiment.dates_tensor_size if config.experiment.use_time2vec else time_dim,
             d_model=self.token_dim,
             time_emb_dim=config.experiment.time2vec_embedding_factor,
+            value_emb_dim=config.experiment.value2vec_embedding_factor,
             downsample_convs=0,
             method='spatio-temporal',
             null_value=None,
@@ -243,7 +234,7 @@ class Spacetimeformer(LightningModule):
         # self.classifier = nn.Linear(config.experiment.transformer_d_model, out_dim, bias=True)
 
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
-        # We have x as variables and y as target, but spacetimeformer has it te other way round. TODO redo it
+        # We have x as variables and y as target, but spacetimeformer has it the other way round. TODO redo it
         is_train = stage not in ['test', 'predict', 'validate']
         synop_inputs = batch[BatchKeys.SYNOP_PAST_X.value].float()
         if self.use_gfs:

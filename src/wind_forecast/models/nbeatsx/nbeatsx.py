@@ -93,9 +93,10 @@ class Nbeatsx(pl.LightningModule):
         self.use_gfs = config.experiment.use_gfs_data
         self.time2vec_embedding_factor = config.experiment.time2vec_embedding_factor
         self.use_time2vec = config.experiment.use_time2vec and config.experiment.with_dates_inputs
+        self.use_value2vec = config.experiment.use_value2vec
 
         # No static features in our case
-        self.x_s_n_hidden, self.n_x_s = 0, 0
+        self.x_static_n_hidden, self.x_static_n_inputs = 0, 0
 
         if self.use_gfs:
             gfs_params = process_config(config.experiment.train_parameters_config_file)
@@ -131,8 +132,6 @@ class Nbeatsx(pl.LightningModule):
         self.model = NBeatsx(t.nn.ModuleList(block_list))
 
     def create_stacks(self):
-        x_t_n_inputs = self.past_sequence_length
-
         # ------------------------ Model Definition ------------------------#
         block_list = []
         for i in range(len(self.stack_types)):
@@ -149,9 +148,9 @@ class Nbeatsx(pl.LightningModule):
                     nbeats_block = block_list[-1]
                 else:
                     if self.stack_types[i] == 'seasonality':
-                        nbeats_block = NBeatsBlock(x_t_n_inputs=x_t_n_inputs,
-                                                   x_s_n_inputs=self.n_x_s,
-                                                   x_s_n_hidden=self.x_s_n_hidden,
+                        nbeats_block = NBeatsBlock(T=self.past_sequence_length,
+                                                   x_static_n_inputs=self.x_static_n_inputs,
+                                                   x_static_n_hidden=self.x_static_n_hidden,
                                                    n_insample_t=self.n_insample_t,
                                                    theta_n_dim=4 * int(
                                                        np.ceil(self.n_harmonics / 2 * self.future_sequence_length) - (
@@ -165,9 +164,9 @@ class Nbeatsx(pl.LightningModule):
                                                    dropout_prob=self.dropout,
                                                    activation=self.activation)
                     elif self.stack_types[i] == 'trend':
-                        nbeats_block = NBeatsBlock(x_t_n_inputs=x_t_n_inputs,
-                                                   x_s_n_inputs=self.n_x_s,
-                                                   x_s_n_hidden=self.x_s_n_hidden,
+                        nbeats_block = NBeatsBlock(T=self.past_sequence_length,
+                                                   x_static_n_inputs=self.x_static_n_inputs,
+                                                   x_static_n_hidden=self.x_static_n_hidden,
                                                    n_insample_t=self.n_insample_t,
                                                    theta_n_dim=2 * (self.n_polynomials + 1),
                                                    basis=TrendBasis(degree_of_polynomial=self.n_polynomials,
@@ -179,9 +178,9 @@ class Nbeatsx(pl.LightningModule):
                                                    dropout_prob=self.dropout,
                                                    activation=self.activation)
                     elif self.stack_types[i] == 'identity':
-                        nbeats_block = NBeatsBlock(x_t_n_inputs=x_t_n_inputs,
-                                                   x_s_n_inputs=self.n_x_s,
-                                                   x_s_n_hidden=self.x_s_n_hidden,
+                        nbeats_block = NBeatsBlock(T=self.past_sequence_length,
+                                                   x_static_n_inputs=self.x_static_n_inputs,
+                                                   x_static_n_hidden=self.x_static_n_hidden,
                                                    n_insample_t=self.n_insample_t,
                                                    theta_n_dim=self.past_sequence_length + self.future_sequence_length,
                                                    basis=IdentityBasis(backcast_size=self.past_sequence_length,
@@ -192,9 +191,9 @@ class Nbeatsx(pl.LightningModule):
                                                    dropout_prob=self.dropout,
                                                    activation=self.activation)
                     elif self.stack_types[i] == 'generic':
-                        nbeats_block = NBeatsBlock(x_t_n_inputs=x_t_n_inputs,
-                                                   x_s_n_inputs=self.n_x_s,
-                                                   x_s_n_hidden=self.x_s_n_hidden,
+                        nbeats_block = NBeatsBlock(T=self.past_sequence_length,
+                                                   x_static_n_inputs=self.x_static_n_inputs,
+                                                   x_static_n_hidden=self.x_static_n_hidden,
                                                    n_insample_t=self.n_insample_t,
                                                    theta_n_dim=self.past_sequence_length + self.future_sequence_length,
                                                    basis=GenericBasis(backcast_size=self.past_sequence_length,
@@ -205,9 +204,9 @@ class Nbeatsx(pl.LightningModule):
                                                    dropout_prob=self.dropout,
                                                    activation=self.activation)
                     elif self.stack_types[i] == 'exogenous':
-                        nbeats_block = NBeatsBlock(x_t_n_inputs=x_t_n_inputs,
-                                                   x_s_n_inputs=self.n_x_s,
-                                                   x_s_n_hidden=self.x_s_n_hidden,
+                        nbeats_block = NBeatsBlock(T=self.past_sequence_length,
+                                                   x_static_n_inputs=self.x_static_n_inputs,
+                                                   x_static_n_hidden=self.x_static_n_hidden,
                                                    n_insample_t=self.n_insample_t,
                                                    theta_n_dim=self.n_insample_t + self.n_outsample_t,
                                                    basis=ExogenousBasisInterpretable(),
@@ -217,9 +216,9 @@ class Nbeatsx(pl.LightningModule):
                                                    dropout_prob=self.dropout,
                                                    activation=self.activation)
                     elif self.stack_types[i] == 'exogenous_tcn':
-                        nbeats_block = NBeatsBlock(x_t_n_inputs=x_t_n_inputs,
-                                                   x_s_n_inputs=self.n_x_s,
-                                                   x_s_n_hidden=self.x_s_n_hidden,
+                        nbeats_block = NBeatsBlock(T=self.past_sequence_length,
+                                                   x_static_n_inputs=self.x_static_n_inputs,
+                                                   x_static_n_hidden=self.x_static_n_hidden,
                                                    n_insample_t=self.n_insample_t,
                                                    theta_n_dim=2 * self.exogenous_n_channels,
                                                    basis=ExogenousBasisTCN(self.exogenous_n_channels,
@@ -234,9 +233,9 @@ class Nbeatsx(pl.LightningModule):
                                                    dropout_prob=self.dropout,
                                                    activation=self.activation)
                     elif self.stack_types[i] == 'exogenous_wavenet':
-                        nbeats_block = NBeatsBlock(x_t_n_inputs=x_t_n_inputs,
-                                                   x_s_n_inputs=self.n_x_s,
-                                                   x_s_n_hidden=self.x_s_n_hidden,
+                        nbeats_block = NBeatsBlock(T=self.past_sequence_length,
+                                                   x_static_n_inputs=self.x_static_n_inputs,
+                                                   x_static_n_hidden=self.x_static_n_hidden,
                                                    n_insample_t=self.n_insample_t,
                                                    theta_n_dim=2 * self.exogenous_n_channels,
                                                    basis=ExogenousBasisWavenet(self.exogenous_n_channels, self.n_x_t),

@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 from einops import repeat, rearrange
 
+from wind_forecast.models.value2vec.Value2Vec import Value2Vec
+from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 from .extra_layers import ConvBlock, Flatten
 
 class Time2Vec(nn.Module):
@@ -37,6 +39,11 @@ class Time2Vec(nn.Module):
             x_output = x
         return x_output
 
+"""
+Modified.
+Value & Time embedding is dropped. Instead, Value2Vec is used for embedding value and Time2Vec for embedding time.
+Both are done separatly, then both embeddings are concatenated with original value.
+"""
 class Embedding(nn.Module):
     def __init__(
         self,
@@ -44,6 +51,7 @@ class Embedding(nn.Module):
         d_time_features,
         d_model,
         time_emb_dim=6,
+        value_emb_dim=6,
         method="spatio-temporal",
         downsample_convs=0,
         start_token_len=0,
@@ -91,7 +99,7 @@ class Embedding(nn.Module):
                 )
 
         y_emb_inp_dim = d_input if self.method == "temporal" else 1
-        self.val_time_emb = nn.Linear(y_emb_inp_dim + time_dim, d_model)
+        self.val_emb = TimeDistributed(Value2Vec(y_emb_inp_dim, value_emb_dim), batch_first=True)
 
         if self.method == "spatio-temporal":
             self.space_emb = nn.Embedding(num_embeddings=d_input, embedding_dim=d_model)
@@ -165,22 +173,24 @@ class Embedding(nn.Module):
         if self.use_time_embed:
             time_emb = self.time_emb(dates)
 
-        # concat time emb to value --> FF --> val_time_emb
-        val_time_emb = torch.cat((time_emb, input), dim=-1)
+        val_emb = input
         if self.use_val_embed:
-            val_time_emb = self.val_time_emb(val_time_emb)
+            val_emb = torch.cat([val_emb, self.val_emb(val_emb)], -1)
+
+        # concat time emb
+        val_time_emb = torch.cat([val_emb, time_emb], -1)
 
         # "given" embedding. not important for temporal emb
         # when not using a start token
-        given = torch.ones((bs, length)).long().to(input.device)
-        if not self.is_encoder and self.use_given:
-            given[:, self.start_token_len :] = 0
-        given_emb = self.given_emb(given)
+        # given = torch.ones((bs, length)).long().to(input.device)
+        # if not self.is_encoder and self.use_given:
+        #     given[:, self.start_token_len :] = 0
+        # given_emb = self.given_emb(given)
 
         if self.use_position_emb:
-            emb = position_emb + val_time_emb + given_emb
+            emb = position_emb + val_time_emb # + given_emb
         else:
-            emb = val_time_emb + given_emb
+            emb = val_time_emb # + given_emb
 
         if self.is_encoder:
             # shorten the sequence
@@ -217,39 +227,40 @@ class Embedding(nn.Module):
         if self.use_time_embed:
             time_emb = self.time_emb(dates)
 
-        # keep track of pre-dropout y for given emb
         input = self.data_drop(input)
         input = Flatten(input)  # batch len dy -> batch (dy len) 1
         mask = self.make_mask(input)
 
-        # concat time_emb, y --> FF --> val_time_emb
-        val_time_emb = torch.cat((time_emb, input), dim=-1)
+        val_emb = input
         if self.use_val_embed:
-            val_time_emb = self.val_time_emb(val_time_emb)
+            val_emb = torch.cat([val_emb, self.val_emb(val_emb)], -1)
+
+        # concat time_emb
+        val_time_emb = torch.cat([val_emb, time_emb], -1)
 
         # "given" embedding
-        if self.use_given:
-            given = torch.ones((batch, length, d_input)).long().to(input.device)  # start as True
-            if not self.is_encoder:
-                # mask missing values that need prediction...
-                given[:, self.start_token_len :, :] = 0  # (False)
-
-            # flatten now to make the rest easier to figure out
-            given = rearrange(given, "batch len dy -> batch (dy len)")
-
-            if self.null_value is not None:
-                # mask null values that were set to a magic number in the dataset itself
-                null_mask = (input != self.null_value).squeeze(-1)
-                given *= null_mask
-
-            given_emb = self.given_emb(given)
-        else:
-            given_emb = 0.0
+        # if self.use_given:
+        #     given = torch.ones((batch, length, d_input)).long().to(input.device)  # start as True
+        #     if not self.is_encoder:
+        #         # mask missing values that need prediction...
+        #         given[:, self.start_token_len :, :] = 0  # (False)
+        #
+        #     # flatten now to make the rest easier to figure out
+        #     given = rearrange(given, "batch len dy -> batch (dy len)")
+        #
+        #     if self.null_value is not None:
+        #         # mask null values that were set to a magic number in the dataset itself
+        #         null_mask = (input != self.null_value).squeeze(-1)
+        #         given *= null_mask
+        #
+        #     given_emb = self.given_emb(given)
+        # else:
+        #     given_emb = 0.0
 
         if self.use_position_emb:
-            val_time_emb = position_emb + val_time_emb + given_emb
+            val_time_emb = position_emb + val_time_emb  # + given_emb
         else:
-            val_time_emb = val_time_emb + given_emb
+            val_time_emb = val_time_emb  # + given_emb
 
         if self.is_encoder:
             for conv in self.downsize_convs:

@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 import math
-from typing import Tuple, Union
+from typing import Tuple, Union, List
 
 import numpy as np
 import torch as t
@@ -49,20 +49,20 @@ class NBeatsBlock(nn.Module):
     N-BEATS block which takes a basis function as an argument.
     """
 
-    def __init__(self, x_t_n_inputs: int, x_s_n_inputs: int, x_s_n_hidden: int, n_insample_t: int, theta_n_dim: int,
+    def __init__(self, T: int, x_static_n_inputs: int, x_static_n_hidden: int, n_insample_t: int, theta_n_dim: int,
                  basis: nn.Module,
-                 n_layers: int, theta_n_hidden: list, batch_normalization: bool,
+                 n_layers: int, theta_n_hidden: List[int], batch_normalization: bool,
                  dropout_prob: float, activation: str):
         """
         """
         super().__init__()
 
-        if x_s_n_inputs == 0:
-            x_s_n_hidden = 0
-        theta_n_hidden = [x_t_n_inputs + x_s_n_hidden + x_t_n_inputs * n_insample_t] + theta_n_hidden
+        if x_static_n_inputs == 0:
+            x_static_n_hidden = 0
+        theta_n_hidden = [T + x_static_n_hidden + T * n_insample_t] + theta_n_hidden
 
-        self.x_s_n_inputs = x_s_n_inputs
-        self.x_s_n_hidden = x_s_n_hidden
+        self.x_static_n_inputs = x_static_n_inputs
+        self.x_static_n_hidden = x_static_n_hidden
         self.batch_normalization = batch_normalization
         self.dropout_prob = dropout_prob
         self.activations = {'relu': nn.ReLU(),
@@ -89,18 +89,18 @@ class NBeatsBlock(nn.Module):
         output_layer = [nn.Linear(in_features=theta_n_hidden[-1], out_features=theta_n_dim)]
         layers = hidden_layers + output_layer
 
-        # x_s_n_inputs is computed with data, x_s_n_hidden is provided by user, if 0 no statics are used
-        if (self.x_s_n_inputs > 0) and (self.x_s_n_hidden > 0):
-            self.static_encoder = _StaticFeaturesEncoder(in_features=x_s_n_inputs, out_features=x_s_n_hidden)
+        # x_static_n_inputs is computed with data, x_static_n_hidden is provided by user, if 0 no statics are used
+        if (self.x_static_n_inputs > 0) and (self.x_static_n_hidden > 0):
+            self.static_encoder = _StaticFeaturesEncoder(in_features=x_static_n_inputs, out_features=x_static_n_hidden)
         self.layers = nn.Sequential(*layers)
         self.basis = basis
 
     def forward(self, insample_y: t.Tensor, insample_x_t: t.Tensor,
-                outsample_x_t: t.Tensor, x_s: t.Tensor) -> Tuple[t.Tensor, t.Tensor]:
+                outsample_x_t: t.Tensor, x_static: t.Tensor) -> Tuple[t.Tensor, t.Tensor]:
         # Static exogenous
-        if (self.x_s_n_inputs > 0) and (self.x_s_n_hidden > 0):
-            x_s = self.static_encoder(x_s)
-            insample_y = t.cat((insample_y, x_s), 1)
+        if (self.x_static_n_inputs > 0) and (self.x_s_n_hidden > 0):
+            x_static = self.static_encoder(x_static)
+            insample_y = t.cat((insample_y, x_static), 1)
 
         # Compute local projection weights and projection
         theta = self.layers(t.cat([insample_y,

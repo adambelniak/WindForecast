@@ -8,7 +8,7 @@ from typing import Any
 class TuneSettings:
     params: Any = field(default_factory=lambda: {})
 
-    trials: int = 50
+    trials: int = 40
 
     # Set between 0 and 1 to prune after (max_epochs * prune_after_warmup_steps) epochs
     prune_after_warmup_steps: float = 0.5
