@@ -10,7 +10,7 @@ from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
 from optuna.integration import PyTorchLightningPruningCallback
 from pytorch_lightning import LightningDataModule, LightningModule
-from pytorch_lightning.loggers import WandbLogger
+from pytorch_lightning.loggers import WandbLogger, LightningLoggerBase
 from wandb.sdk.wandb_run import Run
 
 from wind_forecast.config.register import Config, register_configs, get_tags
@@ -20,10 +20,9 @@ from wind_forecast.util.plots import plot_results
 from wind_forecast.util.rundir import setup_rundir
 
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
-wandb_logger: WandbLogger
 
 
-def log_dataset_metrics(datamodule: LightningDataModule):
+def log_dataset_metrics(datamodule: LightningDataModule, logger: LightningLoggerBase):
     metrics = {
         'train_dataset_length': len(datamodule.dataset_train),
         'test_dataset_length': len(datamodule.dataset_test)
@@ -45,7 +44,7 @@ def log_dataset_metrics(datamodule: LightningDataModule):
         else:
             metrics['target_std'] = std
 
-    wandb_logger.log_metrics(metrics)
+    logger.log_metrics(metrics)
 
 
 def run_tune(cfg: Config):
@@ -213,7 +212,7 @@ def run_training(cfg):
 
     trainer.test(system, datamodule=datamodule)
 
-    log_dataset_metrics(datamodule)
+    log_dataset_metrics(datamodule, wandb_logger)
 
     if cfg.experiment.use_gfs_data:
         gfs_mean = datamodule.dataset_test.gfs_mean

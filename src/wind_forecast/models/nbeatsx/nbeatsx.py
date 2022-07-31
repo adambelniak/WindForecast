@@ -35,6 +35,7 @@ from wind_forecast.models.nbeatsx.nbeatsx_model import ExogenousBasisInterpretab
     ExogenousBasisTCN, GenericBasis
 from wind_forecast.models.nbeatsx.nbeatsx_model import NBeatsx, NBeatsBlock, IdentityBasis, TrendBasis, SeasonalityBasis
 from wind_forecast.models.time2vec.Time2Vec import Time2Vec
+from wind_forecast.models.value2vec.Value2Vec import Value2Vec
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 from wind_forecast.util.config import process_config
 
@@ -92,6 +93,7 @@ class Nbeatsx(pl.LightningModule):
         self.dropout = config.experiment.dropout
         self.use_gfs = config.experiment.use_gfs_data
         self.time2vec_embedding_factor = config.experiment.time2vec_embedding_factor
+        self.value2vec_embedding_factor = config.experiment.value2vec_embedding_factor
         self.use_time2vec = config.experiment.use_time2vec and config.experiment.with_dates_inputs
         self.use_value2vec = config.experiment.use_value2vec
 
@@ -116,12 +118,19 @@ class Nbeatsx(pl.LightningModule):
         if self.use_time2vec and self.time2vec_embedding_factor == 0:
             self.time2vec_embedding_factor = self.features_length
 
-        self.dates_dim = self.config.experiment.dates_tensor_size * self.time2vec_embedding_factor if self.use_time2vec\
+        self.dates_dim = self.config.experiment.dates_tensor_size * self.time2vec_embedding_factor if self.use_time2vec \
             else self.config.experiment.dates_tensor_size * 2
 
         if self.use_time2vec:
             self.time_embed = TimeDistributed(Time2Vec(self.config.experiment.dates_tensor_size,
                                                        self.time2vec_embedding_factor), batch_first=True)
+        if self.use_value2vec:
+            self.value2vec_insample = TimeDistributed(Value2Vec(self.n_insample_t,
+                                                                self.value2vec_embedding_factor), batch_first=True)
+            self.value2vec_outsample = TimeDistributed(Value2Vec(self.n_outsample_t,
+                                                                 self.value2vec_embedding_factor), batch_first=True)
+            self.n_insample_t += self.n_insample_t * self.value2vec_embedding_factor
+            self.n_outsample_t += self.n_outsample_t * self.value2vec_embedding_factor
 
         if config.experiment.with_dates_inputs:
             self.n_insample_t = self.n_insample_t + self.dates_dim
@@ -255,16 +264,17 @@ class Nbeatsx(pl.LightningModule):
     def forward(self, batch: Dict[str, t.Tensor], epoch: int, stage=None) -> t.Tensor:
         insample_elements, outsample_elements = get_embeddings(batch, self.config.experiment.with_dates_inputs,
                                                                self.time_embed if self.use_time2vec else None,
+                                                               [self.value2vec_insample, self.value2vec_outsample] if self.use_value2vec else None,
                                                                self.use_gfs)
         synop_past_targets = batch[BatchKeys.SYNOP_PAST_Y.value].float()
 
         # No static features in my case
-        return self.model(x_s=t.Tensor([]), insample_y=synop_past_targets,
-                          insample_x_t=insample_elements.permute(0,2,1),
-                          outsample_x_t=outsample_elements.permute(0,2,1) if self.use_gfs else None)
+        return self.model(x_static=t.Tensor([]), insample_y=synop_past_targets,
+                          insample_x_t=insample_elements.permute(0, 2, 1),
+                          outsample_x_t=outsample_elements.permute(0, 2, 1) if self.use_gfs else None)
 
 
-def get_embeddings(batch, with_dates, time_embed, with_gfs_params):
+def get_embeddings(batch, with_dates, time_embed, value_embed, with_gfs_params):
     synop_inputs = batch[BatchKeys.SYNOP_PAST_X.value].float()
 
     dates_tensors = None if with_dates is False else batch[BatchKeys.DATES_TENSORS.value]
@@ -276,6 +286,11 @@ def get_embeddings(batch, with_dates, time_embed, with_gfs_params):
         target_elements = all_gfs_targets
     else:
         input_elements = synop_inputs
+
+    if value_embed is not None:
+        input_elements = t.cat([input_elements, value_embed[0](input_elements)], -1)
+        if with_gfs_params:
+            target_elements = t.cat([target_elements, value_embed[1](target_elements)], -1)
 
     if with_dates:
         if time_embed is not None:

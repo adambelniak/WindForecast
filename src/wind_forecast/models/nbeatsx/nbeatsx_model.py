@@ -122,7 +122,7 @@ class NBeatsx(nn.Module):
         self.blocks = blocks
 
     def forward(self, insample_y: t.Tensor, insample_x_t: t.Tensor,
-                outsample_x_t: t.Tensor, x_s: t.Tensor, return_decomposition=False) -> Union[
+                outsample_x_t: t.Tensor, x_static: t.Tensor, return_decomposition=False) -> Union[
         t.Tensor, Tuple[t.Tensor, t.Tensor]]:
 
         residuals = insample_y.flip(dims=(-1,))
@@ -132,7 +132,7 @@ class NBeatsx(nn.Module):
         block_forecasts = []
         for i, block in enumerate(self.blocks):
             backcast, block_forecast = block(insample_y=residuals, insample_x_t=insample_x_t,
-                                             outsample_x_t=outsample_x_t, x_s=x_s)
+                                             outsample_x_t=outsample_x_t, x_static=x_static)
             residuals = residuals - backcast
             forecast = forecast + block_forecast
             block_forecasts.append(block_forecast)

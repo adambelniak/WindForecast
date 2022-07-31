@@ -109,7 +109,8 @@ class Spacetimeformer(LightningModule):
             use_val_embed=config.experiment.use_value2vec,
             use_time_embed=config.experiment.use_time2vec,
             use_space=True,
-            use_given=True
+            use_given=True,
+            use_position_emb=config.experiment.use_pos_encoding
         )
         self.dec_embedding = Embedding(
             d_input=self.features_length,
@@ -128,7 +129,8 @@ class Spacetimeformer(LightningModule):
             use_val_embed=config.experiment.use_value2vec,
             use_time_embed=config.experiment.use_time2vec,
             use_space=True,
-            use_given=True
+            use_given=True,
+            use_position_emb=config.experiment.use_pos_encoding
         )
 
         # Select Attention Mechanisms

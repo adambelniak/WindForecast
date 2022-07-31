@@ -205,7 +205,7 @@ class ExperimentSettings:
 
     transformer_attention_heads: int = 1
 
-    use_pos_encoding: bool = True
+    use_pos_encoding: bool = False
 
     # ----------------------------------------------------------------------------------------------
     # Spacetimeformer settings
