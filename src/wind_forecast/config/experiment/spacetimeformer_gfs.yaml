@@ -5,7 +5,7 @@ defaults:
   - schema_experiment
 
 _tags_:
-  - SPACETIMEFORMER
+  - SPACETIMEFORMER_GFS
 
 resume_checkpoint: ~
 

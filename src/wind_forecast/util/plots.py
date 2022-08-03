@@ -1,5 +1,4 @@
 import wandb
-
 from wind_forecast.config.register import Config
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
@@ -7,8 +6,14 @@ import numpy as np
 import pandas as pd
 
 def plot_results(system, config: Config, mean, std, gfs_mean, gfs_std):
+    plot_random_series(system, config, mean, std, gfs_mean, gfs_std)
+    plot_step_by_step_metric(system)
+
+
+def plot_random_series(system, config: Config, mean, std, gfs_mean, gfs_std):
     K_TO_C = 273.15 if config.experiment.target_parameter == 'temperature' else 0
-    for index in np.random.choice(np.arange(len(system.test_results['output'])), min(40, len(system.test_results['output'])), replace=False):
+    for index in np.random.choice(np.arange(len(system.test_results['output'])),
+                                  min(40, len(system.test_results['output'])), replace=False):
         fig, ax = plt.subplots()
         inputs_dates = [pd.to_datetime(pd.Timestamp(d)) for d in system.test_results['inputs_dates'][index]]
         output_dates = [pd.to_datetime(pd.Timestamp(d)) for d in system.test_results['targets_dates'][index]]
@@ -49,4 +54,17 @@ def plot_results(system, config: Config, mean, std, gfs_mean, gfs_std):
         ax.set_ylabel(config.experiment.target_parameter)
         ax.legend(loc='best')
         plt.gcf().autofmt_xdate()
-        wandb.log({'chart': ax})
+        wandb.log({'series_chart': ax})
+        plt.close(fig)
+
+def plot_step_by_step_metric(system):
+    output = np.asarray([np.asarray(el.cpu()) for el in system.test_results['output']])
+    labels = np.asarray([np.asarray(el.cpu()) for el in system.test_results['labels']])
+    rmse_by_step = np.sqrt(np.mean(np.power(np.subtract(output, labels), 2), axis=0))
+
+    plt.plot(np.arange(rmse_by_step.shape[0]), rmse_by_step, '-x')
+    plt.xlabel('step')
+    plt.ylabel('rmse')
+    wandb.log({'step_by_step_metric_chart': plt.gca()})
+    plt.close()
+

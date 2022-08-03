@@ -101,5 +101,6 @@ class S2SRegressorWithGFSInput(BaseS2SRegressor):
                              'inputs': copy.deepcopy(inputs),
                              'inputs_dates': copy.deepcopy(inputs_dates),
                              'targets_dates': copy.deepcopy(labels_dates),
-                             'gfs_targets': copy.deepcopy(gfs_targets)}
+                             'gfs_targets': copy.deepcopy(gfs_targets),
+                             'test_rmse': metrics['test_rmse']}
 

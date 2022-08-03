@@ -170,8 +170,8 @@ class Sequence2SequenceDataModule(SplittableDataModule):
                                                   gfs_past_y)
 
         else:
-            self.gfs_mean = np.mean(np.concatenate([gfs_past_y, gfs_future_y], 0), axis=(0, 1))
-            self.gfs_std = np.std(np.concatenate([gfs_past_y, gfs_future_y], 0), axis=(0, 1))
+            self.gfs_mean = np.mean(np.concatenate([gfs_past_y, gfs_future_y], 1), axis=(0, 1))
+            self.gfs_std = np.std(np.concatenate([gfs_past_y, gfs_future_y], 1), axis=(0, 1))
             gfs_future_y = (gfs_future_y - self.gfs_mean) / self.gfs_std
             gfs_past_y = (gfs_past_y - self.gfs_mean) / self.gfs_std
 

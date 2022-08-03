@@ -75,7 +75,7 @@ class TransformerEncoderBaseProps(LightningModule):
             else self.config.experiment.dates_tensor_size * 2
 
         if self.use_time2vec:
-            self.time_embed = TimeDistributed(Time2Vec( self.config.experiment.dates_tensor_size, self.time2vec_embedding_factor),
+            self.time_embed = TimeDistributed(Time2Vec(self.config.experiment.dates_tensor_size, self.time2vec_embedding_factor),
                                               batch_first=True)
         if self.use_value2vec:
             self.value_embed = TimeDistributed(Value2Vec(self.features_length, self.value2vec_embedding_factor),
@@ -126,7 +126,8 @@ class TransformerEncoderGFSBaseProps(TransformerEncoderBaseProps):
         if self.use_time2vec and self.time2vec_embedding_factor == 0:
             self.time2vec_embedding_factor = self.features_length
 
-        self.dates_dim = 2 * self.time2vec_embedding_factor if self.use_time2vec else 2
+        self.dates_dim = config.experiment.dates_tensor_size * self.time2vec_embedding_factor if self.use_time2vec \
+            else 2 * config.experiment.dates_tensor_size
 
         if self.use_value2vec:
             self.value_embed = TimeDistributed(Value2Vec(self.features_length, self.value2vec_embedding_factor),

@@ -5,7 +5,7 @@ defaults:
   - schema_experiment
 
 _tags_:
-  - TCN_S2S_DECODER_ALL_GFS
+  - TCN_S2S_GFS
 
 resume_checkpoint: ~
 

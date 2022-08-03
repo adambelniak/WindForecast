@@ -51,7 +51,7 @@ class TCNEncoderS2S(EMDDecomposeable):
             else 2 * self.config.experiment.dates_tensor_size
 
         if self.use_time2vec:
-            self.time_embed = TimeDistributed(Time2Vec( self.config.experiment.dates_tensor_size,
+            self.time_embed = TimeDistributed(Time2Vec(self.config.experiment.dates_tensor_size,
                                                         self.time2vec_embedding_factor), batch_first=True)
 
         if self.use_value2vec:
