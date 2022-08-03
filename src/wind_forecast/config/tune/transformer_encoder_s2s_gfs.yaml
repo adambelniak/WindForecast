@@ -16,7 +16,20 @@ params:
     - 2
     - 4
     - 6
-    - 8
   use_pos_encoding:
     - True
     - False
+  classification_head_dims:
+    -
+      - 32
+    -
+      - 64
+      - 32
+    -
+      - 128
+      - 128
+      - 64
+    -
+      - 64
+      - 128
+      - 32

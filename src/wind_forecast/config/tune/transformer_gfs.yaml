@@ -22,9 +22,21 @@ params:
     - 2
     - 4
     - 6
-    - 8
   transformer_decoder_layers:
     - 2
     - 4
     - 6
-    - 8
+  classification_head_dims:
+    -
+      - 32
+    -
+      - 64
+      - 32
+    -
+      - 128
+      - 128
+      - 64
+    -
+      - 64
+      - 128
+      - 32
