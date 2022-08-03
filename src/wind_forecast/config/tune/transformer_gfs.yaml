@@ -12,7 +12,6 @@ params:
     - 0
     - 20
     - 40
-    - 60
     - 80
   transformer_ff_dim:
     - 128
