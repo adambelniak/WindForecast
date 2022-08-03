@@ -87,6 +87,7 @@ class Nbeatsx(pl.LightningModule):
         self.n_harmonics = 0
         self.n_polynomials = 0
         self.exogenous_n_channels = config.experiment.nbeats_exogenous_n_channels
+        self.tcn_channels = config.experiment.tcn_channels
 
         # Regularization and optimization parameters
         self.batch_normalization = True
@@ -229,12 +230,12 @@ class Nbeatsx(pl.LightningModule):
                                                    x_static_n_inputs=self.x_static_n_inputs,
                                                    x_static_n_hidden=self.x_static_n_hidden,
                                                    n_insample_t=self.n_insample_t,
-                                                   theta_n_dim=2 * self.exogenous_n_channels,
-                                                   basis=ExogenousBasisTCN(self.exogenous_n_channels,
-                                                                           self.n_insample_t,
+                                                   theta_n_dim=2 * self.tcn_channels[-1],
+                                                   basis=ExogenousBasisTCN(self.n_insample_t,
                                                                            self.n_outsample_t,
+                                                                           self.tcn_channels,
                                                                            dropout_prob=self.dropout,
-                                                                           theta_n_dim=2 * self.exogenous_n_channels,
+                                                                           theta_n_dim=2 * self.tcn_channels[-1],
                                                                            forecast_size=0 if self.n_outsample_t > 0 else self.future_sequence_length),
                                                    n_layers=self.n_layers[i],
                                                    theta_n_hidden=list(self.n_hidden[i]),

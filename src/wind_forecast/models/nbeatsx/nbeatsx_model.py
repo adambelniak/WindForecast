@@ -307,10 +307,10 @@ class ExogenousBasisWavenet(nn.Module):
 
 
 class ExogenousBasisTCN(nn.Module):
-    def __init__(self, out_features, insample_features, outsample_features, num_levels=4, kernel_size=3,
+    def __init__(self, insample_features, outsample_features, tcn_channels: List[int], kernel_size=3,
                  dropout_prob=0, theta_n_dim=0, forecast_size=0):
         super().__init__()
-        n_channels = num_levels * [out_features]
+        n_channels = tcn_channels
         self.insample_tcn = TemporalConvNet(num_inputs=insample_features, num_channels=n_channels,
                                             kernel_size=kernel_size,
                                             dropout=dropout_prob)

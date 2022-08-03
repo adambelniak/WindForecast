@@ -21,9 +21,17 @@ params:
     - 64
     - 128
     - 256
-  nbeats_exogenous_n_channels:
-    - 16
-    - 32
+  tcn_channels:
+    -
+      - 16
+      - 32
+    -
+      - 32
+      - 64
+    -
+      - 32
+      - 64
+      - 64
   use_time2vec:
     - True
     - False
