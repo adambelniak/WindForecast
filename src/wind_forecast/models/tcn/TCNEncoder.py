@@ -40,7 +40,7 @@ class TemporalBlockWithAttention(nn.Module):
         self.tcn_block1 = nn.Sequential(self.pad, self.conv1, self.relu, self.dropout)
         self.tcn_block2 = nn.Sequential(self.pad, self.conv2, self.relu, self.dropout)
 
-        self.self_attn = nn.MultiheadAttention(n_outputs, attention_heads,
+        self.self_attn = nn.MultiheadAttention(n_inputs, attention_heads,
                                                dropout=dropout, batch_first=True)
 
         self.downsample = nn.Conv1d(
@@ -48,10 +48,10 @@ class TemporalBlockWithAttention(nn.Module):
         self.relu = nn.ReLU()
 
     def forward(self, x) -> torch.Tensor:
-        y = self.tcn_block1(x.unsqueeze(2)).squeeze(2)
-        y = y.permute(0, 2, 1)
+        y = x.permute(0, 2, 1)
         y = self.self_attn(y, y, y, need_weights=False)[0]
         y = y.permute(0, 2, 1)
+        y = self.tcn_block1(y.unsqueeze(2)).squeeze(2)
         y = self.tcn_block2(y.unsqueeze(2)).squeeze(2)
         res = x if self.downsample is None else self.downsample(x)
         return self.relu(y + res)
