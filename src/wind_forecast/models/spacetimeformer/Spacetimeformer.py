@@ -293,12 +293,12 @@ class Spacetimeformer(LightningModule):
 
         inputs = torch.cat([synop_inputs, gfs_inputs], -1) if self.use_gfs else synop_inputs
         # embed context sequence
-        enc_val_time_emb, enc_var_idxs, enc_mask_seq = self.enc_embedding(input=inputs, dates=dates[0])
+        enc_val_time_emb, _, enc_mask_seq = self.enc_embedding(input=inputs, dates=dates[0])
         # embed target context
         targets = torch.cat([synop_targets, gfs_targets], -1) if self.use_gfs else synop_targets
         dec_val_time_emb, _, dec_mask_seq = self.dec_embedding(input=targets, dates=dates[1])
 
-        return enc_val_time_emb, enc_var_idxs, dec_val_time_emb, dec_mask_seq
+        return enc_val_time_emb, enc_mask_seq, dec_val_time_emb, dec_mask_seq
 
     def _attn_switch(
         self,
