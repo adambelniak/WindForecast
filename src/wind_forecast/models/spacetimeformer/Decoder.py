@@ -203,22 +203,20 @@ class DecoderLayer(nn.Module):
 
 
 class Decoder(nn.Module):
-    def __init__(self, layers, norm_layer=None, emb_dropout=0.0):
+    def __init__(self, layers, norm_layer=None):
         super().__init__()
         self.layers = nn.ModuleList(layers)
         self.norm_layer = norm_layer
-        self.emb_dropout = nn.Dropout(emb_dropout)
 
     def forward(
         self,
-        val_time_emb,
-        space_emb,
+        val_time_space_emb,
         cross,
         self_mask_seq=None,
         cross_mask_seq=None,
         output_cross_attn=False,
     ):
-        x = self.emb_dropout(val_time_emb) + self.emb_dropout(space_emb)
+        x = val_time_space_emb
 
         attns = []
         for i, layer in enumerate(self.layers):

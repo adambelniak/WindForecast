@@ -109,17 +109,15 @@ class Encoder(nn.Module):
         self,
         attn_layers,
         conv_layers,
-        norm_layer,
-        emb_dropout=0.0,
+        norm_layer
     ):
         super().__init__()
         self.attn_layers = nn.ModuleList(attn_layers)
         self.conv_layers = nn.ModuleList(conv_layers)
         self.norm_layer = norm_layer
-        self.emb_dropout = nn.Dropout(emb_dropout)
 
-    def forward(self, val_time_emb, space_emb, self_mask_seq=None, output_attn=False):
-        x = self.emb_dropout(val_time_emb) + self.emb_dropout(space_emb)
+    def forward(self, val_time_space_emb, self_mask_seq=None, output_attn=False):
+        x = val_time_space_emb
 
         attns = []
         for i, attn_layer in enumerate(self.attn_layers):

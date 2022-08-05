@@ -65,7 +65,8 @@ class Embedding(nn.Module):
         use_time_embed: bool = True,
         use_space: bool = True,
         use_given: bool = True,
-        use_position_emb: bool = True
+        use_position_emb: bool = True,
+        emb_dropout: float = 0.0
     ):
         super().__init__()
 
@@ -80,8 +81,6 @@ class Embedding(nn.Module):
         if use_time_embed:
             time_dim = time_emb_dim * d_time_features
             self.time_emb = Time2Vec(d_time_features, embed_dim=time_dim)
-        else:
-            time_dim = d_time_features
 
         assert position_emb in ["t2v", "abs"]
         self.max_seq_len = max_seq_len
@@ -102,7 +101,7 @@ class Embedding(nn.Module):
         self.val_emb = TimeDistributed(Value2Vec(y_emb_inp_dim, value_emb_dim), batch_first=True)
 
         if self.method == "spatio-temporal":
-            self.space_emb = nn.Embedding(num_embeddings=d_input, embedding_dim=d_model)
+            self.space_emb = nn.Embedding(num_embeddings=d_input, embedding_dim=value_emb_dim)
             split_length_into = d_input
         else:
             split_length_into = 1
@@ -124,6 +123,7 @@ class Embedding(nn.Module):
         self.use_time_embed = use_time_embed
         self.use_given = use_given
         self.use_space = use_space
+        self.emb_dropout = nn.Dropout(emb_dropout)
 
     def __call__(self, input: torch.Tensor, dates: torch.Tensor):
         if self.method == "spatio-temporal":
@@ -198,9 +198,8 @@ class Embedding(nn.Module):
                 emb = conv(emb)
 
         # space emb not used for temporal method
-        space_emb = torch.zeros_like(emb)
         var_idxs = None
-        return emb, space_emb, var_idxs, mask
+        return emb, var_idxs, mask
 
     def spatio_temporal_embed(self, input: torch.Tensor, dates: torch.Tensor):
         # full spatiotemopral emb method. lots of shape rearrange code
@@ -235,8 +234,14 @@ class Embedding(nn.Module):
         if self.use_val_embed:
             val_emb = torch.cat([val_emb, self.val_emb(val_emb)], -1)
 
-        # concat time_emb
-        val_time_emb = torch.cat([val_emb, time_emb], -1)
+        # space embedding
+        var_idx = repeat(torch.arange(d_input).long().to(input.device), f"dy -> {batch} (dy {length})")
+        var_idx_true = var_idx.clone()
+        if not self.use_space:
+            var_idx = torch.zeros_like(var_idx)
+        space_emb = self.space_emb(var_idx)
+        # concat time_emb with val and space embed
+        val_time_emb = torch.cat([self.emb_dropout(val_emb) + self.emb_dropout(space_emb), time_emb], -1)
 
         # "given" embedding
         # if self.use_given:
@@ -267,13 +272,4 @@ class Embedding(nn.Module):
                 val_time_emb = conv(val_time_emb)
                 length //= 2
 
-        # space embedding
-        var_idx = repeat(
-            torch.arange(d_input).long().to(input.device), f"dy -> {batch} (dy {length})"
-        )
-        var_idx_true = var_idx.clone()
-        if not self.use_space:
-            var_idx = torch.zeros_like(var_idx)
-        space_emb = self.space_emb(var_idx)
-
-        return val_time_emb, space_emb, var_idx_true, mask
+        return val_time_emb, var_idx_true, mask
