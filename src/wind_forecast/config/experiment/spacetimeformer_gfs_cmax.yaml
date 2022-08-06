@@ -1,0 +1,26 @@
+# Specific experiments settings
+# (default settings inherited from configs.experiment.ExperimentSettings)
+
+defaults:
+  - schema_experiment
+
+_tags_:
+  - SPACETIMEFORMER_GFS_CMAX
+
+resume_checkpoint: ~
+
+datamodule:
+  _target_: wind_forecast.datamodules.Sequence2SequenceWithCMAXDataModule.Sequence2SequenceWithCMAXDataModule
+
+model:
+  _target_: wind_forecast.models.spacetimeformer.Spacetimeformer_cmax.Spacetimeformer_cmax
+
+system:
+  _target_: wind_forecast.systems.S2SRegressorWithGFSInput.S2SRegressorWithGFSInput
+
+use_gfs_data: True
+use_cmax_data: True
+use_future_cmax: True
+transformer_ff_dim: 100
+transformer_encoder_layers: 4
+transformer_decoder_layers: 4

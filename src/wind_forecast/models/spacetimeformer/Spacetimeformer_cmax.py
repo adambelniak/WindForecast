@@ -1,95 +1,43 @@
-from functools import partial
+import math
 from typing import Dict
 
 import torch
 import torch.nn as nn
-from pytorch_lightning import LightningModule
 
 from wind_forecast.config.register import Config
 from wind_forecast.consts import BatchKeys
-from wind_forecast.util.config import process_config
-from .extra_layers import ConvBlock, Normalization, FoldForPred
-from .Encoder import Encoder, EncoderLayer
+from wind_forecast.models.CMAXAutoencoder import CMAXEncoder, get_pretrained_encoder
+from wind_forecast.models.spacetimeformer.Spacetimeformer import Spacetimeformer
+from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 from .Decoder import Decoder, DecoderLayer
-from .attention import (
-    FullAttention,
-    ProbAttention,
-    AttentionLayer,
-    PerformerAttention,
-)
+from .Encoder import Encoder, EncoderLayer
 from .embed import Embedding
+from .extra_layers import ConvBlock, Normalization, FoldForPred
 
-"""
-d_yc: int = 1,
-d_yt: int = 1,
-d_x: int = 4,
-max_seq_len: int = None,
-attn_factor: int = 5,
-d_model: int = 200,
-d_queries_keys: int = 30,
-d_values: int = 30,
-n_heads: int = 8,
-e_layers: int = 2,
-d_layers: int = 3,
-d_ff: int = 800,
-start_token_len: int = 0,
-time_emb_dim: int = 6,
-dropout_emb: float = 0.1,
-dropout_attn_matrix: float = 0.0,
-dropout_attn_out: float = 0.0,
-dropout_ff: float = 0.2,
-dropout_qkv: float = 0.0,
-pos_emb_type: str = "abs",
-performer_attn_kernel: str = "relu",
-performer_redraw_interval: int = 1000,
-attn_time_windows: int = 1,
-use_shifted_time_windows: bool = True,
-embed_method: str = "spatio-temporal",
-activation: str = "gelu",
-norm: str = "batch",
-use_final_norm: bool = True,
-initial_downsample_convs: int = 0,
-intermediate_downsample_convs: int = 0,
-device = torch.device("cuda:0"),
-null_value: float = None,
-pad_value: float = None,
-out_dim: int = None,
-use_val: bool = True,
-use_time: bool = True,
-use_space: bool = True,
-use_given: bool = True
-"""
 
-class Spacetimeformer(LightningModule):
+class Spacetimeformer_cmax(Spacetimeformer):
     def __init__(
         self,
         config: Config
     ):
-        super().__init__()
-        self.use_gfs = config.experiment.use_gfs_data
-        self.features_length = len(config.experiment.synop_train_features) + len(config.experiment.synop_periodic_features)
-        self.future_sequence_length = config.experiment.future_sequence_length
-        assert self.future_sequence_length <= config.experiment.sequence_length
+        super().__init__(config)
+        assert config.experiment.use_cmax_data, "use_cmax_data should be True for nbeatx_cmax experiment"
+        conv_H = config.experiment.cmax_h
+        conv_W = config.experiment.cmax_w
+        out_channels = config.experiment.cnn_filters[-1]
+        self.cmax_conv = CMAXEncoder(config)
+        for _ in config.experiment.cnn_filters:
+            conv_W = math.ceil(conv_W / 2)
+            conv_H = math.ceil(conv_H / 2)
 
-        if config.experiment.use_gfs_data:
-            gfs_params = process_config(config.experiment.train_parameters_config_file).params
-            gfs_params_len = len(gfs_params)
-            param_names = [x['name'] for x in gfs_params]
-            if "V GRD" in param_names and "U GRD" in param_names:
-                gfs_params_len += 1  # V and U will be expanded into velocity, sin and cos
-            self.features_length += gfs_params_len
+        if config.experiment.use_pretrained_cmax_autoencoder:
+            get_pretrained_encoder(self.cmax_conv, config)
+        self.conv_time_distributed = TimeDistributed(self.cmax_conv, batch_first=True)
 
-        self.transformer_encoder_layers_num = config.experiment.transformer_encoder_layers
-        self.transformer_decoder_layers_num = config.experiment.transformer_decoder_layers
+        cmax_embed_dim = conv_W * conv_H * out_channels
+        self.features_length += cmax_embed_dim
 
-        assert config.experiment.spacetimeformer_intermediate_downsample_convs <= self.transformer_encoder_layers_num - 1
         split_length_into = self.features_length
-
-        self.start_token_len = 0
-        self.time_dim = config.experiment.dates_tensor_size * config.experiment.time2vec_embedding_factor if config.experiment.use_time2vec \
-            else 2 * config.experiment.dates_tensor_size
-
-        self.token_dim = self.time_dim + (config.experiment.value2vec_embedding_factor + 1 if config.experiment.use_value2vec else 1)
 
         # embeddings. seperate enc/dec in case the variable indices are not aligned
         self.enc_embedding = Embedding(
@@ -218,9 +166,6 @@ class Spacetimeformer(LightningModule):
             norm_layer=Normalization('batch', d_model=self.token_dim)
         )
 
-        # final linear layers turn Transformer output into predictions
-        # transform tokens into 1-dimensional outputs to allow folding them
-        self.forecaster = nn.Linear(self.token_dim, 1, bias=True)
         features = self.features_length
         if self.use_gfs:
             features += 1
@@ -232,11 +177,8 @@ class Spacetimeformer(LightningModule):
         dense_layers.append(nn.Linear(in_features=features, out_features=1))
 
         self.classification_head = nn.Sequential(*dense_layers)
-        # self.reconstructor = nn.Linear(config.experiment.transformer_d_model, recon_dim, bias=True)
-        # self.classifier = nn.Linear(config.experiment.transformer_d_model, out_dim, bias=True)
 
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
-        # We have x as variables and y as target, but spacetimeformer has it the other way round. TODO redo it
         is_train = stage not in ['test', 'predict', 'validate']
         enc_vt_emb, enc_mask_seq, dec_vt_emb, dec_mask_seq = self.get_embeddings(batch, is_train)
 
@@ -276,80 +218,23 @@ class Spacetimeformer(LightningModule):
 
     def get_embeddings(self, batch, is_train: bool):
         synop_inputs = batch[BatchKeys.SYNOP_PAST_X.value].float()
+        cmax_inputs = batch[BatchKeys.CMAX_PAST.value].float()
+        cmax_input_embeddings = self.conv_time_distributed(cmax_inputs.unsqueeze(2))
+
         if self.use_gfs:
             gfs_inputs = batch[BatchKeys.GFS_PAST_X.value].float()
 
-        inputs = torch.cat([synop_inputs, gfs_inputs], -1) if self.use_gfs else synop_inputs
-
-        # zero values for decoder inpur
-        targets = torch.zeros_like(inputs)
         dates = batch[BatchKeys.DATES_TENSORS.value]
 
+        if self.use_gfs:
+            inputs = torch.cat([synop_inputs, gfs_inputs, cmax_input_embeddings], -1)
+        else:
+            inputs = torch.cat([synop_inputs, cmax_input_embeddings], -1)
         # embed context sequence
         enc_val_time_emb, _, enc_mask_seq = self.enc_embedding(input=inputs, dates=dates[0])
+
         # embed target context
+        targets = torch.zeros_like(inputs)
         dec_val_time_emb, _, dec_mask_seq = self.dec_embedding(input=targets, dates=dates[1])
 
         return enc_val_time_emb, enc_mask_seq, dec_val_time_emb, dec_mask_seq
-
-    def _attn_switch(
-        self,
-        attn_str: str,
-        d_model: int,
-        n_heads: int,
-        d_qk: int,
-        d_v: int,
-        dropout_qkv: float,
-        dropout_attn_matrix: float,
-        attn_factor: int,
-        performer_attn_kernel: str,
-        performer_redraw_interval: int,
-    ):
-
-        if attn_str == "full":
-            # standard full (n^2) attention
-            Attn = AttentionLayer(
-                attention=partial(FullAttention, attention_dropout=dropout_attn_matrix),
-                d_model=d_model,
-                d_queries_keys=d_qk,
-                d_values=d_v,
-                n_heads=n_heads,
-                mix=False,
-                dropout_qkv=dropout_qkv,
-            )
-        elif attn_str == "prob":
-            # Informer-style ProbSparse cross attention
-            Attn = AttentionLayer(
-                attention=partial(
-                    ProbAttention,
-                    factor=attn_factor,
-                    attention_dropout=dropout_attn_matrix,
-                ),
-                d_model=d_model,
-                d_queries_keys=d_qk,
-                d_values=d_v,
-                n_heads=n_heads,
-                mix=False,
-                dropout_qkv=dropout_qkv,
-            )
-        elif attn_str == "performer":
-            # Performer Linear Attention
-            Attn = AttentionLayer(
-                attention=partial(
-                    PerformerAttention,
-                    dim_heads=d_qk,
-                    kernel=performer_attn_kernel,
-                    feature_redraw_interval=performer_redraw_interval,
-                ),
-                d_model=d_model,
-                d_queries_keys=d_qk,
-                d_values=d_v,
-                n_heads=n_heads,
-                mix=False,
-                dropout_qkv=dropout_qkv,
-            )
-        elif attn_str == "none":
-            Attn = None
-        else:
-            raise ValueError(f"Unrecognized attention str code '{attn_str}'")
-        return Attn
