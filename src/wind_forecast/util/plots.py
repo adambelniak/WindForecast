@@ -3,7 +3,6 @@ from wind_forecast.config.register import Config
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 
 def plot_results(system, config: Config, mean, std, gfs_mean, gfs_std):
     plot_random_series(system, config, mean, std, gfs_mean, gfs_std)
@@ -20,7 +19,7 @@ def plot_random_series(system, config: Config, mean, std, gfs_mean, gfs_std):
         prediction_series = system.test_results['plot_prediction'][index]
         truth_series = system.test_results['plot_truth'][index]
         prediction_dates = system.test_results['plot_prediction_dates'][index]
-        truth_dates = system.test_results['plot_truth_dates'][index]
+        all_dates = system.test_results['plot_all_dates'][index]
         if config.experiment.use_gfs_data:
             gfs_out_series = system.test_results['plot_gfs_targets'][index]
 
@@ -38,13 +37,15 @@ def plot_random_series(system, config: Config, mean, std, gfs_mean, gfs_std):
                 else:
                     prediction_series = (np.array(prediction_series) * std + mean).tolist()
                 gfs_out_series = gfs_out_series.tolist()
+            else:
+                prediction_series = (np.array(prediction_series) * std + mean).tolist()
 
         ax.plot(prediction_dates, prediction_series, label='prediction')
 
         if config.experiment.use_gfs_data:
             ax.plot(prediction_dates, gfs_out_series, label='gfs prediction')
 
-        ax.plot(truth_dates, truth_series, label='ground truth')
+        ax.plot(all_dates, truth_series, label='ground truth')
         ax.set_xlabel('Date')
         ax.set_ylabel(config.experiment.target_parameter)
         ax.legend(loc='best')

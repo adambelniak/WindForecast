@@ -18,7 +18,7 @@ class MultiChannelSpatialDataset(BaseDataset):
     'Characterizes a dataset for PyTorch'
     def __init__(self, config: Config, train_IDs: Dict, labels, normalize=True):
         super().__init__()
-        self.train_parameters = process_config(config.experiment.train_parameters_config_file)
+        self.train_parameters = process_config(config.experiment.train_parameters_config_file).params
         self.target_param = config.experiment.target_parameter
         self.labels = labels
         self.dim = config.experiment.cnn_input_size

@@ -17,7 +17,7 @@ class SingleGFSPointDataset(torch.utils.data.Dataset):
 
     def __init__(self, config: Config):
         """Initialization"""
-        self.train_parameters = process_config(config.experiment.train_parameters_config_file)
+        self.train_parameters = process_config(config.experiment.train_parameters_config_file).params
         self.target_param = config.experiment.target_parameter
         self.synop_file = config.experiment.synop_file
         self.prediction_offset = config.experiment.prediction_offset

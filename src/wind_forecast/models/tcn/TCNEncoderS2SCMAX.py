@@ -49,7 +49,7 @@ class TCNEncoderS2SCMAX(TCNEncoderS2S):
             tcn_channels[0] += 2 if not self.use_time2vec else 2 * self.time2vec_embedding_factor
 
         if self.config.experiment.use_gfs_data:
-            gfs_params = process_config(self.config.experiment.train_parameters_config_file)
+            gfs_params = process_config(self.config.experiment.train_parameters_config_file).params
             gfs_params_len = len(gfs_params)
             param_names = [x['name'] for x in gfs_params]
             if "V GRD" in param_names and "U GRD" in param_names:

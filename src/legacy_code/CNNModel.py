@@ -11,7 +11,7 @@ class CNNModel(LightningModule):
         super(CNNModel, self).__init__()
         self.cfg = cfg
         ff_input_dim = cfg.experiment.cnn_ff_input_dim
-        channels = len(process_config(cfg.experiment.train_parameters_config_file))
+        channels = len(process_config(cfg.experiment.train_parameters_config_file).params)
         cnn_layers = []
 
         for index, filters in enumerate(cfg.experiment.cnn_filters):

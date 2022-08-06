@@ -17,7 +17,7 @@ class MultiChannelSpatialDatasetWithEarthDeclination(torch.utils.data.Dataset):
     def __init__(self, config: Config, list_IDs, train=True, normalize=True):
         'Initialization'
         self.list_IDs = list_IDs
-        self.train_parameters = process_config(config.experiment.train_parameters_config_file)
+        self.train_parameters = process_config(config.experiment.train_parameters_config_file).params
         self.target_param = config.experiment.target_parameter
         self.synop_file = config.experiment.synop_file
         self.labels, self.label_mean, self.label_std = prepare_synop_dataset(self.synop_file, [self.target_param],

@@ -14,6 +14,7 @@ from pytorch_lightning.loggers import WandbLogger, LightningLoggerBase
 from wandb.sdk.wandb_run import Run
 
 from wind_forecast.config.register import Config, register_configs, get_tags
+from wind_forecast.runs_analysis import run_analysis
 from wind_forecast.util.callbacks import CustomCheckpointer, get_resume_checkpoint
 from wind_forecast.util.logging import log
 from wind_forecast.util.plots import plot_results
@@ -234,7 +235,6 @@ def run_training(cfg):
         log.info(f'[bold red]>>> Training interrupted.')
         run.finish(exit_code=255)
 
-
 @hydra.main(config_path='config', config_name='default')
 def main(cfg: Config):
     RUN_MODE = os.getenv('RUN_MODE', '').lower()
@@ -253,6 +253,8 @@ def main(cfg: Config):
 
     if cfg.tune_mode:
         run_tune(cfg)
+    elif RUN_MODE == 'analysis':
+        run_analysis(cfg)
     else:
         run_training(cfg)
 

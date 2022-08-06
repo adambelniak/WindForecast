@@ -414,19 +414,19 @@ class BaseS2SRegressor(pl.LightningModule):
         # for plots
         plot_truth_series = []
         plot_prediction_series = []
-        plot_truth_dates = []
+        plot_all_dates = []
         plot_prediction_dates = []
         for index in np.random.choice(np.arange(len(output_series)),
                                       min(40, len(output_series)), replace=False):
-            sample_truth_dates = [pd.to_datetime(pd.Timestamp(d)) for d in inputs_dates[index]]
-            sample_labels_dates = [pd.to_datetime(pd.Timestamp(d)) for d in labels_dates[index]]
-            sample_truth_dates.extend(sample_labels_dates)
+            sample_all_dates = [pd.to_datetime(pd.Timestamp(d)) for d in inputs_dates[index]]
+            sample_prediction_dates = [pd.to_datetime(pd.Timestamp(d)) for d in labels_dates[index]]
+            sample_all_dates.extend(sample_prediction_dates)
 
-            plot_truth_dates.append(sample_truth_dates)
-            plot_prediction_dates.append(sample_labels_dates)
+            plot_all_dates.append(sample_all_dates)
+            plot_prediction_dates.append(sample_prediction_dates)
 
             plot_prediction_series.append(output_series[index])
-            plot_truth_series.append(np.concatenate([past_truth_series[index], labels_series[index]]))
+            plot_truth_series.append(np.concatenate([past_truth_series[index], labels_series[index]], 0).tolist())
 
         return {
             'epoch': float(step),
@@ -436,6 +436,6 @@ class BaseS2SRegressor(pl.LightningModule):
             'rmse_by_step': rmse_by_step,
             'plot_truth': plot_truth_series,
             'plot_prediction': plot_prediction_series,
-            'plot_truth_dates': plot_truth_dates,
+            'plot_all_dates': plot_all_dates,
             'plot_prediction_dates': plot_prediction_dates
         }

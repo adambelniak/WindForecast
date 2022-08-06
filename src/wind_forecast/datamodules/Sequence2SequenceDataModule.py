@@ -48,7 +48,7 @@ class Sequence2SequenceDataModule(SplittableDataModule):
         coords = config.experiment.target_coords
         self.target_coords = Coords(coords[0], coords[0], coords[1], coords[1])
 
-        self.gfs_train_params = process_config(config.experiment.train_parameters_config_file)
+        self.gfs_train_params = process_config(config.experiment.train_parameters_config_file).params
         self.gfs_target_params = self.gfs_train_params
 
         self.gfs_target_param_indices = [[{'name': param['name'], 'level': param['level']}

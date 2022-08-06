@@ -44,8 +44,8 @@ class SequenceDataModule(SplittableDataModule):
         self.synop_to_year = config.experiment.synop_to_year
         self.periodic_features = config.experiment.synop_periodic_features
         self.gfs_train_params = process_config(
-            config.experiment.train_parameters_config_file) if config.experiment.use_gfs_data else None
-        self.gfs_target_params = self.gfs_train_params if self.use_gfs_data else target_param_to_gfs_name_level(
+            config.experiment.train_parameters_config_file).params if config.experiment.use_gfs_data else None
+        self.gfs_target_params = self.gfs_train_params if config.experiment.use_gfs_data else target_param_to_gfs_name_level(
             self.target_param)
 
         coords = config.experiment.target_coords

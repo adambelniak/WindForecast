@@ -72,7 +72,7 @@ class Spacetimeformer(LightningModule):
         assert self.future_sequence_length <= config.experiment.sequence_length
 
         if config.experiment.use_gfs_data:
-            gfs_params = process_config(config.experiment.train_parameters_config_file)
+            gfs_params = process_config(config.experiment.train_parameters_config_file).params
             gfs_params_len = len(gfs_params)
             param_names = [x['name'] for x in gfs_params]
             if "V GRD" in param_names and "U GRD" in param_names:

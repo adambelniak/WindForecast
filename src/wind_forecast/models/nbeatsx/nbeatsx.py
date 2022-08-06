@@ -102,7 +102,7 @@ class Nbeatsx(pl.LightningModule):
         self.x_static_n_hidden, self.x_static_n_inputs = 0, 0
 
         if self.use_gfs:
-            gfs_params = process_config(config.experiment.train_parameters_config_file)
+            gfs_params = process_config(config.experiment.train_parameters_config_file).params
             n_gfs_features = len(gfs_params)
             param_names = [x['name'] for x in gfs_params]
             if "V GRD" in param_names and "U GRD" in param_names:

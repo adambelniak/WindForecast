@@ -17,7 +17,7 @@ class MultiChannelSpatialSubregionDataset(BaseDataset):
 
     def __init__(self, config: Config, train_IDs, labels, normalize=True):
         super().__init__()
-        self.train_parameters = process_config(config.experiment.train_parameters_config_file)
+        self.train_parameters = process_config(config.experiment.train_parameters_config_file).params
         self.target_param = config.experiment.target_parameter
         self.synop_file = config.experiment.synop_file
         self.labels = labels
