@@ -5,7 +5,7 @@ defaults:
   - schema_experiment
 
 _tags_:
-  - NBEATSx
+  - NBEATSx_GFS
 
 resume_checkpoint: ~
 
@@ -16,11 +16,11 @@ model:
   _target_: wind_forecast.models.nbeatsx.nbeatsx.Nbeatsx
 
 system:
-  _target_: wind_forecast.systems.BaseS2SRegressor.BaseS2SRegressor
+  _target_: wind_forecast.systems.S2SRegressorWithGFSInput.S2SRegressorWithGFSInput
 
 epochs: 20
 dropout: 0.3
-use_gfs_data: False
+use_gfs_data: True
 use_value2vec: False
 use_time2vec: True
 time2vec_embedding_factor: 5

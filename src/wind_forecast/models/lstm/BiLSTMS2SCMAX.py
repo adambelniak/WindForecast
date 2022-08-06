@@ -8,6 +8,7 @@ from wind_forecast.consts import BatchKeys
 from wind_forecast.embed.prepare_embeddings import get_embeddings
 from wind_forecast.models.CMAXAutoencoder import get_pretrained_encoder, CMAXEncoder
 from wind_forecast.models.lstm.BiLSTMS2S import BiLSTMS2S
+from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 
 
 class BiLSTMS2SCMAX(BiLSTMS2S):
@@ -24,6 +25,8 @@ class BiLSTMS2SCMAX(BiLSTMS2S):
 
         if config.experiment.use_pretrained_cmax_autoencoder:
             get_pretrained_encoder(self.conv, config)
+
+        self.conv_time_distributed = TimeDistributed(self.conv, batch_first=True)
 
         self.embed_dim += conv_W * conv_H * out_channels
 
@@ -62,9 +65,9 @@ class BiLSTMS2SCMAX(BiLSTMS2S):
 
         cmax_embeddings = self.conv_time_distributed(cmax_inputs.unsqueeze(2))
         if is_train:
-            self.conv_time_distributed.requires_grad_(False)
+            self.conv.requires_grad_(False)
             cmax_targets_embeddings = self.conv_time_distributed(cmax_targets.unsqueeze(2))
-            self.conv_time_distributed.requires_grad_(True)
+            self.conv.requires_grad_(True)
 
         input_elements = torch.cat([input_elements, cmax_embeddings], -1)
         if is_train:

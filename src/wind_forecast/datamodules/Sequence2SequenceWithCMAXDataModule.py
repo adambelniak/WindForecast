@@ -81,7 +81,7 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
             synop_dataset = Sequence2SequenceWithGFSDataset(self.config, self.synop_data, self.synop_data_indices,
                                                             self.synop_feature_names, gfs_future_y, gfs_past_y,
                                                             gfs_future_x, gfs_past_x)
-            if self.config.experiment.use_cmax_data:
+            if self.config.experiment.load_cmax_data:
                 cmax_dataset = CMAXDataset(config=self.config, dates=self.synop_dates, normalize=True)
                 assert len(synop_dataset) == len(
                     cmax_dataset), f"Synop and CMAX datasets lengths don't match: {len(synop_dataset)} vs {len(cmax_dataset)}"
@@ -91,7 +91,7 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
         else:
             synop_dataset = Sequence2SequenceDataset(self.config, self.synop_data, self.synop_data_indices,
                                                      self.synop_feature_names)
-            if self.config.experiment.use_cmax_data:
+            if self.config.experiment.load_cmax_data:
                 cmax_dataset = CMAXDataset(config=self.config, dates=self.synop_dates, normalize=True)
                 assert len(synop_dataset) == len(
                     cmax_dataset), f"Synop and CMAX datasets lengths don't match: {len(synop_dataset)} vs {len(cmax_dataset)}"
@@ -99,16 +99,16 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
             else:
                 dataset = synop_dataset
 
-        dataset.set_mean(self.synop_mean)
-        dataset.set_std(self.synop_std)
-        dataset.set_min(CMAX_MIN)
-        dataset.set_max(CMAX_MAX)
+        dataset.set_mean([self.synop_mean, 0])
+        dataset.set_std([self.synop_std, 0])
+        dataset.set_min([0, CMAX_MIN])
+        dataset.set_max([0, CMAX_MAX])
         dataset.set_gfs_std(self.gfs_std)
         dataset.set_gfs_mean(self.gfs_mean)
         self.split_dataset(self.config, dataset, self.sequence_length)
 
     def collate_fn(self, x: List[Tuple]):
-        if not self.config.experiment.use_cmax_data:
+        if not self.config.experiment.load_cmax_data:
             return super().collate_fn(x)
 
         s2s_data, cmax_data = [item[0] for item in x], [item[1] for item in x]

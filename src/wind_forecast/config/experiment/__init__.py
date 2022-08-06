@@ -99,6 +99,8 @@ class ExperimentSettings:
 
     load_gfs_data: bool = True
 
+    load_cmax_data: bool = True
+
     use_gfs_data: bool = False
 
     use_cmax_data: bool = False
@@ -144,6 +146,8 @@ class ExperimentSettings:
     # ----------------------------------------------------------------------------------------------
 
     classification_head_dims: List = field(default_factory=lambda: [64, 128, 32])
+
+    cmax_projection_dim: int = 0
 
     # ----------------------------------------------------------------------------------------------
     # CMAX autoencoder settings

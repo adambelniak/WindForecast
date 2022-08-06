@@ -115,7 +115,10 @@ def run_tune(cfg: Config):
             num_sanity_val_steps=-1 if cfg.experiment.validate_before_training else 0,
             check_val_every_n_epoch=cfg.experiment.check_val_every_n_epoch
         )
-        trainer.fit(system, datamodule)
+        if not cfg.experiment.skip_training:
+            trainer.fit(system, datamodule)
+        else:
+            trainer.validate(system, datamodule)
 
         if trainer.interrupted:  # type: ignore
             log.info(f'[bold red]>>> Tuning interrupted.')

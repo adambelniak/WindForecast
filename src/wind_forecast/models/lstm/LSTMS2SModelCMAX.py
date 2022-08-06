@@ -9,6 +9,7 @@ from wind_forecast.consts import BatchKeys
 from wind_forecast.embed.prepare_embeddings import get_embeddings
 from wind_forecast.models.CMAXAutoencoder import CMAXEncoder, get_pretrained_encoder
 from wind_forecast.models.lstm.LSTMS2SModel import LSTMS2SModel
+from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 
 
 class LSTMS2SModelCMAX(LSTMS2SModel):
@@ -27,6 +28,8 @@ class LSTMS2SModelCMAX(LSTMS2SModel):
 
         if config.experiment.use_pretrained_cmax_autoencoder:
             get_pretrained_encoder(self.conv, config)
+
+        self.conv_time_distributed = TimeDistributed(self.conv, batch_first=True)
 
         self.embed_dim += conv_W * conv_H * out_channels
 

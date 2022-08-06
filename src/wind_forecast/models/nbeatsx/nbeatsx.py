@@ -263,10 +263,7 @@ class Nbeatsx(pl.LightningModule):
         return block_list
 
     def forward(self, batch: Dict[str, t.Tensor], epoch: int, stage=None) -> t.Tensor:
-        insample_elements, outsample_elements = get_embeddings(batch, self.config.experiment.with_dates_inputs,
-                                                               self.time_embed if self.use_time2vec else None,
-                                                               [self.value2vec_insample, self.value2vec_outsample] if self.use_value2vec else None,
-                                                               self.use_gfs)
+        insample_elements, outsample_elements = self.get_embeddings(batch)
         synop_past_targets = batch[BatchKeys.SYNOP_PAST_Y.value].float()
 
         # No static features in my case
@@ -274,35 +271,39 @@ class Nbeatsx(pl.LightningModule):
                           insample_x_t=insample_elements.permute(0, 2, 1),
                           outsample_x_t=outsample_elements.permute(0, 2, 1) if self.use_gfs else None)
 
+    def get_embeddings(self, batch):
+        with_dates = self.config.experiment.with_dates_inputs
+        with_gfs_params = self.use_gfs
+        synop_inputs = batch[BatchKeys.SYNOP_PAST_X.value].float()
 
-def get_embeddings(batch, with_dates, time_embed, value_embed, with_gfs_params):
-    synop_inputs = batch[BatchKeys.SYNOP_PAST_X.value].float()
+        dates_tensors = None if with_dates is False else batch[BatchKeys.DATES_TENSORS.value]
 
-    dates_tensors = None if with_dates is False else batch[BatchKeys.DATES_TENSORS.value]
-
-    if with_gfs_params:
-        gfs_inputs = batch[BatchKeys.GFS_PAST_X.value].float()
-        input_elements = t.cat([synop_inputs, gfs_inputs], -1)
-        all_gfs_targets = batch[BatchKeys.GFS_FUTURE_X.value].float()
-        target_elements = all_gfs_targets
-    else:
-        input_elements = synop_inputs
-
-    if value_embed is not None:
-        input_elements = t.cat([input_elements, value_embed[0](input_elements)], -1)
         if with_gfs_params:
-            target_elements = t.cat([target_elements, value_embed[1](target_elements)], -1)
-
-    if with_dates:
-        if time_embed is not None:
-            input_elements = t.cat([input_elements, time_embed(dates_tensors[0])], -1)
+            gfs_inputs = batch[BatchKeys.GFS_PAST_X.value].float()
+            input_elements = t.cat([synop_inputs, gfs_inputs], -1)
+            all_gfs_targets = batch[BatchKeys.GFS_FUTURE_X.value].float()
+            target_elements = all_gfs_targets
         else:
-            input_elements = t.cat([input_elements, dates_tensors[0]], -1)
+            input_elements = synop_inputs
 
-        if with_gfs_params:
+        value_embed = [self.value2vec_insample, self.value2vec_outsample] if self.use_value2vec else None
+        time_embed = self.time_embed if self.use_time2vec else None
+
+        if value_embed is not None:
+            input_elements = t.cat([input_elements, value_embed[0](input_elements)], -1)
+            if with_gfs_params:
+                target_elements = t.cat([target_elements, value_embed[1](target_elements)], -1)
+
+        if with_dates:
             if time_embed is not None:
-                target_elements = t.cat([target_elements, time_embed(dates_tensors[1])], -1)
+                input_elements = t.cat([input_elements, time_embed(dates_tensors[0])], -1)
             else:
-                target_elements = t.cat([target_elements, dates_tensors[1]], -1)
+                input_elements = t.cat([input_elements, dates_tensors[0]], -1)
 
-    return input_elements, target_elements if with_gfs_params else None
+            if with_gfs_params:
+                if time_embed is not None:
+                    target_elements = t.cat([target_elements, time_embed(dates_tensors[1])], -1)
+                else:
+                    target_elements = t.cat([target_elements, dates_tensors[1]], -1)
+
+        return input_elements, target_elements if with_gfs_params else None
