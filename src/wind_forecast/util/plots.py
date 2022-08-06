@@ -12,22 +12,17 @@ def plot_results(system, config: Config, mean, std, gfs_mean, gfs_std):
 
 def plot_random_series(system, config: Config, mean, std, gfs_mean, gfs_std):
     K_TO_C = 273.15 if config.experiment.target_parameter == 'temperature' else 0
-    for index in np.random.choice(np.arange(len(system.test_results['output'])),
-                                  min(40, len(system.test_results['output'])), replace=False):
+    for index in range(len(system.test_results['plot_truth'])):
         fig, ax = plt.subplots()
-        inputs_dates = [pd.to_datetime(pd.Timestamp(d)) for d in system.test_results['inputs_dates'][index]]
-        output_dates = [pd.to_datetime(pd.Timestamp(d)) for d in system.test_results['targets_dates'][index]]
-
-        inputs_dates.extend(output_dates)
-        x = inputs_dates
         plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%m/%d/%Y %H%M'))
         plt.gca().xaxis.set_major_locator(mdates.HourLocator())
 
-        out_series = system.test_results['output'][index].cpu().tolist()
-        truth_series = system.test_results['inputs'][index].cpu().tolist()
-        truth_series.extend(system.test_results['labels'][index].cpu().tolist())
+        prediction_series = system.test_results['plot_prediction'][index]
+        truth_series = system.test_results['plot_truth'][index]
+        prediction_dates = system.test_results['plot_prediction_dates'][index]
+        truth_dates = system.test_results['plot_truth_dates'][index]
         if config.experiment.use_gfs_data:
-            gfs_out_series = system.test_results['gfs_targets'][index].cpu().tolist()
+            gfs_out_series = system.test_results['plot_gfs_targets'][index]
 
         if mean is not None and std is not None:
             # TODO think about a more robust solution
@@ -39,17 +34,17 @@ def plot_random_series(system, config: Config, mean, std, gfs_mean, gfs_std):
             if config.experiment.use_gfs_data:
                 gfs_out_series = np.array(gfs_out_series) * gfs_std + gfs_mean - K_TO_C
                 if config.experiment.differential_forecast:
-                    out_series = (np.array(out_series) * std + gfs_out_series).tolist()
+                    prediction_series = (np.array(prediction_series) * std + gfs_out_series).tolist()
                 else:
-                    out_series = (np.array(out_series) * std + mean).tolist()
+                    prediction_series = (np.array(prediction_series) * std + mean).tolist()
                 gfs_out_series = gfs_out_series.tolist()
 
-        ax.plot(output_dates, out_series, label='prediction')
+        ax.plot(prediction_dates, prediction_series, label='prediction')
 
         if config.experiment.use_gfs_data:
-            ax.plot(output_dates, gfs_out_series, label='gfs prediction')
+            ax.plot(prediction_dates, gfs_out_series, label='gfs prediction')
 
-        ax.plot(x, truth_series, label='ground truth')
+        ax.plot(truth_dates, truth_series, label='ground truth')
         ax.set_xlabel('Date')
         ax.set_ylabel(config.experiment.target_parameter)
         ax.legend(loc='best')
@@ -58,9 +53,7 @@ def plot_random_series(system, config: Config, mean, std, gfs_mean, gfs_std):
         plt.close(fig)
 
 def plot_step_by_step_metric(system):
-    output = np.asarray([np.asarray(el.cpu()) for el in system.test_results['output']])
-    labels = np.asarray([np.asarray(el.cpu()) for el in system.test_results['labels']])
-    rmse_by_step = np.sqrt(np.mean(np.power(np.subtract(output, labels), 2), axis=0))
+    rmse_by_step = system.test_results['rmse_by_step']
 
     plt.plot(np.arange(rmse_by_step.shape[0]), rmse_by_step, '-x')
     plt.xlabel('step')

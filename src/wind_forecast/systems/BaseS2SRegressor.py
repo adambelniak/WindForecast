@@ -387,31 +387,55 @@ class BaseS2SRegressor(pl.LightningModule):
         """
         step = self.current_epoch + 1 if not self.trainer.sanity_checking else self.current_epoch  # type: ignore
 
-        metrics = {
-            'epoch': float(step),
-            'test_rmse': math.sqrt(float(self.test_mse.compute().item())),
-            'test_mae': float(self.test_mae.compute().item()),
-            'test_mase': float(self.test_mase.compute())
-        }
+        metrics_and_plot_results = self.get_metrics_and_plot_results(step, outputs)
 
         self.test_mse.reset()
         self.test_mae.reset()
         self.test_mase.reset()
 
-        self.logger.log_metrics(metrics, step=step)
+        self.logger.log_metrics(metrics_and_plot_results, step=step)
 
-        # save results to view
-        labels = [item for sublist in [x[BatchKeys.SYNOP_FUTURE_Y.value] for x in outputs] for item in sublist]
+        self.test_results = metrics_and_plot_results
 
-        out = [item for sublist in [x['output'] for x in outputs] for item in sublist]
+    def get_metrics_and_plot_results(self, step: int, outputs: List[Any]) -> Dict:
+        output_series = [item.cpu() for sublist in [x['output'] for x in outputs] for item in sublist]
+        labels_series = [item.cpu() for sublist in [x[BatchKeys.SYNOP_FUTURE_Y.value] for x in outputs] for item in sublist]
+        past_truth_series = [item.cpu() for sublist in [x[BatchKeys.SYNOP_PAST_Y.value] for x in outputs] for item in sublist]
 
-        inputs = [item for sublist in [x[BatchKeys.SYNOP_PAST_Y.value] for x in outputs] for item in sublist]
+        output_series = np.asarray([np.asarray(el) for el in output_series])
+        labels_series = np.asarray([np.asarray(el) for el in labels_series])
+        past_truth_series = np.asarray([np.asarray(el) for el in past_truth_series])
 
         inputs_dates = [item for sublist in [x[BatchKeys.DATES_PAST.value] for x in outputs] for item in sublist]
         labels_dates = [item for sublist in [x[BatchKeys.DATES_FUTURE.value] for x in outputs] for item in sublist]
 
-        self.test_results = {'labels': copy.deepcopy(labels),
-                             'output': copy.deepcopy(out),
-                             'inputs': copy.deepcopy(inputs),
-                             'inputs_dates': copy.deepcopy(inputs_dates),
-                             'targets_dates': copy.deepcopy(labels_dates)}
+        rmse_by_step = np.sqrt(np.mean(np.power(np.subtract(output_series, labels_series), 2), axis=0))
+
+        # for plots
+        plot_truth_series = []
+        plot_prediction_series = []
+        plot_truth_dates = []
+        plot_prediction_dates = []
+        for index in np.random.choice(np.arange(len(output_series)),
+                                      min(40, len(output_series)), replace=False):
+            sample_truth_dates = [pd.to_datetime(pd.Timestamp(d)) for d in inputs_dates[index]]
+            sample_labels_dates = [pd.to_datetime(pd.Timestamp(d)) for d in labels_dates[index]]
+            sample_truth_dates.extend(sample_labels_dates)
+
+            plot_truth_dates.append(sample_truth_dates)
+            plot_prediction_dates.append(sample_labels_dates)
+
+            plot_prediction_series.append(output_series[index])
+            plot_truth_series.append(np.concatenate([past_truth_series[index], labels_series[index]]))
+
+        return {
+            'epoch': float(step),
+            'test_rmse': math.sqrt(float(self.test_mse.compute().item())),
+            'test_mae': float(self.test_mae.compute().item()),
+            'test_mase': float(self.test_mase.compute()),
+            'rmse_by_step': rmse_by_step,
+            'plot_truth': plot_truth_series,
+            'plot_prediction': plot_prediction_series,
+            'plot_truth_dates': plot_truth_dates,
+            'plot_prediction_dates': plot_prediction_dates
+        }
