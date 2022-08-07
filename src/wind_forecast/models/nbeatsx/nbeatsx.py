@@ -236,7 +236,7 @@ class Nbeatsx(pl.LightningModule):
                                                                            self.tcn_channels,
                                                                            dropout_prob=self.dropout,
                                                                            theta_n_dim=2 * self.tcn_channels[-1],
-                                                                           forecast_size=0 if self.n_outsample_t > 0 else self.future_sequence_length),
+                                                                           forecast_size=self.future_sequence_length),
                                                    n_layers=self.n_layers[i],
                                                    theta_n_hidden=list(self.n_hidden[i]),
                                                    batch_normalization=batch_normalization_block,
