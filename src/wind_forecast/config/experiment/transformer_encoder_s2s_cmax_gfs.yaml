@@ -23,4 +23,5 @@ use_cmax_data: True
 use_future_cmax: False
 epochs: 40
 dropout: 0.2
+load_cmax_data: True
 

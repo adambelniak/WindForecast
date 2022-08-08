@@ -22,3 +22,5 @@ use_gfs_data: True
 use_cmax_data: True
 use_future_cmax: False
 epochs: 40
+
+load_cmax_data: True

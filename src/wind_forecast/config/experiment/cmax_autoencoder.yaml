@@ -21,3 +21,4 @@ system:
 batch_size: 32
 view_test_result: False
 skip_training: True
+load_cmax_data: True

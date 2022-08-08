@@ -26,3 +26,4 @@ use_future_cmax: True
 use_value2vec: False
 use_time2vec: True
 time2vec_embedding_factor: 5
+load_cmax_data: True

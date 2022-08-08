@@ -21,6 +21,7 @@ system:
 batch_size: 2
 use_gfs_data: True
 use_cmax_data: True
+load_cmax_data: True
 epochs: 30
 tcn_channels:
   - 64

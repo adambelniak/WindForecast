@@ -99,7 +99,7 @@ class ExperimentSettings:
 
     load_gfs_data: bool = True
 
-    load_cmax_data: bool = True
+    load_cmax_data: bool = False
 
     use_gfs_data: bool = False
 

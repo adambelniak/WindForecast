@@ -18,5 +18,6 @@ model:
 system:
   _target_: wind_forecast.systems.BaseS2SRegressor.BaseS2SRegressor
 batch_size: 32
+load_cmax_data: True
 teacher_forcing_epoch_num: 0
 epochs: 20

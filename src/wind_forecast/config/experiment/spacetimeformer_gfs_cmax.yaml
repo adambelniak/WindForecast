@@ -21,6 +21,7 @@ system:
 use_gfs_data: True
 use_cmax_data: True
 use_future_cmax: True
+load_cmax_data: True
 transformer_ff_dim: 100
 transformer_encoder_layers: 4
 transformer_decoder_layers: 4

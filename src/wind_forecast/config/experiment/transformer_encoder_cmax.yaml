@@ -21,3 +21,5 @@ system:
 use_pos_encoding: False
 batch_size: 5
 use_cmax_data: True
+
+load_cmax_data: True

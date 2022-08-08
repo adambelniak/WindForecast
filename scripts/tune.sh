@@ -8,7 +8,7 @@ python -m wind_forecast.main experiment=spacetimeformer_gfs tune=spacetimeformer
 python -m wind_forecast.main experiment=nbeatsx tune=nbeatsx experiment.epochs=10 optim=adam experiment.target_parameter=temperature
 python -m wind_forecast.main experiment=transformer_gfs tune=transformer_gfs experiment.epochs=80 optim=adam experiment.target_parameter=temperature
 
-python -m wind_forecast.main experiment=arimax tune=arimax experiment.target_parameter=temperature
-python -m wind_forecast.main experiment=sarimax tune=sarimax experiment.target_parameter=temperature
-python -m wind_forecast.main experiment=sarimax tune=sarimax experiment.target_parameter=temperature experiment.sequence_length=48
-python -m wind_forecast.main experiment=sarimax tune=sarimax experiment.target_parameter=temperature experiment.sequence_length=72
+python -m wind_forecast.main experiment=arimax tune=arimax experiment.target_parameter=temperature lightning.gpus=0
+python -m wind_forecast.main experiment=sarimax tune=sarimax experiment.target_parameter=temperature lightning.gpus=0
+python -m wind_forecast.main experiment=sarimax tune=sarimax experiment.target_parameter=temperature experiment.sequence_length=48 lightning.gpus=0
+python -m wind_forecast.main experiment=sarimax tune=sarimax experiment.target_parameter=temperature experiment.sequence_length=72 lightning.gpus=0
