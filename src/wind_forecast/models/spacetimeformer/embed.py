@@ -101,7 +101,7 @@ class Embedding(nn.Module):
         self.val_emb = TimeDistributed(Value2Vec(y_emb_inp_dim, value_emb_dim), batch_first=True)
 
         if self.method == "spatio-temporal":
-            self.space_emb = nn.Embedding(num_embeddings=d_input, embedding_dim=value_emb_dim + 1)
+            self.space_emb = nn.Embedding(num_embeddings=d_input, embedding_dim=(value_emb_dim + 1) if use_val_embed else 1)
             split_length_into = d_input
         else:
             split_length_into = 1
