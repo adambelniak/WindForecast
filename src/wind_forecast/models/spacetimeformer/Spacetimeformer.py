@@ -89,7 +89,7 @@ class Spacetimeformer(LightningModule):
         self.time_dim = config.experiment.dates_tensor_size * config.experiment.time2vec_embedding_factor if config.experiment.use_time2vec \
             else 2 * config.experiment.dates_tensor_size
 
-        self.token_dim = self.time_dim + (config.experiment.value2vec_embedding_factor + 1 if config.experiment.use_value2vec else 1)
+        self.token_dim = self.time_dim + ((config.experiment.value2vec_embedding_factor + 1) if config.experiment.use_value2vec else 1)
 
         # embeddings. seperate enc/dec in case the variable indices are not aligned
         self.enc_embedding = Embedding(
