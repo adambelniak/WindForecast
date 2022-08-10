@@ -86,8 +86,12 @@ class S2SRegressorWithGFSInput(BaseS2SRegressor):
 
     def get_metrics_and_plot_results(self, step: int, outputs: List[Any]) -> Dict:
         base_metrics = super().get_metrics_and_plot_results(step, outputs)
-        output_series = [item.cpu() for sublist in [x['output'] for x in outputs] for item in sublist]
-        gfs_targets = [item.cpu() for sublist in [x[BatchKeys.GFS_FUTURE_Y.value] for x in outputs] for item in sublist]
+        if self.cfg.experiment.batch_size > 1:
+            output_series = [item.cpu() for sublist in [x['output'] for x in outputs] for item in sublist]
+            gfs_targets = [item.cpu() for sublist in [x[BatchKeys.GFS_FUTURE_Y.value] for x in outputs] for item in sublist]
+        else:
+            output_series = [item.cpu() for item in [x['output'] for x in outputs]]
+            gfs_targets = [item.cpu() for item in [x[BatchKeys.GFS_FUTURE_Y.value] for x in outputs]]
 
         plot_gfs_targets = []
         for index in np.random.choice(np.arange(len(output_series)),

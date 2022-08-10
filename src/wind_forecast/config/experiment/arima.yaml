@@ -1,0 +1,24 @@
+# Specific experiments settings
+# (default settings inherited from configs.experiment.ExperimentSettings)
+
+defaults:
+  - schema_experiment
+
+_tags_:
+  - ARIMA
+
+resume_checkpoint: ~
+
+datamodule:
+  _target_: wind_forecast.datamodules.Sequence2SequenceWithCMAXDataModule.Sequence2SequenceWithCMAXDataModule
+
+model:
+  _target_: wind_forecast.models.Arimax.Arimax
+
+system:
+  _target_: wind_forecast.systems.BaseS2SRegressor.BaseS2SRegressor
+
+use_gfs_data: False
+skip_training: True
+epochs: 1
+batch_size: 1

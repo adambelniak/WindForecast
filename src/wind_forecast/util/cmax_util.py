@@ -27,7 +27,8 @@ CMAX_MIN = 0
 
 def get_available_cmax_h5(from_year: int = 2015, to_year: int = 2022):
     matcher = re.compile(CMAX_H5_FILE_REGEX)
-    return [f.name for f in tqdm(os.scandir(CMAX_DATASET_DIR)) if matcher.match(f.name)]
+    return [f.name for f in tqdm(os.scandir(CMAX_DATASET_DIR)) if matcher.match(f.name)
+            and from_year <= int(matcher.match(f.name).group(1)) < to_year]
 
 
 def get_available_cmax_hours(from_year: int = 2015, to_year: int = 2022):

@@ -368,7 +368,10 @@ class BaseS2SRegressor(pl.LightningModule):
 
         self.test_mse(outputs.squeeze(), targets)
         self.test_mae(outputs.squeeze(), targets)
-        self.test_mase(outputs.squeeze(), targets, past_targets)
+        if self.cfg.experiment.batch_size == 1:
+            self.test_mase(outputs, targets.unsqueeze(0), past_targets.unsqueeze(0))
+        else:
+            self.test_mase(outputs, targets, past_targets)
 
         synop_inputs = batch[BatchKeys.SYNOP_PAST_X.value]
         dates_inputs = batch[BatchKeys.DATES_PAST.value]
@@ -405,16 +408,22 @@ class BaseS2SRegressor(pl.LightningModule):
         self.test_results = metrics_and_plot_results
 
     def get_metrics_and_plot_results(self, step: int, outputs: List[Any]) -> Dict:
-        output_series = [item.cpu() for sublist in [x['output'] for x in outputs] for item in sublist]
-        labels_series = [item.cpu() for sublist in [x[BatchKeys.SYNOP_FUTURE_Y.value] for x in outputs] for item in sublist]
-        past_truth_series = [item.cpu() for sublist in [x[BatchKeys.SYNOP_PAST_Y.value] for x in outputs] for item in sublist]
-
+        if self.cfg.experiment.batch_size > 1:
+            output_series = [item.cpu() for sublist in [x['output'] for x in outputs] for item in sublist]
+            labels_series = [item.cpu() for sublist in [x[BatchKeys.SYNOP_FUTURE_Y.value] for x in outputs] for item in sublist]
+            past_truth_series = [item.cpu() for sublist in [x[BatchKeys.SYNOP_PAST_Y.value] for x in outputs] for item in sublist]
+            inputs_dates = [item for sublist in [x[BatchKeys.DATES_PAST.value] for x in outputs] for item in sublist]
+            labels_dates = [item for sublist in [x[BatchKeys.DATES_FUTURE.value] for x in outputs] for item in sublist]
+        else:
+            output_series = [item.cpu() for item in [x['output'] for x in outputs]]
+            labels_series = [item.cpu() for item in [x[BatchKeys.SYNOP_FUTURE_Y.value] for x in outputs]]
+            past_truth_series = [item.cpu() for item in [x[BatchKeys.SYNOP_PAST_Y.value] for x in outputs]]
+            # mistery - why there are 1-element tuples?
+            inputs_dates = [item[0] for item in [x[BatchKeys.DATES_PAST.value] for x in outputs]]
+            labels_dates = [item[0] for item in [x[BatchKeys.DATES_FUTURE.value] for x in outputs]]
         output_series = np.asarray([np.asarray(el) for el in output_series])
         labels_series = np.asarray([np.asarray(el) for el in labels_series])
         past_truth_series = np.asarray([np.asarray(el) for el in past_truth_series])
-
-        inputs_dates = [item for sublist in [x[BatchKeys.DATES_PAST.value] for x in outputs] for item in sublist]
-        labels_dates = [item for sublist in [x[BatchKeys.DATES_FUTURE.value] for x in outputs] for item in sublist]
 
         rmse_by_step = np.sqrt(np.mean(np.power(np.subtract(output_series, labels_series), 2), axis=0))
 
