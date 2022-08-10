@@ -151,5 +151,5 @@ plots
 plots-synop
 wandb
 auto_station_data
-datasets
+src/datasets
 analysis.json
