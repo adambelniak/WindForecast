@@ -19,7 +19,7 @@ system:
   _target_: wind_forecast.systems.AutoencoderSystem.AutoencoderSystem
 
 batch_size: 128
-epoch: 10
+epochs: 10
 view_test_result: False
 skip_test: True
 load_cmax_data: True
