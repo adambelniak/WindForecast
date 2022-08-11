@@ -203,6 +203,7 @@ def run_training(cfg):
     trainer: pl.Trainer = instantiate(
         cfg.lightning,
         logger=wandb_logger,
+        limit_val_batches=0 if cfg.experiment.skip_validation else 1,
         max_epochs=cfg.experiment.epochs,
         callbacks=[checkpointer],
         resume_from_checkpoint=resume_path,

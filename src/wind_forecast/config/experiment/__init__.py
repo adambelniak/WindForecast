@@ -41,8 +41,11 @@ class ExperimentSettings:
 
     check_val_every_n_epoch: int = 1
 
-    # Run test only
+    # Run validation and test only
     skip_training: bool = False
+
+    # Do not run validation
+    skip_validation: bool = False
 
     # Do not run test
     skip_test: bool = False

@@ -23,4 +23,4 @@ epochs: 10
 view_test_result: False
 skip_test: True
 load_cmax_data: True
-check_val_every_n_epoch: 0
+skip_validation: True
