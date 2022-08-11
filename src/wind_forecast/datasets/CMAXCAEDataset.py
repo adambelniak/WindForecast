@@ -47,9 +47,10 @@ class CMAXCAEDataset(BaseDataset):
         # Generate data
         data = self.get_cmax_array_from_file(id)
         if data is None:
-            return None
-        x[:, ] = data
-        x[:, ] = (x[:, ] - CMAX_MIN) / (CMAX_MAX - CMAX_MIN)
+            x[:, ] = np.zeros_like(x)
+        else:
+            x[:, ] = data
+            x[:, ] = (x[:, ] - CMAX_MIN) / (CMAX_MAX - CMAX_MIN)
         return x
 
     def date_from_h5y_file(self, filename: str):
