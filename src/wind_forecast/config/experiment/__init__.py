@@ -44,6 +44,9 @@ class ExperimentSettings:
     # Run test only
     skip_training: bool = False
 
+    # Do not run test
+    skip_test: bool = False
+
     epochs: int = 40
 
     dropout: float = 0.5

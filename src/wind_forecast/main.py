@@ -214,22 +214,23 @@ def run_training(cfg):
     if not cfg.experiment.skip_training:
         trainer.fit(system, datamodule=datamodule)
 
-    trainer.test(system, datamodule=datamodule)
+    if not cfg.experiment.skip_test:
+        trainer.test(system, datamodule=datamodule)
+
+        if cfg.experiment.use_gfs_data:
+            gfs_mean = datamodule.dataset_test.gfs_mean
+            gfs_std = datamodule.dataset_test.gfs_std
+        else:
+            gfs_mean = None
+            gfs_std = None
+
+        mean = datamodule.dataset_test.mean
+        std = datamodule.dataset_test.std
+
+        if cfg.experiment.view_test_result:
+            plot_results(system, cfg, mean, std, gfs_mean, gfs_std)
 
     log_dataset_metrics(datamodule, wandb_logger)
-
-    if cfg.experiment.use_gfs_data:
-        gfs_mean = datamodule.dataset_test.gfs_mean
-        gfs_std = datamodule.dataset_test.gfs_std
-    else:
-        gfs_mean = None
-        gfs_std = None
-
-    mean = datamodule.dataset_test.mean
-    std = datamodule.dataset_test.std
-
-    if cfg.experiment.view_test_result:
-        plot_results(system, cfg, mean, std, gfs_mean, gfs_std)
 
     if trainer.interrupted:  # type: ignore
         log.info(f'[bold red]>>> Training interrupted.')

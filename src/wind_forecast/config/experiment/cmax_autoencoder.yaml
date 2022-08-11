@@ -18,7 +18,9 @@ model:
 system:
   _target_: wind_forecast.systems.AutoencoderSystem.AutoencoderSystem
 
-batch_size: 32
+batch_size: 128
+epoch: 10
 view_test_result: False
-skip_training: True
+skip_test: True
 load_cmax_data: True
+check_val_every_n_epoch: 0

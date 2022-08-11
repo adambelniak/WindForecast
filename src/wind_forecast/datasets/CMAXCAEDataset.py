@@ -45,8 +45,10 @@ class CMAXCAEDataset(BaseDataset):
                       math.ceil(self.dim[1] / self.config.experiment.cmax_scaling_factor)))
 
         # Generate data
-        x[:, ] = self.get_cmax_array_from_file(id)
-
+        data = self.get_cmax_array_from_file(id)
+        if data is None:
+            return None
+        x[:, ] = data
         x[:, ] = (x[:, ] - CMAX_MIN) / (CMAX_MAX - CMAX_MIN)
         return x
 
@@ -62,9 +64,12 @@ class CMAXCAEDataset(BaseDataset):
         return date
 
     def get_cmax_array_from_file(self, filename: str):
-        with h5py.File(os.path.join(CMAX_DATASET_DIR, filename), 'r') as hdf:
-            data = np.array(hdf.get('dataset1').get('data1').get('data'))
-            mask = np.where(data >= 255)
-            data[mask] = 0
-            resampled = block_reduce(data, block_size=(4, 4), func=np.max)
-            return resampled
+        try:
+            with h5py.File(os.path.join(CMAX_DATASET_DIR, filename), 'r') as hdf:
+                data = np.array(hdf.get('dataset1').get('data1').get('data'))
+                mask = np.where(data >= 255)
+                data[mask] = 0
+                resampled = block_reduce(data, block_size=(4, 4), func=np.max)
+                return resampled
+        except OSError:
+            return None
