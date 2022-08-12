@@ -1,5 +1,5 @@
 from typing import Optional, Tuple, List
-
+import numpy as np
 import torch
 from torch.utils.data.dataloader import default_collate
 
@@ -111,7 +111,7 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
         if not self.config.experiment.load_cmax_data:
             return super().collate_fn(x)
 
-        s2s_data, cmax_data = [item[0] for item in x], [item[1] for item in x]
+        s2s_data, cmax_data = np.asarray([item[0] for item in x]), np.asarray([item[1] for item in x])
         variables, dates = [item[:-2] for item in s2s_data], [item[-2:] for item in s2s_data]
         if self.use_future_cmax:
             all_data = [*default_collate(variables), *list(zip(*dates)), *default_collate(cmax_data)]

@@ -65,11 +65,18 @@ class CMAXCAEDataset(BaseDataset):
         return date
 
     def get_cmax_array_from_file(self, filename: str):
+        def filter(b, axis):
+            x1 = (b > 75).sum(axis=axis)
+            ret = np.max(b, axis=axis)
+            ret[np.where(x1 <= 4)] = 0
+            return ret
         try:
             with h5py.File(os.path.join(CMAX_DATASET_DIR, filename), 'r') as hdf:
                 data = np.array(hdf.get('dataset1').get('data1').get('data'))
-                data[(data == None) | (data >= 255) | (data <= 0)] = 0
-                resampled = block_reduce(data, block_size=(4, 4), func=np.max)
+                mask = np.where((data >= 255) | (data <= 0))
+                data[mask] = 0
+                data[data == None] = 0
+                resampled = block_reduce(data, block_size=(4, 4), func=filter).squeeze()
                 return resampled
-        except OSError:
+        except Exception:
             return None
