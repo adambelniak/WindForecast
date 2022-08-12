@@ -8,6 +8,7 @@ CMAX_NPY_FILE_REGEX = r"(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})0000dBZ\.cmax\.h5\.np
 CMAX_H5_FILE_REGEX = r"(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})0000dBZ\.cmax\.h5"
 DATE_KEY_REGEX = r"(\d{4})(\d{2})(\d{2})(\d{2})"
 CMAX_NPY_FILENAME_FORMAT = "{0}{1}{2}{3}{4}0000dBZ.cmax.h5.pkl"
+CMAX_H5_FILENAME_FORMAT = "{0}{1}{2}{3}{4}0000dBZ.cmax.h5"
 SYNOP_DATASETS_DIRECTORY = os.path.join(Path(__file__).parent, "..", "data", "synop")
 PREPARED_DATASETS_DIRECTORY = os.path.join(Path(__file__).parent, "..", "datasets")
 

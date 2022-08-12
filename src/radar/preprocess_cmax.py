@@ -69,13 +69,20 @@ if __name__ == "__main__":
                             date = date_from_h5y_file(file)
                             date_key = datetime.strftime(date, "%Y%m%d%H")
                             data = np.array(hdf.get('dataset1').get('data1').get('data'))
-                            mask = np.where(data >= 255)
+                            mask = np.where((data >= 255) | (data <= 0))
                             data[mask] = 0
-                            resampled = block_reduce(data, block_size=(4, 4), func=np.max)
+                            data[data == None] = 0
+                            data[mask] = 0
+                            def filter(b, axis):
+                                x1 = (b > 75).sum(axis=axis)
+                                ret = np.max(b, axis=axis)
+                                ret[np.where(x1 <= 4)] = 0
+                                return ret
+                            resampled = block_reduce(data, block_size=(4, 4), func=filter).squeeze()
                             resampled = np.uint8(resampled)
                             cmax_dict[date_key] = resampled
-                    except OSError:
-                        print(f"Error with opening file {os.path.join(CMAX_DATASET_DIR, file)}")
+                    except Exception:
+                        print(f"Error with processing file {os.path.join(CMAX_DATASET_DIR, file)}")
 
                 with open(os.path.join(cmax_pkl_dir, f"{dict_name}.pkl"), 'wb') as f:
                     pickle.dump(cmax_dict, f, pickle.HIGHEST_PROTOCOL)
