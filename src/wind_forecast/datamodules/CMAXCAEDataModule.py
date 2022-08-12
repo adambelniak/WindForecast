@@ -29,10 +29,10 @@ class CMAXCAEDataModule(SplittableDataModule):
 
     # It will be used only in test phase
     def train_dataloader(self):
-        return DataLoader(self.dataset_test, batch_size=self.batch_size, shuffle=self.shuffle)
+        return DataLoader(self.dataset_test, batch_size=self.batch_size, shuffle=self.shuffle, num_workers=self.config.experiment.num_workers)
 
     def val_dataloader(self):
-        return DataLoader(self.dataset_test, batch_size=self.batch_size)
+        return DataLoader(self.dataset_test, batch_size=self.batch_size, num_workers=self.config.experiment.num_workers)
 
     def test_dataloader(self):
-        return DataLoader(self.dataset_test, batch_size=self.batch_size)
+        return DataLoader(self.dataset_test, batch_size=self.batch_size, num_workers=self.config.experiment.num_workers)
