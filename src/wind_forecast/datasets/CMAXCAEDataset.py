@@ -68,9 +68,7 @@ class CMAXCAEDataset(BaseDataset):
         try:
             with h5py.File(os.path.join(CMAX_DATASET_DIR, filename), 'r') as hdf:
                 data = np.array(hdf.get('dataset1').get('data1').get('data'))
-                data[data is None] = 0
-                mask = np.where(data >= 255)
-                data[mask] = 0
+                data[np.where(data is None or data >= 255)] = 0
                 resampled = block_reduce(data, block_size=(4, 4), func=np.max)
                 return resampled
         except OSError:
