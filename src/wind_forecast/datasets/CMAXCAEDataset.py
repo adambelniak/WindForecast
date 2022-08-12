@@ -68,7 +68,7 @@ class CMAXCAEDataset(BaseDataset):
         def filter(b, axis):
             x1 = (b > 75).sum(axis=axis)
             ret = np.max(b, axis=axis)
-            ret[np.where(x1 <= 4)] = 0
+            ret[np.where(x1 <= 8)] = 0
             return ret
         try:
             with h5py.File(os.path.join(CMAX_DATASET_DIR, filename), 'r') as hdf:

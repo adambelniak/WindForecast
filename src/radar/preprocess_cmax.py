@@ -76,7 +76,7 @@ if __name__ == "__main__":
                             def filter(b, axis):
                                 x1 = (b > 75).sum(axis=axis)
                                 ret = np.max(b, axis=axis)
-                                ret[np.where(x1 <= 4)] = 0
+                                ret[np.where(x1 <= 8)] = 0
                                 return ret
                             resampled = block_reduce(data, block_size=(4, 4), func=filter).squeeze()
                             resampled = np.uint8(resampled)
