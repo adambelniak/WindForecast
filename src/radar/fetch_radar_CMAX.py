@@ -78,7 +78,7 @@ def get_all_zips():
 
     while date != datetime(args.to_year + (1 if args.to_month == 12 else 0), 1 if args.to_month == 12 else args.to_month + 1, 1):
         print(f"Fetching zip for date {date.strftime('%Y-%m-%d')}")
-        # get_zip(date)
+        get_zip(date)
         extract_zip(date)
         date = date + timedelta(days=1)
 

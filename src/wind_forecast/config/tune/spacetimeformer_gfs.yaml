@@ -8,12 +8,6 @@ params:
   use_value2vec:
     - True
     - False
-  teacher_forcing_epoch_num:
-    - 0
-    - 20
-    - 40
-    - 60
-    - 80
   transformer_ff_dim:
     - 128
     - 256
