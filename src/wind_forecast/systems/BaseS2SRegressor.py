@@ -220,9 +220,9 @@ class BaseS2SRegressor(pl.LightningModule):
         self.train_mse(outputs, targets)
         self.train_mae(outputs, targets)
         if self.cfg.experiment.batch_size == 1:
-            self.val_mase(outputs, targets.unsqueeze(0), past_targets.unsqueeze(0))
+            self.train_mase(outputs, targets.unsqueeze(0), past_targets.unsqueeze(0))
         else:
-            self.val_mase(outputs, targets, past_targets)
+            self.train_mase(outputs, targets, past_targets)
 
         if self.cfg.optim.loss != 'mase':
             loss = self.calculate_loss(outputs, targets)
