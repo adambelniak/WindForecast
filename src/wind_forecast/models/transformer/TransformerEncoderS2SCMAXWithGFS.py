@@ -26,7 +26,7 @@ class TransformerEncoderS2SCMAXWithGFS(TransformerEncoderGFSBaseProps):
         self.conv_time_distributed = TimeDistributed(self.conv, batch_first=True)
 
         self.embed_dim += conv_W * conv_H * out_channels
-        self.head_input_dim = self.embed_dim
+        self.head_input_dim = self.embed_dim + 1
         self.pos_encoder = PositionalEncoding(self.embed_dim, self.dropout)
         self.create_encoder()
         self.create_head()
