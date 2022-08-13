@@ -57,6 +57,7 @@ class SplittableDataModule(LightningDataModule):
                f"_{str(exp.cmax_normalization_type.value)}" \
                f"_{str(exp.cmax_sample_size)}" \
                f"_{str(exp.cmax_scaling_factor)}" \
+               f"_{str(exp.use_future_cmax)}" \
                f"_{str(self.uses_future_sequences)}" \
                f"_{str(config.debug_mode)}"
 

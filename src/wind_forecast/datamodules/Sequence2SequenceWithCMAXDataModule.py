@@ -82,9 +82,10 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
                                                             self.synop_feature_names, gfs_future_y, gfs_past_y,
                                                             gfs_future_x, gfs_past_x)
             if self.config.experiment.load_cmax_data:
-                cmax_dataset = CMAXDataset(config=self.config, dates=self.synop_dates, normalize=True)
-                assert len(synop_dataset) == len(
-                    cmax_dataset), f"Synop and CMAX datasets lengths don't match: {len(synop_dataset)} vs {len(cmax_dataset)}"
+                cmax_dataset = CMAXDataset(config=self.config, dates=self.synop_dates, normalize=True,
+                                           use_future_values=self.use_future_cmax)
+                assert len(synop_dataset) == len(cmax_dataset),\
+                    f"Synop and CMAX datasets lengths don't match: {len(synop_dataset)} vs {len(cmax_dataset)}"
                 dataset = ConcatDatasets(synop_dataset, cmax_dataset)
             else:
                 dataset = synop_dataset
@@ -92,7 +93,7 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
             synop_dataset = Sequence2SequenceDataset(self.config, self.synop_data, self.synop_data_indices,
                                                      self.synop_feature_names)
             if self.config.experiment.load_cmax_data:
-                cmax_dataset = CMAXDataset(config=self.config, dates=self.synop_dates, normalize=True)
+                cmax_dataset = CMAXDataset(config=self.config, dates=self.synop_dates, normalize=True, use_future_values=self.use_future_cmax)
                 assert len(synop_dataset) == len(
                     cmax_dataset), f"Synop and CMAX datasets lengths don't match: {len(synop_dataset)} vs {len(cmax_dataset)}"
                 dataset = ConcatDatasets(synop_dataset, cmax_dataset)
@@ -118,15 +119,9 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
         else:
             all_data = [*default_collate(variables), *list(zip(*dates)), torch.Tensor(cmax_data)]
 
-        dict_data = {
-            BatchKeys.SYNOP_PAST_Y.value: all_data[0],
-            BatchKeys.SYNOP_PAST_X.value: all_data[1],
-            BatchKeys.SYNOP_FUTURE_Y.value: all_data[2],
-            BatchKeys.SYNOP_FUTURE_X.value: all_data[3]
-        }
-
-        dict_data[BatchKeys.CMAX_PAST.value] = all_data[-2]
-        dict_data[BatchKeys.CMAX_FUTURE.value] = all_data[-1]
+        dict_data = {BatchKeys.SYNOP_PAST_Y.value: all_data[0], BatchKeys.SYNOP_PAST_X.value: all_data[1],
+                     BatchKeys.SYNOP_FUTURE_Y.value: all_data[2], BatchKeys.SYNOP_FUTURE_X.value: all_data[3],
+                     BatchKeys.CMAX_PAST.value: all_data[-2], BatchKeys.CMAX_FUTURE.value: all_data[-1]}
 
         if self.config.experiment.load_gfs_data:
             dict_data[BatchKeys.GFS_PAST_X.value] = all_data[4]
