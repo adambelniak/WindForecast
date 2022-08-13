@@ -112,7 +112,7 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
         if not self.config.experiment.load_cmax_data:
             return super().collate_fn(x)
 
-        s2s_data, cmax_data = np.asarray([item[0] for item in x]), np.asarray([item[1] for item in x])
+        s2s_data, cmax_data = [item[0] for item in x], [item[1] for item in x]
         variables, dates = [item[:-2] for item in s2s_data], [item[-2:] for item in s2s_data]
         if self.use_future_cmax:
             all_data = [*default_collate(variables), *list(zip(*dates)), *default_collate(cmax_data)]
@@ -120,8 +120,13 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
             all_data = [*default_collate(variables), *list(zip(*dates)), torch.Tensor(cmax_data)]
 
         dict_data = {BatchKeys.SYNOP_PAST_Y.value: all_data[0], BatchKeys.SYNOP_PAST_X.value: all_data[1],
-                     BatchKeys.SYNOP_FUTURE_Y.value: all_data[2], BatchKeys.SYNOP_FUTURE_X.value: all_data[3],
-                     BatchKeys.CMAX_PAST.value: all_data[-2], BatchKeys.CMAX_FUTURE.value: all_data[-1]}
+                     BatchKeys.SYNOP_FUTURE_Y.value: all_data[2], BatchKeys.SYNOP_FUTURE_X.value: all_data[3]}
+
+        if self.use_future_cmax:
+            dict_data[BatchKeys.CMAX_PAST.value] = all_data[-2]
+            dict_data[BatchKeys.CMAX_FUTURE.value] = all_data[-1]
+        else:
+            dict_data[BatchKeys.CMAX_PAST.value] = all_data[-1]
 
         if self.config.experiment.load_gfs_data:
             dict_data[BatchKeys.GFS_PAST_X.value] = all_data[4]
