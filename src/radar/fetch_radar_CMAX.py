@@ -43,9 +43,9 @@ def extract_zip(date: datetime):
     Path(tmp_dir).mkdir(parents=True, exist_ok=True)
 
     try:
-        # with ZipFile(os.path.join(dir_with_zip, filename), 'r') as zip:
-        #     zip.extractall(path=tmp_dir)
-        # os.remove(os.path.join(dir_with_zip, filename))
+        with ZipFile(os.path.join(dir_with_zip, filename), 'r') as zip:
+            zip.extractall(path=tmp_dir)
+        os.remove(os.path.join(dir_with_zip, filename))
         for file in os.listdir(tmp_dir):
             if not file.endswith(".h5") or os.path.exists(os.path.join(dir_with_zip, file)):
                 os.remove(os.path.join(tmp_dir, file))
