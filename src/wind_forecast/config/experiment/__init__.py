@@ -30,8 +30,8 @@ class ExperimentSettings:
 
     # Path to pretrained artifact. Two formats are supported:
     # - local checkpoints: path to artifact relative from run (results) directory
-    # - wandb artifacts: wandb://ARTIFACT_PATH/ARTIFACT_NAME:VERSION@CHECKPOINT_NAME
-    pretrained_artifact: Optional[str] = 'wandb://mbelniak/wind-forecast/model-e7albsfc:v19@model.ckpt'
+    # - wandb artifacts: wandb://ENTITY/PROJECT_NAME/ARTIFACT_NAME:VERSION@CHECKPOINT_NAME
+    pretrained_artifact: Optional[str] = 'wandb://mbelniak/wind-forecast-openstack-tune/model-1e6npo9p:v4@model.ckpt'
 
     # Enable checkpoint saving
     save_checkpoints: bool = True
@@ -103,15 +103,20 @@ class ExperimentSettings:
 
     cmax_to_year: int = 2022
 
+    # Dataset will load gfs data - it can be later used for plotting etc.
     load_gfs_data: bool = True
 
+    # Dataset will load cmax data - it can be later used for plotting etc.
     load_cmax_data: bool = False
 
+    # Model will load cmax data for future sequences as well
+    load_future_cmax: bool = False
+
+    # Model should use gfs data
     use_gfs_data: bool = False
 
+    # Model should use cmax data
     use_cmax_data: bool = False
-
-    use_future_cmax: bool = False
 
     dates_tensor_size: int = 2 # date in year and hour
 

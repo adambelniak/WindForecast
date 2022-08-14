@@ -20,8 +20,8 @@ system:
 
 use_gfs_data: True
 use_cmax_data: True
-use_future_cmax: False
+load_cmax_data: True
+use_pretrained_cmax_autoencoder: True
 epochs: 40
 dropout: 0.2
-load_cmax_data: True
 

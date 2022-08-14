@@ -5,7 +5,7 @@ defaults:
   - schema_experiment
 
 _tags_:
-  - TRANSFORMER_ENCODER_S2S_CMAX_ALL_GFS
+  - TCN_S2S_ALL_GFS_ATTENTION_CMAX
 
 resume_checkpoint: ~
 
@@ -13,14 +13,12 @@ datamodule:
   _target_: wind_forecast.datamodules.Sequence2SequenceWithCMAXDataModule.Sequence2SequenceWithCMAXDataModule
 
 model:
-  _target_: wind_forecast.models.transformer.TransformerEncoderS2SCMAXWithGFS.TransformerEncoderS2SCMAXWithGFS
+  _target_: wind_forecast.models.tcn.TCNS2SAttention.TCNS2SAttention
 
 system:
   _target_: wind_forecast.systems.S2SRegressorWithGFSInput.S2SRegressorWithGFSInput
-dropout: 0.2
-use_gfs_data: True
-use_cmax_data: True
-use_future_cmax: False
-epochs: 40
 
+use_gfs_data: True
 load_cmax_data: True
+use_cmax_data: True
+use_pretrained_cmax_autoencoder: True

@@ -21,5 +21,6 @@ system:
 use_cmax_data: True
 load_cmax_data: True
 use_future_cmax: True
+use_pretrained_cmax_autoencoder: True
 dropout: 0.2
 

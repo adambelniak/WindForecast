@@ -17,7 +17,8 @@ model:
 
 system:
   _target_: wind_forecast.systems.BaseS2SRegressor.BaseS2SRegressor
-batch_size: 32
 use_gfs_data: True
-teacher_forcing_epoch_num: 0
 load_cmax_data: True
+use_cmax_data: True
+use_pretrained_cmax_autoencoder: True
+teacher_forcing_epoch_num: 0

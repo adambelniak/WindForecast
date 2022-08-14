@@ -18,10 +18,9 @@ model:
 system:
   _target_: wind_forecast.systems.BaseS2SRegressor.BaseS2SRegressor
 
-batch_size: 5
-use_cmax_data: True
-use_future_cmax: False
 load_cmax_data: True
+use_cmax_data: True
+use_pretrained_cmax_autoencoder: True
 tcn_channels:
   - 32
   - 64

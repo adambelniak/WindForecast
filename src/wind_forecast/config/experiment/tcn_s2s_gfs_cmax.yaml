@@ -5,7 +5,7 @@ defaults:
   - schema_experiment
 
 _tags_:
-  - SPACETIMEFORMER_GFS_CMAX
+  - TCN_S2S_GFS
 
 resume_checkpoint: ~
 
@@ -13,15 +13,12 @@ datamodule:
   _target_: wind_forecast.datamodules.Sequence2SequenceWithCMAXDataModule.Sequence2SequenceWithCMAXDataModule
 
 model:
-  _target_: wind_forecast.models.spacetimeformer.Spacetimeformer_cmax.Spacetimeformer_cmax
+  _target_: wind_forecast.models.tcn.TCNS2S.TCNS2S
 
 system:
   _target_: wind_forecast.systems.S2SRegressorWithGFSInput.S2SRegressorWithGFSInput
 
 use_gfs_data: True
-use_cmax_data: True
 load_cmax_data: True
+use_cmax_data: True
 use_pretrained_cmax_autoencoder: True
-transformer_ff_dim: 100
-transformer_encoder_layers: 4
-transformer_decoder_layers: 4

@@ -19,7 +19,7 @@ system:
   _target_: wind_forecast.systems.BaseS2SRegressor.BaseS2SRegressor
 
 use_cmax_data: True
-use_future_cmax: False
+use_pretrained_cmax_autoencoder: True
 epochs: 40
 dropout: 0.2
 load_cmax_data: True

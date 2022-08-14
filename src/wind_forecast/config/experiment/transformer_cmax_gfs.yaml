@@ -20,7 +20,9 @@ system:
 
 use_cmax_data: True
 use_gfs_data: True
-use_future_cmax: True
+load_future_cmax: True
+load_cmax_data: True
+use_pretrained_cmax_autoencoder: True
 dropout: 0.2
 
 #use_pretrained_cmax_autoencoder: True

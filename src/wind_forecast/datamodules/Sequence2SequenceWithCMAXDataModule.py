@@ -19,7 +19,7 @@ from wind_forecast.util.logging import log
 class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
     def __init__(self, config: Config):
         super().__init__(config)
-        self.use_future_cmax = config.experiment.use_future_cmax
+        self.load_future_cmax = config.experiment.load_future_cmax
         self.cmax_from_year = config.experiment.cmax_from_year
         self.cmax_to_year = config.experiment.cmax_to_year
         self.cmax_available_ids = ...
@@ -47,7 +47,7 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
                                                                          self.sequence_length,
                                                                          self.future_sequence_length,
                                                                          self.prediction_offset,
-                                                                         True)
+                                                                         self.load_future_cmax)
 
         self.synop_data = self.synop_data.reset_index()
 
@@ -83,7 +83,7 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
                                                             gfs_future_x, gfs_past_x)
             if self.config.experiment.load_cmax_data:
                 cmax_dataset = CMAXDataset(config=self.config, dates=self.synop_dates, normalize=True,
-                                           use_future_values=self.use_future_cmax)
+                                           use_future_values=self.load_future_cmax)
                 assert len(synop_dataset) == len(cmax_dataset),\
                     f"Synop and CMAX datasets lengths don't match: {len(synop_dataset)} vs {len(cmax_dataset)}"
                 dataset = ConcatDatasets(synop_dataset, cmax_dataset)
@@ -93,7 +93,7 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
             synop_dataset = Sequence2SequenceDataset(self.config, self.synop_data, self.synop_data_indices,
                                                      self.synop_feature_names)
             if self.config.experiment.load_cmax_data:
-                cmax_dataset = CMAXDataset(config=self.config, dates=self.synop_dates, normalize=True, use_future_values=self.use_future_cmax)
+                cmax_dataset = CMAXDataset(config=self.config, dates=self.synop_dates, normalize=True, use_future_values=self.load_future_cmax)
                 assert len(synop_dataset) == len(
                     cmax_dataset), f"Synop and CMAX datasets lengths don't match: {len(synop_dataset)} vs {len(cmax_dataset)}"
                 dataset = ConcatDatasets(synop_dataset, cmax_dataset)
@@ -114,7 +114,7 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
 
         s2s_data, cmax_data = [item[0] for item in x], [item[1] for item in x]
         variables, dates = [item[:-2] for item in s2s_data], [item[-2:] for item in s2s_data]
-        if self.use_future_cmax:
+        if self.load_future_cmax:
             all_data = [*default_collate(variables), *list(zip(*dates)), *default_collate(cmax_data)]
         else:
             all_data = [*default_collate(variables), *list(zip(*dates)), torch.Tensor(cmax_data)]
@@ -122,7 +122,7 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
         dict_data = {BatchKeys.SYNOP_PAST_Y.value: all_data[0], BatchKeys.SYNOP_PAST_X.value: all_data[1],
                      BatchKeys.SYNOP_FUTURE_Y.value: all_data[2], BatchKeys.SYNOP_FUTURE_X.value: all_data[3]}
 
-        if self.use_future_cmax:
+        if self.load_future_cmax:
             dict_data[BatchKeys.CMAX_PAST.value] = all_data[-2]
             dict_data[BatchKeys.CMAX_FUTURE.value] = all_data[-1]
         else:

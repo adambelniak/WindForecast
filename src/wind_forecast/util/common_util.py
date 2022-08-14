@@ -142,11 +142,8 @@ def get_pretrained_artifact_path(pretrained_artifact: str):
     wandb_prefix = 'wandb://'
 
     if pretrained_artifact.startswith(wandb_prefix):
-        run_name = os.getenv("RUN_NAME")
         # Resuming from wandb artifacts, e.g.:
         # resume_checkpoint: wandb://WANDB_LOGIN/WANDB_PROJECT_NAME/ARTIFACT_NAME:v0@checkpoint.ckpt
-        artifact_root = f'{os.getenv("RESULTS_DIR")}/{os.getenv("WANDB_PROJECT")}/{run_name}/artifacts'
-
         path = pretrained_artifact[len(wandb_prefix):]
         artifact_path, checkpoint_path = path.split('@')
         artifact_name = artifact_path.split('/')[-1].replace(':', '-')
