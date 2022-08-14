@@ -1,5 +1,5 @@
 from __future__ import annotations
-
+import pandas as pd
 import copy
 import math
 from typing import List, Dict, Any
@@ -85,18 +85,55 @@ class S2SRegressorWithGFSInput(BaseS2SRegressor):
         self.test_results = metrics_and_plot_results
 
     def get_metrics_and_plot_results(self, step: int, outputs: List[Any]) -> Dict:
-        base_metrics = super().get_metrics_and_plot_results(step, outputs)
         if self.cfg.experiment.batch_size > 1:
             output_series = [item.cpu() for sublist in [x['output'] for x in outputs] for item in sublist]
+            labels_series = [item.cpu() for sublist in [x[BatchKeys.SYNOP_FUTURE_Y.value] for x in outputs] for item in sublist]
             gfs_targets = [item.cpu() for sublist in [x[BatchKeys.GFS_FUTURE_Y.value] for x in outputs] for item in sublist]
+            past_truth_series = [item.cpu() for sublist in [x[BatchKeys.SYNOP_PAST_Y.value] for x in outputs] for item in sublist]
+            inputs_dates = [item for sublist in [x[BatchKeys.DATES_PAST.value] for x in outputs] for item in sublist]
+            labels_dates = [item for sublist in [x[BatchKeys.DATES_FUTURE.value] for x in outputs] for item in sublist]
         else:
             output_series = [item.cpu() for item in [x['output'] for x in outputs]]
+            labels_series = [item.cpu() for item in [x[BatchKeys.SYNOP_FUTURE_Y.value] for x in outputs]]
             gfs_targets = [item.cpu() for item in [x[BatchKeys.GFS_FUTURE_Y.value] for x in outputs]]
+            past_truth_series = [item.cpu() for item in [x[BatchKeys.SYNOP_PAST_Y.value] for x in outputs]]
+            # mistery - why there are 1-element tuples?
+            inputs_dates = [item[0] for item in [x[BatchKeys.DATES_PAST.value] for x in outputs]]
+            labels_dates = [item[0] for item in [x[BatchKeys.DATES_FUTURE.value] for x in outputs]]
+        output_series = np.asarray([np.asarray(el) for el in output_series])
+        labels_series = np.asarray([np.asarray(el) for el in labels_series])
+        past_truth_series = np.asarray([np.asarray(el) for el in past_truth_series])
 
+        rmse_by_step = np.sqrt(np.mean(np.power(np.subtract(output_series, labels_series), 2), axis=0))
+
+        # for plots
+        plot_truth_series = []
+        plot_prediction_series = []
         plot_gfs_targets = []
+        plot_all_dates = []
+        plot_prediction_dates = []
         for index in np.random.choice(np.arange(len(output_series)),
                                       min(40, len(output_series)), replace=False):
+            sample_all_dates = [pd.to_datetime(pd.Timestamp(d)) for d in inputs_dates[index]]
+            sample_prediction_dates = [pd.to_datetime(pd.Timestamp(d)) for d in labels_dates[index]]
+            sample_all_dates.extend(sample_prediction_dates)
+
+            plot_all_dates.append(sample_all_dates)
+            plot_prediction_dates.append(sample_prediction_dates)
+
+            plot_prediction_series.append(output_series[index])
+            plot_truth_series.append(np.concatenate([past_truth_series[index], labels_series[index]], 0).tolist())
             plot_gfs_targets.append(gfs_targets[index])
 
-        base_metrics['plot_gfs_targets'] = plot_gfs_targets
-        return base_metrics
+        return {
+            'epoch': float(step),
+            'test_rmse': math.sqrt(float(self.test_mse.compute().item())),
+            'test_mae': float(self.test_mae.compute().item()),
+            'test_mase': float(self.test_mase.compute()),
+            'rmse_by_step': rmse_by_step,
+            'plot_truth': plot_truth_series,
+            'plot_prediction': plot_prediction_series,
+            'plot_all_dates': plot_all_dates,
+            'plot_prediction_dates': plot_prediction_dates,
+            'plot_gfs_targets': plot_gfs_targets
+        }
