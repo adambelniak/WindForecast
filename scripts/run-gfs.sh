@@ -32,11 +32,11 @@ experiment.classification_head_dims=[128,128,64] experiment.epochs=20 experiment
 #experiment.classification_head_dims=[128,128,64] experiment.epochs=20 experiment.sequence_length=48 experiment.future_sequence_length=48
 
 #BiLSTM
-python -m wind_forecast.main experiment=lstm_s2s_gfs optim=adam experiment.target_parameter=temperature \
+python -m wind_forecast.main experiment=bi_lstm_s2s_gfs optim=adam experiment.target_parameter=temperature \
 experiment.dropout=0.05 optim.base_lr=0.0002 experiment.lstm_hidden_state=1024 experiment.lstm_num_layers=8 \
 experiment.use_time2vec=False experiment.use_value2vec=False experiment.classification_head_dims=[64,32] experiment.epochs=20
 
-python -m wind_forecast.main experiment=lstm_s2s_gfs optim=adam experiment.target_parameter=temperature \
+python -m wind_forecast.main experiment=bi_lstm_s2s_gfs optim=adam experiment.target_parameter=temperature \
 experiment.dropout=0.05 optim.base_lr=0.0002 experiment.lstm_hidden_state=1024 experiment.lstm_num_layers=8 \
 experiment.use_time2vec=False experiment.use_value2vec=False experiment.classification_head_dims=[64,32] experiment.epochs=20 \
 experiment.sequence_length=48
