@@ -130,7 +130,6 @@ experiment.use_time2vec=False experiment.use_value2vec=True experiment.value2vec
 # experiment.classification_head_dims=[64,32] experiment.epochs=30 experiment.sequence_length=48 experiment.future_sequence_length=48
 
 #Spacetimeformer
-# TODO
 python -m wind_forecast.main experiment=spacetimeformer_gfs optim=adam experiment.target_parameter=temperature \
 experiment.dropout=0.07 optim.base_lr=0.0003 experiment.transformer_ff_dim=128 \
 experiment.transformer_encoder_layers=2 experiment.transformer_decoder_layers=8 \
