@@ -1,16 +1,16 @@
 ############# GFS #############
 #NBEATSX
-python -m wind_forecast.main experiment=nbeatsx optim=adam experiment.target_parameter=temperature \
+python -m wind_forecast.main experiment=nbeatsx_gfs optim=adam experiment.target_parameter=temperature \
 experiment.dropout=0.15 optim.base_lr=0.0002 experiment.nbeats_num_blocks=[4,4] experiment.nbeats_num_layers=[8,8] \
 experiment.nbeats_num_hidden=64 experiment.tcn_channels=[16,32] experiment.use_time2vec=False experiment.use_value2vec=True \
 experiment.value2vec_embedding_factor=10 experiment.epochs=20
 
-python -m wind_forecast.main experiment=nbeatsx optim=adam experiment.target_parameter=temperature \
+python -m wind_forecast.main experiment=nbeatsx_gfs optim=adam experiment.target_parameter=temperature \
 experiment.dropout=0.15 optim.base_lr=0.0002 experiment.nbeats_num_blocks=[4,4] experiment.nbeats_num_layers=[8,8] \
 experiment.nbeats_num_hidden=64 experiment.tcn_channels=[16,32] experiment.use_time2vec=False experiment.use_value2vec=True \
 experiment.value2vec_embedding_factor=10 experiment.epochs=20 experiment.sequence_length=48
 
-python -m wind_forecast.main experiment=nbeatsx optim=adam experiment.target_parameter=temperature \
+python -m wind_forecast.main experiment=nbeatsx_gfs optim=adam experiment.target_parameter=temperature \
 experiment.dropout=0.15 optim.base_lr=0.0002 experiment.nbeats_num_blocks=[4,4] experiment.nbeats_num_layers=[8,8] \
 experiment.nbeats_num_hidden=64 experiment.tcn_channels=[16,32] experiment.use_time2vec=False experiment.use_value2vec=True \
 experiment.value2vec_embedding_factor=10 experiment.epochs=20 experiment.sequence_length=48 experiment.future_sequence_length=48
