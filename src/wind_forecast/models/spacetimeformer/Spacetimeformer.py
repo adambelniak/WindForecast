@@ -282,7 +282,7 @@ class Spacetimeformer(LightningModule):
         inputs = torch.cat([synop_inputs, gfs_inputs], -1) if self.use_gfs else synop_inputs
 
         # zero values for decoder inpur
-        targets = torch.zeros_like(inputs)
+        targets = torch.zeros((inputs.shape[0], self.future_sequence_length, inputs.shape[2])).to(inputs.device)
         dates = batch[BatchKeys.DATES_TENSORS.value]
 
         # embed context sequence
