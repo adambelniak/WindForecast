@@ -104,7 +104,11 @@ class S2SRegressorWithGFSInput(BaseS2SRegressor):
         gfs_targets = np.asarray([np.asarray(el) for el in gfs_targets])
         past_truth_series = np.asarray([np.asarray(el) for el in past_truth_series])
 
-        gfs_corr = np.corrcoef(gfs_targets.flatten(), output_series.flatten())[0, 1]
+        gfs_corrs = []
+        for index, _ in enumerate(gfs_targets):
+            gfs_corrs.append(np.corrcoef(gfs_targets[index], output_series[index])[0, 1])
+
+        gfs_corr = np.mean(gfs_corrs)
         rmse_by_step = np.sqrt(np.mean(np.power(np.subtract(output_series, labels_series), 2), axis=0))
 
         # for plots
