@@ -159,7 +159,7 @@ class TransformerBaseProps(TransformerEncoderBaseProps):
 
     def inference(self, inference_length: int, decoder_input: torch.Tensor, memory: torch.Tensor):
         pred = None
-        for frame in range(inference_length):  # do normal prediction for the beginning frames
+        for frame in range(inference_length):
             y = self.pos_encoder(decoder_input) if self.use_pos_encoding else decoder_input
             next_pred = self.decoder(y, memory)
             decoder_input = torch.cat([decoder_input, next_pred[:, -1:, :]], -2)

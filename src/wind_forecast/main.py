@@ -26,6 +26,7 @@ os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 def log_dataset_metrics(datamodule: LightningDataModule, logger: LightningLoggerBase):
     metrics = {
         'train_dataset_length': len(datamodule.dataset_train),
+        'val_dataset_length': len(datamodule.dataset_val),
         'test_dataset_length': len(datamodule.dataset_test)
     }
 
@@ -188,6 +189,9 @@ def run_training(cfg):
     system: LightningModule = instantiate(cfg.experiment.system, cfg)
     log.info(f'[bold yellow]\\[init] System architecture:')
     log.info(system)
+    wandb_logger.log_metrics({
+        'n_params': sum(p.numel() for p in system.model.parameters() if p.requires_grad)
+    })
     # Prepare data using datamodules
     datamodule: LightningDataModule = instantiate(cfg.experiment.datamodule, cfg)
 

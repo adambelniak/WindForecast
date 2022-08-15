@@ -1,5 +1,4 @@
 from typing import Optional, Tuple, List
-import numpy as np
 import torch
 from torch.utils.data.dataloader import default_collate
 
