@@ -1,6 +1,5 @@
 from __future__ import annotations
 import pandas as pd
-import copy
 import math
 from typing import List, Dict, Any
 import numpy as np
@@ -35,7 +34,7 @@ class S2SRegressorWithGFSInput(BaseS2SRegressor):
         dates_embeddings = self.get_dates_tensor(dates_inputs, dates_targets)
         batch[BatchKeys.DATES_TENSORS.value] = dates_embeddings
 
-        outputs = self.forward(batch, self.current_epoch, 'test')
+        outputs = self.forward(batch, self.current_epoch, 'test').squeeze()
         past_targets = batch[BatchKeys.SYNOP_PAST_Y.value].float().squeeze()
         targets = batch[BatchKeys.SYNOP_FUTURE_Y.value].float().squeeze()
 
@@ -45,8 +44,8 @@ class S2SRegressorWithGFSInput(BaseS2SRegressor):
 
         self.test_mse(outputs.squeeze(), targets)
         self.test_mae(outputs.squeeze(), targets)
-        if self.cfg.experiment.batch_size == 1:
-            self.test_mase(outputs, targets.unsqueeze(0), past_targets.unsqueeze(0))
+        if len(targets.shape) == 1:
+            self.test_mase(outputs.unsqueeze(0), targets.unsqueeze(0), past_targets.unsqueeze(0))
         else:
             self.test_mase(outputs, targets, past_targets)
 
@@ -102,8 +101,10 @@ class S2SRegressorWithGFSInput(BaseS2SRegressor):
             labels_dates = [item[0] for item in [x[BatchKeys.DATES_FUTURE.value] for x in outputs]]
         output_series = np.asarray([np.asarray(el) for el in output_series])
         labels_series = np.asarray([np.asarray(el) for el in labels_series])
+        gfs_targets = np.asarray([np.asarray(el) for el in gfs_targets])
         past_truth_series = np.asarray([np.asarray(el) for el in past_truth_series])
 
+        gfs_corr = np.corrcoef(gfs_targets.flatten(), output_series.flatten())[0, 1]
         rmse_by_step = np.sqrt(np.mean(np.power(np.subtract(output_series, labels_series), 2), axis=0))
 
         # for plots
@@ -130,6 +131,7 @@ class S2SRegressorWithGFSInput(BaseS2SRegressor):
             'test_rmse': math.sqrt(float(self.test_mse.compute().item())),
             'test_mae': float(self.test_mae.compute().item()),
             'test_mase': float(self.test_mase.compute()),
+            'gfs_corr': gfs_corr,
             'rmse_by_step': rmse_by_step,
             'plot_truth': plot_truth_series,
             'plot_prediction': plot_prediction_series,

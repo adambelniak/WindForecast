@@ -65,7 +65,7 @@ class BiLSTMS2S(LSTMS2SModel):
             # inference - pass only predictions to decoder
             decoder_input = input_elements[:, -1:, :]
             pred = None
-            for frame in range(input_elements.size(1)):
+            for frame in range(self.future_sequence_length):
                 next_pred, state = self.decoder_lstm(decoder_input, state)
                 pred = torch.cat([pred, next_pred[:, -1:, :]], -2) if pred is not None else next_pred[:, -1:, :]
                 decoder_input = next_pred[:, -1:, :]

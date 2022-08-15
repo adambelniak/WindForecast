@@ -210,7 +210,7 @@ class BaseS2SRegressor(pl.LightningModule):
         dates_embeddings = self.get_dates_tensor(dates_inputs, dates_targets)
         batch[BatchKeys.DATES_TENSORS.value] = dates_embeddings
 
-        outputs = self.forward(batch, self.current_epoch, 'fit')
+        outputs = self.forward(batch, self.current_epoch, 'fit').squeeze()
         past_targets = batch[BatchKeys.SYNOP_PAST_Y.value].float().squeeze()
         targets = batch[BatchKeys.SYNOP_FUTURE_Y.value].float().squeeze()
         if self.cfg.experiment.differential_forecast:
@@ -219,8 +219,8 @@ class BaseS2SRegressor(pl.LightningModule):
 
         self.train_mse(outputs, targets)
         self.train_mae(outputs, targets)
-        if self.cfg.experiment.batch_size == 1:
-            self.train_mase(outputs, targets.unsqueeze(0), past_targets.unsqueeze(0))
+        if len(targets.shape) == 1:
+            self.train_mase(outputs.unsqueeze(0), targets.unsqueeze(0), past_targets.unsqueeze(0))
         else:
             self.train_mase(outputs, targets, past_targets)
 
@@ -286,17 +286,17 @@ class BaseS2SRegressor(pl.LightningModule):
         dates_embeddings = self.get_dates_tensor(dates_inputs, dates_targets)
         batch[BatchKeys.DATES_TENSORS.value] = dates_embeddings
 
-        outputs = self.forward(batch, self.current_epoch, 'test')
+        outputs = self.forward(batch, self.current_epoch, 'test').squeeze()
         past_targets = batch[BatchKeys.SYNOP_PAST_Y.value].float().squeeze()
         targets = batch[BatchKeys.SYNOP_FUTURE_Y.value].float().squeeze()
         if self.cfg.experiment.differential_forecast:
             targets = batch[BatchKeys.GFS_SYNOP_FUTURE_DIFF.value].float().squeeze()
             past_targets = batch[BatchKeys.GFS_SYNOP_PAST_DIFF.value].float().squeeze()
 
-        self.val_mse(outputs.squeeze(), targets)
-        self.val_mae(outputs.squeeze(), targets)
-        if self.cfg.experiment.batch_size == 1:
-            self.val_mase(outputs, targets.unsqueeze(0), past_targets.unsqueeze(0))
+        self.val_mse(outputs, targets)
+        self.val_mae(outputs, targets)
+        if len(targets.shape) == 1:
+            self.val_mase(outputs.unsqueeze(0), targets.unsqueeze(0), past_targets.unsqueeze(0))
         else:
             self.val_mase(outputs, targets, past_targets)
 
@@ -358,7 +358,7 @@ class BaseS2SRegressor(pl.LightningModule):
         dates_embeddings = self.get_dates_tensor(dates_inputs, dates_targets)
         batch[BatchKeys.DATES_TENSORS.value] = dates_embeddings
 
-        outputs = self.forward(batch, self.current_epoch, 'test')
+        outputs = self.forward(batch, self.current_epoch, 'test').squeeze()
         past_targets = batch[BatchKeys.SYNOP_PAST_Y.value].float().squeeze()
         targets = batch[BatchKeys.SYNOP_FUTURE_Y.value].float().squeeze()
 
@@ -366,10 +366,10 @@ class BaseS2SRegressor(pl.LightningModule):
             targets = batch[BatchKeys.GFS_SYNOP_FUTURE_DIFF.value].float().squeeze()
             past_targets = batch[BatchKeys.GFS_SYNOP_PAST_DIFF.value].float().squeeze()
 
-        self.test_mse(outputs.squeeze(), targets)
-        self.test_mae(outputs.squeeze(), targets)
-        if self.cfg.experiment.batch_size == 1:
-            self.test_mase(outputs, targets.unsqueeze(0), past_targets.unsqueeze(0))
+        self.test_mse(outputs, targets)
+        self.test_mae(outputs, targets)
+        if len(targets.shape) == 1:
+            self.test_mase(outputs.unsqueeze(0), targets.unsqueeze(0), past_targets.unsqueeze(0))
         else:
             self.test_mase(outputs, targets, past_targets)
 
