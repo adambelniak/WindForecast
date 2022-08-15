@@ -82,7 +82,7 @@ class TCNEncoderS2S(EMDDecomposeable):
         if self.use_gfs and self.gfs_on_head and not self.self_output_test:
             in_features += 1
 
-        self.classification_head = nn.Sequential(
+        self.regressor_head = nn.Sequential(
             nn.Linear(in_features=in_features, out_features=64),
             nn.ReLU(),
             nn.Linear(in_features=64, out_features=32),
@@ -103,8 +103,8 @@ class TCNEncoderS2S(EMDDecomposeable):
 
         if self.use_gfs and self.gfs_on_head:
             gfs_targets = batch[BatchKeys.GFS_FUTURE_Y.value].float()
-            return self.classification_head(torch.cat([x, gfs_targets], -1)).squeeze(-1)
-        return self.classification_head(x).squeeze(-1)
+            return self.regressor_head(torch.cat([x, gfs_targets], -1)).squeeze(-1)
+        return self.regressor_head(x).squeeze(-1)
 
     def self_forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
         synop_targets = batch[BatchKeys.SYNOP_FUTURE_Y.value].float().unsqueeze(-1)
@@ -112,4 +112,4 @@ class TCNEncoderS2S(EMDDecomposeable):
         x = self.encoder(synop_targets.permute(0, 2, 1))
         x = x[:, :, -self.future_sequence_length:]
 
-        return self.classification_head(x.permute(0, 2, 1)).squeeze(-1)
+        return self.regressor_head(x.permute(0, 2, 1)).squeeze(-1)

@@ -17,7 +17,7 @@ params:
     - 256
     - 512
     - 1024
-  classification_head_dims:
+  regressor_head_dims:
     -
       - 32
     -

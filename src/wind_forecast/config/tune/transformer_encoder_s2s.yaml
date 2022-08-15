@@ -19,7 +19,7 @@ params:
   use_pos_encoding:
     - True
     - False
-  classification_head_dims:
+  regressor_head_dims:
     -
       - 32
     -

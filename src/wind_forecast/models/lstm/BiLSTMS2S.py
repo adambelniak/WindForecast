@@ -72,6 +72,6 @@ class BiLSTMS2S(LSTMS2SModel):
             output = pred
 
         if self.use_gfs and self.gfs_on_head:
-            return torch.squeeze(self.classification_head(torch.cat([output, gfs_targets], -1)), -1)
+            return torch.squeeze(self.regressor_head(torch.cat([output, gfs_targets], -1)), -1)
 
-        return torch.squeeze(self.classification_head(output), -1)
+        return torch.squeeze(self.regressor_head(output), -1)

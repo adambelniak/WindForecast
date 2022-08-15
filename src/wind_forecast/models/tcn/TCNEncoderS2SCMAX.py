@@ -81,5 +81,5 @@ class TCNEncoderS2SCMAX(TCNEncoderS2S):
 
         if self.use_gfs and self.gfs_on_head:
             gfs_targets = batch[BatchKeys.GFS_FUTURE_Y.value].float()
-            return self.classification_head(torch.cat([mem, gfs_targets], -1)).squeeze(-1)
-        return self.classification_head(mem).squeeze(-1)
+            return self.regressor_head(torch.cat([mem, gfs_targets], -1)).squeeze(-1)
+        return self.regressor_head(mem).squeeze(-1)

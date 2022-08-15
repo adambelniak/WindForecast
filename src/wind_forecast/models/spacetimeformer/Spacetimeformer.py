@@ -227,12 +227,12 @@ class Spacetimeformer(LightningModule):
             features += 1
 
         dense_layers = []
-        for neurons in config.experiment.classification_head_dims:
+        for neurons in config.experiment.regressor_head_dims:
             dense_layers.append(nn.Linear(in_features=features, out_features=neurons))
             features = neurons
         dense_layers.append(nn.Linear(in_features=features, out_features=1))
 
-        self.classification_head = nn.Sequential(*dense_layers)
+        self.regressor_head = nn.Sequential(*dense_layers)
         # self.reconstructor = nn.Linear(config.experiment.transformer_d_model, recon_dim, bias=True)
         # self.classifier = nn.Linear(config.experiment.transformer_d_model, out_dim, bias=True)
 
@@ -271,9 +271,9 @@ class Spacetimeformer(LightningModule):
 
         if self.use_gfs and self.gfs_on_head:
             gfs_preds = batch[BatchKeys.GFS_FUTURE_Y.value].float()
-            return torch.squeeze(self.classification_head(torch.cat([forecast_out, gfs_preds], -1)), -1)
+            return torch.squeeze(self.regressor_head(torch.cat([forecast_out, gfs_preds], -1)), -1)
 
-        return torch.squeeze(self.classification_head(forecast_out), -1)
+        return torch.squeeze(self.regressor_head(forecast_out), -1)
 
     def get_embeddings(self, batch, is_train: bool):
         synop_inputs = batch[BatchKeys.SYNOP_PAST_X.value].float()

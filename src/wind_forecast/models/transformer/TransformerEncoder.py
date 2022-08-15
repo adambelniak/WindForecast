@@ -19,4 +19,4 @@ class TransformerEncoder(TransformerEncoderBaseProps):
         input_embedding = self.pos_encoder(input_elements) if self.use_pos_encoding else input_elements
         memory = self.encoder(input_embedding)
         memory = self.flatten(memory)
-        return torch.squeeze(self.classification_head(memory), -1)
+        return torch.squeeze(self.regressor_head(memory), -1)

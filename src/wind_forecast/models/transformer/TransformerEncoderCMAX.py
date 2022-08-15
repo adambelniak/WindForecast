@@ -46,5 +46,5 @@ class TransformerEncoderCMAX(TransformerEncoderBaseProps):
         memory = self.encoder(input_embedding)
         memory = self.flatten(memory)  # flat vector of synop_features out
 
-        return torch.squeeze(self.classification_head(memory), dim=-1)
+        return torch.squeeze(self.regressor_head(memory), dim=-1)
 

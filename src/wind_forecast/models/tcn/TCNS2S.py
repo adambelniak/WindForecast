@@ -32,12 +32,12 @@ class TCNS2S(TCNEncoderS2S):
             features += 1
 
         dense_layers = []
-        for neurons in self.config.experiment.classification_head_dims:
+        for neurons in self.config.experiment.regressor_head_dims:
             dense_layers.append(nn.Linear(in_features=features, out_features=neurons))
             features = neurons
         dense_layers.append(nn.Linear(in_features=features, out_features=1))
 
-        self.classification_head = nn.Sequential(*dense_layers)
+        self.regressor_head = nn.Sequential(*dense_layers)
 
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
         input_elements, target_elements = get_embeddings(batch, self.config.experiment.with_dates_inputs,
@@ -49,5 +49,5 @@ class TCNS2S(TCNEncoderS2S):
 
         if self.use_gfs and self.gfs_on_head:
             gfs_targets = batch[BatchKeys.GFS_FUTURE_Y.value].float()
-            return self.classification_head(torch.cat([y, gfs_targets], -1)).squeeze(-1)
-        return self.classification_head(y).squeeze(-1)
+            return self.regressor_head(torch.cat([y, gfs_targets], -1)).squeeze(-1)
+        return self.regressor_head(y).squeeze(-1)

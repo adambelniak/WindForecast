@@ -80,12 +80,12 @@ class LSTMS2SModel(LightningModule):
             features += 1
 
         dense_layers = []
-        for neurons in self.config.experiment.classification_head_dims:
+        for neurons in self.config.experiment.regressor_head_dims:
             dense_layers.append(nn.Linear(in_features=features, out_features=neurons))
             features = neurons
         dense_layers.append(nn.Linear(in_features=features, out_features=1))
 
-        self.classification_head = nn.Sequential(*dense_layers)
+        self.regressor_head = nn.Sequential(*dense_layers)
 
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
         is_train = stage not in ['test', 'predict', 'validate']
@@ -130,6 +130,6 @@ class LSTMS2SModel(LightningModule):
             output = pred
 
         if self.use_gfs and self.gfs_on_head:
-            return torch.squeeze(self.classification_head(torch.cat([output, gfs_targets], -1)), -1)
+            return torch.squeeze(self.regressor_head(torch.cat([output, gfs_targets], -1)), -1)
 
-        return torch.squeeze(self.classification_head(output), -1)
+        return torch.squeeze(self.regressor_head(output), -1)

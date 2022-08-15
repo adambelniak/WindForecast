@@ -48,4 +48,4 @@ class TransformerEncoderS2SWithGFSConvEmbedding(TransformerEncoderGFSBaseProps):
         memory = self.encoder(x)
         memory = memory[:, -self.future_sequence_length:, :]
 
-        return torch.squeeze(self.classification_head(torch.cat([memory, gfs_targets], -1)), -1)
+        return torch.squeeze(self.regressor_head(torch.cat([memory, gfs_targets], -1)), -1)

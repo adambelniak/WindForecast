@@ -23,7 +23,7 @@ params:
     - 2
     - 3
     - 5
-  classification_head_dims:
+  regressor_head_dims:
     -
       - 32
     -

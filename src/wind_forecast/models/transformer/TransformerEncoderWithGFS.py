@@ -23,5 +23,5 @@ class Transformer(TransformerEncoderGFSBaseProps):
         memory = self.encoder(input_embedding)
         memory = self.flatten(memory)
 
-        return torch.squeeze(self.classification_head(torch.cat([memory, gfs_targets], -1)), -1)
+        return torch.squeeze(self.regressor_head(torch.cat([memory, gfs_targets], -1)), -1)
 

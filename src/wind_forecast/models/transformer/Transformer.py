@@ -61,7 +61,7 @@ class TransformerEncoderBaseProps(LightningModule):
         self.ff_dim = config.experiment.transformer_ff_dim
         self.transformer_encoder_layers_num = config.experiment.transformer_encoder_layers
 
-        self.transformer_head_dims = config.experiment.classification_head_dims
+        self.transformer_head_dims = config.experiment.regressor_head_dims
 
         if self.self_output_test:
             self.features_length = 1
@@ -102,7 +102,7 @@ class TransformerEncoderBaseProps(LightningModule):
             features = neurons
         dense_layers.append(nn.Linear(in_features=features, out_features=1))
 
-        self.classification_head = nn.Sequential(*dense_layers)
+        self.regressor_head = nn.Sequential(*dense_layers)
 
     def generate_mask(self, sequence_length: int) -> torch.Tensor:
         mask = (torch.triu(torch.ones(sequence_length, sequence_length)) == 1).transpose(0, 1)
@@ -268,4 +268,4 @@ class Transformer(TransformerBaseProps):
         output = self.base_transformer_forward(epoch, stage, input_embedding,
                                                target_embedding if is_train else None, memory)
 
-        return torch.squeeze(self.classification_head(self.forecaster(output)), -1)
+        return torch.squeeze(self.regressor_head(self.forecaster(output)), -1)

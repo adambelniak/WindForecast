@@ -28,6 +28,6 @@ class TransformerWithGFS(TransformerGFSBaseProps):
 
         if self.gfs_on_head:
             gfs_targets = batch[BatchKeys.GFS_FUTURE_Y.value].float()
-            return torch.squeeze(self.classification_head(torch.cat([output, gfs_targets], -1)), -1)
+            return torch.squeeze(self.regressor_head(torch.cat([output, gfs_targets], -1)), -1)
 
-        return torch.squeeze(self.classification_head(output), -1)
+        return torch.squeeze(self.regressor_head(output), -1)
