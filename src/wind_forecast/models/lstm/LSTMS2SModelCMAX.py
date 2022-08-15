@@ -42,7 +42,7 @@ class LSTMS2SModelCMAX(LSTMS2SModel):
                                     proj_size=self.embed_dim)
 
         features = self.embed_dim
-        if self.use_gfs:
+        if self.use_gfs and self.gfs_on_head:
             features += 1
 
         dense_layers = []
@@ -110,7 +110,8 @@ class LSTMS2SModelCMAX(LSTMS2SModel):
                 decoder_input = next_pred[:, -1:, :]
             output = pred
 
-        if self.use_gfs:
+        if self.use_gfs and self.gfs_on_head:
+
             return torch.squeeze(self.classification_head(torch.cat([output, gfs_targets], -1)), -1)
 
         return torch.squeeze(self.classification_head(output), -1)

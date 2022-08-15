@@ -18,9 +18,12 @@ class TransformerEncoderS2SWithGFS(TransformerEncoderGFSBaseProps):
                                                          self.time_embed if self.use_time2vec else None,
                                                          self.value_embed if self.use_value2vec else None,
                                                          True, False)
-        gfs_targets = batch[BatchKeys.GFS_FUTURE_Y.value].float()
         input_embedding = self.pos_encoder(input_elements) if self.use_pos_encoding else input_elements
         memory = self.encoder(input_embedding)
         memory = memory[:, -self.future_sequence_length:, :]
 
-        return torch.squeeze(self.classification_head(torch.cat([memory, gfs_targets], -1)), -1)
+        if self.gfs_on_head:
+            gfs_targets = batch[BatchKeys.GFS_FUTURE_Y.value].float()
+            return torch.squeeze(self.classification_head(torch.cat([memory, gfs_targets], -1)), -1)
+
+        return torch.squeeze(self.classification_head(memory), -1)

@@ -40,7 +40,6 @@ class TransformerCMAXWithGFS(TransformerGFSBaseProps):
                                                          self.value_embed if self.use_value2vec else None,
                                                          True, is_train)
 
-        gfs_targets = batch[BatchKeys.GFS_FUTURE_Y.value].float()
         cmax_inputs = batch[BatchKeys.CMAX_PAST.value].float()
         if is_train:
             cmax_targets = batch[BatchKeys.CMAX_FUTURE.value].float()
@@ -62,4 +61,7 @@ class TransformerCMAXWithGFS(TransformerGFSBaseProps):
         memory = self.encoder(input_embedding)
         output = self.base_transformer_forward(epoch, stage, input_embedding, target_embedding if is_train else None, memory)
 
-        return torch.squeeze(self.classification_head(torch.cat([output, gfs_targets], -1)), -1)
+        if self.gfs_on_head:
+            gfs_targets = batch[BatchKeys.GFS_FUTURE_Y.value].float()
+            return torch.squeeze(self.classification_head(torch.cat([output, gfs_targets], -1)), -1)
+        return torch.squeeze(self.classification_head(output), -1)

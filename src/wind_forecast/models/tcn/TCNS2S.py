@@ -28,7 +28,7 @@ class TCNS2S(TCNEncoderS2S):
         self.decoder = nn.Sequential(*tcn_layers)
 
         features = self.embed_dim
-        if self.use_gfs:
+        if self.use_gfs and self.gfs_on_head:
             features += 1
 
         dense_layers = []
@@ -44,11 +44,10 @@ class TCNS2S(TCNEncoderS2S):
                                                          self.time_embed if self.use_time2vec else None,
                                                          self.value_embed if self.use_value2vec else None,
                                                          self.use_gfs, False)
-        if self.use_gfs:
-            gfs_targets = batch[BatchKeys.GFS_FUTURE_Y.value].float()
         x = self.encoder(input_elements.permute(0, 2, 1))
         y = self.decoder(x).permute(0, 2, 1)[:, -self.future_sequence_length:, :]
 
-        if self.use_gfs:
+        if self.use_gfs and self.gfs_on_head:
+            gfs_targets = batch[BatchKeys.GFS_FUTURE_Y.value].float()
             return self.classification_head(torch.cat([y, gfs_targets], -1)).squeeze(-1)
         return self.classification_head(y).squeeze(-1)

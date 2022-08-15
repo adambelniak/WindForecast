@@ -28,7 +28,10 @@ class TransformerEncoderS2SCMAXWithScaleToDepthWithGFS(TransformerEncoderGFSBase
         self.conv_time_distributed = TimeDistributed(self.conv, batch_first=True)
 
         self.embed_dim += conv_W * conv_H * out_channels
-        self.head_input_dim = self.embed_dim + 1
+        self.head_input_dim = self.embed_dim
+        if self.gfs_on_head:
+            self.head_input_dim += 1
+
         self.pos_encoder = PositionalEncoding(self.embed_dim, self.dropout)
         self.create_encoder()
         self.create_head()
@@ -38,8 +41,6 @@ class TransformerEncoderS2SCMAXWithScaleToDepthWithGFS(TransformerEncoderGFSBase
                                                          self.time_embed if self.use_time2vec else None,
                                                          self.value_embed if self.use_value2vec else None,
                                                          True, False)
-        gfs_targets = batch[BatchKeys.GFS_FUTURE_Y.value].float()
-
         cmax_inputs = batch[BatchKeys.CMAX_PAST.value].float()
         cmax_inputs = cmax_inputs.unsqueeze(2)
         cmax_reshape = cmax_inputs.contiguous().view(cmax_inputs.size()[0] * cmax_inputs.size()[1], *cmax_inputs.size()[2:])
@@ -53,4 +54,9 @@ class TransformerEncoderS2SCMAXWithScaleToDepthWithGFS(TransformerEncoderGFSBase
         memory = self.encoder(input_embedding)
         memory = memory[:, -self.future_sequence_length:, :]
 
-        return torch.squeeze(self.classification_head(torch.cat([memory, gfs_targets], -1)), -1)
+        if self.gfs_on_head:
+            gfs_targets = batch[BatchKeys.GFS_FUTURE_Y.value].float()
+            return torch.squeeze(self.classification_head(torch.cat([memory, gfs_targets], -1)), -1)
+
+        return torch.squeeze(self.classification_head(memory), -1)
+

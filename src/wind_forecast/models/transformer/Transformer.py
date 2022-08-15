@@ -137,7 +137,9 @@ class TransformerEncoderGFSBaseProps(TransformerEncoderBaseProps):
         self.pos_encoder = PositionalEncoding(self.embed_dim, self.dropout)
         self.create_encoder()
 
-        self.head_input_dim = self.embed_dim + 1
+        self.head_input_dim = self.embed_dim
+        if self.gfs_on_head:
+            self.head_input_dim += 1
         self.create_head()
         self.flatten = nn.Flatten()
 

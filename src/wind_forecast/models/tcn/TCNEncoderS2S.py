@@ -20,6 +20,7 @@ class TCNEncoderS2S(EMDDecomposeable):
         self.config = config
         self.dropout = config.experiment.dropout
         self.use_gfs = config.experiment.use_gfs_data
+        self.gfs_on_head = config.experiment.gfs_on_head
         self.future_sequence_length = config.experiment.future_sequence_length
         self.self_output_test = config.experiment.self_output_test
         self.tcn_channels = config.experiment.tcn_channels
@@ -78,7 +79,7 @@ class TCNEncoderS2S(EMDDecomposeable):
 
         self.encoder = nn.Sequential(*tcn_layers)
 
-        if self.use_gfs and not self.self_output_test and not self.config.experiment.emd_decompose:
+        if self.use_gfs and self.gfs_on_head and not self.self_output_test:
             in_features += 1
 
         self.classification_head = nn.Sequential(
@@ -97,12 +98,11 @@ class TCNEncoderS2S(EMDDecomposeable):
                                                          self.time_embed if self.use_time2vec else None,
                                                          self.value_embed if self.use_value2vec else None,
                                                          self.use_gfs, False)
-        if self.use_gfs:
-            gfs_targets = batch[BatchKeys.GFS_FUTURE_Y.value].float()
         x = self.encoder(input_elements.permute(0, 2, 1)).permute(0, 2, 1)
         x = x[:, -self.future_sequence_length:, :]
 
-        if self.use_gfs:
+        if self.use_gfs and self.gfs_on_head:
+            gfs_targets = batch[BatchKeys.GFS_FUTURE_Y.value].float()
             return self.classification_head(torch.cat([x, gfs_targets], -1)).squeeze(-1)
         return self.classification_head(x).squeeze(-1)
 

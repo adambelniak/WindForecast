@@ -67,6 +67,7 @@ class Spacetimeformer(LightningModule):
     ):
         super().__init__()
         self.use_gfs = config.experiment.use_gfs_data
+        self.gfs_on_head = config.experiment.gfs_on_head
         self.features_length = len(config.experiment.synop_train_features) + len(config.experiment.synop_periodic_features)
         self.future_sequence_length = config.experiment.future_sequence_length
         assert self.future_sequence_length <= config.experiment.sequence_length
@@ -222,8 +223,8 @@ class Spacetimeformer(LightningModule):
         # transform tokens into 1-dimensional outputs to allow folding them
         self.forecaster = nn.Linear(self.token_dim, 1, bias=True)
         features = self.features_length
-        # if self.use_gfs:
-        #     features += 1
+        if self.use_gfs and self.gfs_on_head:
+            features += 1
 
         dense_layers = []
         for neurons in config.experiment.classification_head_dims:
@@ -268,9 +269,9 @@ class Spacetimeformer(LightningModule):
         forecast_out = FoldForPred(forecast_out, dy=self.features_length)
         forecast_out = forecast_out[:, self.start_token_len : self.future_sequence_length, :]
 
-        # if self.use_gfs:
-        #     gfs_preds = batch[BatchKeys.GFS_FUTURE_Y.value].float()
-        #     return torch.squeeze(self.classification_head(torch.cat([forecast_out, gfs_preds], -1)), -1)
+        if self.use_gfs and self.gfs_on_head:
+            gfs_preds = batch[BatchKeys.GFS_FUTURE_Y.value].float()
+            return torch.squeeze(self.classification_head(torch.cat([forecast_out, gfs_preds], -1)), -1)
 
         return torch.squeeze(self.classification_head(forecast_out), -1)
 

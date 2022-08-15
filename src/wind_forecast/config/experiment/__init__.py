@@ -158,6 +158,8 @@ class ExperimentSettings:
 
     classification_head_dims: List = field(default_factory=lambda: [64, 128, 32])
 
+    gfs_on_head: bool = True
+
     cmax_projection_dim: int = 0
 
     # ----------------------------------------------------------------------------------------------

@@ -167,7 +167,7 @@ class Spacetimeformer_cmax(Spacetimeformer):
         )
 
         features = self.features_length
-        if self.use_gfs:
+        if self.use_gfs and self.gfs_on_head:
             features += 1
 
         dense_layers = []
@@ -210,7 +210,7 @@ class Spacetimeformer_cmax(Spacetimeformer):
         forecast_out = FoldForPred(forecast_out, dy=self.features_length)
         forecast_out = forecast_out[:, self.start_token_len : self.future_sequence_length, :]
 
-        if self.use_gfs:
+        if self.use_gfs and self.gfs_on_head:
             gfs_preds = batch[BatchKeys.GFS_FUTURE_Y.value].float()
             return torch.squeeze(self.classification_head(torch.cat([forecast_out, gfs_preds], -1)), -1)
 

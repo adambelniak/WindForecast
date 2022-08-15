@@ -29,7 +29,7 @@ class TCNEncoderS2SCMAX(TCNEncoderS2S):
 
         features = config.experiment.tcn_channels[-1]
 
-        if self.config.experiment.use_gfs_data:
+        if self.use_gfs and self.gfs_on_head:
             features += 1
 
         linear = nn.Sequential(
@@ -73,15 +73,13 @@ class TCNEncoderS2SCMAX(TCNEncoderS2S):
                                                          self.use_gfs, False)
         cmax_inputs = batch[BatchKeys.CMAX_PAST.value].float()
 
-        if self.use_gfs:
-            gfs_targets = batch[BatchKeys.GFS_FUTURE_Y.value].float()
-
         cmax_embedding = self.cnn(cmax_inputs.unsqueeze(2))
         cmax_embedding = self.cnn_lin_tcn(cmax_embedding)
         x = torch.cat([input_elements, cmax_embedding], dim=-1)
         x = self.tcn(x.permute(0, 2, 1)).permute(0, 2, 1)
         mem = x[:, -self.future_sequence_length:, :]
 
-        if self.use_gfs:
+        if self.use_gfs and self.gfs_on_head:
+            gfs_targets = batch[BatchKeys.GFS_FUTURE_Y.value].float()
             return self.classification_head(torch.cat([mem, gfs_targets], -1)).squeeze(-1)
         return self.classification_head(mem).squeeze(-1)

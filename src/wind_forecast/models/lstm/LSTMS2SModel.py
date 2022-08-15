@@ -28,6 +28,7 @@ class LSTMS2SModel(LightningModule):
         self.dropout = config.experiment.dropout
         self.features_length = len(config.experiment.synop_train_features) + len(config.experiment.synop_periodic_features)
         self.use_gfs = config.experiment.use_gfs_data
+        self.gfs_on_head = config.experiment.gfs_on_head
         self.time2vec_embedding_factor = config.experiment.time2vec_embedding_factor
         self.value2vec_embedding_factor = config.experiment.value2vec_embedding_factor
         self.use_time2vec = config.experiment.use_time2vec and config.experiment.with_dates_inputs
@@ -75,7 +76,7 @@ class LSTMS2SModel(LightningModule):
                                     proj_size=self.embed_dim)
 
         features = self.embed_dim
-        if self.use_gfs:
+        if self.use_gfs and self.gfs_on_head:
             features += 1
 
         dense_layers = []
@@ -128,7 +129,7 @@ class LSTMS2SModel(LightningModule):
                 decoder_input = next_pred[:, -1:, :]
             output = pred
 
-        if self.use_gfs:
+        if self.use_gfs and self.gfs_on_head:
             return torch.squeeze(self.classification_head(torch.cat([output, gfs_targets], -1)), -1)
 
         return torch.squeeze(self.classification_head(output), -1)
