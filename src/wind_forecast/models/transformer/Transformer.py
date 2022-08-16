@@ -114,6 +114,7 @@ class TransformerEncoderGFSBaseProps(TransformerEncoderBaseProps):
     def __init__(self, config: Config):
         super().__init__(config)
 
+        self.gfs_on_head = config.experiment.gfs_on_head
         gfs_params = process_config(config.experiment.train_parameters_config_file).params
         gfs_params_len = len(gfs_params)
         param_names = [x['name'] for x in gfs_params]
