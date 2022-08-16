@@ -175,16 +175,17 @@ class TransformerBaseProps(TransformerEncoderBaseProps):
         if epoch < self.teacher_forcing_epoch_num and stage not in ['test', 'predict', 'validate']:
             if self.gradual_teacher_forcing:
                 # first - Teacher Forcing - masked targets as decoder inputs
-                first_interfere_index = math.floor(epoch / self.teacher_forcing_epoch_num * target_embedding.size(1))
-                decoder_input = torch.cat([input_embedding[:, -1:, :], target_embedding], 1)[:, :first_interfere_index, ]
-                output = self.masked_teacher_forcing(decoder_input, memory, first_interfere_index)
-
-                #then - inference
-                output = self.inference(target_embedding.size(1) - first_interfere_index, output, memory)
-            else:
-                # non-gradual, just basic teacher forcing
-                decoder_input = torch.cat([input_embedding[:, -1:, :], target_embedding], 1)[:, :-1, ]
-                output = self.masked_teacher_forcing(decoder_input, memory, target_embedding.size(1))
+                first_infer_index = target_embedding.size(1) - min(
+                    math.floor(epoch * target_embedding.size(1) / self.teacher_forcing_epoch_num),
+                    target_embedding.size(1))
+                if first_infer_index > 0:
+                    decoder_input = torch.cat([input_embedding[:, -1:, :], target_embedding], 1)[:,
+                                    :first_infer_index, ]
+                    output = self.masked_teacher_forcing(decoder_input, memory, first_infer_index)
+                else:
+                    output = input_embedding[:, -1:, :]
+                # then - inference
+                output = self.inference(target_embedding.size(1) - first_infer_index, output, memory)
 
         else:
             # inference - pass only predictions to decoder
@@ -207,13 +208,11 @@ class TransformerGFSBaseProps(TransformerEncoderGFSBaseProps):
         self.decoder = nn.TransformerDecoder(decoder_layer, self.transformer_decoder_layers_num, decoder_norm)
 
     def inference(self, inference_length: int, decoder_input: torch.Tensor, memory: torch.Tensor):
-        pred = None
         for frame in range(inference_length):  # do normal prediction for the beginning frames
             y = self.pos_encoder(decoder_input) if self.use_pos_encoding else decoder_input
             next_pred = self.decoder(y, memory)
             decoder_input = torch.cat([decoder_input, next_pred[:, -1:, :]], -2)
-            pred = decoder_input[:, 1:, :]
-        return pred
+        return decoder_input[:, 1:, :]
 
     def masked_teacher_forcing(self, decoder_input: torch.Tensor, memory: torch.Tensor, mask_matrix_dim: int):
         decoder_input = self.pos_encoder(decoder_input) if self.use_pos_encoding else decoder_input
@@ -226,13 +225,15 @@ class TransformerGFSBaseProps(TransformerEncoderGFSBaseProps):
             # Teacher forcing - masked targets as decoder inputs
             if self.gradual_teacher_forcing:
                 # first - Teacher Forcing - masked targets as decoder inputs
-                first_interfere_index = math.floor(epoch / self.teacher_forcing_epoch_num * target_embedding.size(1))
-                decoder_input = torch.cat([input_embedding[:, -1:, :], target_embedding], 1)[:,
-                                :first_interfere_index, ]
-                output = self.masked_teacher_forcing(decoder_input, memory, first_interfere_index)
-
+                first_infer_index = target_embedding.size(1) - min(math.floor(epoch * target_embedding.size(1) / self.teacher_forcing_epoch_num), target_embedding.size(1))
+                if first_infer_index > 0:
+                    decoder_input = torch.cat([input_embedding[:, -1:, :], target_embedding], 1)[:,
+                                    :first_infer_index, ]
+                    output = self.masked_teacher_forcing(decoder_input, memory, first_infer_index)
+                else:
+                    output = input_embedding[:, -1:, :]
                 # then - inference
-                output = self.inference(target_embedding.size(1) - first_interfere_index, output, memory)
+                output = self.inference(target_embedding.size(1) - first_infer_index, output, memory)
             else:
                 # non-gradual, just basic teacher forcing
                 decoder_input = torch.cat([input_embedding[:, -1:, :], target_embedding], 1)[:, :-1, ]
