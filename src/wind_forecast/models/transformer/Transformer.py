@@ -164,8 +164,7 @@ class TransformerBaseProps(TransformerEncoderBaseProps):
             y = self.pos_encoder(decoder_input) if self.use_pos_encoding else decoder_input
             next_pred = self.decoder(y, memory)
             decoder_input = torch.cat([decoder_input, next_pred[:, -1:, :]], -2)
-            pred = decoder_input[:, 1:, :]
-        return pred
+        return decoder_input[:, 1:, :]  # remove start token
 
     def masked_teacher_forcing(self, decoder_input: torch.Tensor, memory: torch.Tensor, mask_matrix_dim: int):
         target_mask = self.generate_mask(mask_matrix_dim).to(self.device)
@@ -178,10 +177,12 @@ class TransformerBaseProps(TransformerEncoderBaseProps):
                 first_infer_index = target_embedding.size(1) - min(
                     math.floor(epoch * target_embedding.size(1) / self.teacher_forcing_epoch_num),
                     target_embedding.size(1))
+
                 if first_infer_index > 0:
                     decoder_input = torch.cat([input_embedding[:, -1:, :], target_embedding], 1)[:,
                                     :first_infer_index, ]
-                    output = self.masked_teacher_forcing(decoder_input, memory, first_infer_index)
+                    output = torch.cat([input_embedding[:, -1:, :],
+                                        self.masked_teacher_forcing(decoder_input, memory, first_infer_index)], 1)
                 else:
                     output = input_embedding[:, -1:, :]
                 # then - inference
@@ -212,7 +213,7 @@ class TransformerGFSBaseProps(TransformerEncoderGFSBaseProps):
             y = self.pos_encoder(decoder_input) if self.use_pos_encoding else decoder_input
             next_pred = self.decoder(y, memory)
             decoder_input = torch.cat([decoder_input, next_pred[:, -1:, :]], -2)
-        return decoder_input[:, 1:, :]
+        return decoder_input[:, 1:, :]  # remove start token
 
     def masked_teacher_forcing(self, decoder_input: torch.Tensor, memory: torch.Tensor, mask_matrix_dim: int):
         decoder_input = self.pos_encoder(decoder_input) if self.use_pos_encoding else decoder_input
@@ -225,16 +226,19 @@ class TransformerGFSBaseProps(TransformerEncoderGFSBaseProps):
             # Teacher forcing - masked targets as decoder inputs
             if self.gradual_teacher_forcing:
                 # first - Teacher Forcing - masked targets as decoder inputs
-                first_infer_index = target_embedding.size(1) - min(math.floor(epoch * target_embedding.size(1) / self.teacher_forcing_epoch_num), target_embedding.size(1))
+                first_infer_index = target_embedding.size(1) - min(
+                    math.floor(epoch * target_embedding.size(1) / self.teacher_forcing_epoch_num),
+                    target_embedding.size(1))
+
                 if first_infer_index > 0:
                     decoder_input = torch.cat([input_embedding[:, -1:, :], target_embedding], 1)[:,
                                     :first_infer_index, ]
-                    output = self.masked_teacher_forcing(decoder_input, memory, first_infer_index)
+                    output = torch.cat([input_embedding[:, -1:, :],
+                                        self.masked_teacher_forcing(decoder_input, memory, first_infer_index)], 1)
                 else:
                     output = input_embedding[:, -1:, :]
-                if first_infer_index < target_embedding.size(1):
-                    # then - inference
-                    output = self.inference(target_embedding.size(1) - first_infer_index, output, memory)
+                # then - inference
+                output = self.inference(target_embedding.size(1) - first_infer_index, output, memory)
             else:
                 # non-gradual, just basic teacher forcing
                 decoder_input = torch.cat([input_embedding[:, -1:, :], target_embedding], 1)[:, :-1, ]
