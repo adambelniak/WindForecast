@@ -232,8 +232,9 @@ class TransformerGFSBaseProps(TransformerEncoderGFSBaseProps):
                     output = self.masked_teacher_forcing(decoder_input, memory, first_infer_index)
                 else:
                     output = input_embedding[:, -1:, :]
-                # then - inference
-                output = self.inference(target_embedding.size(1) - first_infer_index, output, memory)
+                if first_infer_index < target_embedding.size(1):
+                    # then - inference
+                    output = self.inference(target_embedding.size(1) - first_infer_index, output, memory)
             else:
                 # non-gradual, just basic teacher forcing
                 decoder_input = torch.cat([input_embedding[:, -1:, :], target_embedding], 1)[:, :-1, ]
