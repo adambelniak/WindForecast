@@ -37,7 +37,7 @@ class BiLSTMS2SCMAX(BiLSTMS2S):
                                     dropout=self.dropout, num_layers=config.experiment.lstm_num_layers,
                                     proj_size=self.embed_dim, bidirectional=True)
 
-        self.decoder_lstm = nn.LSTM(input_size=self.embed_dim, hidden_size=self.lstm_hidden_state, batch_first=True,
+        self.decoder_lstm = nn.LSTM(input_size=self.embed_dim, hidden_size=2 * self.lstm_hidden_state, batch_first=True,
                                     dropout=self.dropout, num_layers=config.experiment.lstm_num_layers,
                                     proj_size=self.embed_dim)
 
