@@ -58,27 +58,23 @@ class LSTMS2SModelCMAX(LSTMS2SModel):
         input_elements, target_elements = get_embeddings(batch, self.config.experiment.with_dates_inputs,
                                                          self.time_embed if self.use_time2vec else None,
                                                          self.value_embed if self.use_value2vec else None,
-                                                         self.use_gfs, is_train)
+                                                         self.use_gfs, epoch < self.teacher_forcing_epoch_num and is_train)
         if self.use_gfs:
             gfs_targets = batch[BatchKeys.GFS_FUTURE_Y.value].float()
 
         cmax_inputs = batch[BatchKeys.CMAX_PAST.value].float()
-        if is_train:
-            cmax_targets = batch[BatchKeys.CMAX_FUTURE.value].float()
-
         cmax_embeddings = self.conv_time_distributed(cmax_inputs.unsqueeze(2))
-        if is_train:
-            self.conv_time_distributed.requires_grad_(False)
-            cmax_targets_embeddings = self.conv_time_distributed(cmax_targets.unsqueeze(2))
-            self.conv_time_distributed.requires_grad_(True)
-
         input_elements = torch.cat([input_elements, cmax_embeddings], -1)
-        if is_train:
-            target_elements = torch.cat([target_elements, cmax_targets_embeddings], -1)
 
         _, state = self.encoder_lstm(input_elements)
 
         if epoch < self.teacher_forcing_epoch_num and is_train:
+            cmax_targets = batch[BatchKeys.CMAX_FUTURE.value].float()
+            self.conv_time_distributed.requires_grad_(False)
+            cmax_targets_embeddings = self.conv_time_distributed(cmax_targets.unsqueeze(2))
+            self.conv_time_distributed.requires_grad_(True)
+            target_elements = torch.cat([target_elements, cmax_targets_embeddings], -1)
+
             # Teacher forcing
             if self.gradual_teacher_forcing:
                 first_taught = math.floor(epoch / self.teacher_forcing_epoch_num * self.future_sequence_length)

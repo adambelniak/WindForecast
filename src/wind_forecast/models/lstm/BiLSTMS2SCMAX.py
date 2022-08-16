@@ -60,18 +60,9 @@ class BiLSTMS2SCMAX(BiLSTMS2S):
             gfs_targets = batch[BatchKeys.GFS_FUTURE_Y.value].float()
 
         cmax_inputs = batch[BatchKeys.CMAX_PAST.value].float()
-        if is_train:
-            cmax_targets = batch[BatchKeys.CMAX_FUTURE.value].float()
-
         cmax_embeddings = self.conv_time_distributed(cmax_inputs.unsqueeze(2))
-        if is_train:
-            self.conv.requires_grad_(False)
-            cmax_targets_embeddings = self.conv_time_distributed(cmax_targets.unsqueeze(2))
-            self.conv.requires_grad_(True)
 
         input_elements = torch.cat([input_elements, cmax_embeddings], -1)
-        if is_train:
-            target_elements = torch.cat([target_elements, cmax_targets_embeddings], -1)
 
         output, state = self.encoder_lstm(input_elements)
         # state is of shape ((2 * num_layers, batch, H_out), (2 * num_layers, batch, H_cell)
@@ -81,7 +72,14 @@ class BiLSTMS2SCMAX(BiLSTMS2S):
                  torch.cat([state[1][0:self.config.experiment.lstm_num_layers, :, :],
                             state[1][self.config.experiment.lstm_num_layers:, :, :]], -1))
 
-        if epoch < self.teacher_forcing_epoch_num and stage in [None, 'fit']:
+        if epoch < self.teacher_forcing_epoch_num and is_train:
+            cmax_targets = batch[BatchKeys.CMAX_FUTURE.value].float()
+            self.conv.requires_grad_(False)
+            cmax_targets_embeddings = self.conv_time_distributed(cmax_targets.unsqueeze(2))
+            target_elements = torch.cat([target_elements, cmax_targets_embeddings], -1)
+
+            self.conv.requires_grad_(True)
+
             # Teacher forcing
             if self.gradual_teacher_forcing:
                 first_taught = math.floor(epoch / self.teacher_forcing_epoch_num * self.sequence_length)

@@ -1,7 +1,7 @@
 from typing import Optional, Tuple, List
 import torch
 from torch.utils.data.dataloader import default_collate
-
+import numpy as np
 from wind_forecast.config.register import Config
 from wind_forecast.consts import SYNOP_DATASETS_DIRECTORY, BatchKeys
 from wind_forecast.datamodules.Sequence2SequenceDataModule import Sequence2SequenceDataModule
@@ -114,9 +114,9 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
         s2s_data, cmax_data = [item[0] for item in x], [item[1] for item in x]
         variables, dates = [item[:-2] for item in s2s_data], [item[-2:] for item in s2s_data]
         if self.load_future_cmax:
-            all_data = [*default_collate(variables), *list(zip(*dates)), *default_collate(cmax_data)]
+            all_data = [*default_collate(variables), *list(zip(*dates)), *default_collate(np.array(cmax_data))]
         else:
-            all_data = [*default_collate(variables), *list(zip(*dates)), torch.Tensor(cmax_data)]
+            all_data = [*default_collate(variables), *list(zip(*dates)), torch.Tensor(np.array(cmax_data))]
 
         dict_data = {BatchKeys.SYNOP_PAST_Y.value: all_data[0], BatchKeys.SYNOP_PAST_X.value: all_data[1],
                      BatchKeys.SYNOP_FUTURE_Y.value: all_data[2], BatchKeys.SYNOP_FUTURE_X.value: all_data[3]}

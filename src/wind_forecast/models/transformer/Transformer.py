@@ -172,19 +172,15 @@ class TransformerBaseProps(TransformerEncoderBaseProps):
         return self.decoder(decoder_input, memory, tgt_mask=target_mask)
 
     def base_transformer_forward(self, epoch, stage, input_embedding, target_embedding, memory):
-        if epoch < self.teacher_forcing_epoch_num and stage in [None, 'fit']:
-            # Teacher forcing - masked targets as decoder inputs
-            # TODO - first do teacher forcing, then inference
+        if epoch < self.teacher_forcing_epoch_num and stage not in ['test', 'predict', 'validate']:
             if self.gradual_teacher_forcing:
-                first_taught = math.floor(epoch / self.teacher_forcing_epoch_num * target_embedding.size(1))
-                decoder_input = input_embedding[:, -1:, :]  # SOS - last input frame
-                prediction = self.inference(first_taught, decoder_input, memory)
+                # first - Teacher Forcing - masked targets as decoder inputs
+                first_interfere_index = math.floor(epoch / self.teacher_forcing_epoch_num * target_embedding.size(1))
+                decoder_input = torch.cat([input_embedding[:, -1:, :], target_embedding], 1)[:, :first_interfere_index, ]
+                output = self.masked_teacher_forcing(decoder_input, memory, first_interfere_index)
 
-                # then, do teacher forcing
-                # SOS is appended for case when first_taught is 0
-                decoder_input = torch.cat([input_embedding[:, -1:, :], target_embedding], 1)[:, first_taught:-1, ]
-                output = self.masked_teacher_forcing(decoder_input, memory, target_embedding.size(1) - first_taught)
-                output = output if prediction is None else torch.cat([prediction, output], 1)
+                #then - inference
+                output = self.inference(target_embedding.size(1) - first_interfere_index, output, memory)
             else:
                 # non-gradual, just basic teacher forcing
                 decoder_input = torch.cat([input_embedding[:, -1:, :], target_embedding], 1)[:, :-1, ]
@@ -226,18 +222,17 @@ class TransformerGFSBaseProps(TransformerEncoderGFSBaseProps):
 
     def base_transformer_forward(self, epoch: int, stage: str, input_embedding: torch.Tensor,
                                  target_embedding: torch.Tensor, memory: torch.Tensor):
-        if epoch < self.teacher_forcing_epoch_num and stage in [None, 'fit']:
+        if epoch < self.teacher_forcing_epoch_num and stage not in ['test', 'predict', 'validate']:
             # Teacher forcing - masked targets as decoder inputs
             if self.gradual_teacher_forcing:
-                first_taught = math.floor(epoch / self.teacher_forcing_epoch_num * target_embedding.size(1))
-                decoder_input = input_embedding[:, -1:, :]  # SOS - last input frame
-                prediction = self.inference(first_taught, decoder_input, memory)
+                # first - Teacher Forcing - masked targets as decoder inputs
+                first_interfere_index = math.floor(epoch / self.teacher_forcing_epoch_num * target_embedding.size(1))
+                decoder_input = torch.cat([input_embedding[:, -1:, :], target_embedding], 1)[:,
+                                :first_interfere_index, ]
+                output = self.masked_teacher_forcing(decoder_input, memory, first_interfere_index)
 
-                # then, do teacher forcing
-                # SOS is appended for case when first_taught is 0
-                decoder_input = torch.cat([input_embedding[:, -1:, :], target_embedding], 1)[:, first_taught:-1, ]
-                output = self.masked_teacher_forcing(decoder_input, memory, target_embedding.size(1) - first_taught)
-                output = output if prediction is None else torch.cat([prediction, output], 1)
+                # then - inference
+                output = self.inference(target_embedding.size(1) - first_interfere_index, output, memory)
             else:
                 # non-gradual, just basic teacher forcing
                 decoder_input = torch.cat([input_embedding[:, -1:, :], target_embedding], 1)[:, :-1, ]
