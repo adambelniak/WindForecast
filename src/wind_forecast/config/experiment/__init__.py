@@ -67,7 +67,7 @@ class ExperimentSettings:
     shuffle: bool = True
 
     # Number of dataloader workers
-    num_workers: int = 8
+    num_workers: int = 0
 
     # Model to use
     model: Any = MISSING

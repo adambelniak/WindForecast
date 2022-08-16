@@ -77,3 +77,11 @@ RESULTS_DIR=<relative to repo root, target dir for logs, checkpoints etc.>
 WANDB_ENTITY=<your username>
 WANDB_PROJECT=<your project name>
 ```
+
+### Troubleshooting and tips
+#### Faster dataloaders
+```
+ The dataloader, val_dataloader 0, does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` (try 8 which is the number of cpus on this machine) in the `DataLoader` init to improve performance
+ ```
+By default data is not loaded in parallel due to a problems on my Windows machine.
+You can try speeding it up by setting `experiment.num_workers` to a number of cores on your machine.
