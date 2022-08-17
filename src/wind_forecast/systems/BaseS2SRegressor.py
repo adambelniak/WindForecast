@@ -426,6 +426,9 @@ class BaseS2SRegressor(pl.LightningModule):
         past_truth_series = np.asarray([np.asarray(el) for el in past_truth_series])
 
         rmse_by_step = np.sqrt(np.mean(np.power(np.subtract(output_series, labels_series), 2), axis=0))
+        mase_by_step = []
+        for index, step in enumerate(output_series.shape[-1]):
+            mase_by_step.append(MASE().loss(output_series[:,index], labels_series[:, index], past_truth_series[:, index]))
 
         # for plots
         plot_truth_series = []
@@ -450,6 +453,7 @@ class BaseS2SRegressor(pl.LightningModule):
             'test_mae': float(self.test_mae.compute().item()),
             'test_mase': float(self.test_mase.compute()),
             'rmse_by_step': rmse_by_step,
+            'mase_by_step': mase_by_step,
             'plot_truth': plot_truth_series,
             'plot_prediction': plot_prediction_series,
             'plot_all_dates': plot_all_dates,

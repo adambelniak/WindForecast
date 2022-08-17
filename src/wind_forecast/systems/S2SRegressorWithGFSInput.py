@@ -86,9 +86,12 @@ class S2SRegressorWithGFSInput(BaseS2SRegressor):
     def get_metrics_and_plot_results(self, step: int, outputs: List[Any]) -> Dict:
         if self.cfg.experiment.batch_size > 1:
             output_series = [item.cpu() for sublist in [x['output'] for x in outputs] for item in sublist]
-            labels_series = [item.cpu() for sublist in [x[BatchKeys.SYNOP_FUTURE_Y.value] for x in outputs] for item in sublist]
-            gfs_targets = [item.cpu() for sublist in [x[BatchKeys.GFS_FUTURE_Y.value] for x in outputs] for item in sublist]
-            past_truth_series = [item.cpu() for sublist in [x[BatchKeys.SYNOP_PAST_Y.value] for x in outputs] for item in sublist]
+            labels_series = [item.cpu() for sublist in [x[BatchKeys.SYNOP_FUTURE_Y.value] for x in outputs] for item in
+                             sublist]
+            gfs_targets = [item.cpu() for sublist in [x[BatchKeys.GFS_FUTURE_Y.value] for x in outputs] for item in
+                           sublist]
+            past_truth_series = [item.cpu() for sublist in [x[BatchKeys.SYNOP_PAST_Y.value] for x in outputs] for item
+                                 in sublist]
             inputs_dates = [item for sublist in [x[BatchKeys.DATES_PAST.value] for x in outputs] for item in sublist]
             labels_dates = [item for sublist in [x[BatchKeys.DATES_FUTURE.value] for x in outputs] for item in sublist]
         else:
@@ -110,6 +113,10 @@ class S2SRegressorWithGFSInput(BaseS2SRegressor):
 
         gfs_corr = np.mean(gfs_corrs)
         rmse_by_step = np.sqrt(np.mean(np.power(np.subtract(output_series, labels_series), 2), axis=0))
+        mase_by_step = []
+        for step in range(output_series.shape[-1]):
+            mase_by_step.append((abs(output_series[:, step] - labels_series[:, step]) /
+                                 abs(past_truth_series[:, :-1] - past_truth_series[:, 1:]).mean()).mean())
 
         # for plots
         plot_truth_series = []
@@ -137,6 +144,7 @@ class S2SRegressorWithGFSInput(BaseS2SRegressor):
             'test_mase': float(self.test_mase.compute()),
             'gfs_corr': gfs_corr,
             'rmse_by_step': rmse_by_step,
+            'mase_by_step': mase_by_step,
             'plot_truth': plot_truth_series,
             'plot_prediction': plot_prediction_series,
             'plot_all_dates': plot_all_dates,
