@@ -69,8 +69,6 @@ class Sequence2SequenceDataModule(SplittableDataModule):
         self.synop_data_indices = ...
         self.synop_mean = ...
         self.synop_std = ...
-        self.gfs_mean = ...
-        self.gfs_std = ...
         self.synop_feature_names = ...
 
     def prepare_data(self, *args, **kwargs):
@@ -129,8 +127,6 @@ class Sequence2SequenceDataModule(SplittableDataModule):
 
         dataset.set_mean(self.synop_mean)
         dataset.set_std(self.synop_std)
-        dataset.set_gfs_std(self.gfs_std)
-        dataset.set_gfs_mean(self.gfs_mean)
         self.split_dataset(self.config, dataset, self.sequence_length)
 
     def prepare_dataset_for_gfs(self):
@@ -153,13 +149,6 @@ class Sequence2SequenceDataModule(SplittableDataModule):
             gfs_past_x = normalize_gfs_data(gfs_past_x, self.normalization_type, (0, 1))
             gfs_future_x = normalize_gfs_data(gfs_future_x, self.normalization_type, (0, 1))
 
-        if self.target_param == "wind_velocity":
-            # handle target wind_velocity forecast by GFS
-            # velocity[0] is V GRD (northward), velocity[1] is U GRD (eastward)
-            gfs_future_y = np.apply_along_axis(lambda velocity: [math.sqrt(velocity[0] ** 2 + velocity[1] ** 2)], -1,
-                                                  gfs_future_y)
-            gfs_past_y = np.apply_along_axis(lambda velocity: [math.sqrt(velocity[0] ** 2 + velocity[1] ** 2)], -1,
-                                                  gfs_past_y)
         if self.target_param == "wind_direction":
             # set sin and cos components as targets, do not normalize them
             gfs_future_y = np.apply_along_axis(lambda velocity: [-velocity[1] / (math.sqrt(velocity[0] ** 2 + velocity[1] ** 2)),
@@ -168,12 +157,25 @@ class Sequence2SequenceDataModule(SplittableDataModule):
             gfs_past_y = np.apply_along_axis(lambda velocity: [-velocity[1] / (math.sqrt(velocity[0] ** 2 + velocity[1] ** 2)),
                                                                     -velocity[0] / (math.sqrt(velocity[0] ** 2 + velocity[1] ** 2))], -1,
                                                   gfs_past_y)
-
         else:
-            self.gfs_mean = np.mean(np.concatenate([gfs_past_y, gfs_future_y], 1), axis=(0, 1))
-            self.gfs_std = np.std(np.concatenate([gfs_past_y, gfs_future_y], 1), axis=(0, 1))
-            gfs_future_y = (gfs_future_y - self.gfs_mean) / self.gfs_std
-            gfs_past_y = (gfs_past_y - self.gfs_mean) / self.gfs_std
+            if self.target_param == "wind_velocity":
+                # handle target wind_velocity forecast by GFS
+                # velocity[0] is V GRD (northward), velocity[1] is U GRD (eastward)
+                gfs_future_y = np.apply_along_axis(lambda velocity: [math.sqrt(velocity[0] ** 2 + velocity[1] ** 2)], -1,
+                                                      gfs_future_y)
+                gfs_past_y = np.apply_along_axis(lambda velocity: [math.sqrt(velocity[0] ** 2 + velocity[1] ** 2)], -1,
+                                                      gfs_past_y)
+
+            elif self.target_param == "temperature":
+                K_TO_C = 273.15
+                gfs_future_y -= K_TO_C
+                gfs_past_y -= K_TO_C
+            elif self.target_param == "pressure":
+                gfs_future_y /= 100
+                gfs_past_y /= 100
+
+            gfs_future_y = (gfs_future_y - self.synop_mean) / self.synop_std
+            gfs_past_y = (gfs_past_y - self.synop_mean) / self.synop_std
 
         assert len(self.synop_data_indices) == len(
             gfs_future_x), f"len(all_gfs_target_data) should be {len(self.synop_data_indices)} but was {len(gfs_future_x)}"
@@ -235,9 +237,8 @@ class Sequence2SequenceDataModule(SplittableDataModule):
             dict_data[BatchKeys.DATES_PAST.value] = all_data[8]
             dict_data[BatchKeys.DATES_FUTURE.value] = all_data[9]
             if self.config.experiment.differential_forecast:
-                K_TO_C = 273.15 if self.config.experiment.target_parameter == 'temperature' else 0
-                gfs_past_y = dict_data[BatchKeys.GFS_PAST_Y.value] * self.dataset_train.gfs_std + self.dataset_train.gfs_mean - K_TO_C
-                gfs_future_y = dict_data[BatchKeys.GFS_FUTURE_Y.value] * self.dataset_train.gfs_std + self.dataset_train.gfs_mean - K_TO_C
+                gfs_past_y = dict_data[BatchKeys.GFS_PAST_Y.value] * self.dataset_train.std + self.dataset_train.mean
+                gfs_future_y = dict_data[BatchKeys.GFS_FUTURE_Y.value] * self.dataset_train.std + self.dataset_train.mean
                 synop_past_y = dict_data[BatchKeys.SYNOP_PAST_Y.value].unsqueeze(-1) * self.dataset_train.std + self.dataset_train.mean
                 synop_future_y = dict_data[BatchKeys.SYNOP_FUTURE_Y.value].unsqueeze(-1) * self.dataset_train.std + self.dataset_train.mean
                 diff_past = gfs_past_y - synop_past_y

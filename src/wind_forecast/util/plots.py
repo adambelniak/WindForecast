@@ -4,13 +4,12 @@ import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import numpy as np
 
-def plot_results(system, config: Config, mean, std, gfs_mean, gfs_std):
-    plot_random_series(system, config, mean, std, gfs_mean, gfs_std)
+def plot_results(system, config: Config, mean, std):
+    plot_random_series(system, config, mean, std)
     plot_step_by_step_metric(system)
 
 
-def plot_random_series(system, config: Config, mean, std, gfs_mean, gfs_std):
-    K_TO_C = 273.15 if config.experiment.target_parameter == 'temperature' else 0
+def plot_random_series(system, config: Config, mean, std):
     for index in range(len(system.test_results['plot_truth'])):
         fig, ax = plt.subplots()
         plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%m/%d/%Y %H%M'))
@@ -31,7 +30,7 @@ def plot_random_series(system, config: Config, mean, std, gfs_mean, gfs_std):
                 std = std[0]
             truth_series = (np.array(truth_series) * std + mean).tolist()
             if config.experiment.use_gfs_data:
-                gfs_out_series = np.array(gfs_out_series) * gfs_std + gfs_mean - K_TO_C
+                gfs_out_series = np.array(gfs_out_series) * std + mean
                 if config.experiment.differential_forecast:
                     prediction_series = (np.array(prediction_series) * std + gfs_out_series).tolist()
                 else:

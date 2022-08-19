@@ -21,8 +21,6 @@ class CustomSubset(Subset):
         super().__init__(dataset, indices)
         self.mean = dataset.mean
         self.std = dataset.std
-        self.gfs_mean = dataset.gfs_mean
-        self.gfs_std = dataset.gfs_std
 
 
 def basic_split_randomly(dataset, val_split: float, test_split: float):

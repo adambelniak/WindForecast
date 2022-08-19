@@ -476,6 +476,10 @@ def target_param_to_gfs_name_level(target_param: str):
         "wind_gust": [{
             "name": "GUST",
             "level": "SFC_0"
+        }],
+        "pressure": [{
+            "name": "PRES",
+            "level": "SFC_0"
         }]
     }[target_param]
 
