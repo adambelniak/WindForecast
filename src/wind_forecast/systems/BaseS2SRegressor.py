@@ -332,7 +332,8 @@ class BaseS2SRegressor(pl.LightningModule):
             metrics[key] = float(self._reduce(outputs, key).item())
 
         self.logger.log_metrics(metrics, step=step)
-        self.log("ptl/val_loss", metrics['val_rmse'])
+        self.log("ptl/val_rmse", metrics['val_rmse'])
+        self.log("ptl/val_mase", metrics['val_mase'])
 
     # ----------------------------------------------------------------------------------------------
     # Test

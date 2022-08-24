@@ -27,6 +27,10 @@ experiment.dropout=0.05 optim.base_lr=0.0002 experiment.lstm_hidden_state=1024 e
 experiment.use_time2vec=False experiment.use_value2vec=False experiment.regressor_head_dims=[64,32] experiment.epochs=20
 
 python -m wind_forecast.main experiment=bi_lstm_s2s_gfs optim=adam experiment.target_parameter=temperature \
+	experiment.dropout=0.05 optim.base_lr=0.0002 experiment.lstm_hidden_state=1024 experiment.lstm_num_layers=8 \
+experiment.use_time2vec=False experiment.use_value2vec=False experiment.regressor_head_dims=[64,32] experiment.epochs=20 experiment.gfs_on_head=False
+
+python -m wind_forecast.main experiment=bi_lstm_s2s_gfs optim=adam experiment.target_parameter=temperature \
 experiment.dropout=0.05 optim.base_lr=0.0002 experiment.lstm_hidden_state=1024 experiment.lstm_num_layers=8 \
 experiment.use_time2vec=False experiment.use_value2vec=False experiment.regressor_head_dims=[64,32] experiment.epochs=20 \
 experiment.sequence_length=48 experiment.num_workers=16
@@ -37,8 +41,8 @@ experiment.dropout=0.55 optim.base_lr=0.0002 experiment.tcn_kernel_size=3 experi
 experiment.use_time2vec=True experiment.time2vec_embedding_factor=18 experiment.use_value2vec=False \
  experiment.regressor_head_dims=[32] experiment.epochs=20 experiment.num_workers=16
 
- python -m wind_forecast.main experiment=tcn_encoder_s2s_gfs optim=adam experiment.target_parameter=temperature \
-experiment.dropout=0.55 optim.base_lr=0.0002 experiment.tcn_kernel_size=3 experiment.tcn_channels=[16,32] \
+python -m wind_forecast.main experiment=tcn_encoder_s2s_gfs optim=adam experiment.target_parameter=temperature \
+	experiment.dropout=0.55 optim.base_lr=0.0002 experiment.tcn_kernel_size=3 experiment.tcn_channels=[16,32] \
 experiment.use_time2vec=True experiment.time2vec_embedding_factor=18 experiment.use_value2vec=False \
  experiment.regressor_head_dims=[32] experiment.epochs=20 experiment.sequence_length=48 experiment.num_workers=16
 
@@ -101,8 +105,6 @@ experiment.dropout=0.07 optim.base_lr=0.0003 experiment.transformer_ff_dim=128 \
 experiment.transformer_encoder_layers=2 experiment.transformer_decoder_layers=8 \
 experiment.use_time2vec=False experiment.use_value2vec=False experiment.regressor_head_dims=[64,32] \
  experiment.epochs=20 experiment.sequence_length=48 experiment.num_workers=16
-
-
 
 
 

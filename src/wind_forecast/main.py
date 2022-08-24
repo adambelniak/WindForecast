@@ -22,7 +22,6 @@ from wind_forecast.util.rundir import setup_rundir
 
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
-
 def log_dataset_metrics(datamodule: LightningDataModule, logger: LightningLoggerBase):
     metrics = {
         'train_dataset_length': len(datamodule.dataset_train),
@@ -112,7 +111,7 @@ def run_tune(cfg: Config):
             logger=wandb_logger,
             max_epochs=cfg.experiment.epochs,
             gpus=cfg.lightning.gpus,
-            callbacks=[PyTorchLightningPruningCallback(trial, monitor="ptl/val_loss")],
+            callbacks=[PyTorchLightningPruningCallback(trial, monitor="ptl/val_mase")],
             checkpoint_callback=False,
             num_sanity_val_steps=-1 if cfg.experiment.validate_before_training else 0,
             check_val_every_n_epoch=cfg.experiment.check_val_every_n_epoch
@@ -126,7 +125,7 @@ def run_tune(cfg: Config):
             log.info(f'[bold red]>>> Tuning interrupted.')
             run.finish(exit_code=255)
 
-        val_loss = trainer.logged_metrics["ptl/val_loss"]
+        val_loss = trainer.logged_metrics["ptl/val_mase"]
         run.summary["final loss"] = val_loss
         run.summary["state"] = "completed"
         run.finish(quiet=True)
