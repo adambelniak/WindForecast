@@ -33,4 +33,4 @@ class OptimSettings:
 
     decay_epochs: int = 10
 
-    loss: str = 'rmse'
+    loss: str = 'mase'
