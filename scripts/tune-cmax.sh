@@ -1,5 +1,5 @@
-python -m wind_forecast.main experiment=bi_lstm_s2s_gfs_cmax tune=bi_lstm_s2s experiment.epochs=20 optim=adam experiment.target_parameter=temperature tune.trials=20
-python -m wind_forecast.main experiment=lstm_s2s_gfs_cmax tune=lstm_s2s experiment.epochs=20 optim=adam experiment.target_parameter=temperature tune.trials=20
+python -m wind_forecast.main experiment=bi_lstm_s2s_gfs_cmax tune=bi_lstm_s2s_cmax experiment.epochs=20 optim=adam experiment.target_parameter=temperature tune.trials=20
+python -m wind_forecast.main experiment=lstm_s2s_gfs_cmax tune=lstm_s2s_cmax experiment.epochs=20 optim=adam experiment.target_parameter=temperature tune.trials=20
 python -m wind_forecast.main experiment=tcn_encoder_s2s_cmax_gfs tune=tcn_encoder_s2s experiment.epochs=20 optim=adam experiment.target_parameter=temperature tune.trials=20
 python -m wind_forecast.main experiment=tcn_s2s_gfs_cmax tune=tcn_s2s experiment.epochs=20 optim=adam experiment.target_parameter=temperature tune.trials=20
 python -m wind_forecast.main experiment=tcn_s2s_gfs_attention_cmax tune=tcn_s2s_attention experiment.epochs=20 optim=adam experiment.target_parameter=temperature tune.trials=20

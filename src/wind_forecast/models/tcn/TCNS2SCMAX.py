@@ -2,17 +2,16 @@ import math
 from typing import Dict
 
 import torch
-import torch.nn as nn
 
 from wind_forecast.config.register import Config
 from wind_forecast.consts import BatchKeys
 from wind_forecast.embed.prepare_embeddings import get_embeddings
 from wind_forecast.models.CMAXAutoencoder import CMAXEncoder, get_pretrained_encoder
-from wind_forecast.models.tcn.TCNEncoderS2S import TCNEncoderS2S
+from wind_forecast.models.tcn.TCNS2S import TCNS2S
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 
 
-class TCNEncoderS2SCMAX(TCNEncoderS2S):
+class TCNS2SCMAX(TCNS2S):
     def __init__(self, config: Config):
         super().__init__(config)
         conv_H = config.experiment.cmax_h
@@ -43,7 +42,9 @@ class TCNEncoderS2SCMAX(TCNEncoderS2S):
         x = self.encoder(x.permute(0, 2, 1)).permute(0, 2, 1)
         mem = x[:, -self.future_sequence_length:, :]
 
+        y = self.decoder(mem).permute(0, 2, 1)[:, -self.future_sequence_length:, :]
+
         if self.use_gfs and self.gfs_on_head:
             gfs_targets = batch[BatchKeys.GFS_FUTURE_Y.value].float()
-            return self.regressor_head(torch.cat([mem, gfs_targets], -1)).squeeze(-1)
-        return self.regressor_head(mem).squeeze(-1)
+            return self.regressor_head(torch.cat([y, gfs_targets], -1)).squeeze(-1)
+        return self.regressor_head(y).squeeze(-1)

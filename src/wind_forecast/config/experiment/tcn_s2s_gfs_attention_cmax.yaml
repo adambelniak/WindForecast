@@ -13,7 +13,7 @@ datamodule:
   _target_: wind_forecast.datamodules.Sequence2SequenceWithCMAXDataModule.Sequence2SequenceWithCMAXDataModule
 
 model:
-  _target_: wind_forecast.models.tcn.TCNS2SAttention.TCNS2SAttention
+  _target_: wind_forecast.models.tcn.TCNS2SAttentionCMAX.TCNS2SAttentionCMAX
 
 system:
   _target_: wind_forecast.systems.S2SRegressorWithGFSInput.S2SRegressorWithGFSInput

@@ -59,25 +59,13 @@ class TCNEncoderS2S(EMDDecomposeable):
             self.value_embed = TimeDistributed(Value2Vec(self.features_length, self.value2vec_embedding_factor),
                                                batch_first=True)
 
+        self.embed_dim = self.features_length * (self.value2vec_embedding_factor + 1)
         if config.experiment.with_dates_inputs:
-            self.embed_dim = self.features_length * (self.value2vec_embedding_factor + 1) + self.dates_dim
-        else:
-            self.embed_dim = self.features_length * (self.value2vec_embedding_factor + 1)
+            self.embed_dim += self.dates_dim
 
-        tcn_layers = []
-        kernel_size = 3
-        in_channels = 1 if self.self_output_test or self.config.experiment.emd_decompose else self.embed_dim
-
-        for i in range(self.num_levels):
-            dilation_size = 2 ** i
-            out_channels = self.tcn_channels[i]
-            tcn_layers += [TemporalBlock(in_channels, out_channels, kernel_size, dilation=dilation_size,
-                                         padding=(kernel_size - 1) * dilation_size, dropout=self.dropout)]
-            in_channels = out_channels
+        self.create_tcn_layers()
 
         in_features = self.tcn_channels[-1]
-
-        self.encoder = nn.Sequential(*tcn_layers)
 
         if self.use_gfs and self.gfs_on_head and not self.self_output_test:
             in_features += 1
@@ -89,6 +77,20 @@ class TCNEncoderS2S(EMDDecomposeable):
             nn.ReLU(),
             nn.Linear(in_features=32, out_features=1)
         )
+
+    def create_tcn_layers(self):
+        tcn_layers = []
+        kernel_size = self.config.experiment.tcn_kernel_size
+        in_channels = 1 if self.self_output_test or self.config.experiment.emd_decompose else self.embed_dim
+
+        for i in range(self.num_levels):
+            dilation_size = 2 ** i
+            out_channels = self.tcn_channels[i]
+            tcn_layers += [TemporalBlock(in_channels, out_channels, kernel_size, dilation=dilation_size,
+                                         padding=(kernel_size - 1) * dilation_size, dropout=self.dropout)]
+            in_channels = out_channels
+
+        self.encoder = nn.Sequential(*tcn_layers)
 
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
         if self.self_output_test:
