@@ -14,8 +14,6 @@ class TCNS2S(TCNEncoderS2S):
     def __init__(self, config: Config):
         super().__init__(config)
 
-        self.kernel_size = config.experiment.tcn_kernel_size
-
         tcn_layers = []
         in_channels = config.experiment.tcn_channels[-1]
         for i in range(self.num_levels):

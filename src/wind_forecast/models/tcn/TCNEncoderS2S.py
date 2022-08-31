@@ -25,6 +25,7 @@ class TCNEncoderS2S(EMDDecomposeable):
         self.self_output_test = config.experiment.self_output_test
         self.tcn_channels = config.experiment.tcn_channels
         self.num_levels = len(self.tcn_channels)
+        self.kernel_size = config.experiment.tcn_kernel_size
 
         self.features_length = len(config.experiment.synop_train_features) + len(config.experiment.synop_periodic_features)
         self.time2vec_embedding_factor = config.experiment.time2vec_embedding_factor
