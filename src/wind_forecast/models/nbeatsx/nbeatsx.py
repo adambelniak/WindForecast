@@ -285,6 +285,7 @@ class Nbeatsx(pl.LightningModule):
             target_elements = all_gfs_targets
         else:
             input_elements = synop_inputs
+            target_elements = None
 
         value_embed = [self.value2vec_insample, self.value2vec_outsample] if self.use_value2vec else None
         time_embed = self.time_embed if self.use_time2vec else None
@@ -306,4 +307,4 @@ class Nbeatsx(pl.LightningModule):
                 else:
                     target_elements = t.cat([target_elements, dates_tensors[1]], -1)
 
-        return input_elements, target_elements if with_gfs_params else None
+        return input_elements, target_elements

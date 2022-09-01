@@ -112,7 +112,7 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
         s2s_data, cmax_data = [item[0] for item in x], [item[1] for item in x]
         variables, dates = [item[:-2] for item in s2s_data], [item[-2:] for item in s2s_data]
         if self.load_future_cmax:
-            all_data = [*default_collate(variables), *list(zip(*dates)), *default_collate(np.array(cmax_data))]
+            all_data = [*default_collate(variables), *list(zip(*dates)), *default_collate(np.array(cmax_data)).permute((1,0,2,3,4))]
         else:
             all_data = [*default_collate(variables), *list(zip(*dates)), torch.Tensor(np.array(cmax_data))]
 

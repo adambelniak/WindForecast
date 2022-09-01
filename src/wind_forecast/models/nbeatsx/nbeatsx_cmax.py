@@ -30,7 +30,6 @@ class Nbeatsx_CMAX(Nbeatsx):
 
         cmax_embed_dim = conv_W * conv_H * out_channels
         self.n_insample_t += cmax_embed_dim
-        self.n_outsample_t += cmax_embed_dim
 
         block_list = self.create_stacks()
 
@@ -43,34 +42,33 @@ class Nbeatsx_CMAX(Nbeatsx):
         # No static features in my case
         return self.model(x_static=t.Tensor([]), insample_y=synop_past_targets,
                           insample_x_t=insample_elements.permute(0, 2, 1),
-                          outsample_x_t=outsample_elements.permute(0, 2, 1))
+                          outsample_x_t=outsample_elements.permute(0, 2, 1) if self.use_gfs else None)
 
     def get_embeddings(self, batch):
         with_dates = self.config.experiment.with_dates_inputs
         with_gfs_params = self.use_gfs
         synop_inputs = batch[BatchKeys.SYNOP_PAST_X.value].float()
         cmax_inputs = batch[BatchKeys.CMAX_PAST.value].float()
-        cmax_targets = batch[BatchKeys.CMAX_FUTURE.value].float()
         dates_tensors = None if with_dates is False else batch[BatchKeys.DATES_TENSORS.value]
 
         cmax_input_embeddings = self.conv_time_distributed(cmax_inputs.unsqueeze(2))
-        cmax_targets_embeddings = self.conv_time_distributed(cmax_targets.unsqueeze(2))
 
         if with_gfs_params:
             gfs_inputs = batch[BatchKeys.GFS_PAST_X.value].float()
             input_elements = t.cat([synop_inputs, gfs_inputs, cmax_input_embeddings], -1)
             all_gfs_targets = batch[BatchKeys.GFS_FUTURE_X.value].float()
-            target_elements = t.cat([all_gfs_targets, cmax_targets_embeddings], -1)
+            target_elements = all_gfs_targets
         else:
             input_elements = synop_inputs
-            target_elements = cmax_targets
+            target_elements = None
 
         value_embed = [self.value2vec_insample, self.value2vec_outsample] if self.use_value2vec else None
         time_embed = self.time_embed if self.use_time2vec else None
 
         if value_embed is not None:
             input_elements = t.cat([input_elements, value_embed[0](input_elements)], -1)
-            target_elements = t.cat([target_elements, value_embed[1](target_elements)], -1)
+            if with_gfs_params:
+                target_elements = t.cat([target_elements, value_embed[1](target_elements)], -1)
 
         if with_dates:
             if time_embed is not None:
@@ -78,9 +76,10 @@ class Nbeatsx_CMAX(Nbeatsx):
             else:
                 input_elements = t.cat([input_elements, dates_tensors[0]], -1)
 
-            if time_embed is not None:
-                target_elements = t.cat([target_elements, time_embed(dates_tensors[1])], -1)
-            else:
-                target_elements = t.cat([target_elements, dates_tensors[1]], -1)
+            if with_gfs_params:
+                if time_embed is not None:
+                    target_elements = t.cat([target_elements, time_embed(dates_tensors[1])], -1)
+                else:
+                    target_elements = t.cat([target_elements, dates_tensors[1]], -1)
 
         return input_elements, target_elements

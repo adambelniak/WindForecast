@@ -49,9 +49,9 @@ class TransformerCMAXWithGFS(TransformerGFSBaseProps):
         memory = self.encoder(input_embedding)
         if epoch < self.teacher_forcing_epoch_num and is_train:
             cmax_targets = batch[BatchKeys.CMAX_FUTURE.value].float()
-            self.conv_time_distributed.requires_grad_(False)
+            # self.conv_time_distributed.requires_grad_(False)
             cmax_targets_embeddings = self.conv_time_distributed(cmax_targets.unsqueeze(2))
-            self.conv_time_distributed.requires_grad_(True)
+            # self.conv_time_distributed.requires_grad_(True)
             target_elements = torch.cat([target_elements, cmax_targets_embeddings], -1)
             target_embedding = self.pos_encoder(target_elements) if self.use_pos_encoding else target_elements
         else:

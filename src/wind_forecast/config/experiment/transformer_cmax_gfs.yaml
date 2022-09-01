@@ -5,7 +5,7 @@ defaults:
   - schema_experiment
 
 _tags_:
-  - TRANSFORMER_CMAX
+  - TRANSFORMER_CMAX_GFS
 
 resume_checkpoint: ~
 
