@@ -1,0 +1,167 @@
+import math
+from typing import Dict
+
+import torch
+from torch import nn
+
+from wind_forecast.config.register import Config
+from wind_forecast.consts import BatchKeys
+from wind_forecast.models.lstm.LSTMS2SModel import LSTMS2SModel
+
+
+class HybridLSTMS2SModel(LSTMS2SModel):
+
+    def __init__(self, config: Config):
+        super().__init__(config)
+        assert self.use_gfs, "GFS needs to be used for hybrid model"
+        self.synop_features_length = len(config.experiment.synop_train_features) + len(config.experiment.synop_periodic_features)
+
+        self.decoder_embed_dim = self.features_length
+        if config.experiment.with_dates_inputs:
+            self.decoder_embed_dim += self.dates_dim
+
+        self.encoder_lstm = nn.LSTM(input_size=self.embed_dim, hidden_size=self.lstm_hidden_state, batch_first=True,
+                                    dropout=self.dropout, num_layers=config.experiment.lstm_num_layers,
+                                    proj_size=self.decoder_embed_dim)
+
+        self.decoder_lstm = nn.LSTM(input_size=self.decoder_embed_dim, hidden_size=self.lstm_hidden_state, batch_first=True,
+                                    dropout=self.dropout, num_layers=config.experiment.lstm_num_layers,
+                                    proj_size=self.decoder_embed_dim)
+
+        features = self.decoder_embed_dim
+        if self.use_gfs and self.gfs_on_head:
+            features += 1
+
+        dense_layers = []
+        for neurons in self.config.experiment.regressor_head_dims:
+            dense_layers.append(nn.Linear(in_features=features, out_features=neurons))
+            features = neurons
+        dense_layers.append(nn.Linear(in_features=features, out_features=1))
+
+        self.regressor_head = nn.Sequential(*dense_layers)
+
+    def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
+        is_train = stage not in ['test', 'predict', 'validate']
+        input_elements, all_synop_targets, all_gfs_targets, future_dates = self.get_embeddings(
+            batch, self.config.experiment.with_dates_inputs,
+            self.time_embed if self.use_time2vec else None,
+            self.value_embed if self.use_value2vec else None,
+            self.use_gfs, is_train)
+
+        gfs_split_point = self.synop_features_length
+
+        gfs_targets = batch[BatchKeys.GFS_FUTURE_Y.value].float()
+        _, state = self.encoder_lstm(input_elements)
+
+        if epoch < self.teacher_forcing_epoch_num and is_train:
+            # Teacher forcing
+            if self.gradual_teacher_forcing:
+                first_taught = math.floor(epoch / self.teacher_forcing_epoch_num * self.future_sequence_length)
+                decoder_input = torch.cat(
+                    [
+                        input_elements[:, -1:, :gfs_split_point],
+                        all_gfs_targets[:, :1, :],
+                        future_dates[:, :1, :]
+                    ], -1)
+
+                pred = None
+                for frame in range(first_taught):  # do normal prediction for the beginning frames
+                    next_pred, state = self.decoder_lstm(decoder_input, state)
+                    pred = torch.cat([pred, next_pred[:, -1:, :]], -2) if pred is not None else next_pred[:, -1:, :]
+                    if frame < first_taught - 1:
+                        decoder_input = torch.cat(
+                            [
+                                next_pred[:, -1:, :gfs_split_point],
+                                all_gfs_targets[:, (frame + 1):(frame + 2), :],
+                                future_dates[:, (frame + 1):(frame + 2), :]
+                            ], -1)
+
+                # then, do teacher forcing
+                # SOS is appended for case when first_taught is 0
+                first_decoder_input = torch.cat(
+                    [
+                        input_elements[:, -1:, :gfs_split_point],
+                        all_gfs_targets[:, :1, :],
+                        future_dates[:, :1, :]
+                    ], -1)
+                next_decoder_inputs = torch.cat(
+                    [
+                        all_synop_targets[:, :, :gfs_split_point],
+                        all_gfs_targets[:, :, :],
+                        future_dates[:, :, :]
+                    ], -1)
+                decoder_input = torch.cat([first_decoder_input, next_decoder_inputs], 1)[:, first_taught:-1, ]
+                next_pred, _ = self.decoder_lstm(decoder_input, state)
+                output = torch.cat([pred, next_pred], -2) if pred is not None else next_pred
+
+            else:
+                # non-gradual, just basic teacher forcing
+                first_decoder_input = torch.cat(
+                    [
+                        input_elements[:, -1:, :gfs_split_point],
+                        all_gfs_targets[:, :1, :],
+                        future_dates[:, :1, :]
+                    ], -1)
+                next_decoder_inputs = torch.cat(
+                    [
+                        all_synop_targets[:, :, :gfs_split_point],
+                        all_gfs_targets[:, :, :],
+                        future_dates[:, :, :]
+                    ], -1)
+                decoder_input = torch.cat([first_decoder_input, next_decoder_inputs], 1)[:, :-1, ]
+                output, _ = self.decoder_lstm(decoder_input, state)
+
+        else:
+            # inference - pass only predictions to decoder
+            decoder_input = torch.cat(
+                [
+                    input_elements[:, -1:, :gfs_split_point],
+                    all_gfs_targets[:, :1, :],
+                    future_dates[:, :1, :]
+                ], -1)
+            pred = None
+            for frame in range(self.future_sequence_length):
+                next_pred, state = self.decoder_lstm(decoder_input, state)
+                pred = torch.cat([pred, next_pred[:, -1:, :]], -2) if pred is not None else next_pred[:, -1:, :]
+                if frame < self.future_sequence_length - 1:
+                    decoder_input = torch.cat(
+                        [
+                            next_pred[:, -1:, :gfs_split_point],
+                            all_gfs_targets[:, (frame + 1):(frame + 2), :],
+                            future_dates[:, (frame + 1):(frame + 2), :]
+                        ], -1)
+            output = pred
+
+        if self.use_gfs and self.gfs_on_head:
+            return torch.squeeze(self.regressor_head(torch.cat([output, gfs_targets], -1)), -1)
+
+        return torch.squeeze(self.regressor_head(output), -1)
+
+    def get_embeddings(self, batch, with_dates, time_embed, value_embed, with_gfs_params, with_future):
+        synop_inputs = batch[BatchKeys.SYNOP_PAST_X.value].float()
+        all_synop_targets = batch[BatchKeys.SYNOP_FUTURE_X.value].float() if with_future else None
+        all_gfs_targets = batch[BatchKeys.GFS_FUTURE_X.value].float() if with_gfs_params else None
+        dates_tensors = None if with_dates is False else batch[BatchKeys.DATES_TENSORS.value]
+        future_dates = None
+
+        if with_gfs_params:
+            gfs_inputs = batch[BatchKeys.GFS_PAST_X.value].float()
+            input_elements = torch.cat([synop_inputs, gfs_inputs], -1)
+        else:
+            input_elements = synop_inputs
+
+        if value_embed is not None:
+            input_elements = torch.cat([input_elements, value_embed(input_elements)], -1)
+
+        if with_dates:
+            if time_embed is not None:
+                input_elements = torch.cat([input_elements, time_embed(dates_tensors[0])], -1)
+            else:
+                input_elements = torch.cat([input_elements, dates_tensors[0]], -1)
+
+            if time_embed is not None:
+                future_dates = time_embed(dates_tensors[1])
+            else:
+                future_dates = dates_tensors[1]
+
+        return input_elements, all_synop_targets, all_gfs_targets, future_dates

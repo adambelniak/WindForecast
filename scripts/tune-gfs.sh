@@ -1,5 +1,6 @@
 python -m wind_forecast.main experiment=bi_lstm_s2s_gfs tune=bi_lstm_s2s experiment.epochs=10 optim=adam experiment.target_parameter=temperature
 python -m wind_forecast.main experiment=lstm_s2s_gfs tune=lstm_s2s experiment.epochs=10 optim=adam experiment.target_parameter=temperature
+python -m wind_forecast.main experiment=hybrid_lstm_s2s_gfs tune=lstm_s2s experiment.epochs=10 optim=adam experiment.target_parameter=temperature
 python -m wind_forecast.main experiment=tcn_encoder_s2s_gfs tune=tcn_encoder_s2s experiment.epochs=10 optim=adam experiment.target_parameter=temperature
 python -m wind_forecast.main experiment=tcn_s2s_gfs tune=tcn_s2s experiment.epochs=10 optim=adam  experiment.target_parameter=temperature
 python -m wind_forecast.main experiment=tcn_s2s_gfs_attention tune=tcn_s2s_attention experiment.epochs=10 optim=adam experiment.target_parameter=temperature
