@@ -29,7 +29,9 @@ class TCNEncoderS2SCMAX(TCNEncoderS2S):
             conv_H = math.ceil(conv_H / 2)
 
         self.embed_dim += conv_W * conv_H * out_cnn_channels
-        self.create_tcn_layers()
+        self.create_tcn_encoder()
+        self.regression_head_features = self.tcn_channels[-1]
+        self.create_regression_head()
 
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
         input_elements, target_elements = get_embeddings(batch, self.config.experiment.with_dates_inputs,

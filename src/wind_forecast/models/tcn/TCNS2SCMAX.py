@@ -28,7 +28,13 @@ class TCNS2SCMAX(TCNS2S):
             conv_H = math.ceil(conv_H / 2)
 
         self.embed_dim += conv_W * conv_H * out_cnn_channels
-        self.create_tcn_layers()
+        self.create_tcn_encoder()
+        self.create_tcn_decoder()
+        self.regression_head_features = self.embed_dim
+        if self.use_gfs and self.gfs_on_head:
+            self.regression_head_features += 1
+
+        self.create_regression_head()
 
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
         input_elements, target_elements = get_embeddings(batch, self.config.experiment.with_dates_inputs,
@@ -39,9 +45,8 @@ class TCNS2SCMAX(TCNS2S):
 
         cmax_embedding = self.conv_time_distributed(cmax_inputs.unsqueeze(2))
         x = torch.cat([input_elements, cmax_embedding], dim=-1)
-        x = self.encoder(x.permute(0, 2, 1)).permute(0, 2, 1)
-        mem = x[:, -self.future_sequence_length:, :]
 
+        mem = self.encoder(x.permute(0, 2, 1))
         y = self.decoder(mem).permute(0, 2, 1)[:, -self.future_sequence_length:, :]
 
         if self.use_gfs and self.gfs_on_head:

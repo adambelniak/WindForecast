@@ -26,7 +26,7 @@ def decompose_synop(synop_file):
     series = data[["date", "temperature"]]
     series = series[series['date'] <= datetime.datetime(year=2016, month=4, day=1)]
     series = series.set_index('date')
-    stl = STL(series, seasonal=11, period=24, trend=43, low_pass=25)
+    stl = STL(series, seasonal=35, period=24, trend=81, low_pass=25)
     res = stl.fit(inner_iter=1, outer_iter=10)
     O, T, S, R = res.observed, res.trend, res.seasonal, res.resid
     fig, axes = plt.subplots(4, 1, figsize=(15, 5), sharex=True)

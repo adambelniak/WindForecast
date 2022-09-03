@@ -23,4 +23,10 @@ class TCNS2SAttentionCMAX(TCNS2SAttention):
             conv_H = math.ceil(conv_H / 2)
 
         self.embed_dim += conv_W * conv_H * out_cnn_channels
-        self.create_tcn_layers()
+        self.create_tcn_encoder()
+        self.create_tcn_decoder()
+        self.regression_head_features = self.embed_dim
+        if self.use_gfs and self.gfs_on_head:
+            self.regression_head_features += 1
+
+        self.create_regression_head()

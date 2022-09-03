@@ -24,7 +24,7 @@ class TCNEncoderS2S(EMDDecomposeable):
         self.future_sequence_length = config.experiment.future_sequence_length
         self.self_output_test = config.experiment.self_output_test
         self.tcn_channels = config.experiment.tcn_channels
-        self.num_levels = len(self.tcn_channels)
+        self.num_layers = len(self.tcn_channels)
         self.kernel_size = config.experiment.tcn_kernel_size
 
         self.features_length = len(config.experiment.synop_train_features) + len(config.experiment.synop_periodic_features)
@@ -64,31 +64,30 @@ class TCNEncoderS2S(EMDDecomposeable):
         if config.experiment.with_dates_inputs:
             self.embed_dim += self.dates_dim
 
-        self.create_tcn_layers()
+        self.create_tcn_encoder()
 
-        in_features = self.tcn_channels[-1]
+        self.regression_head_features = self.tcn_channels[-1]
+        self.create_regression_head()
 
-        if self.use_gfs and self.gfs_on_head and not self.self_output_test:
-            in_features += 1
+    def create_regression_head(self):
+        dense_layers = []
+        features = self.regression_head_features
+        for neurons in self.config.experiment.regressor_head_dims:
+            dense_layers.append(nn.Linear(in_features=features, out_features=neurons))
+            features = neurons
+        dense_layers.append(nn.Linear(in_features=features, out_features=1))
 
-        self.regressor_head = nn.Sequential(
-            nn.Linear(in_features=in_features, out_features=64),
-            nn.ReLU(),
-            nn.Linear(in_features=64, out_features=32),
-            nn.ReLU(),
-            nn.Linear(in_features=32, out_features=1)
-        )
+        self.regressor_head = nn.Sequential(*dense_layers)
 
-    def create_tcn_layers(self):
+    def create_tcn_encoder(self):
         tcn_layers = []
-        kernel_size = self.config.experiment.tcn_kernel_size
         in_channels = 1 if self.self_output_test or self.config.experiment.emd_decompose else self.embed_dim
 
-        for i in range(self.num_levels):
+        for i in range(self.num_layers):
             dilation_size = 2 ** i
             out_channels = self.tcn_channels[i]
-            tcn_layers += [TemporalBlock(in_channels, out_channels, kernel_size, dilation=dilation_size,
-                                         padding=(kernel_size - 1) * dilation_size, dropout=self.dropout)]
+            tcn_layers += [TemporalBlock(in_channels, out_channels, self.kernel_size, dilation=dilation_size,
+                                         padding=(self.kernel_size - 1) * dilation_size, dropout=self.dropout)]
             in_channels = out_channels
 
         self.encoder = nn.Sequential(*tcn_layers)
