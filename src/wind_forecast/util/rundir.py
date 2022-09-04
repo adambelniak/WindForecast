@@ -19,7 +19,7 @@ def setup_rundir():
     results_root = f'{os.getenv("RESULTS_DIR")}/{os.getenv("WANDB_PROJECT")}'
     if os.getenv('RUN_MODE', '').lower() in ['debug', 'tune_debug', 'analysis']:
         run_dir = f'{results_root}/_{os.getenv("RUN_MODE", "")}/{os.getenv("RUN_NAME")}'
-        if os.getenv('RUN_MODE', '').lower() in ['debug', 'tune_debug']:
+        if os.getenv('RUN_MODE', '').lower() in ['tune_debug']:
             os.environ['WANDB_MODE'] = 'disabled'
     else:
         run_dir = f'{results_root}/{os.getenv("RUN_NAME")}'
