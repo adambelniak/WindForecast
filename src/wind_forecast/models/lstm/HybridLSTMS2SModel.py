@@ -22,13 +22,13 @@ class HybridLSTMS2SModel(LSTMS2SModel):
 
         self.encoder_lstm = nn.LSTM(input_size=self.embed_dim, hidden_size=self.lstm_hidden_state, batch_first=True,
                                     dropout=self.dropout, num_layers=config.experiment.lstm_num_layers,
-                                    proj_size=self.decoder_embed_dim)
+                                    proj_size=self.synop_features_length)
 
         self.decoder_lstm = nn.LSTM(input_size=self.decoder_embed_dim, hidden_size=self.lstm_hidden_state, batch_first=True,
                                     dropout=self.dropout, num_layers=config.experiment.lstm_num_layers,
-                                    proj_size=self.decoder_embed_dim)
+                                    proj_size=self.synop_features_length)
 
-        features = self.decoder_embed_dim
+        features = self.synop_features_length
         if self.use_gfs and self.gfs_on_head:
             features += 1
 
