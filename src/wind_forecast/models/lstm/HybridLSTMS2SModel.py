@@ -87,7 +87,7 @@ class HybridLSTMS2SModel(LSTMS2SModel):
         else:
             input_elements = synop_inputs
 
-        if self.use_value2vec is not None:
+        if self.use_value2vec:
             input_elements = torch.cat([input_elements, self.value_embed(input_elements)], -1)
             if with_future:
                 all_synop_targets = torch.cat([all_synop_targets, self.value_embed_synop(all_synop_targets)], -1)
