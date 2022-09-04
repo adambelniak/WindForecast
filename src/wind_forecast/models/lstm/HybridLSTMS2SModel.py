@@ -7,6 +7,8 @@ from torch import nn
 from wind_forecast.config.register import Config
 from wind_forecast.consts import BatchKeys
 from wind_forecast.models.lstm.LSTMS2SModel import LSTMS2SModel
+from wind_forecast.models.value2vec.Value2Vec import Value2Vec
+from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 
 
 class HybridLSTMS2SModel(LSTMS2SModel):
@@ -14,21 +16,35 @@ class HybridLSTMS2SModel(LSTMS2SModel):
     def __init__(self, config: Config):
         super().__init__(config)
         assert self.use_gfs, "GFS needs to be used for hybrid model"
-        self.synop_features_length = len(config.experiment.synop_train_features) + len(config.experiment.synop_periodic_features)
+        self.synop_features_length = len(config.experiment.synop_train_features) + len(
+            config.experiment.synop_periodic_features)
 
         self.decoder_embed_dim = self.features_length
+        self.decoder_output_dim = self.synop_features_length
+        self.gfs_embed_dim = self.gfs_params_len
+
+        if self.use_value2vec:
+            self.decoder_embed_dim += self.value2vec_embedding_factor * self.decoder_embed_dim
+            self.decoder_output_dim += self.value2vec_embedding_factor * self.decoder_output_dim
+            self.gfs_embed_dim += self.value2vec_embedding_factor * self.gfs_params_len
+            self.value_embed_gfs = TimeDistributed(Value2Vec(self.gfs_params_len, self.value2vec_embedding_factor),
+                                                   batch_first=True)
+            self.value_embed_synop = TimeDistributed(Value2Vec(self.synop_features_length, self.value2vec_embedding_factor),
+                                                   batch_first=True)
+
         if config.experiment.with_dates_inputs:
             self.decoder_embed_dim += self.dates_dim
 
         self.encoder_lstm = nn.LSTM(input_size=self.embed_dim, hidden_size=self.lstm_hidden_state, batch_first=True,
                                     dropout=self.dropout, num_layers=config.experiment.lstm_num_layers,
-                                    proj_size=self.synop_features_length)
+                                    proj_size=self.decoder_output_dim)
 
-        self.decoder_lstm = nn.LSTM(input_size=self.decoder_embed_dim, hidden_size=self.lstm_hidden_state, batch_first=True,
+        self.decoder_lstm = nn.LSTM(input_size=self.decoder_embed_dim, hidden_size=self.lstm_hidden_state,
+                                    batch_first=True,
                                     dropout=self.dropout, num_layers=config.experiment.lstm_num_layers,
-                                    proj_size=self.synop_features_length)
+                                    proj_size=self.decoder_output_dim)
 
-        features = self.synop_features_length
+        features = self.decoder_output_dim
         if self.use_gfs and self.gfs_on_head:
             features += 1
 
@@ -45,23 +61,20 @@ class HybridLSTMS2SModel(LSTMS2SModel):
         input_elements, all_synop_targets, all_gfs_targets, future_dates = self.get_embeddings(
             batch, self.config.experiment.with_dates_inputs,
             self.time_embed if self.use_time2vec else None,
-            self.value_embed if self.use_value2vec else None,
             self.use_gfs, is_train)
-
-        gfs_split_point = self.synop_features_length
 
         gfs_targets = batch[BatchKeys.GFS_FUTURE_Y.value].float()
         _, state = self.encoder_lstm(input_elements)
 
         decoder_output = self.decoder_forward(epoch, is_train, state, input_elements, all_synop_targets,
-                        all_gfs_targets, future_dates, gfs_split_point)
+                                              all_gfs_targets, future_dates)
 
         if self.use_gfs and self.gfs_on_head:
             return torch.squeeze(self.regressor_head(torch.cat([decoder_output, gfs_targets], -1)), -1)
 
         return torch.squeeze(self.regressor_head(decoder_output), -1)
 
-    def get_embeddings(self, batch, with_dates, time_embed, value_embed, with_gfs_params, with_future):
+    def get_embeddings(self, batch, with_dates, time_embed, with_gfs_params, with_future):
         synop_inputs = batch[BatchKeys.SYNOP_PAST_X.value].float()
         all_synop_targets = batch[BatchKeys.SYNOP_FUTURE_X.value].float() if with_future else None
         all_gfs_targets = batch[BatchKeys.GFS_FUTURE_X.value].float() if with_gfs_params else None
@@ -74,8 +87,11 @@ class HybridLSTMS2SModel(LSTMS2SModel):
         else:
             input_elements = synop_inputs
 
-        if value_embed is not None:
-            input_elements = torch.cat([input_elements, value_embed(input_elements)], -1)
+        if self.use_value2vec is not None:
+            input_elements = torch.cat([input_elements, self.value_embed(input_elements)], -1)
+            if with_future:
+                all_synop_targets = torch.cat([all_synop_targets, self.value_embed_synop(all_synop_targets)], -1)
+            all_gfs_targets = torch.cat([all_gfs_targets, self.value_embed_gfs(all_gfs_targets)], -1)
 
         if with_dates:
             if time_embed is not None:
@@ -90,15 +106,14 @@ class HybridLSTMS2SModel(LSTMS2SModel):
 
         return input_elements, all_synop_targets, all_gfs_targets, future_dates
 
-    def decoder_forward(self, epoch, is_train, state, input_elements, all_synop_targets,
-                        all_gfs_targets, future_dates, gfs_split_point):
+    def decoder_forward(self, epoch, is_train, state, input_elements, all_synop_targets, all_gfs_targets, future_dates):
         if epoch < self.teacher_forcing_epoch_num and is_train:
             # Teacher forcing
             if self.gradual_teacher_forcing:
                 first_taught = math.floor(epoch / self.teacher_forcing_epoch_num * self.future_sequence_length)
                 decoder_input = torch.cat(
                     [
-                        input_elements[:, -1:, :gfs_split_point],
+                        input_elements[:, -1:, :-(self.gfs_embed_dim + self.dates_dim)],
                         all_gfs_targets[:, :1, :],
                         future_dates[:, :1, :]
                     ], -1)
@@ -110,7 +125,7 @@ class HybridLSTMS2SModel(LSTMS2SModel):
                     if frame < first_taught - 1:
                         decoder_input = torch.cat(
                             [
-                                next_pred[:, -1:, :gfs_split_point],
+                                next_pred[:, -1:, :],
                                 all_gfs_targets[:, (frame + 1):(frame + 2), :],
                                 future_dates[:, (frame + 1):(frame + 2), :]
                             ], -1)
@@ -119,7 +134,7 @@ class HybridLSTMS2SModel(LSTMS2SModel):
                 # SOS is appended for case when first_taught is 0
                 first_decoder_input = torch.cat(
                     [
-                        input_elements[:, -1:, :gfs_split_point],
+                        input_elements[:, -1:, :-(self.gfs_embed_dim + self.dates_dim)],
                         all_gfs_targets[:, :1, :],
                         future_dates[:, :1, :]
                     ], -1)
@@ -137,7 +152,7 @@ class HybridLSTMS2SModel(LSTMS2SModel):
                 # non-gradual, just basic teacher forcing
                 first_decoder_input = torch.cat(
                     [
-                        input_elements[:, -1:, :gfs_split_point],
+                        input_elements[:, -1:, :-(self.gfs_embed_dim + self.dates_dim)],
                         all_gfs_targets[:, :1, :],
                         future_dates[:, :1, :]
                     ], -1)
@@ -154,7 +169,7 @@ class HybridLSTMS2SModel(LSTMS2SModel):
             # inference - pass only predictions to decoder
             decoder_input = torch.cat(
                 [
-                    input_elements[:, -1:, :gfs_split_point],
+                    input_elements[:, -1:, :-(self.gfs_embed_dim + self.dates_dim)],
                     all_gfs_targets[:, :1, :],
                     future_dates[:, :1, :]
                 ], -1)
@@ -165,7 +180,7 @@ class HybridLSTMS2SModel(LSTMS2SModel):
                 if frame < self.future_sequence_length - 1:
                     decoder_input = torch.cat(
                         [
-                            next_pred[:, -1:, :gfs_split_point],
+                            next_pred[:, -1:, :],
                             all_gfs_targets[:, (frame + 1):(frame + 2), :],
                             future_dates[:, (frame + 1):(frame + 2), :]
                         ], -1)
