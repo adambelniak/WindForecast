@@ -14,6 +14,7 @@ class TCNS2S(TCNEncoderS2S):
     def __init__(self, config: Config):
         super().__init__(config)
 
+        self.gfs_embed_dim = self.gfs_params_len
         self.create_tcn_decoder()
         self.regression_head_features = self.embed_dim
         if self.use_gfs and self.gfs_on_head:
