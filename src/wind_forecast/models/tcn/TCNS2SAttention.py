@@ -12,7 +12,7 @@ class TCNS2SAttention(TCNS2S):
     def create_tcn_encoder(self):
         tcn_layers = []
         in_channels = 1 if self.self_output_test or self.config.experiment.emd_decompose else self.embed_dim
-        for i in range(self.num_levels):
+        for i in range(self.num_layers):
             dilation_size = 2 ** i
             out_channels = self.tcn_channels[i]
             tcn_layers += [TemporalBlockWithAttention(self.config.experiment.transformer_attention_heads,

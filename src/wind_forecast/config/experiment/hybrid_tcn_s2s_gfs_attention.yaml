@@ -5,7 +5,7 @@ defaults:
   - schema_experiment
 
 _tags_:
-  - TCN_S2S_ALL_GFS_ATTENTION
+  - HYBRID_TCN_S2S_ALL_GFS_ATTENTION
 
 resume_checkpoint: ~
 
@@ -13,7 +13,7 @@ datamodule:
   _target_: wind_forecast.datamodules.Sequence2SequenceWithCMAXDataModule.Sequence2SequenceWithCMAXDataModule
 
 model:
-  _target_: wind_forecast.models.tcn.TCNS2SAttention.TCNS2SAttention
+  _target_: wind_forecast.models.tcn.HybridTCNS2SAttention.HybridTCNS2SAttention
 
 system:
   _target_: wind_forecast.systems.S2SRegressorWithGFSInput.S2SRegressorWithGFSInput

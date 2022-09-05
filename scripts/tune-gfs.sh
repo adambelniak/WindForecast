@@ -4,7 +4,8 @@ python -m wind_forecast.main experiment=lstm_s2s_gfs tune=lstm_s2s experiment.ep
 python -m wind_forecast.main experiment=hybrid_lstm_s2s_gfs tune=lstm_s2s experiment.epochs=10 optim=adam experiment.target_parameter=temperature
 python -m wind_forecast.main experiment=tcn_encoder_s2s_gfs tune=tcn_encoder_s2s experiment.epochs=10 optim=adam experiment.target_parameter=temperature
 python -m wind_forecast.main experiment=tcn_s2s_gfs tune=tcn_s2s experiment.epochs=10 optim=adam  experiment.target_parameter=temperature
-python -m wind_forecast.main experiment=tcn_s2s_gfs_attention tune=tcn_s2s_attention experiment.epochs=10 optim=adam experiment.target_parameter=temperature
+python -m wind_forecast.main experiment=hybrid_tcn_s2s_gfs tune=tcn_s2s experiment.epochs=10 optim=adam  experiment.target_parameter=temperature
+python -m wind_forecast.main experiment=hybrid_tcn_s2s_gfs_attention tune=tcn_s2s_attention experiment.epochs=10 optim=adam experiment.target_parameter=temperature
 python -m wind_forecast.main experiment=transformer_encoder_s2s_gfs tune=transformer_encoder_s2s experiment.epochs=10 optim=adam experiment.target_parameter=temperature
 python -m wind_forecast.main experiment=spacetimeformer_gfs tune=spacetimeformer experiment.epochs=10 optim=adam experiment.target_parameter=temperature
 python -m wind_forecast.main experiment=nbeatsx_gfs tune=nbeatsx experiment.epochs=10 optim=adam  experiment.target_parameter=temperature
