@@ -48,6 +48,7 @@ class TransformerEncoderBaseProps(LightningModule):
         self.value2vec_embedding_factor = config.experiment.value2vec_embedding_factor
         self.use_time2vec = config.experiment.use_time2vec and config.experiment.with_dates_inputs
         self.use_value2vec = config.experiment.use_value2vec and self.value2vec_embedding_factor > 0
+        self.synop_features_length = len(config.experiment.synop_train_features) + len(config.experiment.synop_periodic_features)
 
         if not self.use_value2vec:
             self.value2vec_embedding_factor = 0
@@ -66,7 +67,7 @@ class TransformerEncoderBaseProps(LightningModule):
         if self.self_output_test:
             self.features_length = 1
         else:
-            self.features_length = len(config.experiment.synop_train_features) + len(config.experiment.synop_periodic_features)
+            self.features_length = self.synop_features_length
 
         if self.use_time2vec and self.time2vec_embedding_factor == 0:
             self.time2vec_embedding_factor = self.features_length
@@ -116,13 +117,13 @@ class TransformerEncoderGFSBaseProps(TransformerEncoderBaseProps):
 
         self.gfs_on_head = config.experiment.gfs_on_head
         gfs_params = process_config(config.experiment.train_parameters_config_file).params
-        gfs_params_len = len(gfs_params)
+        self.gfs_params_len = len(gfs_params)
         param_names = [x['name'] for x in gfs_params]
         if "V GRD" in param_names and "U GRD" in param_names:
-            gfs_params_len += 1  # V and U will be expanded into velocity, sin and cos
+            self.gfs_params_len += 1  # V and U will be expanded into velocity, sin and cos
 
         if not self.self_output_test:
-            self.features_length += gfs_params_len
+            self.features_length += self.gfs_params_len
 
         if self.use_time2vec and self.time2vec_embedding_factor == 0:
             self.time2vec_embedding_factor = self.features_length
@@ -170,7 +171,7 @@ class TransformerBaseProps(TransformerEncoderBaseProps):
         target_mask = self.generate_mask(mask_matrix_dim).to(self.device)
         return self.decoder(decoder_input, memory, tgt_mask=target_mask)
 
-    def base_transformer_forward(self, epoch, stage, input_embedding, target_embedding, memory):
+    def base_decoder_forward(self, epoch, stage, input_embedding, target_embedding, memory):
         if epoch < self.teacher_forcing_epoch_num and stage not in ['test', 'predict', 'validate']:
             if self.gradual_teacher_forcing:
                 # first - Teacher Forcing - masked targets as decoder inputs
@@ -220,15 +221,15 @@ class TransformerGFSBaseProps(TransformerEncoderGFSBaseProps):
         target_mask = self.generate_mask(mask_matrix_dim).to(self.device)
         return self.decoder(decoder_input, memory, tgt_mask=target_mask)
 
-    def base_transformer_forward(self, epoch: int, stage: str, input_embedding: torch.Tensor,
+    def base_decoder_forward(self, epoch: int, stage: str, input_embedding: torch.Tensor,
                                  target_embedding: torch.Tensor, memory: torch.Tensor):
         if epoch < self.teacher_forcing_epoch_num and stage not in ['test', 'predict', 'validate']:
             # Teacher forcing - masked targets as decoder inputs
             if self.gradual_teacher_forcing:
                 # first - Teacher Forcing - masked targets as decoder inputs
-                first_infer_index = target_embedding.size(1) - min(
-                    math.floor(epoch * target_embedding.size(1) / self.teacher_forcing_epoch_num),
-                    target_embedding.size(1))
+                first_infer_index = self.future_sequence_length - min(
+                    math.floor(epoch * self.future_sequence_length / self.teacher_forcing_epoch_num),
+                    self.future_sequence_length)
 
                 if first_infer_index > 0:
                     decoder_input = torch.cat([input_embedding[:, -1:, :], target_embedding], 1)[:,
@@ -242,7 +243,7 @@ class TransformerGFSBaseProps(TransformerEncoderGFSBaseProps):
             else:
                 # non-gradual, just basic teacher forcing
                 decoder_input = torch.cat([input_embedding[:, -1:, :], target_embedding], 1)[:, :-1, ]
-                output = self.masked_teacher_forcing(decoder_input, memory, target_embedding.size(1))
+                output = self.masked_teacher_forcing(decoder_input, memory, self.future_sequence_length)
 
         else:
             # inference - pass only predictions to decoder
@@ -267,7 +268,7 @@ class Transformer(TransformerBaseProps):
             target_embedding = self.pos_encoder(target_elements) if self.use_pos_encoding else target_elements
 
         memory = self.encoder(input_embedding)
-        output = self.base_transformer_forward(epoch, stage, input_embedding,
+        output = self.base_decoder_forward(epoch, stage, input_embedding,
                                                target_embedding if is_train else None, memory)
 
         return torch.squeeze(self.regressor_head(self.forecaster(output)), -1)

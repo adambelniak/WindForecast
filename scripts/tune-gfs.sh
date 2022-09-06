@@ -10,6 +10,7 @@ python -m wind_forecast.main experiment=transformer_encoder_s2s_gfs tune=transfo
 python -m wind_forecast.main experiment=spacetimeformer_gfs tune=spacetimeformer experiment.epochs=10 optim=adam experiment.target_parameter=temperature
 python -m wind_forecast.main experiment=nbeatsx_gfs tune=nbeatsx experiment.epochs=10 optim=adam  experiment.target_parameter=temperature
 python -m wind_forecast.main experiment=transformer_gfs tune=transformer experiment.epochs=80 optim=adam experiment.target_parameter=temperature
+python -m wind_forecast.main experiment=hybrid_transformer_gfs tune=transformer experiment.epochs=80 optim=adam experiment.target_parameter=temperature
 
 #python -m wind_forecast.main experiment=arimax tune=arimax experiment.target_parameter=temperature lightning.gpus=0
 #python -m wind_forecast.main experiment=sarimax tune=sarimax experiment.target_parameter=temperature lightning.gpus=0

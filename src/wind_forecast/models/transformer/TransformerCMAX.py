@@ -56,6 +56,6 @@ class TransformerCMAX(TransformerBaseProps):
             target_embedding = self.pos_encoder(target_elements) if self.use_pos_encoding else target_elements
         else:
             target_embedding = None
-        output = self.base_transformer_forward(epoch, stage, input_embedding, target_embedding, memory)
+        output = self.base_decoder_forward(epoch, stage, input_embedding, target_embedding, memory)
 
         return torch.squeeze(self.regressor_head(output), -1)

@@ -29,7 +29,6 @@ class HybridLSTMS2SCMAX(HybridLSTMS2SModel):
         self.conv_time_distributed = TimeDistributed(self.conv, batch_first=True)
 
         self.embed_dim += conv_W * conv_H * out_channels
-        self.decoder_embed_dim += conv_W * conv_H * out_channels
         self.decoder_output_dim = self.synop_features_length + conv_W * conv_H * out_channels
 
         if self.embed_dim >= self.lstm_hidden_state:
@@ -39,7 +38,7 @@ class HybridLSTMS2SCMAX(HybridLSTMS2SModel):
                                     dropout=self.dropout, num_layers=config.experiment.lstm_num_layers,
                                     proj_size=self.decoder_output_dim)
 
-        self.decoder_lstm = nn.LSTM(input_size=self.decoder_embed_dim, hidden_size=self.lstm_hidden_state,
+        self.decoder_lstm = nn.LSTM(input_size=self.embed_dim, hidden_size=self.lstm_hidden_state,
                                     batch_first=True,
                                     dropout=self.dropout, num_layers=config.experiment.lstm_num_layers,
                                     proj_size=self.decoder_output_dim)

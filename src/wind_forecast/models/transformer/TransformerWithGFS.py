@@ -23,7 +23,7 @@ class TransformerWithGFS(TransformerGFSBaseProps):
             target_embedding = self.pos_encoder(target_elements) if self.use_pos_encoding else target_elements
 
         memory = self.encoder(input_embedding)
-        output = self.base_transformer_forward(epoch, stage, input_embedding,
+        output = self.base_decoder_forward(epoch, stage, input_embedding,
                                                target_embedding if is_train else None, memory)
 
         if self.gfs_on_head:

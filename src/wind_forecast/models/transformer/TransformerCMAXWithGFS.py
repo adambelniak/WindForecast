@@ -57,7 +57,7 @@ class TransformerCMAXWithGFS(TransformerGFSBaseProps):
         else:
             target_embedding = None
 
-        output = self.base_transformer_forward(epoch, stage, input_embedding, target_embedding, memory)
+        output = self.base_decoder_forward(epoch, stage, input_embedding, target_embedding, memory)
 
         if self.gfs_on_head:
             gfs_targets = batch[BatchKeys.GFS_FUTURE_Y.value].float()

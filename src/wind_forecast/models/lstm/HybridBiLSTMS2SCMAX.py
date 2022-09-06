@@ -17,7 +17,7 @@ class HybridBiLSTMS2SCMAX(HybridLSTMS2SCMAX):
                                     dropout=self.dropout, num_layers=config.experiment.lstm_num_layers,
                                     proj_size=self.decoder_output_dim, bidirectional=True)
 
-        self.decoder_lstm = nn.LSTM(input_size=self.decoder_embed_dim, hidden_size=2 * self.lstm_hidden_state, batch_first=True,
+        self.decoder_lstm = nn.LSTM(input_size=self.embed_dim, hidden_size=2 * self.lstm_hidden_state, batch_first=True,
                                     dropout=self.dropout, num_layers=config.experiment.lstm_num_layers,
                                     proj_size=self.decoder_output_dim)
 
