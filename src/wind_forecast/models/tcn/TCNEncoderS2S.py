@@ -67,6 +67,8 @@ class TCNEncoderS2S(EMDDecomposeable):
         self.create_tcn_encoder()
 
         self.regression_head_features = self.tcn_channels[-1]
+        if self.use_gfs:
+            self.regression_head_features += 1
         self.create_regression_head()
 
     def create_regression_head(self):
