@@ -39,7 +39,7 @@ class HybridTCNS2S(TCNS2S):
         input_elements, all_gfs_targets = self.get_embeddings(batch, self.config.experiment.with_dates_inputs,
                                                          self.time_embed if self.use_time2vec else None,
                                                          self.use_gfs)
-        x = self.encoder(input_elements.permute(0, 2, 1))
+        x = self.encoder(input_elements.permute(0, 2, 1))[:, :, -self.future_sequence_length:]
         decoder_input = torch.cat([x, all_gfs_targets.permute(0, 2, 1)], -2)
         y = self.decoder(decoder_input).permute(0, 2, 1)[:, -self.future_sequence_length:, :]
 
