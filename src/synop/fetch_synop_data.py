@@ -1,6 +1,6 @@
 import glob
 import math
-
+import tarfile
 import numpy as np
 from bs4 import BeautifulSoup
 import requests
@@ -96,22 +96,29 @@ def get_synop_data(localisation_code: str, year: str, output_dir: str):
 
 def get_auto_station_data(year: str, month: str, output_dir: str):
     Path(output_dir).mkdir(parents=True, exist_ok=True)
-    output_file = os.path.join(output_dir, f"Meteo_{year}-{month}.zip")
+    output_file = os.path.join(output_dir, f"Meteo_{year}-{month}.tar")
     if os.path.exists(output_file):
         return
 
-    url = f"https://danepubliczne.imgw.pl/datastore/getfiledown/Arch/Telemetria/Meteo/{year}/Meteo_{year}-{month}.zip"
+    url = f"https://danepubliczne.imgw.pl/datastore/getfiledown/Arch/Telemetria/Meteo/{year}/Meteo_{year}-{month}.tar"
     if month in ['01', '02'] and year == '2021':
         url = url.replace('zip', 'ZIP')  # ¯\_(ツ)_/¯
 
     req = requests.get(url, stream=True)
     if req.status_code == 200:
-        print(f"Downloading zip to {output_file}")
+        print(f"Downloading tar to {output_file}")
         with open(output_file, 'wb') as outfile:
             chunk_size = 1048576
             for chunk in req.iter_content(chunk_size=chunk_size):
                 outfile.write(chunk)
 
+
+def extract_tar_files(tar_dir: str, target_dir):
+    for file in os.listdir(tar_dir):
+        tar = tarfile.open(os.path.join(tar_dir, file))
+        tar.extractall(target_dir)
+        tar.close()
+        os.remove(os.path.join(tar_dir, file))
 
 def extract_zip_files(zip_dir: str, target_dir):
     for file in os.listdir(zip_dir):
@@ -196,7 +203,7 @@ def process_auto_station_data(from_year: int, until_year: int, localisation_code
             if not os.path.exists(os.path.join(input_dir, str(year), str_month)) or len(
                     os.listdir(os.path.join(input_dir, str(year), str_month))) == 0:
                 get_auto_station_data(str(year), str_month, os.path.join(input_dir, str(year), str_month, 'download'))
-                extract_zip_files(os.path.join(input_dir, str(year), str_month, 'download'),
+                extract_tar_files(os.path.join(input_dir, str(year), str_month, 'download'),
                                   os.path.join(input_dir, str(year), str_month))
 
             processed_data = read_auto_station_data(os.path.join(input_dir, str(year), str_month), localisation_code)
