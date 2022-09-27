@@ -55,9 +55,7 @@ class HybridLSTMS2SModel(LSTMS2SModel):
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
         is_train = stage not in ['test', 'predict', 'validate']
         input_elements, all_synop_targets, all_gfs_targets, future_dates = self.get_embeddings(
-            batch, self.config.experiment.with_dates_inputs,
-            self.time_embed if self.use_time2vec else None,
-            self.use_gfs, is_train)
+            batch, self.config.experiment.with_dates_inputs, self.use_gfs, is_train)
 
         gfs_targets = batch[BatchKeys.GFS_FUTURE_Y.value].float()
         _, state = self.encoder_lstm(input_elements)
@@ -70,7 +68,7 @@ class HybridLSTMS2SModel(LSTMS2SModel):
 
         return torch.squeeze(self.regressor_head(decoder_output), -1)
 
-    def get_embeddings(self, batch, with_dates, time_embed, with_gfs_params, with_future):
+    def get_embeddings(self, batch, with_dates, with_gfs_params, with_future):
         synop_inputs = batch[BatchKeys.SYNOP_PAST_X.value].float()
         all_synop_targets = batch[BatchKeys.SYNOP_FUTURE_X.value].float() if with_future else None
         all_gfs_targets = batch[BatchKeys.GFS_FUTURE_X.value].float() if with_gfs_params else None
@@ -89,16 +87,9 @@ class HybridLSTMS2SModel(LSTMS2SModel):
                 all_synop_targets = torch.cat([all_synop_targets, self.value_embed_synop(all_synop_targets)], -1)
             all_gfs_targets = torch.cat([all_gfs_targets, self.value_embed_gfs(all_gfs_targets)], -1)
 
-        if with_dates:
-            if time_embed is not None:
-                input_elements = torch.cat([input_elements, time_embed(dates_tensors[0])], -1)
-            else:
-                input_elements = torch.cat([input_elements, dates_tensors[0]], -1)
-
-            if time_embed is not None:
-                future_dates = time_embed(dates_tensors[1])
-            else:
-                future_dates = dates_tensors[1]
+        if self.use_time2vec:
+            input_elements = torch.cat([input_elements, self.time_embed(dates_tensors[0])], -1)
+            future_dates = self.time_embed(dates_tensors[1])
 
         return input_elements, all_synop_targets, all_gfs_targets, future_dates
 

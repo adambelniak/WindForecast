@@ -24,9 +24,7 @@ class HybridBiLSTMS2SCMAX(HybridLSTMS2SCMAX):
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
         is_train = stage not in ['test', 'predict', 'validate']
         input_elements, all_synop_targets, all_gfs_targets, future_dates = self.get_embeddings(
-            batch, self.config.experiment.with_dates_inputs,
-            self.time_embed if self.use_time2vec else None,
-            self.use_gfs, is_train)
+            batch, self.config.experiment.with_dates_inputs, self.use_gfs, is_train)
 
         gfs_targets = batch[BatchKeys.GFS_FUTURE_Y.value].float()
 

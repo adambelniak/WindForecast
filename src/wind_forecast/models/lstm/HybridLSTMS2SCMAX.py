@@ -29,7 +29,7 @@ class HybridLSTMS2SCMAX(HybridLSTMS2SModel):
         self.conv_time_distributed = TimeDistributed(self.conv, batch_first=True)
 
         self.embed_dim += conv_W * conv_H * out_channels
-        self.decoder_output_dim = self.synop_features_length + conv_W * conv_H * out_channels
+        self.decoder_output_dim += conv_W * conv_H * out_channels
 
         if self.embed_dim >= self.lstm_hidden_state:
             self.lstm_hidden_state = self.embed_dim + 1  # proj_size has to be smaller than hidden_size
@@ -58,11 +58,7 @@ class HybridLSTMS2SCMAX(HybridLSTMS2SModel):
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
         is_train = stage not in ['test', 'predict', 'validate']
         input_elements, all_synop_targets, all_gfs_targets, future_dates = self.get_embeddings(
-            batch, self.config.experiment.with_dates_inputs,
-            self.time_embed if self.use_time2vec else None,
-            self.use_gfs, is_train)
-
-        gfs_split_point = self.synop_features_length
+            batch, self.config.experiment.with_dates_inputs, self.use_gfs, is_train)
 
         gfs_targets = batch[BatchKeys.GFS_FUTURE_Y.value].float()
         _, state = self.encoder_lstm(input_elements)
@@ -79,6 +75,12 @@ class HybridLSTMS2SCMAX(HybridLSTMS2SModel):
 
     def decoder_forward_with_cmax(self, epoch, is_train, state, input_elements, all_synop_targets, all_gfs_targets,
                                   future_dates, cmax_targets):
+        first_decoder_input = torch.cat(
+            [
+                input_elements[:, -1:, :-(self.gfs_embed_dim + self.dates_dim)],
+                all_gfs_targets[:, :1, :],
+                future_dates[:, :1, :]
+            ], -1)
         if epoch < self.teacher_forcing_epoch_num and is_train:
             self.conv.requires_grad_(False)
             cmax_targets_embeddings = self.conv_time_distributed(cmax_targets.unsqueeze(2))
@@ -86,12 +88,7 @@ class HybridLSTMS2SCMAX(HybridLSTMS2SModel):
             # Teacher forcing
             if self.gradual_teacher_forcing:
                 first_taught = math.floor(epoch / self.teacher_forcing_epoch_num * self.future_sequence_length)
-                decoder_input = torch.cat(
-                    [
-                        input_elements[:, -1:, :-(self.gfs_embed_dim + self.dates_dim)],
-                        all_gfs_targets[:, :1, :],
-                        future_dates[:, :1, :]
-                    ], -1)
+                decoder_input = first_decoder_input
 
                 pred = None
                 for frame in range(first_taught):  # do normal prediction for the beginning frames
@@ -106,13 +103,6 @@ class HybridLSTMS2SCMAX(HybridLSTMS2SModel):
                             ], -1)
 
                 # then, do teacher forcing
-                # SOS is appended for case when first_taught is 0
-                first_decoder_input = torch.cat(
-                    [
-                        input_elements[:, -1:, :-(self.gfs_embed_dim + self.dates_dim)],
-                        all_gfs_targets[:, :1, :],
-                        future_dates[:, :1, :]
-                    ], -1)
                 next_decoder_inputs = torch.cat(
                     [
                         all_synop_targets,
@@ -126,12 +116,6 @@ class HybridLSTMS2SCMAX(HybridLSTMS2SModel):
 
             else:
                 # non-gradual, just basic teacher forcing
-                first_decoder_input = torch.cat(
-                    [
-                        input_elements[:, -1:, :-(self.gfs_embed_dim + self.dates_dim)],
-                        all_gfs_targets[:, :1, :],
-                        future_dates[:, :1, :]
-                    ], -1)
                 next_decoder_inputs = torch.cat(
                     [
                         all_synop_targets,
@@ -144,12 +128,7 @@ class HybridLSTMS2SCMAX(HybridLSTMS2SModel):
 
         else:
             # inference - pass only predictions to decoder
-            decoder_input = torch.cat(
-                [
-                    input_elements[:, -1:, :-(self.gfs_embed_dim + self.dates_dim)],
-                    all_gfs_targets[:, :1, :],
-                    future_dates[:, :1, :]
-                ], -1)
+            decoder_input = first_decoder_input
             pred = None
             for frame in range(self.future_sequence_length):
                 next_pred, state = self.decoder_lstm(decoder_input, state)
