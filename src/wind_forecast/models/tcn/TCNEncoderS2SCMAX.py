@@ -31,6 +31,8 @@ class TCNEncoderS2SCMAX(TCNEncoderS2S):
         self.embed_dim += conv_W * conv_H * out_cnn_channels
         self.create_tcn_encoder()
         self.regression_head_features = self.tcn_channels[-1]
+        if self.use_gfs and self.gfs_on_head:
+            self.regression_head_features += 1
         self.create_regression_head()
 
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
