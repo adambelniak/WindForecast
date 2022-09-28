@@ -97,23 +97,22 @@ class Nbeatsx(pl.LightningModule):
         self.value2vec_embedding_factor = config.experiment.value2vec_embedding_factor
         self.use_time2vec = config.experiment.use_time2vec and config.experiment.with_dates_inputs
         self.use_value2vec = config.experiment.use_value2vec
+        self.synop_features_length = len(config.experiment.synop_train_features) + len(config.experiment.synop_periodic_features)
 
         # No static features in our case
         self.x_static_n_hidden, self.x_static_n_inputs = 0, 0
 
         if self.use_gfs:
             gfs_params = process_config(config.experiment.train_parameters_config_file).params
-            n_gfs_features = len(gfs_params)
+            self.gfs_features_length = len(gfs_params)
             param_names = [x['name'] for x in gfs_params]
             if "V GRD" in param_names and "U GRD" in param_names:
-                n_gfs_features += 1  # V and U will be expanded int velocity, sin and cos
+                self.gfs_features_length += 1  # V and U will be expanded int velocity, sin and cos
 
-            self.n_insample_t = len(config.experiment.synop_train_features) + n_gfs_features + len(
-                config.experiment.synop_periodic_features)
-            self.n_outsample_t = n_gfs_features
+            self.n_insample_t = self.synop_features_length + self.gfs_features_length
+            self.n_outsample_t = self.gfs_features_length
         else:
-            self.n_insample_t = len(config.experiment.synop_train_features) + len(
-                config.experiment.synop_periodic_features)
+            self.n_insample_t = self.synop_features_length
             self.n_outsample_t = 0
 
         if self.use_time2vec and self.time2vec_embedding_factor == 0:

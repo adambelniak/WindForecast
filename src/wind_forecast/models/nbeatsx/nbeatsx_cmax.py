@@ -8,6 +8,7 @@ from wind_forecast.consts import BatchKeys
 from wind_forecast.models.CMAXAutoencoder import CMAXEncoder, get_pretrained_encoder
 from wind_forecast.models.nbeatsx.nbeatsx import Nbeatsx
 from wind_forecast.models.nbeatsx.nbeatsx_model import NBeatsx
+from wind_forecast.models.value2vec.Value2Vec import Value2Vec
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 
 
@@ -29,6 +30,18 @@ class Nbeatsx_CMAX(Nbeatsx):
         self.conv_time_distributed = TimeDistributed(self.cmax_conv, batch_first=True)
 
         cmax_embed_dim = conv_W * conv_H * out_channels
+
+        if self.use_gfs:
+            embeddable_features = self.synop_features_length + self.gfs_features_length + cmax_embed_dim
+        else:
+            embeddable_features = self.synop_features_length + cmax_embed_dim
+
+        if self.use_value2vec:
+            self.value2vec_insample = TimeDistributed(Value2Vec(embeddable_features,
+                                                                self.value2vec_embedding_factor), batch_first=True)
+            self.value2vec_outsample = TimeDistributed(Value2Vec(embeddable_features,
+                                                                 self.value2vec_embedding_factor), batch_first=True)
+
         self.n_insample_t += cmax_embed_dim
 
         block_list = self.create_stacks()
