@@ -32,14 +32,16 @@ class Nbeatsx_CMAX(Nbeatsx):
         cmax_embed_dim = conv_W * conv_H * out_channels
 
         if self.use_gfs:
-            embeddable_features = self.synop_features_length + self.gfs_features_length + cmax_embed_dim
+            embeddable_input_features = self.synop_features_length + self.gfs_features_length + cmax_embed_dim
+            embeddable_output_features = self.gfs_features_length
         else:
-            embeddable_features = self.synop_features_length + cmax_embed_dim
+            embeddable_input_features = self.synop_features_length + cmax_embed_dim
+            embeddable_output_features = 0
 
         if self.use_value2vec:
-            self.value2vec_insample = TimeDistributed(Value2Vec(embeddable_features,
+            self.value2vec_insample = TimeDistributed(Value2Vec(embeddable_input_features,
                                                                 self.value2vec_embedding_factor), batch_first=True)
-            self.value2vec_outsample = TimeDistributed(Value2Vec(embeddable_features,
+            self.value2vec_outsample = TimeDistributed(Value2Vec(embeddable_output_features,
                                                                  self.value2vec_embedding_factor), batch_first=True)
 
         self.n_insample_t += cmax_embed_dim
