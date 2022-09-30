@@ -31,19 +31,6 @@ class Nbeatsx_CMAX(Nbeatsx):
 
         cmax_embed_dim = conv_W * conv_H * out_channels
 
-        if self.use_gfs:
-            embeddable_input_features = self.synop_features_length + self.gfs_features_length + cmax_embed_dim
-            embeddable_output_features = self.gfs_features_length
-        else:
-            embeddable_input_features = self.synop_features_length + cmax_embed_dim
-            embeddable_output_features = 0
-
-        if self.use_value2vec:
-            self.value2vec_insample = TimeDistributed(Value2Vec(embeddable_input_features,
-                                                                self.value2vec_embedding_factor), batch_first=True)
-            self.value2vec_outsample = TimeDistributed(Value2Vec(embeddable_output_features,
-                                                                 self.value2vec_embedding_factor), batch_first=True)
-
         self.n_insample_t += cmax_embed_dim
 
         block_list = self.create_stacks()
@@ -70,7 +57,7 @@ class Nbeatsx_CMAX(Nbeatsx):
 
         if with_gfs_params:
             gfs_inputs = batch[BatchKeys.GFS_PAST_X.value].float()
-            input_elements = t.cat([synop_inputs, gfs_inputs, cmax_input_embeddings], -1)
+            input_elements = t.cat([synop_inputs, gfs_inputs], -1)
             all_gfs_targets = batch[BatchKeys.GFS_FUTURE_X.value].float()
             target_elements = all_gfs_targets
         else:
@@ -96,5 +83,7 @@ class Nbeatsx_CMAX(Nbeatsx):
                     target_elements = t.cat([target_elements, time_embed(dates_tensors[1])], -1)
                 else:
                     target_elements = t.cat([target_elements, dates_tensors[1]], -1)
+
+        input_elements = t.cat([input_elements, cmax_input_embeddings], -1)
 
         return input_elements, target_elements
