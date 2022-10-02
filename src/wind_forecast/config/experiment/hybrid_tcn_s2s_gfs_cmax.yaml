@@ -5,7 +5,7 @@ defaults:
   - schema_experiment
 
 _tags_:
-  - HYBRID_LSTM_S2S_GFS_CMAX
+  - HYBRID_TCN_S2S_GFS_CMAX
 
 resume_checkpoint: ~
 
@@ -13,13 +13,13 @@ datamodule:
   _target_: wind_forecast.datamodules.Sequence2SequenceWithCMAXDataModule.Sequence2SequenceWithCMAXDataModule
 
 model:
-  _target_: wind_forecast.models.lstm.HybridLSTMS2SCMAX.HybridLSTMS2SCMAX
+  _target_: wind_forecast.models.tcn.HybridTCNS2SCMAX.HybridTCNS2SCMAX
 
 system:
   _target_: wind_forecast.systems.S2SRegressorWithGFSInput.S2SRegressorWithGFSInput
+
 use_gfs_data: True
 load_cmax_data: True
 use_cmax_data: True
 load_future_cmax: True
 use_pretrained_cmax_autoencoder: True
-teacher_forcing_epoch_num: 0

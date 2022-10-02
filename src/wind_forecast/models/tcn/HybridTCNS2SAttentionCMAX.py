@@ -5,13 +5,12 @@ import torch
 
 from wind_forecast.config.register import Config
 from wind_forecast.consts import BatchKeys
-from wind_forecast.embed.prepare_embeddings import get_embeddings
 from wind_forecast.models.CMAXAutoencoder import CMAXEncoder, get_pretrained_encoder
-from wind_forecast.models.tcn.TCNS2SAttention import TCNS2SAttention
+from wind_forecast.models.tcn.HybridTCNS2SAttention import HybridTCNS2SAttention
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 
 
-class TCNS2SAttentionCMAX(TCNS2SAttention):
+class HybridTCNS2SAttentionCMAX(HybridTCNS2SAttention):
     def __init__(self, config: Config):
         super().__init__(config)
         conv_H = config.experiment.cmax_h
@@ -37,17 +36,17 @@ class TCNS2SAttentionCMAX(TCNS2SAttention):
         self.create_regression_head()
 
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
-        input_elements, target_elements = get_embeddings(batch, self.config.experiment.with_dates_inputs,
+        input_elements, all_gfs_targets = self.get_embeddings(batch, self.config.experiment.with_dates_inputs,
                                                          self.time_embed if self.use_time2vec else None,
-                                                         self.value_embed if self.use_value2vec else None,
-                                                         self.use_gfs, False)
+                                                         self.use_gfs)
+
         cmax_inputs = batch[BatchKeys.CMAX_PAST.value].float()
-
         cmax_embedding = self.conv_time_distributed(cmax_inputs.unsqueeze(2))
-        x = torch.cat([input_elements, cmax_embedding], dim=-1)
+        input_elements = torch.cat([input_elements, cmax_embedding], dim=-1)
 
-        mem = self.encoder(x.permute(0, 2, 1))
-        y = self.decoder(mem).permute(0, 2, 1)[:, -self.future_sequence_length:, :]
+        x = self.encoder(input_elements.permute(0, 2, 1))[:, :, -self.future_sequence_length:]
+        decoder_input = torch.cat([x, all_gfs_targets.permute(0, 2, 1)], -2)
+        y = self.decoder(decoder_input).permute(0, 2, 1)[:, -self.future_sequence_length:, :]
 
         if self.use_gfs and self.gfs_on_head:
             gfs_targets = batch[BatchKeys.GFS_FUTURE_Y.value].float()

@@ -5,26 +5,32 @@ import torch
 
 from wind_forecast.config.register import Config
 from wind_forecast.consts import BatchKeys
-from wind_forecast.models.transformer.TransformerWithGFS import TransformerWithGFS
-from wind_forecast.models.value2vec.Value2Vec import Value2Vec
+from wind_forecast.models.CMAXAutoencoder import CMAXEncoder, get_pretrained_encoder
+from wind_forecast.models.transformer.HybridTransformerWithGFS import HybridTransformerWithGFS
+from wind_forecast.models.transformer.Transformer import PositionalEncoding
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 
 
-class HybridTransformerWithGFS(TransformerWithGFS):
+class HybridTransformerWithGFSCMAX(HybridTransformerWithGFS):
     def __init__(self, config: Config):
         super().__init__(config)
-        self.decoder_output_dim = self.synop_features_length
-        self.gfs_embed_dim = self.gfs_params_len
+        conv_H = config.experiment.cmax_h
+        conv_W = config.experiment.cmax_w
+        out_channels = config.experiment.cnn_filters[-1]
+        self.conv = CMAXEncoder(config)
+        for _ in config.experiment.cnn_filters:
+            conv_W = math.ceil(conv_W / 2)
+            conv_H = math.ceil(conv_H / 2)
 
-        if self.use_value2vec:
-            self.decoder_output_dim += self.value2vec_embedding_factor * self.decoder_output_dim
-            self.gfs_embed_dim += self.value2vec_embedding_factor * self.gfs_params_len
-            self.value_embed_gfs = TimeDistributed(Value2Vec(self.gfs_params_len, self.value2vec_embedding_factor),
-                                                   batch_first=True)
-            self.value_embed_synop = TimeDistributed(
-                Value2Vec(self.synop_features_length, self.value2vec_embedding_factor),
-                batch_first=True)
+        if config.experiment.use_pretrained_cmax_autoencoder:
+            get_pretrained_encoder(self.conv, config)
+        self.conv_time_distributed = TimeDistributed(self.conv, batch_first=True)
 
+        self.embed_dim += conv_W * conv_H * out_channels
+        self.decoder_output_dim += conv_W * conv_H * out_channels
+        self.pos_encoder = PositionalEncoding(self.embed_dim, self.dropout)
+        self.create_encoder()
+        self.create_decoder()
         self.decoder_projection = torch.nn.Linear(in_features=self.embed_dim, out_features=self.decoder_output_dim)
         self.head_input_dim = self.decoder_output_dim
         if self.gfs_on_head:
@@ -33,12 +39,16 @@ class HybridTransformerWithGFS(TransformerWithGFS):
 
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
         is_train = stage not in ['test', 'predict', 'validate']
-        input_elements, all_synop_targets, all_gfs_targets, future_dates = self.get_embeddings(batch, self.config.experiment.with_dates_inputs,
-                                                         self.time_embed if self.use_time2vec else None, is_train)
-        input_embedding = input_elements
+        input_elements, all_synop_targets, all_gfs_targets, cmax_future, future_dates = \
+            self.get_embeddings(batch, self.config.experiment.with_dates_inputs,
+                                self.time_embed if self.use_time2vec else None, is_train)
+
+        input_embedding = self.pos_encoder(input_elements) if self.use_pos_encoding else input_elements
+
         memory = self.encoder(input_embedding)
 
-        output = self.decoder_forward(epoch, stage, memory, input_embedding, all_synop_targets, all_gfs_targets, future_dates)
+        output = self.decoder_forward_cmax(epoch, stage, memory, input_embedding, all_synop_targets, all_gfs_targets,
+                                      cmax_future, future_dates)
 
         if self.gfs_on_head:
             gfs_targets = batch[BatchKeys.GFS_FUTURE_Y.value].float()
@@ -46,8 +56,8 @@ class HybridTransformerWithGFS(TransformerWithGFS):
 
         return torch.squeeze(self.regressor_head(output), -1)
 
-    def decoder_forward(self, epoch: int, stage: str, encoder_output, input_embedding: torch.Tensor,
-                                 all_synop_targets, all_gfs_targets, future_dates):
+    def decoder_forward_cmax(self, epoch: int, stage: str, encoder_output, input_embedding: torch.Tensor,
+                        all_synop_targets, all_gfs_targets, cmax_future_embeddings, future_dates):
         first_decoder_input = torch.cat(
             [
                 input_embedding[:, -1:, :-(self.gfs_embed_dim + self.dates_dim)],
@@ -66,6 +76,7 @@ class HybridTransformerWithGFS(TransformerWithGFS):
                     next_decoder_inputs = torch.cat(
                         [
                             all_synop_targets,
+                            cmax_future_embeddings,
                             all_gfs_targets,
                             future_dates
                         ], -1)
@@ -77,54 +88,48 @@ class HybridTransformerWithGFS(TransformerWithGFS):
                     inference_input = first_decoder_input
                 else:
                     inference_input = torch.cat([first_decoder_input, torch.cat([output[:, :, :],
-                                                                                 all_gfs_targets[:, :first_infer_index, :],
-                                                                                 future_dates[:, :first_infer_index, :]], -1)], -2)
+                                                                                 all_gfs_targets[:, :first_infer_index,
+                                                                                 :],
+                                                                                 future_dates[:, :first_infer_index,
+                                                                                 :]], -1)], -2)
                 # then - inference
-                output = self.hybrid_inference(self.future_sequence_length - first_infer_index, inference_input, encoder_output,
+                output = self.hybrid_inference(self.future_sequence_length - first_infer_index, inference_input,
+                                               encoder_output,
                                                all_gfs_targets, future_dates)
             else:
                 # non-gradual, just basic teacher forcing
                 next_decoder_inputs = torch.cat(
                     [
                         all_synop_targets,
+                        cmax_future_embeddings,
                         all_gfs_targets,
                         future_dates
                     ], -1)
                 decoder_input = torch.cat([first_decoder_input, next_decoder_inputs], 1)[:, :-1, ]
                 output = torch.cat([first_decoder_input[:, -1:, :],
-                                    self.masked_teacher_forcing(decoder_input, encoder_output, self.future_sequence_length)], 1)
+                                    self.masked_teacher_forcing(decoder_input, encoder_output,
+                                                                self.future_sequence_length)], 1)
 
         else:
             # inference - pass only predictions to decoder
             decoder_input = first_decoder_input
-            output = self.hybrid_inference(self.future_sequence_length, decoder_input, encoder_output, all_gfs_targets, future_dates)
+            output = self.hybrid_inference(self.future_sequence_length, decoder_input, encoder_output,
+                                                all_gfs_targets, future_dates)
         return output
-
-    def masked_teacher_forcing(self, decoder_input: torch.Tensor, memory: torch.Tensor, mask_matrix_dim: int):
-        decoder_input = decoder_input
-        target_mask = self.generate_mask(mask_matrix_dim).to(self.device)
-        return self.decoder_projection(self.decoder(decoder_input, memory, tgt_mask=target_mask))
-
-    def hybrid_inference(self, inference_length: int, decoder_input: torch.Tensor, encoder_output: torch.Tensor,
-                         all_gfs_targets: torch.Tensor, future_dates: torch.Tensor):
-        output = decoder_input[:, :, :-(self.gfs_embed_dim + self.dates_dim)]
-        for frame in range(inference_length):  # do normal prediction for the beginning frames
-            next_pred = self.decoder_projection(self.decoder(decoder_input, encoder_output))
-            output = torch.cat([output, next_pred[:, -1:, :]], -2)
-            if frame < inference_length - 1:
-                next_input = torch.cat(
-                    [
-                        next_pred[:, -1:, :],
-                        all_gfs_targets[:, (frame + 1):(frame + 2), :],
-                        future_dates[:, (frame + 1):(frame + 2), :]
-                    ], -1)
-                decoder_input = torch.cat([decoder_input[:, :-1, :], next_input], -2)
-        return output[:, 1:, :]
 
     def get_embeddings(self, batch, with_dates, time_embed, with_future):
         synop_inputs = batch[BatchKeys.SYNOP_PAST_X.value].float()
         all_synop_targets = batch[BatchKeys.SYNOP_FUTURE_X.value].float() if with_future else None
         all_gfs_targets = batch[BatchKeys.GFS_FUTURE_X.value].float()
+
+        cmax_past = batch[BatchKeys.CMAX_PAST.value].float()
+        cmax_future = batch[BatchKeys.CMAX_FUTURE.value].float() if with_future else None
+        cmax_past_embeddings = self.conv_time_distributed(cmax_past.unsqueeze(2))
+        self.conv_time_distributed.requires_grad_(False)
+        cmax_future_embeddings = self.conv_time_distributed(
+            cmax_future.unsqueeze(2)) if cmax_future is not None else None
+        self.conv_time_distributed.requires_grad_(True)
+
         dates_tensors = None if with_dates is False else batch[BatchKeys.DATES_TENSORS.value]
         future_dates = None
 
@@ -137,6 +142,8 @@ class HybridTransformerWithGFS(TransformerWithGFS):
                 all_synop_targets = torch.cat([all_synop_targets, self.value_embed_synop(all_synop_targets)], -1)
             all_gfs_targets = torch.cat([all_gfs_targets, self.value_embed_gfs(all_gfs_targets)], -1)
 
+        input_elements = torch.cat([input_elements, cmax_past_embeddings], -1)
+
         if with_dates:
             if time_embed is not None:
                 input_elements = torch.cat([input_elements, time_embed(dates_tensors[0])], -1)
@@ -148,4 +155,4 @@ class HybridTransformerWithGFS(TransformerWithGFS):
             else:
                 future_dates = dates_tensors[1]
 
-        return input_elements, all_synop_targets, all_gfs_targets, future_dates
+        return input_elements, all_synop_targets, all_gfs_targets, cmax_future_embeddings, future_dates

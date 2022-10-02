@@ -57,16 +57,14 @@ class HybridLSTMS2SCMAX(HybridLSTMS2SModel):
 
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
         is_train = stage not in ['test', 'predict', 'validate']
-        input_elements, all_synop_targets, all_gfs_targets, future_dates = self.get_embeddings(
-            batch, self.config.experiment.with_dates_inputs, self.use_gfs, is_train)
+        input_elements, all_synop_targets, all_gfs_targets, cmax_future, future_dates = self.get_embeddings_cmax(
+            batch, self.time_embed, is_train)
 
         gfs_targets = batch[BatchKeys.GFS_FUTURE_Y.value].float()
         _, state = self.encoder_lstm(input_elements)
 
-        cmax_targets = batch[BatchKeys.CMAX_FUTURE.value].float()
-
         decoder_output = self.decoder_forward_with_cmax(epoch, is_train, state, input_elements, all_synop_targets,
-                        all_gfs_targets, future_dates, cmax_targets)
+                        all_gfs_targets, future_dates, cmax_future)
 
         if self.use_gfs and self.gfs_on_head:
             return torch.squeeze(self.regressor_head(torch.cat([decoder_output, gfs_targets], -1)), -1)
@@ -74,7 +72,7 @@ class HybridLSTMS2SCMAX(HybridLSTMS2SModel):
         return torch.squeeze(self.regressor_head(decoder_output), -1)
 
     def decoder_forward_with_cmax(self, epoch, is_train, state, input_elements, all_synop_targets, all_gfs_targets,
-                                  future_dates, cmax_targets):
+                                  future_dates, cmax_future):
         first_decoder_input = torch.cat(
             [
                 input_elements[:, -1:, :-(self.gfs_embed_dim + self.dates_dim)],
@@ -82,9 +80,6 @@ class HybridLSTMS2SCMAX(HybridLSTMS2SModel):
                 future_dates[:, :1, :]
             ], -1)
         if epoch < self.teacher_forcing_epoch_num and is_train:
-            self.conv.requires_grad_(False)
-            cmax_targets_embeddings = self.conv_time_distributed(cmax_targets.unsqueeze(2))
-            self.conv.requires_grad_(True)
             # Teacher forcing
             if self.gradual_teacher_forcing:
                 first_taught = math.floor(epoch / self.teacher_forcing_epoch_num * self.future_sequence_length)
@@ -106,7 +101,7 @@ class HybridLSTMS2SCMAX(HybridLSTMS2SModel):
                 next_decoder_inputs = torch.cat(
                     [
                         all_synop_targets,
-                        cmax_targets_embeddings,
+                        cmax_future,
                         all_gfs_targets,
                         future_dates
                     ], -1)
@@ -119,7 +114,7 @@ class HybridLSTMS2SCMAX(HybridLSTMS2SModel):
                 next_decoder_inputs = torch.cat(
                     [
                         all_synop_targets,
-                        cmax_targets_embeddings,
+                        cmax_future,
                         all_gfs_targets,
                         future_dates
                     ], -1)
@@ -143,3 +138,44 @@ class HybridLSTMS2SCMAX(HybridLSTMS2SModel):
             output = pred
 
         return output
+
+    def get_embeddings_cmax(self, batch, time_embed, with_future):
+        synop_inputs = batch[BatchKeys.SYNOP_PAST_X.value].float()
+        all_synop_targets = batch[BatchKeys.SYNOP_FUTURE_X.value].float() if with_future else None
+        all_gfs_targets = batch[BatchKeys.GFS_FUTURE_X.value].float()
+
+        cmax_past = batch[BatchKeys.CMAX_PAST.value].float()
+        cmax_future = batch[BatchKeys.CMAX_FUTURE.value].float() if with_future else None
+        cmax_past_embeddings = self.conv_time_distributed(cmax_past.unsqueeze(2))
+        self.conv_time_distributed.requires_grad_(False)
+        cmax_future_embeddings = self.conv_time_distributed(
+            cmax_future.unsqueeze(2)) if cmax_future is not None else None
+        self.conv_time_distributed.requires_grad_(True)
+
+        dates_tensors = None if self.config.experiment.with_dates_inputs is False \
+            else batch[BatchKeys.DATES_TENSORS.value]
+        future_dates = None
+
+        gfs_inputs = batch[BatchKeys.GFS_PAST_X.value].float()
+        input_elements = torch.cat([synop_inputs, gfs_inputs], -1)
+
+        if self.use_value2vec:
+            input_elements = torch.cat([input_elements, self.value_embed(input_elements)], -1)
+            if with_future:
+                all_synop_targets = torch.cat([all_synop_targets, self.value_embed_synop(all_synop_targets)], -1)
+            all_gfs_targets = torch.cat([all_gfs_targets, self.value_embed_gfs(all_gfs_targets)], -1)
+
+        input_elements = torch.cat([input_elements, cmax_past_embeddings], -1)
+
+        if self.config.experiment.with_dates_inputs:
+            if time_embed is not None:
+                input_elements = torch.cat([input_elements, time_embed(dates_tensors[0])], -1)
+            else:
+                input_elements = torch.cat([input_elements, dates_tensors[0]], -1)
+
+            if time_embed is not None:
+                future_dates = time_embed(dates_tensors[1])
+            else:
+                future_dates = dates_tensors[1]
+
+        return input_elements, all_synop_targets, all_gfs_targets, cmax_future_embeddings, future_dates

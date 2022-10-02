@@ -23,15 +23,8 @@ class HybridBiLSTMS2SCMAX(HybridLSTMS2SCMAX):
 
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
         is_train = stage not in ['test', 'predict', 'validate']
-        input_elements, all_synop_targets, all_gfs_targets, future_dates = self.get_embeddings(
-            batch, self.config.experiment.with_dates_inputs, self.use_gfs, is_train)
-
-        gfs_targets = batch[BatchKeys.GFS_FUTURE_Y.value].float()
-
-        cmax_inputs = batch[BatchKeys.CMAX_PAST.value].float()
-        cmax_embeddings = self.conv_time_distributed(cmax_inputs.unsqueeze(2))
-
-        input_elements = torch.cat([input_elements, cmax_embeddings], -1)
+        input_elements, all_synop_targets, all_gfs_targets, cmax_future, future_dates = self.get_embeddings_cmax(
+            batch, self.time_embed, is_train)
 
         output, state = self.encoder_lstm(input_elements)
         # state is of shape ((2 * num_layers, batch, H_out), (2 * num_layers, batch, H_cell)
@@ -41,13 +34,11 @@ class HybridBiLSTMS2SCMAX(HybridLSTMS2SCMAX):
                  torch.cat([state[1][0:self.config.experiment.lstm_num_layers, :, :],
                             state[1][self.config.experiment.lstm_num_layers:, :, :]], -1))
 
-        cmax_targets = batch[BatchKeys.CMAX_FUTURE.value].float()
-
         decoder_output = self.decoder_forward_with_cmax(epoch, is_train, state, input_elements, all_synop_targets,
-                                              all_gfs_targets, future_dates, cmax_targets)
+                                                        all_gfs_targets, future_dates, cmax_future)
 
         if self.use_gfs and self.gfs_on_head:
+            gfs_targets = batch[BatchKeys.GFS_FUTURE_Y.value].float()
             return torch.squeeze(self.regressor_head(torch.cat([decoder_output, gfs_targets], -1)), -1)
 
         return torch.squeeze(self.regressor_head(decoder_output), -1)
-
