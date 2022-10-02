@@ -39,9 +39,7 @@ class HybridTransformerWithGFSCMAX(HybridTransformerWithGFS):
 
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
         is_train = stage not in ['test', 'predict', 'validate']
-        input_elements, all_synop_targets, all_gfs_targets, cmax_future, future_dates = \
-            self.get_embeddings(batch, self.config.experiment.with_dates_inputs,
-                                self.time_embed if self.use_time2vec else None, is_train)
+        input_elements, all_synop_targets, all_gfs_targets, cmax_future, future_dates = self.get_embeddings(batch, is_train)
 
         input_embedding = self.pos_encoder(input_elements) if self.use_pos_encoding else input_elements
 
@@ -117,7 +115,7 @@ class HybridTransformerWithGFSCMAX(HybridTransformerWithGFS):
                                                 all_gfs_targets, future_dates)
         return output
 
-    def get_embeddings(self, batch, with_dates, time_embed, with_future):
+    def get_embeddings(self, batch, with_future):
         synop_inputs = batch[BatchKeys.SYNOP_PAST_X.value].float()
         all_synop_targets = batch[BatchKeys.SYNOP_FUTURE_X.value].float() if with_future else None
         all_gfs_targets = batch[BatchKeys.GFS_FUTURE_X.value].float()
@@ -130,7 +128,7 @@ class HybridTransformerWithGFSCMAX(HybridTransformerWithGFS):
             cmax_future.unsqueeze(2)) if cmax_future is not None else None
         self.conv_time_distributed.requires_grad_(True)
 
-        dates_tensors = None if with_dates is False else batch[BatchKeys.DATES_TENSORS.value]
+        dates_tensors = None if self.config.experiment.with_dates_inputs is False else batch[BatchKeys.DATES_TENSORS.value]
         future_dates = None
 
         gfs_inputs = batch[BatchKeys.GFS_PAST_X.value].float()
@@ -144,14 +142,14 @@ class HybridTransformerWithGFSCMAX(HybridTransformerWithGFS):
 
         input_elements = torch.cat([input_elements, cmax_past_embeddings], -1)
 
-        if with_dates:
-            if time_embed is not None:
-                input_elements = torch.cat([input_elements, time_embed(dates_tensors[0])], -1)
+        if self.config.experiment.with_dates_inputs:
+            if self.use_time2vec:
+                input_elements = torch.cat([input_elements, self.time_embed(dates_tensors[0])], -1)
             else:
                 input_elements = torch.cat([input_elements, dates_tensors[0]], -1)
 
-            if time_embed is not None:
-                future_dates = time_embed(dates_tensors[1])
+            if self.use_time2vec:
+                future_dates = self.time_embed(dates_tensors[1])
             else:
                 future_dates = dates_tensors[1]
 

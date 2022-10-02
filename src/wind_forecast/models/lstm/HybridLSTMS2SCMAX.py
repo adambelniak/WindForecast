@@ -58,7 +58,7 @@ class HybridLSTMS2SCMAX(HybridLSTMS2SModel):
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
         is_train = stage not in ['test', 'predict', 'validate']
         input_elements, all_synop_targets, all_gfs_targets, cmax_future, future_dates = self.get_embeddings_cmax(
-            batch, self.time_embed, is_train)
+            batch, is_train)
 
         gfs_targets = batch[BatchKeys.GFS_FUTURE_Y.value].float()
         _, state = self.encoder_lstm(input_elements)
@@ -139,7 +139,7 @@ class HybridLSTMS2SCMAX(HybridLSTMS2SModel):
 
         return output
 
-    def get_embeddings_cmax(self, batch, time_embed, with_future):
+    def get_embeddings_cmax(self, batch, with_future):
         synop_inputs = batch[BatchKeys.SYNOP_PAST_X.value].float()
         all_synop_targets = batch[BatchKeys.SYNOP_FUTURE_X.value].float() if with_future else None
         all_gfs_targets = batch[BatchKeys.GFS_FUTURE_X.value].float()
@@ -168,13 +168,13 @@ class HybridLSTMS2SCMAX(HybridLSTMS2SModel):
         input_elements = torch.cat([input_elements, cmax_past_embeddings], -1)
 
         if self.config.experiment.with_dates_inputs:
-            if time_embed is not None:
-                input_elements = torch.cat([input_elements, time_embed(dates_tensors[0])], -1)
+            if self.use_time2vec:
+                input_elements = torch.cat([input_elements, self.time_embed(dates_tensors[0])], -1)
             else:
                 input_elements = torch.cat([input_elements, dates_tensors[0]], -1)
 
-            if time_embed is not None:
-                future_dates = time_embed(dates_tensors[1])
+            if self.use_time2vec is not None:
+                future_dates = self.time_embed(dates_tensors[1])
             else:
                 future_dates = dates_tensors[1]
 

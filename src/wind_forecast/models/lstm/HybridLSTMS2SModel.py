@@ -55,7 +55,7 @@ class HybridLSTMS2SModel(LSTMS2SModel):
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
         is_train = stage not in ['test', 'predict', 'validate']
         input_elements, all_synop_targets, all_gfs_targets, future_dates = self.get_embeddings(
-            batch, self.config.experiment.with_dates_inputs, self.use_gfs, is_train)
+            batch, is_train)
 
         gfs_targets = batch[BatchKeys.GFS_FUTURE_Y.value].float()
         _, state = self.encoder_lstm(input_elements)
@@ -68,14 +68,14 @@ class HybridLSTMS2SModel(LSTMS2SModel):
 
         return torch.squeeze(self.regressor_head(decoder_output), -1)
 
-    def get_embeddings(self, batch, with_dates, with_gfs_params, with_future):
+    def get_embeddings(self, batch, with_future):
         synop_inputs = batch[BatchKeys.SYNOP_PAST_X.value].float()
         all_synop_targets = batch[BatchKeys.SYNOP_FUTURE_X.value].float() if with_future else None
-        all_gfs_targets = batch[BatchKeys.GFS_FUTURE_X.value].float() if with_gfs_params else None
-        dates_tensors = None if with_dates is False else batch[BatchKeys.DATES_TENSORS.value]
+        all_gfs_targets = batch[BatchKeys.GFS_FUTURE_X.value].float() if self.use_gfs else None
+        dates_tensors = None if self.config.experiment.with_dates_inputs is False else batch[BatchKeys.DATES_TENSORS.value]
         future_dates = None
 
-        if with_gfs_params:
+        if self.use_gfs:
             gfs_inputs = batch[BatchKeys.GFS_PAST_X.value].float()
             input_elements = torch.cat([synop_inputs, gfs_inputs], -1)
         else:

@@ -24,7 +24,7 @@ class HybridBiLSTMS2SCMAX(HybridLSTMS2SCMAX):
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
         is_train = stage not in ['test', 'predict', 'validate']
         input_elements, all_synop_targets, all_gfs_targets, cmax_future, future_dates = self.get_embeddings_cmax(
-            batch, self.time_embed, is_train)
+            batch, is_train)
 
         output, state = self.encoder_lstm(input_elements)
         # state is of shape ((2 * num_layers, batch, H_out), (2 * num_layers, batch, H_cell)
