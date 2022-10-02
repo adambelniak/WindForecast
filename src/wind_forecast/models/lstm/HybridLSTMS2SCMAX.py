@@ -173,7 +173,7 @@ class HybridLSTMS2SCMAX(HybridLSTMS2SModel):
             else:
                 input_elements = torch.cat([input_elements, dates_tensors[0]], -1)
 
-            if self.use_time2vec is not None:
+            if self.use_time2vec:
                 future_dates = self.time_embed(dates_tensors[1])
             else:
                 future_dates = dates_tensors[1]
