@@ -11,7 +11,7 @@ params:
   lstm_num_layers:
     - 2
     - 4
-    - 8
+    - 6
   lstm_hidden_state:
     - 128
     - 256
