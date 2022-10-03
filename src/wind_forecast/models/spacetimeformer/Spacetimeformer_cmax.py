@@ -21,7 +21,7 @@ class Spacetimeformer_cmax(Spacetimeformer):
         config: Config
     ):
         super().__init__(config)
-        assert config.experiment.use_cmax_data, "use_cmax_data should be True for nbeatx_cmax experiment"
+        assert config.experiment.use_cmax_data, "use_cmax_data should be True for spacetimeformer_cmax experiment"
         conv_H = config.experiment.cmax_h
         conv_W = config.experiment.cmax_w
         out_channels = config.experiment.cnn_filters[-1]
@@ -35,7 +35,7 @@ class Spacetimeformer_cmax(Spacetimeformer):
         self.conv_time_distributed = TimeDistributed(self.cmax_conv, batch_first=True)
 
         cmax_embed_dim = conv_W * conv_H * out_channels
-        self.features_length += cmax_embed_dim
+        self.token_dim += cmax_embed_dim
 
         split_length_into = self.features_length
 
@@ -46,20 +46,11 @@ class Spacetimeformer_cmax(Spacetimeformer):
             d_model=self.token_dim,
             time_emb_dim=config.experiment.time2vec_embedding_factor,
             value_emb_dim=config.experiment.value2vec_embedding_factor,
-            downsample_convs=0,
-            method='spatio-temporal',
-            null_value=None,
             start_token_len=self.start_token_len,
             is_encoder=True,
-            position_emb='t2v',
-            max_seq_len=None,
-            data_dropout=None,
             use_val_embed=config.experiment.use_value2vec,
             use_time_embed=config.experiment.use_time2vec,
-            use_space=True,
-            use_given=True,
-            use_position_emb=config.experiment.use_pos_encoding,
-            emb_dropout=0.0
+            use_position_emb=config.experiment.use_pos_encoding
         )
         self.dec_embedding = Embedding(
             d_input=self.features_length,
@@ -67,20 +58,11 @@ class Spacetimeformer_cmax(Spacetimeformer):
             d_model=self.token_dim,
             time_emb_dim=config.experiment.time2vec_embedding_factor,
             value_emb_dim=config.experiment.value2vec_embedding_factor,
-            downsample_convs=0,
-            method='spatio-temporal',
-            null_value=None,
             start_token_len=self.start_token_len,
             is_encoder=False,
-            position_emb='t2v',
-            max_seq_len=None,
-            data_dropout=None,
             use_val_embed=config.experiment.use_value2vec,
             use_time_embed=config.experiment.use_time2vec,
-            use_space=True,
-            use_given=True,
-            use_position_emb=config.experiment.use_pos_encoding,
-            emb_dropout=0.0
+            use_position_emb=config.experiment.use_pos_encoding
         )
 
         # Select Attention Mechanisms
@@ -166,6 +148,8 @@ class Spacetimeformer_cmax(Spacetimeformer):
             norm_layer=Normalization('batch', d_model=self.token_dim)
         )
 
+        self.forecaster = nn.Linear(self.token_dim, 1, bias=True)
+
         features = self.features_length
         if self.use_gfs and self.gfs_on_head:
             features += 1
@@ -223,18 +207,17 @@ class Spacetimeformer_cmax(Spacetimeformer):
 
         if self.use_gfs:
             gfs_inputs = batch[BatchKeys.GFS_PAST_X.value].float()
+            inputs = torch.cat([synop_inputs, gfs_inputs], -1)
+        else:
+            inputs = torch.cat([synop_inputs], -1)
 
         dates = batch[BatchKeys.DATES_TENSORS.value]
 
-        if self.use_gfs:
-            inputs = torch.cat([synop_inputs, gfs_inputs, cmax_input_embeddings], -1)
-        else:
-            inputs = torch.cat([synop_inputs, cmax_input_embeddings], -1)
         # embed context sequence
-        enc_val_time_emb, _, enc_mask_seq = self.enc_embedding(input=inputs, dates=dates[0])
+        enc_val_time_emb, _, enc_mask_seq = self.enc_embedding(input=inputs, dates=dates[0], cmax=cmax_input_embeddings)
 
         # embed target context
         targets = torch.zeros_like(inputs)
-        dec_val_time_emb, _, dec_mask_seq = self.dec_embedding(input=targets, dates=dates[1])
+        dec_val_time_emb, _, dec_mask_seq = self.dec_embedding(input=targets, dates=dates[1], cmax=cmax_input_embeddings)
 
         return enc_val_time_emb, enc_mask_seq, dec_val_time_emb, dec_mask_seq

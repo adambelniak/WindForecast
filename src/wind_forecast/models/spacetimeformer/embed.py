@@ -1,3 +1,5 @@
+from typing import Union
+
 import torch
 import torch.nn as nn
 from einops import repeat, rearrange
@@ -42,7 +44,7 @@ class Time2Vec(nn.Module):
 """
 Modified.
 Value & Time embedding is dropped. Instead, Value2Vec is used for embedding value and Time2Vec for embedding time.
-Both are done separatly, then both embeddings are concatenated with original value.
+Both are done separately, then both embeddings are concatenated with original value. If cmax data provided, it is concatenated as well, without being embedded.
 """
 class Embedding(nn.Module):
     def __init__(
@@ -125,12 +127,12 @@ class Embedding(nn.Module):
         self.use_space = use_space
         self.emb_dropout = nn.Dropout(emb_dropout)
 
-    def __call__(self, input: torch.Tensor, dates: torch.Tensor):
+    def __call__(self, input: torch.Tensor, dates: torch.Tensor, cmax: Union[torch.Tensor, None]):
         if self.method == "spatio-temporal":
             emb = self.spatio_temporal_embed
         else:
             emb = self.temporal_embed
-        return emb(input=input, dates=dates)
+        return emb(input=input, dates=dates, cmax=cmax)
 
     def make_mask(self, y):
         # we make padding-based masks here due to outdated
@@ -140,7 +142,7 @@ class Embedding(nn.Module):
             return None
         return (y == self.pad_value).any(-1, keepdim=True)
 
-    def temporal_embed(self, input: torch.Tensor, dates: torch.Tensor):
+    def temporal_embed(self, input: torch.Tensor, dates: torch.Tensor, cmax: torch.Tensor):
         bs, length, d_input = input.shape
 
         # protect against true NaNs. without
@@ -180,12 +182,8 @@ class Embedding(nn.Module):
         # concat time emb
         val_time_emb = torch.cat([val_emb, time_emb], -1)
 
-        # "given" embedding. not important for temporal emb
-        # when not using a start token
-        # given = torch.ones((bs, length)).long().to(input.device)
-        # if not self.is_encoder and self.use_given:
-        #     given[:, self.start_token_len :] = 0
-        # given_emb = self.given_emb(given)
+        if cmax is not None:
+            val_time_emb = torch.cat([val_time_emb, cmax], -1)
 
         if self.use_position_emb:
             emb = position_emb + val_time_emb # + given_emb
@@ -201,7 +199,7 @@ class Embedding(nn.Module):
         var_idxs = None
         return emb, var_idxs, mask
 
-    def spatio_temporal_embed(self, input: torch.Tensor, dates: torch.Tensor):
+    def spatio_temporal_embed(self, input: torch.Tensor, dates: torch.Tensor, cmax: torch.Tensor):
         # full spatiotemopral emb method. lots of shape rearrange code
         # here to create artificially long (length x dim) spatiotemporal sequence
         batch, length, d_input = input.shape
@@ -243,24 +241,9 @@ class Embedding(nn.Module):
         # concat time_emb with val and space embed
         val_time_emb = torch.cat([self.emb_dropout(val_emb) + self.emb_dropout(space_emb), time_emb], -1)
 
-        # "given" embedding
-        # if self.use_given:
-        #     given = torch.ones((batch, length, d_input)).long().to(input.device)  # start as True
-        #     if not self.is_encoder:
-        #         # mask missing values that need prediction...
-        #         given[:, self.start_token_len :, :] = 0  # (False)
-        #
-        #     # flatten now to make the rest easier to figure out
-        #     given = rearrange(given, "batch len dy -> batch (dy len)")
-        #
-        #     if self.null_value is not None:
-        #         # mask null values that were set to a magic number in the dataset itself
-        #         null_mask = (input != self.null_value).squeeze(-1)
-        #         given *= null_mask
-        #
-        #     given_emb = self.given_emb(given)
-        # else:
-        #     given_emb = 0.0
+        if cmax is not None:
+            cmax_spread = repeat(cmax, f"batch len dconv -> batch ({val_time_emb.size(-2) // cmax.size(-2)} len) dconv")
+            val_time_emb = torch.cat([val_time_emb, cmax_spread], -1)
 
         if self.use_position_emb:
             val_time_emb = position_emb + val_time_emb  # + given_emb

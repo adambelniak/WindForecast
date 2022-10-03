@@ -99,20 +99,11 @@ class Spacetimeformer(LightningModule):
             d_model=self.token_dim,
             time_emb_dim=config.experiment.time2vec_embedding_factor,
             value_emb_dim=config.experiment.value2vec_embedding_factor,
-            downsample_convs=0,
-            method='spatio-temporal',
-            null_value=None,
             start_token_len=self.start_token_len,
             is_encoder=True,
-            position_emb='t2v',
-            max_seq_len=None,
-            data_dropout=None,
             use_val_embed=config.experiment.use_value2vec,
             use_time_embed=config.experiment.use_time2vec,
-            use_space=True,
-            use_given=True,
-            use_position_emb=config.experiment.use_pos_encoding,
-            emb_dropout=0.0
+            use_position_emb=config.experiment.use_pos_encoding
         )
         self.dec_embedding = Embedding(
             d_input=self.features_length,
@@ -120,20 +111,11 @@ class Spacetimeformer(LightningModule):
             d_model=self.token_dim,
             time_emb_dim=config.experiment.time2vec_embedding_factor,
             value_emb_dim=config.experiment.value2vec_embedding_factor,
-            downsample_convs=0,
-            method='spatio-temporal',
-            null_value=None,
             start_token_len=self.start_token_len,
             is_encoder=False,
-            position_emb='t2v',
-            max_seq_len=None,
-            data_dropout=None,
             use_val_embed=config.experiment.use_value2vec,
             use_time_embed=config.experiment.use_time2vec,
-            use_space=True,
-            use_given=True,
-            use_position_emb=config.experiment.use_pos_encoding,
-            emb_dropout=0.0
+            use_position_emb=config.experiment.use_pos_encoding
         )
 
         # Select Attention Mechanisms
@@ -287,9 +269,9 @@ class Spacetimeformer(LightningModule):
         dates = batch[BatchKeys.DATES_TENSORS.value]
 
         # embed context sequence
-        enc_val_time_emb, _, enc_mask_seq = self.enc_embedding(input=inputs, dates=dates[0])
+        enc_val_time_emb, _, enc_mask_seq = self.enc_embedding(input=inputs, dates=dates[0], cmax=None)
         # embed target context
-        dec_val_time_emb, _, dec_mask_seq = self.dec_embedding(input=targets, dates=dates[1])
+        dec_val_time_emb, _, dec_mask_seq = self.dec_embedding(input=targets, dates=dates[1], cmax=None)
 
         return enc_val_time_emb, enc_mask_seq, dec_val_time_emb, dec_mask_seq
 
