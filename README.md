@@ -77,7 +77,7 @@ RUN_MODE=debug # Disables W&B logging and loads only a small part of datasets in
 
 RUN_MODE=tune # Disables W&B logging and performs tuning process
 
-RUN_MOE=tune_debug # Joins the two above
+RUN_MODE=tune_debug # Joins the two above
 ```
 
 ### Weights & Biases

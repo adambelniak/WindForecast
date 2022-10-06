@@ -9,7 +9,7 @@ There are 3 main files:
 #### 1. rda_request_sender.py
 Prepares the request body adhering to RDA API (see https://github.com/NCAR/rda-apps-clients/tree/main/src/python) and sends it.  
 Requests are prepared based on `--input_file` parameter. You can request for one-point coordinate or a spatial region by switching `-bulk` flag.  
-An example of input file: gfs_processor/gfs_params.json. `hours_type` needs to be specified, see help for `--hours_type` CLI argument.
+An example of input file: [gfs_processor/gfs_params.json](https://github.com/MBelniak/WindForecast/blob/master/src/gfs_archive_0_25/gfs_processor/gfs_params.json). `hours_type` needs to be specified, see help for `--hours_type` CLI argument.
 Before being sent, requests metadata is saved in `csv/req_list.csv`. The metadata consists of e.g. request id and request status.
 
 RDA API is limited to 10 requests at a time, so this tool uses scheduler to check frequently if it can send another request if an old one has been purged.
