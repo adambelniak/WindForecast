@@ -4,6 +4,8 @@
 Trying to predict the most exact temperature, wind speed etc. for hours and days ahead
 using LSTM, BiLSTM, TCN, Transformer, Spacetimeformer, NBEATSx. and some data analysis tools.
 
+<b> Note: work is being performed in [MBelniak fork](https://github.com/MBelniak/WindForecast)<b>
+
 ## :card_index: Datasets
 
 There are 3 different datasets used in this project. Based on experiment settings neural network uses datasets 1., 1. & 2. or 1. & 2. & 3.
