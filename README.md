@@ -51,7 +51,7 @@ There are several scopes in which an experiment can be configured. For tips on c
 4. config.tune - tune config; set of params to check
 
 ## :running: Running
-Obtaining datasets is described in synop readme (TODO), [GFS readme](https://github.com/MBelniak/WindForecast/blob/master/src/gfs_archive_0_25/README.md) and CMAX readme (TODO).
+Obtaining datasets is described in [synop readme](src/synop/README.md), [GFS readme](src/gfs_archive_0_25/README.md) and [CMAX readme](src/radar/README.md).
 Prepared synop data (csv file) should be placed in src/data/synop directory. There are already some files ready. Prepared GFS and CMAX datasets should be placed in a `pkl` directory placed in a directory pointed via GFS_DATASET_DIR and CMAX_DATASET_DIR environment variables.
 
 <b>First, create conda environment<b>
