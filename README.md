@@ -86,3 +86,4 @@ WANDB_PROJECT=<your project name>
 By default data is not loaded in parallel due to a problems on my Windows machine.
 You can try speeding it up by setting `experiment.num_workers` to a number of cores on your machine  
 or a smaller number if there are CUDA errors.
+
