@@ -1,8 +1,10 @@
 import logging
 import sys
 import os
+from pathlib import Path
 
-def get_logger(log_path: str = "log/gfs_processor.log"):
+
+def get_logger(log_path: str = os.path.join(Path(__file__).parent, "log/gfs_processor.log")):
     logger = logging.getLogger(log_path)
     formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 

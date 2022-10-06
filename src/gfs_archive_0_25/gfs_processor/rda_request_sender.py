@@ -2,6 +2,8 @@ import argparse
 import json
 from datetime import datetime
 import time
+from pathlib import Path
+
 import pandas as pd
 import schedule
 from geopy.geocoders import Nominatim
@@ -11,7 +13,8 @@ from gfs_archive_0_25.gfs_processor.own_logger import logger
 from gfs_archive_0_25.gfs_processor.rdams_client import submit_json
 from gfs_archive_0_25.gfs_processor.consts import *
 
-REQ_ID_PATH = 'csv/req_list.csv'
+REQ_ID_PATH = os.path.join(Path(__file__).parent, 'csv/req_list.csv')
+
 
 class RequestStatus(Enum):
     PENDING = 'Pending'
@@ -31,13 +34,16 @@ class RequestType(Enum):
 
 def point_coords_to_region_coords(coords):
     region_coords = pd.DataFrame(columns=[NLAT_FIELD, SLAT_FIELD, WLON_FIELD, ELON_FIELD])
-    region_coords[[NLAT_FIELD, SLAT_FIELD, WLON_FIELD, ELON_FIELD]] = [[x['latitude'], x['latitude'], x['longitude'], x['longitude']] for x in coords]
+    region_coords[[NLAT_FIELD, SLAT_FIELD, WLON_FIELD, ELON_FIELD]] = [
+        [x[1]['latitude'], x[1]['latitude'], x[1]['longitude'], x[1]['longitude']] for x in coords.iterrows()]
     return region_coords
 
 
 def save_request_to_pseudo_db(request_type: RequestType, request_status: RequestStatus, **kwargs):
     if not os.path.isfile(REQ_ID_PATH):
-        pseudo_db = pd.DataFrame(columns=[REQUEST_ID_FIELD, REQUEST_TYPE_FIELD, REQUEST_STATUS_FIELD, NLAT_FIELD, SLAT_FIELD, WLON_FIELD, ELON_FIELD, PARAM_FIELD, LEVEL_FIELD, HOURS_TYPE_FIELD])
+        pseudo_db = pd.DataFrame(
+            columns=[REQUEST_ID_FIELD, REQUEST_TYPE_FIELD, REQUEST_STATUS_FIELD, NLAT_FIELD, SLAT_FIELD, WLON_FIELD,
+                     ELON_FIELD, PARAM_FIELD, LEVEL_FIELD, HOURS_TYPE_FIELD])
     else:
         pseudo_db = pd.read_csv(REQ_ID_PATH, index_col=[0])
     pseudo_db = pseudo_db.append(
@@ -52,8 +58,9 @@ def save_request_to_pseudo_db(request_type: RequestType, request_status: Request
          LEVEL_FIELD: kwargs[LEVEL_FIELD],
          HOURS_TYPE_FIELD: kwargs[HOURS_TYPE_FIELD]
          }, ignore_index=True)
-    logger.info(f"Saving a new request of type {request_type} for coords (lat: {kwargs[NLAT_FIELD]}-{kwargs[SLAT_FIELD]}, "
-                f"lon: {kwargs[WLON_FIELD]}-{kwargs[ELON_FIELD]}), param {kwargs[PARAM_FIELD]}, level {kwargs[LEVEL_FIELD]}, hours_type {kwargs[HOURS_TYPE_FIELD]}...")
+    logger.info(
+        f"Saving a new request of type {request_type} for coords (lat: {kwargs[NLAT_FIELD]}-{kwargs[SLAT_FIELD]}, "
+        f"lon: {kwargs[WLON_FIELD]}-{kwargs[ELON_FIELD]}), param {kwargs[PARAM_FIELD]}, level {kwargs[LEVEL_FIELD]}, hours_type {kwargs[HOURS_TYPE_FIELD]}...")
     pseudo_db.to_csv(REQ_ID_PATH)
 
 
@@ -72,7 +79,7 @@ def generate_product_description(start_hour, end_hour, hours_type, step=3):
 
 def find_coordinates(path, output_file_name="city_geo.csv"):
     location_list = pd.read_csv(path, encoding="ISO-8859-1",
-                                names=['file_id', 'city_name', 'meteo_code'])
+                                names=['city_name', 'meteo_code'])
 
     city_list = location_list["city_name"].to_list()
     geolocator = Nominatim(user_agent='gfs_fetch_processor')
@@ -84,7 +91,7 @@ def find_coordinates(path, output_file_name="city_geo.csv"):
         if geo:
             geo_list.append([city_name, geo.latitude, geo.longitude])
 
-    path_to_write = os.path.join("../city_coordinates", output_file_name)
+    path_to_write = os.path.join(Path(__file__).parent, "city_coordinates", output_file_name)
     data = pd.DataFrame(geo_list, columns=["city_name", "latitude", "longitude"])
     data.to_csv(path_to_write)
     return data
@@ -118,7 +125,9 @@ def prepare_coordinates(coords_data):
     :param coords_data: Pandas dataFrame
     :return:
     """
-    coordinates = coords_data.apply(lambda x: [round(x[NLAT_FIELD], 1), round(x[SLAT_FIELD], 1), round(x[WLON_FIELD], 1), round(x[ELON_FIELD], 1)], axis=1)
+    coordinates = coords_data.apply(
+        lambda x: [round(x[NLAT_FIELD], 1), round(x[SLAT_FIELD], 1), round(x[WLON_FIELD], 1), round(x[ELON_FIELD], 1)],
+        axis=1)
     coords_data[[NLAT_FIELD, SLAT_FIELD, WLON_FIELD, ELON_FIELD]] = [x for x in coordinates]
     before_duplicates_filter = len(coords_data)
     coords_data = coords_data.drop_duplicates(subset=[NLAT_FIELD, SLAT_FIELD, WLON_FIELD, ELON_FIELD])
@@ -155,7 +164,8 @@ def prepare_bulk_region_request(params_to_fetch, **kwargs):
             level = 'Def'
         for nlat, slat, wlon, elon in coords_data[[NLAT_FIELD, SLAT_FIELD, WLON_FIELD, ELON_FIELD]].values:
             save_request_to_pseudo_db(RequestType.BULK, RequestStatus.PENDING, nlat=nlat, slat=slat,
-                                      elon=elon, wlon=wlon, param=param, level=level, hours_type=hours_type, request_id=None)
+                                      elon=elon, wlon=wlon, param=param, level=level, hours_type=hours_type,
+                                      request_id=None)
 
 
 def prepare_points_request(params_to_fetch, **kwargs):
@@ -165,8 +175,6 @@ def prepare_points_request(params_to_fetch, **kwargs):
         coords_data = pd.read_csv(kwargs["coordinate_path"])
 
     coords_data = prepare_coordinates(point_coords_to_region_coords(coords_data))
-    # save city coordinates just for debug
-    coords_data.to_csv('csv/map_cities_to_gfs_cords.csv')
 
     for param in params_to_fetch:
         param, level, hours_type = param[PARAM_FIELD], param[LEVEL_FIELD], param[HOURS_TYPE_FIELD]
@@ -174,7 +182,8 @@ def prepare_points_request(params_to_fetch, **kwargs):
             level = 'Def'
         for nlat, slat, wlon, elon in coords_data[[NLAT_FIELD, SLAT_FIELD, WLON_FIELD, ELON_FIELD]].values:
             save_request_to_pseudo_db(RequestType.POINT, RequestStatus.PENDING, nlat=nlat, slat=slat,
-                                      elon=elon, wlon=wlon, param=param, level=level, hours_type=hours_type, request_id=None)
+                                      elon=elon, wlon=wlon, param=param, level=level, hours_type=hours_type,
+                                      request_id=None)
 
 
 def prepare_requests(**kwargs):
@@ -182,7 +191,8 @@ def prepare_requests(**kwargs):
         params_to_fetch = read_params_from_input_file(kwargs['input_file'])
         logger.info(f"Preparing requests for {len(params_to_fetch)} parameters...")
     else:
-        params_to_fetch = [{PARAM_FIELD: kwargs['gfs_parameter'], "level": kwargs['gfs_level'], HOURS_TYPE_FIELD: kwargs[HOURS_TYPE_FIELD]}]
+        params_to_fetch = [{PARAM_FIELD: kwargs['gfs_parameter'], "level": kwargs['gfs_level'],
+                            HOURS_TYPE_FIELD: kwargs[HOURS_TYPE_FIELD]}]
 
     if kwargs["bulk"]:
         prepare_bulk_region_request(params_to_fetch, **kwargs)
@@ -191,7 +201,6 @@ def prepare_requests(**kwargs):
 
 
 def send_prepared_requests(kwargs):
-
     start_date = datetime.strptime(kwargs["start_date"], '%Y-%m-%d %H:%M')
     end_date = datetime.strptime(kwargs["end_date"], '%Y-%m-%d %H:%M')
     request_db = pd.read_csv(REQ_ID_PATH, index_col=0)
@@ -206,7 +215,8 @@ def send_prepared_requests(kwargs):
         hours_type = request[HOURS_TYPE_FIELD]
         product = generate_product_description(kwargs['forecast_start'], kwargs['forecast_end'], hours_type=hours_type)
 
-        template = build_template(nlat, slat, elon, wlon, start_date, end_date, param, product, level, 'csv' if request_type == RequestType.POINT.value else 'netCDF')
+        template = build_template(nlat, slat, elon, wlon, start_date, end_date, param, product, level,
+                                  'csv' if request_type == RequestType.POINT.value else 'netCDF')
         response = submit_json(template)
         if response['status'] == 'ok':
             request_id = response['result']['request_id']
@@ -243,14 +253,15 @@ def prepare_and_start_processor(**kwargs):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-send_only', help='Do not prepare new request. Send request from db only.', action='store_true')
+    parser.add_argument('-send_only', help='Do not prepare new request. Send request from db only.',
+                        action='store_true')
     parser.add_argument('-bulk', help='If true, grib files will be requested for an area specified in '
-                                                    '--nlat, --slat, --wlon and --elon. Otherwise, coordinates from '
-                                                    '--coordinate_path will be used', action='store_true')
-    parser.add_argument('--fetch_city_coordinates', help='Get coordinates for provided cities', default=False)
+                                      '--nlat, --slat, --wlon and --elon. Otherwise, coordinates from '
+                                      '--coordinate_path will be used', action='store_true')
+    parser.add_argument('-fetch_city_coordinates', help='Get coordinates for provided cities', action='store_true')
     parser.add_argument('--city_list', help='Path to SYNOP list with locations names', default=False)
-    parser.add_argument('--coordinate_path', help='Path to list of cities with coordinates to fetch.',
-                        default='../city_coordinates/city_geo_test.csv')
+    parser.add_argument('--coordinate_path', help='Path to list of cities with coordinates to fetch synop data for.',
+                        default=os.path.join(Path(__file__).parent, 'city_coordinates/coordinates_to_fetch.csv'))
     parser.add_argument('--nlat', help='Optional, use for spatial subset requests 90 to -90. Specifies upper bound of '
                                        'spherical rectangle.', default=None, type=float)
     parser.add_argument('--slat', help='Optional, use for spatial subset requests 90 to -90. Specifies lower bound of '
@@ -267,13 +278,16 @@ if __name__ == '__main__':
     parser.add_argument('--gfs_level', help='Level of parameter', type=str, default='HTGL:10')
     parser.add_argument('--forecast_start', help='Offset (in hours) of beginning of the forecast. Should be divisible '
                                                  'by 3.', type=int, default=0)
-    parser.add_argument('--forecast_end', help='Offset (in hours) of end of the forecast. Should be divisible by 3.', type=int,
-                                            default=120)
+    parser.add_argument('--forecast_end', help='Offset (in hours) of end of the forecast. Should be divisible by 3.',
+                        type=int,
+                        default=120)
     parser.add_argument('--hours_type', type=str, choices=['point', 'average', 'all'], help='For some params only 3h '
-                                                        'averages are available instead of exact time-point forecasts. '
-                                                        'Set to "average" if you want to fetch dates like "3-hour Average'
-                                                        ' (initial+0, initial+3)". Set to "all" to fetch both types. '
-                                                        'Leave empty to use time-points.', default='point')
+                                                                                            'averages are available instead of exact time-point forecasts. '
+                                                                                            'Set to "average" if you want to fetch dates like "3-hour Average'
+                                                                                            ' (initial+0, initial+3)". Set to "all" to fetch both types. '
+                                                                                            'Leave empty to use time-points.',
+                        default='point')
 
     args = parser.parse_args()
+    os.makedirs(Path(REQ_ID_PATH).parent, exist_ok=True)
     prepare_and_start_processor(**vars(args))
