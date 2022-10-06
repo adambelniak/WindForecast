@@ -1,9 +1,11 @@
 from datetime import timedelta
+from typing import Dict
 
 import numpy as np
 import torch
 
 from wind_forecast.config.register import Config
+from wind_forecast.datasets.BaseDataset import BaseDataset
 from wind_forecast.loaders.GFSLoader import GFSLoader
 from wind_forecast.util.common_util import NormalizationType
 from wind_forecast.util.config import process_config
@@ -12,10 +14,11 @@ from wind_forecast.util.gfs_util import initialize_mean_and_std, \
     get_GFS_values_for_sequence, date_from_gfs_date_key
 
 
-class MultiChannelSpatialDataset(torch.utils.data.Dataset):
+class MultiChannelSpatialDataset(BaseDataset):
     'Characterizes a dataset for PyTorch'
-    def __init__(self, config: Config, train_IDs, labels, normalize=True):
-        self.train_parameters = process_config(config.experiment.train_parameters_config_file)
+    def __init__(self, config: Config, train_IDs: Dict, labels, normalize=True):
+        super().__init__()
+        self.train_parameters = process_config(config.experiment.train_parameters_config_file).params
         self.target_param = config.experiment.target_parameter
         self.labels = labels
         self.dim = config.experiment.cnn_input_size
@@ -26,7 +29,6 @@ class MultiChannelSpatialDataset(torch.utils.data.Dataset):
         self.list_IDs = train_IDs
 
         self.data = self.list_IDs[str(self.prediction_offset)]
-        self.mean, self.std = [], []
         self.normalize = normalize
         self.gfs_loader = GFSLoader()
         if normalize:

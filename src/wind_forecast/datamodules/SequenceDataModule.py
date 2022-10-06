@@ -1,38 +1,35 @@
 import math
 from typing import Optional
 
-from pytorch_lightning import LightningDataModule
+import numpy as np
+import pandas as pd
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
+from gfs_archive_0_25.gfs_processor.Coords import Coords
 from wind_forecast.config.register import Config
 from wind_forecast.consts import SYNOP_DATASETS_DIRECTORY
+from wind_forecast.datamodules.SplittableDataModule import SplittableDataModule
 from wind_forecast.datasets.SequenceDataset import SequenceDataset
 from wind_forecast.datasets.SequenceWithGFSDataset import SequenceWithGFSDataset
-from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset, normalize_synop_data
-from wind_forecast.util.common_util import split_dataset
+from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset, normalize_synop_data_for_training
 from wind_forecast.util.config import process_config
-from wind_forecast.util.gfs_util import add_param_to_train_params, normalize_gfs_data, match_gfs_with_synop_sequence, \
-    target_param_to_gfs_name_level
+from wind_forecast.util.gfs_util import add_param_to_train_params, normalize_gfs_data, \
+    target_param_to_gfs_name_level, GFSUtil
+from wind_forecast.util.logging import log
 from wind_forecast.util.synop_util import get_correct_dates_for_sequence
-import pandas as pd
-import numpy as np
 
 
-class SequenceDataModule(LightningDataModule):
+class SequenceDataModule(SplittableDataModule):
 
     def __init__(
             self,
             config: Config
     ):
-        super().__init__()
+        super().__init__(config)
         self.config = config
-        self.val_split = config.experiment.val_split
         self.batch_size = config.experiment.batch_size
         self.shuffle = config.experiment.shuffle
-        self.dataset_train = ...
-        self.dataset_val = ...
-        self.dataset_test = ...
         self.synop_file = config.experiment.synop_file
         self.train_params = config.experiment.synop_train_features
         self.target_param = config.experiment.target_parameter
@@ -45,9 +42,17 @@ class SequenceDataModule(LightningDataModule):
         self.target_coords = config.experiment.target_coords
         self.synop_from_year = config.experiment.synop_from_year
         self.synop_to_year = config.experiment.synop_to_year
+        self.periodic_features = config.experiment.synop_periodic_features
         self.gfs_train_params = process_config(
-            config.experiment.train_parameters_config_file) if config.experiment.use_all_gfs_as_input else None
+            config.experiment.train_parameters_config_file).params if config.experiment.use_gfs_data else None
+        self.gfs_target_params = self.gfs_train_params if config.experiment.use_gfs_data else target_param_to_gfs_name_level(
+            self.target_param)
 
+        coords = config.experiment.target_coords
+        self.target_coords = Coords(coords[0], coords[0], coords[1], coords[1])
+        self.gfs_util = GFSUtil(self.target_coords, self.sequence_length, 0, self.prediction_offset,
+                                self.gfs_train_params,
+                                self.gfs_target_params)
         self.synop_data = ...
         self.synop_data_indices = ...
         self.removed_dataset_indices = []
@@ -67,14 +72,19 @@ class SequenceDataModule(LightningDataModule):
         # Get indices which correspond to 'dates' - 'dates' are the ones, which start a proper sequence without breaks
         self.synop_data_indices = self.synop_data[self.synop_data["date"].isin(dates)].index
         # data was not normalized, so take all frames which will be used, compute std and mean and normalize data
-        self.synop_data, synop_mean, synop_std = normalize_synop_data(self.synop_data, self.synop_data_indices,
-                                                                      self.feature_names,
-                                                                      self.sequence_length + self.prediction_offset,
-                                                                      self.normalization_type)
-        print(f"Synop mean: {synop_mean[self.target_param_index]}")
-        print(f"Synop std: {synop_std[self.target_param_index]}")
+        self.synop_data, self.synop_feature_names, synop_mean, synop_std = normalize_synop_data_for_training(
+            self.synop_data, self.synop_data_indices,
+            self.feature_names,
+            self.sequence_length + self.prediction_offset,
+            self.normalization_type,
+            self.periodic_features)
+        log.info(f"Synop mean: {synop_mean[self.target_param]}")
+        log.info(f"Synop std: {synop_std[self.target_param]}")
 
     def setup(self, stage: Optional[str] = None):
+        if self.get_from_cache(stage):
+            return
+
         if self.config.experiment.use_gfs_data:
             synop_inputs, all_gfs_input_data, gfs_target_data, synop_targets = self.prepare_dataset_for_gfs()
             if self.gfs_train_params is not None:
@@ -82,37 +92,31 @@ class SequenceDataModule(LightningDataModule):
             else:
                 dataset = SequenceWithGFSDataset(synop_inputs, gfs_target_data, synop_targets)
         else:
-            dataset = SequenceDataset(config=self.config, synop_data=self.synop_data, synop_data_indices=self.synop_data_indices)
+            dataset = SequenceDataset(config=self.config, synop_data=self.synop_data,
+                                      synop_data_indices=self.synop_data_indices)
 
-        self.dataset_train, self.dataset_val = split_dataset(dataset, self.config.experiment.val_split,
-                                                             sequence_length=self.sequence_length if self.sequence_length > 1 else None)
-        self.dataset_test = self.dataset_val
+        self.split_dataset(self.config, dataset, self.sequence_length)
 
     def prepare_dataset_for_gfs(self):
-        print("Preparing the dataset")
+        log.info("Preparing the dataset")
         synop_inputs, all_synop_targets = self.resolve_all_synop_data()
 
         all_gfs_input_data = ...
         if self.gfs_train_params is not None:
             # first, get GFS input data that matches synop input data
-            synop_inputs, all_gfs_input_data, _, removed_indices = match_gfs_with_synop_sequence(synop_inputs,
-                                                                      synop_inputs, self.target_coords[0],
-                                                                      self.target_coords[1], 0, self.gfs_train_params)
+            synop_inputs, all_gfs_input_data, _, removed_indices = self.gfs_util.match_gfs_with_synop_sequence(
+                synop_inputs,
+                synop_inputs)
 
         # Then, get GFS data for forecast frames
-        synop_inputs, gfs_target_data, all_synop_targets, next_removed_indices = match_gfs_with_synop_sequence(
-                                                                                    synop_inputs, all_synop_targets,
-                                                                                    self.target_coords[0],
-                                                                                    self.target_coords[1],
-                                                                                    self.prediction_offset,
-                                                                                    target_param_to_gfs_name_level(
-                                                                                        self.target_param))
+        synop_inputs, gfs_target_data, all_synop_targets, next_removed_indices = self.gfs_util.match_gfs_with_synop_sequence(
+            synop_inputs, all_synop_targets)
 
         self.removed_dataset_indices.extend(next_removed_indices)
 
         if self.gfs_train_params is not None:
             all_gfs_input_data = [item for index, item in enumerate(all_gfs_input_data) if
-                                       index not in next_removed_indices]
+                                  index not in next_removed_indices]
 
         synop_targets = [target[:, self.target_param_index] for target in all_synop_targets]
 

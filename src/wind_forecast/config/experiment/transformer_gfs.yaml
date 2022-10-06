@@ -1,0 +1,24 @@
+# Specific experiments settings
+# (default settings inherited from configs.experiment.ExperimentSettings)
+
+defaults:
+  - schema_experiment
+
+_tags_:
+  - TRANSFORMER_GFS
+
+resume_checkpoint: ~
+#resume_checkpoint: wandb://mbelniak/wind-forecast/model-3qklp9mb:v53@model.ckpt
+
+datamodule:
+  _target_: wind_forecast.datamodules.Sequence2SequenceWithCMAXDataModule.Sequence2SequenceWithCMAXDataModule
+
+
+model:
+  _target_: wind_forecast.models.transformer.TransformerWithGFS.TransformerWithGFS
+
+system:
+  _target_: wind_forecast.systems.S2SRegressorWithGFSInput.S2SRegressorWithGFSInput
+
+use_gfs_data: True
+dropout: 0.2

@@ -1,0 +1,39 @@
+defaults:
+  - schema_tune
+
+params:
+  use_time2vec:
+    - True
+    - False
+  use_value2vec:
+    - True
+    - False
+  tcn_channels:
+    -
+      - 16
+      - 32
+    -
+      - 32
+      - 64
+    -
+      - 32
+      - 64
+      - 64
+  tcn_kernel_size:
+    - 2
+    - 3
+    - 5
+  regressor_head_dims:
+    -
+      - 32
+    -
+      - 64
+      - 32
+    -
+      - 128
+      - 128
+      - 64
+    -
+      - 64
+      - 128
+      - 32

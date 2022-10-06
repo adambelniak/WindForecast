@@ -1,0 +1,21 @@
+# Specific experiments settings
+# (default settings inherited from configs.experiment.ExperimentSettings)
+
+defaults:
+  - schema_experiment
+
+_tags_:
+  - TCN_ENCODER_GFS
+
+resume_checkpoint: ~
+
+datamodule:
+  _target_: wind_forecast.datamodules.SequenceDataModule.SequenceDataModule
+
+use_gfs_data: True
+
+model:
+  _target_: wind_forecast.models.tcn.TCNEncoderWithGFS.TCNEncoderWithGFS
+
+system:
+  _target_: wind_forecast.systems.RegressorWithGFSInput.RegressorWithGFSInput

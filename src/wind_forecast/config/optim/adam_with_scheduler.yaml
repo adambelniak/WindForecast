@@ -9,7 +9,6 @@ optimizer:
   _target_: torch.optim.Adam
   params: ~
 
-  lr: 0.001
   weight_decay: 0
   betas: [0.9, 0.999]
   amsgrad: false
@@ -19,3 +18,5 @@ scheduler:
 
 lambda_lr:
   _target_: wind_forecast.lr_schedulers.transformer_lr_scheduler.TransformerLRScheduler
+
+base_lr: 0.001

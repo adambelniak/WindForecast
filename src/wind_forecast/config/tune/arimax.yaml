@@ -1,0 +1,14 @@
+defaults:
+  - schema_tune
+
+params:
+  arima_p:
+    - 0
+    - 1
+    - 2
+    - 3
+  arima_q:
+    - 0
+    - 1
+    - 2
+    - 3

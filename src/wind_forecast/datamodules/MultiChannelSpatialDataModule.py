@@ -9,7 +9,7 @@ from wind_forecast.datasets.MultiChannelSpatialDataset import MultiChannelSpatia
 from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset
 from wind_forecast.util.common_util import split_dataset
 from wind_forecast.util.config import process_config
-from wind_forecast.util.gfs_util import get_available_gfs_date_keys, GFS_DATASET_DIR
+from wind_forecast.util.gfs_util import get_available_gfs_date_keys
 
 
 class MultiChannelSpatialDataModule(LightningDataModule):
@@ -26,7 +26,7 @@ class MultiChannelSpatialDataModule(LightningDataModule):
         self.dataset_train = ...
         self.dataset_val = ...
         self.dataset_test = ...
-        self.train_parameters = process_config(config.experiment.train_parameters_config_file)
+        self.train_parameters = process_config(config.experiment.train_parameters_config_file).params
         self.prediction_offset = config.experiment.prediction_offset
         self.synop_file = config.experiment.synop_file
         self.target_param = config.experiment.target_parameter

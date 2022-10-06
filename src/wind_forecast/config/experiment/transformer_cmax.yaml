@@ -13,20 +13,14 @@ datamodule:
   _target_: wind_forecast.datamodules.Sequence2SequenceWithCMAXDataModule.Sequence2SequenceWithCMAXDataModule
 
 model:
-  _target_: wind_forecast.models.TransformerCMAX.TransformerCMAX
+  _target_: wind_forecast.models.transformer.TransformerCMAX.TransformerCMAX
 
 system:
-  _target_: wind_forecast.systems.S2SRegressorWithTFWithCMAX.S2SRegressorWithTFWithCMAX
+  _target_: wind_forecast.systems.S2SRegressorWithGFSInput.S2SRegressorWithGFSInput
 
-synop_from_year: 2017
-cmax_from_year: 2017
+use_cmax_data: True
+load_cmax_data: True
 use_future_cmax: True
-batch_size: 5
-time2vec_embedding_size: 5
-cnn_filters:
-  - 16
-  - 32
-  - 32
-  - 32
-  - 32
-  - 16
+use_pretrained_cmax_autoencoder: True
+dropout: 0.2
+

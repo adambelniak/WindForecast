@@ -4,8 +4,9 @@ import errno
 import os
 import re
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, Dict
 
+from pytorch_lightning.utilities.types import _METRIC
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers.wandb import WandbLogger
 from wandb.sdk.wandb_run import Run
@@ -25,10 +26,9 @@ class CustomCheckpointer(ModelCheckpoint):
     def _format_checkpoint_name(
         cls,
         filename: Optional[str],
-        epoch: int,
-        step: int,
-        metrics: dict[str, Any],
+        metrics: Dict[str, _METRIC],
         prefix: str = "",
+        auto_insert_metric_name: bool = True
     ) -> str:
         if not filename:
             # filename is not set, use default name
@@ -37,7 +37,6 @@ class CustomCheckpointer(ModelCheckpoint):
         # check and parse user passed keys in the string
         groups = re.findall(r"(\{.*?)[:\}]", filename)
         if len(groups) >= 0:
-            metrics.update({"epoch": epoch, 'step': step})
             for group in groups:
                 name = group[1:]
                 filename = filename.replace(group, name + "_{" + name)
@@ -61,9 +60,10 @@ def get_resume_checkpoint(cfg: Config, wandb_logger: WandbLogger) -> Optional[st
     wandb_prefix = 'wandb://'
 
     if path.startswith(wandb_prefix):
+        run_name = os.getenv("RUN_NAME")
         # Resuming from wandb artifacts, e.g.:
         # resume_checkpoint: wandb://WANDB_LOGIN/WANDB_PROJECT_NAME/ARTIFACT_NAME:v0@checkpoint.ckpt
-        artifact_root = f'{os.getenv("RESULTS_DIR")}/{os.getenv("WANDB_PROJECT")}/_artifacts'
+        artifact_root = f'{os.getenv("RESULTS_DIR")}/{os.getenv("WANDB_PROJECT")}/{run_name}/artifacts'
 
         path = path[len(wandb_prefix):]
         artifact_path, checkpoint_path = path.split('@')
@@ -71,10 +71,10 @@ def get_resume_checkpoint(cfg: Config, wandb_logger: WandbLogger) -> Optional[st
 
         os.makedirs(f'{artifact_root}/{artifact_name}', exist_ok=True)
 
-        artifact = run.use_artifact(artifact_path)  # type: ignore
-        artifact.download(root=f'{artifact_root}/{artifact_name}')  # type: ignore
+        artifact = run.use_artifact(artifact_path, type='model')  # type: ignore
+        artifact.download()  # type: ignore
 
-        path = f'{artifact_root}/{artifact_name}/{checkpoint_path}'
+        path = f'artifacts/{artifact_name}/{checkpoint_path}'
 
     if not Path(path).exists():
         raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), path)

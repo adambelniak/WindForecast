@@ -1,5 +1,6 @@
 import os
 import sys
+from typing import Dict
 
 from wind_forecast.loaders.Singleton import Singleton
 
@@ -26,7 +27,7 @@ class GFSLoader(metaclass=Singleton):
     def get_date_key(date):
         return datetime.strftime(date, "%Y%m%d%H")
 
-    def get_gfs_image(self, date_key: str, gfs_parameter, from_offset: int):
+    def get_gfs_image(self, date_key: str, gfs_parameter: Dict, from_offset: int):
         param_key = f"{gfs_parameter['name']}_{gfs_parameter['level']}"
         pickle_filename = f"{gfs_parameter['name']}_{gfs_parameter['level']}_{prep_zeros_if_needed(str(from_offset), 2)}"
 

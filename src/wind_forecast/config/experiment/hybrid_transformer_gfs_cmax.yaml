@@ -1,0 +1,28 @@
+# Specific experiments settings
+# (default settings inherited from configs.experiment.ExperimentSettings)
+
+defaults:
+  - schema_experiment
+
+_tags_:
+  - HYBRID_TRANSFORMER_GFS_CMAX
+
+resume_checkpoint: ~
+#resume_checkpoint: wandb://mbelniak/wind-forecast/model-3qklp9mb:v53@model.ckpt
+
+datamodule:
+  _target_: wind_forecast.datamodules.Sequence2SequenceWithCMAXDataModule.Sequence2SequenceWithCMAXDataModule
+
+
+model:
+  _target_: wind_forecast.models.transformer.HybridTransformerWithGFSCMAX.HybridTransformerWithGFSCMAX
+
+system:
+  _target_: wind_forecast.systems.S2SRegressorWithGFSInput.S2SRegressorWithGFSInput
+
+use_gfs_data: True
+load_cmax_data: True
+use_cmax_data: True
+load_future_cmax: True
+use_pretrained_cmax_autoencoder: True
+dropout: 0.2

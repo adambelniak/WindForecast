@@ -1,0 +1,27 @@
+# Specific experiments settings
+# (default settings inherited from configs.experiment.ExperimentSettings)
+
+defaults:
+  - schema_experiment
+
+_tags_:
+  - TCN_ENCODER_S2S_CMAX
+
+resume_checkpoint: ~
+
+datamodule:
+  _target_: wind_forecast.datamodules.Sequence2SequenceWithCMAXDataModule.Sequence2SequenceWithCMAXDataModule
+
+model:
+  _target_: wind_forecast.models.tcn.TCNEncoderS2SCMAX.TCNEncoderS2SCMAX
+
+system:
+  _target_: wind_forecast.systems.BaseS2SRegressor.BaseS2SRegressor
+
+load_cmax_data: True
+use_cmax_data: True
+use_pretrained_cmax_autoencoder: True
+tcn_channels:
+  - 32
+  - 64
+  - 64

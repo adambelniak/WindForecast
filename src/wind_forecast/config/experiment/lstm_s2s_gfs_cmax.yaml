@@ -1,0 +1,24 @@
+# Specific experiments settings
+# (default settings inherited from configs.experiment.ExperimentSettings)
+
+defaults:
+  - schema_experiment
+
+_tags_:
+  - LSTM_S2S_GFS_CMAX
+
+resume_checkpoint: ~
+
+datamodule:
+  _target_: wind_forecast.datamodules.Sequence2SequenceWithCMAXDataModule.Sequence2SequenceWithCMAXDataModule
+
+model:
+  _target_: wind_forecast.models.lstm.LSTMS2SModelCMAX.LSTMS2SModelCMAX
+
+system:
+  _target_: wind_forecast.systems.S2SRegressorWithGFSInput.S2SRegressorWithGFSInput
+use_gfs_data: True
+teacher_forcing_epoch_num: 0
+load_cmax_data: True
+use_cmax_data: True
+use_pretrained_cmax_autoencoder: True

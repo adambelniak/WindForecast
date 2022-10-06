@@ -3,7 +3,11 @@ import numpy as np
 
 from gfs_archive_0_25.gfs_processor.Coords import Coords
 
-GFS_SPACE = Coords(56, 48, 13, 26)
+POLAND_NLAT = 56
+POLAND_SLAT = 48
+POLAND_WLON = 13
+POLAND_ELON = 26
+GFS_SPACE = Coords(POLAND_NLAT, POLAND_SLAT, POLAND_WLON, POLAND_ELON)
 
 GFS_PARAMETERS = [
     {

@@ -1,0 +1,19 @@
+# Specific experiments settings
+# (default settings inherited from configs.experiment.ExperimentSettings)
+
+defaults:
+  - schema_experiment
+
+_tags_:
+  - TRANSFORMER_WITH_RANDOM_MASK
+
+resume_checkpoint: ~
+
+datamodule:
+  _target_: wind_forecast.datamodules.Sequence2SequenceWithCMAXDataModule.Sequence2SequenceWithCMAXDataModule
+
+model:
+  _target_: wind_forecast.models.transformer.TransformerRandomMask.TransformerRandomMask
+
+system:
+  _target_: wind_forecast.systems.BaseS2SRegressor.BaseS2SRegressor

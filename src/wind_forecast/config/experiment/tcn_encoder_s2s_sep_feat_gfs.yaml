@@ -1,0 +1,24 @@
+# Specific experiments settings
+# (default settings inherited from configs.experiment.ExperimentSettings)
+
+defaults:
+  - schema_experiment
+
+_tags_:
+  - TCN_ENCODER_S2S_SEP_FEAT_ALL_GFS
+
+resume_checkpoint: ~
+
+datamodule:
+  _target_: wind_forecast.datamodules.Sequence2SequenceWithCMAXDataModule.Sequence2SequenceWithCMAXDataModule
+
+model:
+  _target_: wind_forecast.models.tcn.TCNEncoderS2SFeatureSeparableModel.TCNEncoderS2SFeatureSeparableModel
+
+system:
+  _target_: wind_forecast.systems.S2SRegressorWithGFSInput.S2SRegressorWithGFSInput
+
+use_gfs_data: True
+tcn_channels:
+  - 16
+  - 32

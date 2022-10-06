@@ -10,9 +10,9 @@ from hydra.utils import instantiate
 from pytorch_lightning import LightningModule
 from pytorch_lightning.loggers.base import LoggerCollection
 from pytorch_lightning.loggers.wandb import WandbLogger
-from pytorch_lightning.metrics import MeanAbsoluteError
+from torchmetrics.regression.mean_absolute_error import MeanAbsoluteError
 from torch.optim.lr_scheduler import _LRScheduler
-from pytorch_lightning.metrics.regression.mean_squared_error import MeanSquaredError
+from torchmetrics.regression.mean_squared_error import MeanSquaredError
 from rich import print
 from torch.nn import MSELoss
 from torch.optim.optimizer import Optimizer
@@ -86,6 +86,7 @@ class RegressorWithGFSInput(pl.LightningModule):
         optimizer: Optimizer = instantiate(
             self.cfg.optim.optimizer,
             params=self.parameters(),
+            lr=self.cfg.optim.base_lr,
             _convert_='all'
         )
 
@@ -95,7 +96,7 @@ class RegressorWithGFSInput(pl.LightningModule):
                                     warmup_epochs=self.cfg.optim.warmup_epochs,
                                     decay_epochs=self.cfg.optim.decay_epochs,
                                     starting_lr=self.cfg.optim.starting_lr,
-                                    base_lr=self.cfg.optim.optimizer.lr,
+                                    base_lr=self.cfg.optim.base_lr,
                                     final_lr=self.cfg.optim.final_lr)
 
             scheduler: _LRScheduler = instantiate(  # type: ignore
@@ -239,7 +240,7 @@ class RegressorWithGFSInput(pl.LightningModule):
         outputs : list[Any]
             List of dictionaries returned by `self.validation_step` with batch metrics.
         """
-        step = self.current_epoch + 1 if not self.trainer.running_sanity_check else self.current_epoch  # type: ignore
+        step = self.current_epoch + 1 if not self.trainer.sanity_checking else self.current_epoch  # type: ignore
 
         metrics = {
             'epoch': float(step),
@@ -294,7 +295,7 @@ class RegressorWithGFSInput(pl.LightningModule):
         outputs : list[Any]
             List of dictionaries returned by `self.test_step` with batch metrics.
         """
-        step = self.current_epoch + 1 if not self.trainer.running_sanity_check else self.current_epoch  # type: ignore
+        step = self.current_epoch + 1 if not self.trainer.sanity_checking else self.current_epoch  # type: ignore
 
         metrics = {
             'epoch': float(step),

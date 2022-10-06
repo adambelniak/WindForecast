@@ -2,62 +2,174 @@ import os
 from typing import cast
 
 import hydra
-import matplotlib.dates as mdates
-import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
+import optuna
 import pytorch_lightning as pl
 import setproctitle
 import wandb
 from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
+from optuna.integration import PyTorchLightningPruningCallback
 from pytorch_lightning import LightningDataModule, LightningModule
-from pytorch_lightning.loggers import WandbLogger
+from pytorch_lightning.loggers import WandbLogger, LightningLoggerBase
 from wandb.sdk.wandb_run import Run
 
 from wind_forecast.config.register import Config, register_configs, get_tags
+from wind_forecast.runs_analysis import run_analysis
 from wind_forecast.util.callbacks import CustomCheckpointer, get_resume_checkpoint
 from wind_forecast.util.logging import log
+from wind_forecast.util.plots import plot_results
 from wind_forecast.util.rundir import setup_rundir
 
-wandb_logger: WandbLogger
-os.environ['KMP_DUPLICATE_LIB_OK']='True'
+os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
+
+def log_dataset_metrics(datamodule: LightningDataModule, logger: LightningLoggerBase):
+    metrics = {
+        'train_dataset_length': len(datamodule.dataset_train),
+        'val_dataset_length': len(datamodule.dataset_val),
+        'test_dataset_length': len(datamodule.dataset_test)
+    }
+
+    mean = datamodule.dataset_test.mean
+    std = datamodule.dataset_test.std
+
+    if mean is not None:
+        if type(mean) == list:
+            for index, m in enumerate(mean):
+                metrics[f"target_mean_{str(index)}"] = m
+        else:
+            metrics['target_mean'] = mean
+    if std is not None:
+        if type(std) == list:
+            for index, s in enumerate(std):
+                metrics[f"target_std_{str(index)}"] = s
+        else:
+            metrics['target_std'] = std
+
+    logger.log_metrics(metrics)
 
 
-def plot_results(system, config: Config, mean, std):
-    for index in np.random.choice(np.arange(len(system.test_results['output'])), 20, replace=False):
-        fig, ax = plt.subplots()
-        inputs_dates = [pd.to_datetime(pd.Timestamp(d)) for d in system.test_results['inputs_dates'][index]]
-        output_dates = [pd.to_datetime(pd.Timestamp(d)) for d in system.test_results['targets_dates'][index]]
+def run_tune(cfg: Config):
+    def objective(trial: optuna.trial.Trial, datamodule: LightningDataModule):
+        config_exp = {}
+        config_optim = {}
+        for param in cfg.tune.params.keys():
+            config_exp[param] = trial.suggest_categorical(param, list(cfg.tune.params[param]))
 
-        inputs_dates.extend(output_dates)
-        x = inputs_dates
-        plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%m/%d/%Y %H%M'))
-        plt.gca().xaxis.set_major_locator(mdates.HourLocator())
-        out_series = system.test_results['output'][index].cpu() * std + mean
-        truth_series = (system.test_results['inputs'][index].cpu() * std + mean).tolist()
-        truth_series.extend((system.test_results['labels'][index].cpu() * std + mean).tolist())
-        ax.plot(output_dates, out_series, label='prediction')
-        ax.plot(x, truth_series, label='ground truth')
-        ax.set_xlabel('Date')
-        ax.set_ylabel(config.experiment.target_parameter)
-        ax.legend(loc='best')
-        plt.gcf().autofmt_xdate()
-        wandb.log({'chart': ax})
+        if all(tag not in ['ARIMAX', 'SARIMAX'] for tag in cfg.experiment._tags_):
+            config_exp['dropout'] = trial.suggest_uniform('dropout', 0, 0.8)
+            if cfg.experiment.use_value2vec:
+                config_exp['value2vec_embedding_factor'] = trial.suggest_int('value2vec_embedding_factor', 1, 20)
+            if cfg.experiment.use_time2vec:
+                config_exp['time2vec_embedding_factor'] = trial.suggest_int('time2vec_embedding_factor', 1, 20)
+
+            config_optim['base_lr'] = trial.suggest_loguniform('base_lr', 0.000001, 0.01)
+            if 'lambda_lr' in cfg.optim:
+                config_optim['starting_lr'] = trial.suggest_loguniform('starting_lr', 0.000001, 0.01)
+                config_optim['final_lr'] = trial.suggest_loguniform('final_lr', 0.000001, 0.01)
+                config_optim['warmup_epochs'] = trial.suggest_int('warmup_epochs', 0, cfg.experiment.epochs)
+                config_optim['decay_epochs'] = trial.suggest_int('decay_epochs', 0, cfg.experiment.epochs)
+
+        for param in config_exp.keys():
+            cfg.experiment.__setattr__(param, config_exp[param])
+
+        for param in config_optim.keys():
+            cfg.optim.__setattr__(param, config_optim[param])
+
+        config = OmegaConf.to_container(cfg, resolve=True)
+        config['trial.number'] = trial.number
+
+        log.info(f'\\[init] Loaded config:\n{OmegaConf.to_yaml(cfg, resolve=True)}')
+
+        RUN_NAME = os.getenv('RUN_NAME') + '-' + str(trial.number)
+        WANDB_PROJECT = os.getenv('WANDB_PROJECT')
+        WANDB_ENTITY = os.getenv('WANDB_ENTITY')
+        wandb_logger = WandbLogger(
+            project=WANDB_PROJECT,
+            entity=WANDB_ENTITY,
+            name=RUN_NAME,
+            save_dir=os.getenv('RUN_DIR')
+        )
+        wandb.init(project=WANDB_PROJECT,
+                   entity=WANDB_ENTITY,
+                   name=RUN_NAME,
+                   config=config,
+                   reinit=True)
+
+        run: Run = wandb_logger.experiment  # type: ignore
+
+        # Setup logging & checkpointing
+        tags = get_tags(cast(DictConfig, cfg))
+        run.tags = tags
+        run.notes = str(cfg.notes)
+        log.info(f'[bold yellow][{RUN_NAME} / {run.id}]: [bold white]{",".join(tags)}')
+
+        # Create main system (system = models + training regime)
+        system: LightningModule = instantiate(cfg.experiment.system, cfg)
+
+        trainer: pl.Trainer = instantiate(
+            cfg.lightning,
+            logger=wandb_logger,
+            max_epochs=cfg.experiment.epochs,
+            gpus=cfg.lightning.gpus,
+            callbacks=[PyTorchLightningPruningCallback(trial, monitor="ptl/val_mase")],
+            checkpoint_callback=False,
+            num_sanity_val_steps=-1 if cfg.experiment.validate_before_training else 0,
+            check_val_every_n_epoch=cfg.experiment.check_val_every_n_epoch
+        )
+        if not cfg.experiment.skip_training:
+            trainer.fit(system, datamodule)
+        else:
+            trainer.validate(system, datamodule)
+
+        if trainer.interrupted:  # type: ignore
+            log.info(f'[bold red]>>> Tuning interrupted.')
+            run.finish(exit_code=255)
+
+        val_loss = trainer.logged_metrics["ptl/val_mase"]
+        run.summary["final loss"] = val_loss
+        run.summary["state"] = "completed"
+        run.finish(quiet=True)
+
+        return val_loss
+
+    epochs = cfg.experiment.epochs
+    datamodule = instantiate(cfg.experiment.datamodule, cfg)
+
+    study = optuna.create_study(direction="minimize",
+                                pruner=optuna.pruners.PatientPruner(optuna.pruners.MedianPruner(
+                                    n_warmup_steps=int(epochs * cfg.tune.prune_after_warmup_steps)),
+                                    patience=int(epochs * cfg.tune.pruning_patience_factor),
+                                    min_delta=cfg.tune.patient_pruning_min_delta))
+    study.optimize(lambda trial: objective(trial, datamodule), n_trials=cfg.tune.trials)
+
+    log.info("Number of finished trials: {}".format(len(study.trials)))
+
+    log.info("Best trial:")
+    trial = study.best_trial
+
+    log.info("  Value: {}".format(trial.value))
+
+    log.info("  Params: ")
+    for key, value in trial.params.items():
+        log.info("    {}: {}".format(key, value))
 
 
-@hydra.main(config_path='config', config_name='default')
-def main(cfg: Config):
-
-    cfg.experiment.train_parameters_config_file = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                                               'config', 'train_parameters',
-                                                               cfg.experiment.train_parameters_config_file)
-
-    log.info(f'\\[init] Loaded config:\n{OmegaConf.to_yaml(cfg, resolve=True)}')
-
-    pl.seed_everything(cfg.experiment.seed)
-
+def run_training(cfg):
+    WANDB_PROJECT = os.getenv('WANDB_PROJECT')
+    WANDB_ENTITY = os.getenv('WANDB_ENTITY')
     RUN_NAME = os.getenv('RUN_NAME')
+
+    wandb_logger = WandbLogger(
+        project=WANDB_PROJECT,
+        entity=WANDB_ENTITY,
+        name=RUN_NAME,
+        save_dir=os.getenv('RUN_DIR'),
+        log_model='all' if os.getenv('LOG_MODEL') == 'all' else True if os.getenv('LOG_MODEL') == 'True' else False
+    )
+    wandb.init(project=WANDB_PROJECT,
+               entity=WANDB_ENTITY,
+               name=RUN_NAME)
+
     log.info(f'[bold yellow]\\[init] Run name --> {RUN_NAME}')
 
     run: Run = wandb_logger.experiment  # type: ignore
@@ -71,13 +183,14 @@ def main(cfg: Config):
 
     setproctitle.setproctitle(f'{RUN_NAME} ({os.getenv("WANDB_PROJECT")})')  # type: ignore
 
-    log.info(f'[bold white]Overriding cfg.lightning settings with derived values:')
-    log.info(f' >>> num_sanity_val_steps = {-1 if cfg.experiment.validate_before_training else 0}\n')
-
+    log.info(f'\\[init] Loaded config:\n{OmegaConf.to_yaml(cfg, resolve=True)}')
     # Create main system (system = models + training regime)
     system: LightningModule = instantiate(cfg.experiment.system, cfg)
     log.info(f'[bold yellow]\\[init] System architecture:')
     log.info(system)
+    wandb_logger.log_metrics({
+        'n_params': sum(p.numel() for p in system.model.parameters() if p.requires_grad)
+    })
     # Prepare data using datamodules
     datamodule: LightningDataModule = instantiate(cfg.experiment.datamodule, cfg)
 
@@ -86,55 +199,66 @@ def main(cfg: Config):
         log.info(f'[bold yellow]\\[checkpoint] [bold white]{resume_path}')
 
     checkpointer = CustomCheckpointer(
-        period=1,
         dirpath='checkpoints',
-        filename='{epoch}',
+        filename='{epoch}'
     )
 
     trainer: pl.Trainer = instantiate(
         cfg.lightning,
         logger=wandb_logger,
+        limit_val_batches=0 if cfg.experiment.skip_validation else 1,
         max_epochs=cfg.experiment.epochs,
         callbacks=[checkpointer],
         resume_from_checkpoint=resume_path,
         checkpoint_callback=True if cfg.experiment.save_checkpoints else False,
-        num_sanity_val_steps=-1 if cfg.experiment.validate_before_training else 0
+        num_sanity_val_steps=-1 if cfg.experiment.validate_before_training else 0,
+        check_val_every_n_epoch=cfg.experiment.check_val_every_n_epoch
     )
 
-    trainer.fit(system, datamodule=datamodule)
-    trainer.test(system, datamodule=datamodule)
+    if not cfg.experiment.skip_training:
+        trainer.fit(system, datamodule=datamodule)
 
-    wandb_logger.log_metrics({
-        'target_mean': datamodule.dataset_test.mean,
-        'target_std': datamodule.dataset_test.std
-    }, step=system.current_epoch)
+    if not cfg.experiment.skip_test:
+        trainer.test(system, datamodule=datamodule)
 
-    mean = datamodule.dataset_test.mean
-    std = datamodule.dataset_test.std
+        mean = datamodule.dataset_test.mean
+        std = datamodule.dataset_test.std
 
-    plot_results(system, cfg, mean, std)
+        if cfg.experiment.view_test_result:
+            plot_results(system, cfg, mean, std)
+
+    log_dataset_metrics(datamodule, wandb_logger)
 
     if trainer.interrupted:  # type: ignore
         log.info(f'[bold red]>>> Training interrupted.')
         run.finish(exit_code=255)
 
+@hydra.main(config_path='config', config_name='default')
+def main(cfg: Config):
+    RUN_MODE = os.getenv('RUN_MODE', '').lower()
+    if RUN_MODE == 'debug':
+        cfg.debug_mode = True
+    elif RUN_MODE in ['tune', 'tune_debug']:
+        cfg.tune_mode = True
+        if RUN_MODE == 'tune_debug':
+            cfg.debug_mode = True
+
+    pl.seed_everything(cfg.experiment.seed)
+
+    cfg.experiment.train_parameters_config_file = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                                                               'config', 'train_parameters',
+                                                               cfg.experiment.train_parameters_config_file)
+
+    if cfg.tune_mode:
+        run_tune(cfg)
+    elif RUN_MODE == 'analysis':
+        run_analysis(cfg)
+    else:
+        run_training(cfg)
+
 
 if __name__ == '__main__':
     setup_rundir()
-
-    wandb.init(project=os.getenv('WANDB_PROJECT'),
-               entity=os.getenv('WANDB_ENTITY'),
-               name=os.getenv('RUN_NAME'))
-
-    wandb_logger = WandbLogger(
-        project=os.getenv('WANDB_PROJECT'),
-        entity=os.getenv('WANDB_ENTITY'),
-        name=os.getenv('RUN_NAME'),
-        save_dir=os.getenv('RUN_DIR'),
-    )
-
-    # Init logger from source dir (code base) before switching to run dir (results)
-    wandb_logger.experiment  # type: ignore
 
     # Instantiate default Hydra config with environment variables & switch working dir
     register_configs()

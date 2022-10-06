@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import math
 from typing import Any, Tuple, Union, List
-import copy
 
 import pytorch_lightning as pl
 import torch
@@ -11,7 +10,7 @@ from pytorch_lightning import LightningModule
 from pytorch_lightning.loggers.base import LoggerCollection
 from pytorch_lightning.loggers.wandb import WandbLogger
 from torch.optim.lr_scheduler import _LRScheduler
-from pytorch_lightning.metrics.regression.mean_squared_error import MeanSquaredError
+from torchmetrics.regression.mean_squared_error import MeanSquaredError
 from rich import print
 from torch.nn import MSELoss
 from torch.optim.optimizer import Optimizer
@@ -81,6 +80,7 @@ class AutoencoderSystem(pl.LightningModule):
         """
         optimizer: Optimizer = instantiate(
             self.cfg.optim.optimizer,
+            lr=self.cfg.optim.base_lr,
             params=self.parameters(),
             _convert_='all'
         )
@@ -91,7 +91,7 @@ class AutoencoderSystem(pl.LightningModule):
                                     warmup_epochs=self.cfg.optim.warmup_epochs,
                                     decay_epochs=self.cfg.optim.decay_epochs,
                                     starting_lr=self.cfg.optim.starting_lr,
-                                    base_lr=self.cfg.optim.optimizer.lr,
+                                    base_lr=self.cfg.optim.base_lr,
                                     final_lr=self.cfg.optim.final_lr)
 
             scheduler: _LRScheduler = instantiate(  # type: ignore
@@ -231,7 +231,7 @@ class AutoencoderSystem(pl.LightningModule):
         outputs : list[Any]
             List of dictionaries returned by `self.validation_step` with batch metrics.
         """
-        step = self.current_epoch + 1 if not self.trainer.running_sanity_check else self.current_epoch  # type: ignore
+        step = self.current_epoch + 1 if not self.trainer.sanity_checking else self.current_epoch  # type: ignore
 
         metrics = {
             'epoch': float(step),
@@ -282,7 +282,7 @@ class AutoencoderSystem(pl.LightningModule):
         outputs : list[Any]
             List of dictionaries returned by `self.test_step` with batch metrics.
         """
-        step = self.current_epoch + 1 if not self.trainer.running_sanity_check else self.current_epoch  # type: ignore
+        step = self.current_epoch + 1 if not self.trainer.sanity_checking else self.current_epoch  # type: ignore
 
         metrics = {
             'epoch': float(step),
@@ -297,11 +297,5 @@ class AutoencoderSystem(pl.LightningModule):
 
         self.logger.log_metrics(metrics, step=step)
 
-        # save results to view
-        labels = [item for sublist in [x['labels'] for x in outputs] for item in sublist]
-
-        out = [item for sublist in [x['output'] for x in outputs] for item in sublist]
-
-        self.test_results = {'labels': copy.deepcopy(labels),
-                             'output': copy.deepcopy(out)}
+        self.test_results = {}
 

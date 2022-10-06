@@ -130,7 +130,7 @@ def prepare_coordinates(coords_data):
 
 
 def read_params_from_input_file(path):
-    print("Reading gfs parameters from " + path)
+    logger.info("Reading gfs parameters from " + path)
     if os.path.exists(path):
         with open(path) as f:
             return json.load(f)
@@ -221,7 +221,7 @@ def send_prepared_requests(kwargs):
                 request_db.loc[index, REQUEST_STATUS_FIELD] = RequestStatus.FAILED.value
         logger.info(response)
     request_db.to_csv(REQ_ID_PATH)
-    print("Sending requests done. Waiting for next scheduler trigger.")
+    logger.info("Sending requests done. Waiting for next scheduler trigger.")
 
 
 def prepare_and_start_processor(**kwargs):
@@ -272,7 +272,7 @@ if __name__ == '__main__':
     parser.add_argument('--hours_type', type=str, choices=['point', 'average', 'all'], help='For some params only 3h '
                                                         'averages are available instead of exact time-point forecasts. '
                                                         'Set to "average" if you want to fetch dates like "3-hour Average'
-                                                        ' (initial+0, intial+3)". Set to "all" to fetch both types. '
+                                                        ' (initial+0, initial+3)". Set to "all" to fetch both types. '
                                                         'Leave empty to use time-points.', default='point')
 
     args = parser.parse_args()

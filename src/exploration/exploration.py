@@ -1,5 +1,4 @@
 import argparse
-import os
 import re
 from pathlib import Path
 
@@ -12,9 +11,7 @@ from tqdm import tqdm
 from gfs_archive_0_25.gfs_processor.own_logger import get_logger
 from gfs_archive_0_25.utils import prep_zeros_if_needed
 from wind_forecast.consts import SYNOP_DATASETS_DIRECTORY
-from wind_forecast.preprocess.synop.consts import SYNOP_FEATURES
-from wind_forecast.preprocess.synop.fetch_synop_data import download_list_of_station, get_localisation_id, \
-    process_all_data
+from synop.consts import SYNOP_FEATURES
 from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset
 from wind_forecast.util.gfs_util import GFS_DATASET_DIR, get_available_numpy_files
 
@@ -59,10 +56,10 @@ GFS_PARAMETERS = [
         "name": "HGT",
         "level": "ISBL_850"
     },
-    # {
-    #   "name": "HGT",
-    #   "level": "ISBL_500"
-    # },
+    {
+      "name": "HGT",
+      "level": "ISBL_500"
+    },
     {
         "name": "R H",
         "level": "HTGL_2"
@@ -92,9 +89,11 @@ GFS_PARAMETERS = [
         "level": "SFC_0"
     },
 ]
+import os
+os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 
 
-def explore_data_for_each_param():
+def explore_data_for_each_gfs_param():
     logger = get_logger(os.path.join("explore_results", 'logs.log'))
     for parameter in tqdm(GFS_PARAMETERS):
         param_dir = os.path.join(GFS_DATASET_DIR, parameter['name'], parameter['level'])
@@ -141,67 +140,61 @@ def explore_gfs_correlations():
     plt.close()
 
 
-def prepare_synop_csv(localisation_name: str, code_fallback: int, features: (int, str)):
-    download_list_of_station()
-    localisation_code, name = get_localisation_id(localisation_name, code_fallback)
-    localisation_code = localisation_code
-    localisation_name = args.localisation_name
-    if localisation_name is None:
-        localisation_name = name
-    process_all_data(2001, 2021, str(localisation_code), localisation_name, output_dir=SYNOP_DATASETS_DIRECTORY,
-                     columns=features)
-
-
 def explore_synop_correlations(data: pd.DataFrame, features: (int, str), localisation_name: str):
     if os.path.exists(os.path.join(Path(__file__).parent, f"synop_{localisation_name}_heatmap.png")):
         return
     data = data[list(list(zip(*features))[1])]
+    plt.figure(figsize=(20, 10))
     sns.heatmap(data.corr(), annot=True)
+    plt.savefig(os.path.join(Path(__file__).parent, f"synop_{localisation_name}_heatmap.png"), dpi=200)
     plt.show()
-    plt.savefig(os.path.join(Path(__file__).parent, f"synop_{localisation_name}_heatmap.png"))
     plt.close()
 
 
-def explore_synop_patterns(data: pd.DataFrame, relevant_features: (int, str), localisation_name: str):
+def explore_synop_patterns(data: pd.DataFrame, features: (int, str), localisation_name: str):
     features_with_nans = []
-    for feature in relevant_features:
+    for feature in features:
         plot_dir = os.path.join('plots-synop', localisation_name, feature[1])
-        if not os.path.exists(plot_dir):
-            values = data[feature[1]].to_numpy()
-            if np.isnan(np.sum(values)):
-                features_with_nans.append(feature[1])
-            sns.boxplot(x=values).set_title(f"{feature[1]}")
-            os.makedirs(plot_dir, exist_ok=True)
-            plt.savefig(os.path.join(plot_dir, 'plot.png'))
-            plt.close()
+        values = data[feature[1]].to_numpy()
+        if np.isnan(np.sum(values)):
+            features_with_nans.append(feature[1])
+        sns.boxplot(x=values).set_title(f"{feature[1]}")
+        os.makedirs(plot_dir, exist_ok=True)
+        plt.savefig(os.path.join(plot_dir, 'plot-box.png'))
+        plt.close()
+        sns.lineplot(data=data[['date', feature[1]]], x='date', y=feature[1])
+        os.makedirs(plot_dir, exist_ok=True)
+        plt.savefig(os.path.join(plot_dir, 'plot-line.png'))
+        plt.close()
     if len(features_with_nans):
         logger = get_logger(os.path.join("explore_results", 'logs.log'))
         logger.info(f"Nans in features:\n {[f'{feature}, ' for feature in features_with_nans]}")
 
 
-def explore_synop(localisation_name: str, code_fallback: int):
+def explore_synop(synop_file):
     relevant_features = [f for f in SYNOP_FEATURES if f[1] not in ['year', 'month', 'day', 'hour']]
-    synop_file = f"{localisation_name}_{code_fallback}_data.csv"
-    if not os.path.exists(os.path.join(SYNOP_DATASETS_DIRECTORY, synop_file)):
-        prepare_synop_csv(localisation_name, code_fallback, SYNOP_FEATURES)
+    if not os.path.exists(synop_file):
+        raise Exception(f"CSV file with synop data does not exist at path {synop_file}.")
 
     data = prepare_synop_dataset(synop_file, list(list(zip(*relevant_features))[1]), norm=False,
-                                 dataset_dir=SYNOP_DATASETS_DIRECTORY)
+                                 dataset_dir=SYNOP_DATASETS_DIRECTORY, from_year=2016, to_year=2022)
 
-    explore_synop_correlations(data, relevant_features, localisation_name)
-    explore_synop_patterns(data, relevant_features, localisation_name)
+    data["date"] = pd.to_datetime(data[['year', 'month', 'day', 'hour']])
+    explore_synop_correlations(data, relevant_features, os.path.basename(synop_file))
+    explore_synop_patterns(data, relevant_features, os.path.basename(synop_file))
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--localisation_name', help='Localisation name for which to get data',
-                        default="WARSZAWA-OKECIE", type=str)
-    parser.add_argument('--code_fallback', help='Localisation code as a fallback if name is not found', default=375,
-                        type=int)
+    parser.add_argument('--synop_csv', help='Path to a CSV file with synop data',
+                        default=os.path.join(SYNOP_DATASETS_DIRECTORY, 'WARSZAWA-OKECIE_352200375_data.csv'), type=str)
+    parser.add_argument('--skip_gfs', help='Skip GFS dataset.', action='store_true')
+
 
     args = parser.parse_args()
 
-    explore_data_for_each_param()
-    explore_gfs_correlations()
-    explore_synop(args.localisation_name, args.code_fallback)
+    if not args.skip_gfs:
+        explore_data_for_each_gfs_param()
+        explore_gfs_correlations()
+    explore_synop(args.synop_csv)

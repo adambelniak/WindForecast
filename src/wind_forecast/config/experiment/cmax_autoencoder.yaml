@@ -10,7 +10,7 @@ _tags_:
 resume_checkpoint: ~
 
 datamodule:
-  _target_: wind_forecast.datamodules.CMAXDataModule.CMAXDataModule
+  _target_: wind_forecast.datamodules.CMAXCAEDataModule.CMAXCAEDataModule
 
 model:
   _target_: wind_forecast.models.CMAXAutoencoder.CMAXAutoencoder
@@ -18,7 +18,9 @@ model:
 system:
   _target_: wind_forecast.systems.AutoencoderSystem.AutoencoderSystem
 
-cmax_from_year: 2017
-batch_size: 5
-sequence_length: 1
-use_future_cmax: False
+batch_size: 128
+epochs: 10
+view_test_result: False
+skip_test: True
+load_cmax_data: True
+skip_validation: True

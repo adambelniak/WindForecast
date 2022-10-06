@@ -7,9 +7,11 @@ from hydra.conf import HydraConf, RunDir, SweepDir
 from hydra.core.config_store import ConfigStore
 from omegaconf import SI, MISSING, DictConfig
 
+from wind_forecast.config.analysis import AnalysisSettings
 from wind_forecast.config.experiment import ExperimentSettings
 from wind_forecast.config.lightning import LightningSettings
 from wind_forecast.config.optim import OptimSettings, OPTIMIZERS
+from wind_forecast.config.tune import TuneSettings
 
 
 @dataclass
@@ -27,6 +29,8 @@ class Config:
         {'experiment': 'cnn'},
         {'lightning': 'default'},
         {'optim': 'adam'},
+        {'tune': 'sarimax'},
+        {'analysis': 'analysis'},
         {'override hydra/job_logging': 'rich'},
         {'override hydra/hydra_logging': 'rich'},
     ])
@@ -47,6 +51,14 @@ class Config:
     # Optimizer & scheduler settings --> optim/*.yaml
     optim: OptimSettings = MISSING
 
+    tune: TuneSettings = MISSING
+
+    analysis: AnalysisSettings = MISSING
+
+    debug_mode: bool = False
+
+    tune_mode: bool = False
+
     # wandb metadata
     notes: Optional[str] = None
     tags: Optional[List[str]] = None
@@ -63,6 +75,8 @@ def register_configs():
     cs.store(group='experiment', name='schema_experiment', node=ExperimentSettings)
     cs.store(group='lightning', name='schema_lightning', node=LightningSettings)
     cs.store(group='optim', name='schema_optim', node=OptimSettings)
+    cs.store(group='tune', name='schema_tune', node=TuneSettings)
+    cs.store(group='analysis', name='schema_analysis', node=AnalysisSettings)
 
     for key, node in OPTIMIZERS.items():
         name = f'schema_optim_{key}'

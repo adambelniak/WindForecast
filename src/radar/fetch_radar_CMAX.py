@@ -1,3 +1,4 @@
+import argparse
 import os
 import sys
 from datetime import datetime, timedelta
@@ -46,18 +47,36 @@ def extract_zip(date: datetime):
             zip.extractall(path=tmp_dir)
         os.remove(os.path.join(dir_with_zip, filename))
         for file in os.listdir(tmp_dir):
-            if not file.endswith(".h5"):
+            if not file.endswith(".h5") or os.path.exists(os.path.join(dir_with_zip, file)):
                 os.remove(os.path.join(tmp_dir, file))
             else:
                 os.rename(os.path.join(tmp_dir, file), os.path.join(dir_with_zip, file))
     except BadZipFile:
+        print(f"BadZipFile thrown for file {filename}")
         return
 
 
 def get_all_zips():
-    date = datetime(2021, 6, 19)
+    parser = argparse.ArgumentParser()
 
-    while date != datetime(2021, 9, 5):
+    parser.add_argument('--from_year', help='Start fetching from this year. Must be between 2011 and 2022', type=int, default=2016)
+    parser.add_argument('--from_month', help='Start fetching from this month', type=int, default=1)
+    parser.add_argument('--to_year', help='Fetch up to this year', default=2021, type=int)
+    parser.add_argument('--to_month',
+                        help='Fetch up to this month', default=12, type=int)
+
+    args = parser.parse_args()
+    assert 2011 < args.from_year < 2022, "2011 < args.from_year < 2022"
+    assert 2011 < args.to_year < 2022, "2011 < args.to_year < 2022"
+    assert args.from_year <= args.to_year, "args.from_year <= args.to_year"
+    assert 0 < args.from_month < 13, "0 < args.from_month < 13"
+    assert 0 < args.to_month < 13, "0 < args.to_month < 13"
+    assert args.from_year < args.to_year or (args.from_year == args.to_year and args.from_month < args.to_month),\
+        "args.from_year < args.to_year or (args.from_year == args.to_year and args.from_month < args.to_month)"
+
+    date = datetime(args.from_year, args.from_month, 1)
+
+    while date != datetime(args.to_year + (1 if args.to_month == 12 else 0), 1 if args.to_month == 12 else args.to_month + 1, 1):
         print(f"Fetching zip for date {date.strftime('%Y-%m-%d')}")
         get_zip(date)
         extract_zip(date)
@@ -66,4 +85,3 @@ def get_all_zips():
 
 if __name__ == "__main__":
     get_all_zips()
-

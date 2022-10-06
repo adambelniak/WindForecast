@@ -10,11 +10,15 @@ class TransformerLRScheduler:
 
     def transformer_lr_scheduler(self, epoch: int):
         if epoch < self.warmup_epochs:
+            if self.base_lr == self.starting_lr:
+                return 1
             diff = self.base_lr - self.starting_lr
             rate = (epoch + 1) / self.warmup_epochs
             return (diff * rate) / self.base_lr
 
         if self.warmup_epochs <= epoch < self.warmup_epochs + self.decay_epochs:
+            if self.base_lr == self.final_lr:
+                return 1
             diff = self.base_lr - self.final_lr
             rate = 1 - ((epoch - self.warmup_epochs) / self.decay_epochs)
             return (diff * rate) / self.base_lr

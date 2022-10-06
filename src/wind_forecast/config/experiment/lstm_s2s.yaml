@@ -10,12 +10,10 @@ _tags_:
 resume_checkpoint: ~
 
 datamodule:
-  _target_: wind_forecast.datamodules.Sequence2SequenceDataModule.Sequence2SequenceDataModule
+  _target_: wind_forecast.datamodules.Sequence2SequenceWithCMAXDataModule.Sequence2SequenceWithCMAXDataModule
 
 model:
-  _target_: wind_forecast.models.LSTMS2SModel.LSTMS2SModel
+  _target_: wind_forecast.models.lstm.LSTMS2SModel.LSTMS2SModel
 
 system:
-  _target_: wind_forecast.systems.S2SRegressorWithTF.S2SRegressorWithTF
-synop_from_year: 2017
-batch_size: 32
+  _target_: wind_forecast.systems.BaseS2SRegressor.BaseS2SRegressor

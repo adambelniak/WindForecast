@@ -13,20 +13,13 @@ datamodule:
   _target_: wind_forecast.datamodules.Sequence2SequenceWithCMAXDataModule.Sequence2SequenceWithCMAXDataModule
 
 model:
-  _target_: wind_forecast.models.TransformerEncoderS2SCMAXWithScaleToDepth.TransformerEncoderS2SCMAXWithScaleToDepth
+  _target_: wind_forecast.models.transformer.TransformerEncoderS2SCMAXWithScaleToDepth.TransformerEncoderS2SCMAXWithScaleToDepth
 
 system:
-  _target_: wind_forecast.systems.S2SRegressorWithTFWithCMAX.S2SRegressorWithTFWithCMAX
+  _target_: wind_forecast.systems.BaseS2SRegressor.BaseS2SRegressor
 
-batch_size: 5
-use_future_cmax: False
-synop_from_year: 2017
-cmax_from_year: 2017
+use_cmax_data: True
+use_pretrained_cmax_autoencoder: True
 epochs: 40
-time2vec_embedding_size: 5
-cnn_filters:
-  - 16
-  - 32
-  - 32
-  - 32
-  - 16
+dropout: 0.2
+load_cmax_data: True

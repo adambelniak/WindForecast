@@ -1,11 +1,19 @@
 from datetime import datetime, timedelta
 
 import numpy as np
+import pytz
 
 from wind_forecast.consts import SYNOP_DATASETS_DIRECTORY
-from wind_forecast.util.common_util import utc_to_local
-from wind_forecast.preprocess.gfs.gfs_preprocess_netCDF import get_forecasts_for_year_offset_param_from_npy_file
-from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset, filter_for_dates
+from legacy_code.preprocess.gfs.gfs_preprocess_netCDF import get_forecasts_for_year_offset_param_from_npy_file
+from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset
+
+
+def utc_to_local(date):
+    return date.replace(tzinfo=pytz.utc).astimezone(pytz.timezone('Europe/Warsaw')).replace(tzinfo=None)
+
+
+def filter_for_dates(dataset, init_date, end_date):
+    return dataset[(dataset["date"] > init_date) & (dataset["date"] < end_date)]
 
 
 def prepare_target_attribute_dataset(synop_data_file, target_attribute, init_date, end_date):

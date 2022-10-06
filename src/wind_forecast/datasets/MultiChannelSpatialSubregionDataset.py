@@ -1,10 +1,10 @@
 from datetime import timedelta
 
 import numpy as np
-import torch
 
 from gfs_archive_0_25.gfs_processor.Coords import Coords
 from wind_forecast.config.register import Config
+from wind_forecast.datasets.BaseDataset import BaseDataset
 from wind_forecast.util.common_util import NormalizationType
 from wind_forecast.util.config import process_config
 from wind_forecast.util.gfs_util import initialize_mean_and_std, initialize_min_max, \
@@ -12,11 +12,12 @@ from wind_forecast.util.gfs_util import initialize_mean_and_std, initialize_min_
     get_GFS_values_for_sequence, date_from_gfs_date_key
 
 
-class MultiChannelSpatialSubregionDataset(torch.utils.data.Dataset):
+class MultiChannelSpatialSubregionDataset(BaseDataset):
     'Characterizes a dataset for PyTorch'
 
     def __init__(self, config: Config, train_IDs, labels, normalize=True):
-        self.train_parameters = process_config(config.experiment.train_parameters_config_file)
+        super().__init__()
+        self.train_parameters = process_config(config.experiment.train_parameters_config_file).params
         self.target_param = config.experiment.target_parameter
         self.synop_file = config.experiment.synop_file
         self.labels = labels
@@ -35,7 +36,6 @@ class MultiChannelSpatialSubregionDataset(torch.utils.data.Dataset):
         self.list_IDs = train_IDs
 
         self.data = self.list_IDs[str(self.prediction_offset)]
-        self.mean, self.std = [], []
         self.normalize = normalize
         if normalize:
             self.normalize_data(config.experiment.normalization_type)

@@ -150,3 +150,6 @@ explore_results
 plots
 plots-synop
 wandb
+auto_station_data
+src/datasets
+analysis.json

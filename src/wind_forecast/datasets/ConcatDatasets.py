@@ -18,6 +18,18 @@ class ConcatDatasets(BaseDataset):
             dataset.set_std(std[index])
         self.std = std
 
+    def set_min(self, min):
+        assert len(min) == len(self.datasets)
+        for index, dataset in enumerate(self.datasets):
+            dataset.set_min(min[index])
+        self.min = min
+
+    def set_max(self, max):
+        assert len(max) == len(self.datasets)
+        for index, dataset in enumerate(self.datasets):
+            dataset.set_max(max[index])
+        self.max = max
+
     def __getitem__(self, i):
         return tuple(d[i] for d in self.datasets)
 

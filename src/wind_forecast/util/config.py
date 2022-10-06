@@ -15,9 +15,9 @@ def get_config_from_json(json_file):
     # convert the dictionary to a namespace using bunch lib
     config = Bunch(config_dict)
 
-    return config, config_dict
+    return config
 
 
 def process_config(json_file):
-    config, config_dict = get_config_from_json(json_file)
-    return config_dict
+    config = get_config_from_json(json_file)
+    return config

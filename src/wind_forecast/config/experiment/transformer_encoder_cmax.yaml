@@ -13,17 +13,13 @@ datamodule:
   _target_: wind_forecast.datamodules.SequenceWithCMAXDataModule.SequenceWithCMAXDataModule
 
 model:
-  _target_: wind_forecast.models.TransformerEncoderCMAX.TransformerEncoderCMAX
+  _target_: wind_forecast.models.transformer.TransformerEncoderCMAX.TransformerEncoderCMAX
 
 system:
   _target_: wind_forecast.systems.RegressorWithCMAX.RegressorWithCMAX
 
 use_pos_encoding: False
 batch_size: 5
-cnn_filters:
-  - 16
-  - 32
-  - 32
-  - 32
-  - 32
-  - 16
+use_cmax_data: True
+
+load_cmax_data: True

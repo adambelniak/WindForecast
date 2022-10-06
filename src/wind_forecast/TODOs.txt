@@ -1,1 +1,4 @@
-convGRU, convLSTM, GAN, maybe better autoencoder for cmax
+maybe better autoencoder for cmax
+wavelet denoising of inputs?
+encoding of current weather, e.g. one hot or some learnable
+Save data in csv or pkl for a given set of config for faster loading

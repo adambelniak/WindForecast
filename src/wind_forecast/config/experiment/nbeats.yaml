@@ -1,0 +1,22 @@
+# Specific experiments settings
+# (default settings inherited from configs.experiment.ExperimentSettings)
+
+defaults:
+  - schema_experiment
+
+_tags_:
+  - NBEATS
+
+resume_checkpoint: ~
+
+datamodule:
+  _target_: wind_forecast.datamodules.Sequence2SequenceWithCMAXDataModule.Sequence2SequenceWithCMAXDataModule
+
+model:
+  _target_: wind_forecast.models.nbeatsx.nbeatsx.Nbeatsx
+
+system:
+  _target_: wind_forecast.systems.BaseS2SRegressor.BaseS2SRegressor
+
+epochs: 20
+use_value2vec: False

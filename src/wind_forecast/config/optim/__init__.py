@@ -19,13 +19,9 @@ class OptimSettings:
 
     scheduler: Optional[Any] = MISSING
 
-    lr: float = 0.0001
+    base_lr: float = 0.0001
 
     weight_decay = 0
-
-    beta1 = 0.9
-
-    beta2 = 0.999
 
     lambda_lr: Any = MISSING
 
@@ -36,3 +32,5 @@ class OptimSettings:
     warmup_epochs: int = 10
 
     decay_epochs: int = 10
+
+    loss: str = 'mase'
