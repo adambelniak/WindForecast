@@ -261,11 +261,15 @@ class Spacetimeformer(LightningModule):
         synop_inputs = batch[BatchKeys.SYNOP_PAST_X.value].float()
         if self.use_gfs:
             gfs_inputs = batch[BatchKeys.GFS_PAST_X.value].float()
+            gfs_future = batch[BatchKeys.GFS_FUTURE_X.value].float()
+            inputs = torch.cat([synop_inputs, gfs_inputs], -1)
+            targets = torch.zeros((synop_inputs.shape[0], self.future_sequence_length, synop_inputs.shape[2])).to(inputs.device)
+            targets = torch.cat([targets, gfs_future], -1)
+        else:
+            inputs = synop_inputs
+            targets = torch.zeros((inputs.shape[0], self.future_sequence_length, inputs.shape[2])).to(inputs.device)
 
-        inputs = torch.cat([synop_inputs, gfs_inputs], -1) if self.use_gfs else synop_inputs
-
-        # zero values for decoder inpur
-        targets = torch.zeros((inputs.shape[0], self.future_sequence_length, inputs.shape[2])).to(inputs.device)
+        # zero values for decoder input synop, but real values for gfs forecast
         dates = batch[BatchKeys.DATES_TENSORS.value]
 
         # embed context sequence
