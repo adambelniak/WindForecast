@@ -278,7 +278,7 @@ class ExperimentSettings:
 
     use_time2vec: bool = True
 
-    use_value2vec: bool = True
+    use_value2vec: bool = False
 
     # ----------------------------------------------------------------------------------------------
     # Other settings
