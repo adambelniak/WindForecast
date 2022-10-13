@@ -9,6 +9,7 @@ from wind_forecast.config.register import Config
 from wind_forecast.util.config import process_config
 from datetime import datetime
 
+marker = itertools.cycle(('+', '.', 'o', '*', 'x', 'v', 'D'))
 
 def run_analysis(config: Config):
     analysis_file = os.path.join(os.path.dirname(os.path.realpath(__file__)),
@@ -26,11 +27,11 @@ def run_analysis(config: Config):
         run_summaries.append(wandb_run.summary)
         run_configs.append(wandb_run.config)
 
-    plot_series_comparison(analysis_config.runs, run_summaries, run_configs)
+    plot_series_comparison(analysis_config.runs, run_summaries, run_configs, config)
     plot_rmse_by_step_comparison(analysis_config.runs, run_summaries)
 
 
-def plot_series_comparison(analysis_config_runs: List, run_summaries: List[Any], run_configs: List[Dict]):
+def plot_series_comparison(analysis_config_runs: List, run_summaries: List[Any], run_configs: List[Dict], config: Config):
     first_run_configs = run_configs[0]
 
     truth_series = run_summaries[0]['plot_truth']
@@ -44,17 +45,16 @@ def plot_series_comparison(analysis_config_runs: List, run_summaries: List[Any],
         ax.xaxis.set_major_locator(mdates.HourLocator(interval=2))
 
         ax.plot([datetime.strptime(date, '%Y-%m-%dT%H:%M:%S') for date in all_dates[series_index]],
-                     (np.array(truth_series[series_index]) * target_std + target_mean).tolist(), label='ground truth')
+                     (np.array(truth_series[series_index]) * target_std + target_mean).tolist(), label='Wartość rzeczywista', linewidth=4)
 
         for index, run in enumerate(run_summaries):
             prediction_series = run['plot_prediction'][series_index]
             prediction_series = (np.array(prediction_series) * target_std + target_mean).tolist()
             ax.plot([datetime.strptime(date, '%Y-%m-%dT%H:%M:%S') for date in prediction_dates[series_index]],
-                         prediction_series, label=analysis_config_runs[index]['axis_label'])
+                         prediction_series, label=analysis_config_runs[index]['axis_label'], marker=next(marker))
 
-        target_param = first_run_configs['experiment/target_parameter']
         # Labels hardcoded for now
-        ax.set_ylabel("Temperatura" if target_param == 'temperature' else "Prędkość wiatru", fontsize=18)
+        ax.set_ylabel(config.analysis.target_parameter, fontsize=18)
         ax.set_xlabel('Data', fontsize=18)
         ax.legend(loc='best', prop={'size': 18})
         ax.tick_params(axis='both', which='major', labelsize=14)
@@ -66,7 +66,6 @@ def plot_series_comparison(analysis_config_runs: List, run_summaries: List[Any],
 
 def plot_rmse_by_step_comparison(analysis_config_runs: List, run_summaries: List[Any]):
     fig, ax = plt.subplots(figsize=(30, 15))
-    marker = itertools.cycle((',', '+', '.', 'o', '*', 'x'))
 
     for index, run in enumerate(run_summaries):
         rmse_by_step = run['rmse_by_step']

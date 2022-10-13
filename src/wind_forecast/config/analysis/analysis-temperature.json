@@ -1,0 +1,32 @@
+{
+  "runs": [
+    {
+      "id": "1bviyrx7",
+      "axis_label": "N-BEATSx_GFS"
+    },
+    {
+      "id": "wk0f822o",
+      "axis_label": "LSTM_GFS"
+    },
+    {
+      "id": "35l12ptt",
+      "axis_label": "BiLSTM_GFS"
+    },
+    {
+      "id": "2kg402e0",
+      "axis_label": "TCN_GFS"
+    },
+    {
+      "id": "3ru8rziw",
+      "axis_label": "TCNAttention_GFS"
+    },
+    {
+      "id": "2excrpbu",
+      "axis_label": "Transformer_GFS"
+    },
+    {
+      "id": "3ioflk8u",
+      "axis_label": "Spacetimeformer_GFS"
+    }
+  ]
+}

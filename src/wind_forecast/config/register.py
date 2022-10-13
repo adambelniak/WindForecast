@@ -26,7 +26,7 @@ class Config:
     Top-level Hydra config class.
     """
     defaults: List[Any] = field(default_factory=lambda: [
-        {'experiment': 'cnn'},
+        {'experiment': 'gfs'},
         {'lightning': 'default'},
         {'optim': 'adam'},
         {'tune': 'sarimax'},
