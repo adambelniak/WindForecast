@@ -47,3 +47,4 @@ class BatchKeys(Enum):
     DATES_TENSORS = 'dates_embedding'
     CMAX_PAST = 'cmax_past'
     CMAX_FUTURE = 'cmax_future'
+    PREDICTIONS = 'predictions'
