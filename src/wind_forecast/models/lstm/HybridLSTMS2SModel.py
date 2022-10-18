@@ -30,7 +30,6 @@ class HybridLSTMS2SModel(LSTMS2SModel):
             self.value_embed_synop = TimeDistributed(Value2Vec(self.synop_features_length, self.value2vec_embedding_factor),
                                                    batch_first=True)
 
-
         self.encoder_lstm = nn.LSTM(input_size=self.embed_dim, hidden_size=self.lstm_hidden_state, batch_first=True,
                                     dropout=self.dropout, num_layers=config.experiment.lstm_num_layers,
                                     proj_size=self.decoder_output_dim)
@@ -87,9 +86,13 @@ class HybridLSTMS2SModel(LSTMS2SModel):
                 all_synop_targets = torch.cat([all_synop_targets, self.value_embed_synop(all_synop_targets)], -1)
             all_gfs_targets = torch.cat([all_gfs_targets, self.value_embed_gfs(all_gfs_targets)], -1)
 
-        if self.use_time2vec:
-            input_elements = torch.cat([input_elements, self.time_embed(dates_tensors[0])], -1)
-            future_dates = self.time_embed(dates_tensors[1])
+        if self.config.experiment.with_dates_inputs:
+            if self.use_time2vec:
+                input_elements = torch.cat([input_elements, self.time_embed(dates_tensors[0])], -1)
+                future_dates = self.time_embed(dates_tensors[1])
+            else:
+                input_elements = torch.cat([input_elements, dates_tensors[0]], -1)
+                future_dates = dates_tensors[1]
 
         return input_elements, all_synop_targets, all_gfs_targets, future_dates
 
