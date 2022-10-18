@@ -271,4 +271,4 @@ class Transformer(TransformerBaseProps):
         output = self.base_decoder_forward(epoch, stage, input_embedding,
                                                target_embedding if is_train else None, memory)
 
-        return torch.squeeze(self.regressor_head(self.forecaster(output)), -1)
+        return torch.squeeze(self.regressor_head(output), -1)
