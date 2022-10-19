@@ -29,11 +29,10 @@ def run_analysis(config: Config):
 
     plot_series_comparison(analysis_config.runs, run_summaries, run_configs, config)
     plot_rmse_by_step_comparison(analysis_config.runs, run_summaries)
+    plot_mase_by_step_comparison(analysis_config.runs, run_summaries)
 
 
 def plot_series_comparison(analysis_config_runs: List, run_summaries: List[Any], run_configs: List[Dict], config: Config):
-    first_run_configs = run_configs[0]
-
     truth_series = run_summaries[0]['plot_truth']
     all_dates = run_summaries[0]['plot_all_dates']
     prediction_dates = run_summaries[0]['plot_prediction_dates']
@@ -79,4 +78,21 @@ def plot_rmse_by_step_comparison(analysis_config_runs: List, run_summaries: List
     ax.tick_params(axis='both', which='major', labelsize=14)
     os.makedirs('analysis', exist_ok=True)
     plt.savefig(f'analysis/rmse_by_step_comparison.png')
+    plt.close()
+
+def plot_mase_by_step_comparison(analysis_config_runs: List, run_summaries: List[Any]):
+    fig, ax = plt.subplots(figsize=(30, 15))
+
+    for index, run in enumerate(run_summaries):
+        mase_by_step = run['mase_by_step']
+
+        ax.plot(np.arange(len(mase_by_step)), mase_by_step, marker=next(marker), linestyle='solid',
+                 label=analysis_config_runs[index]['axis_label'])
+
+    ax.set_ylabel('MASE', fontsize=18)
+    ax.set_xlabel('Krok', fontsize=18)
+    ax.legend(loc='best', prop={'size': 18})
+    ax.tick_params(axis='both', which='major', labelsize=14)
+    os.makedirs('analysis', exist_ok=True)
+    plt.savefig(f'analysis/mase_by_step_comparison.png')
     plt.close()

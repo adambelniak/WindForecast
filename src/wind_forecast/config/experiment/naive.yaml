@@ -1,0 +1,23 @@
+# Specific experiments settings
+# (default settings inherited from configs.experiment.ExperimentSettings)
+
+defaults:
+  - schema_experiment
+
+_tags_:
+  - NAIVE
+
+resume_checkpoint: ~
+
+datamodule:
+  _target_: wind_forecast.datamodules.Sequence2SequenceWithCMAXDataModule.Sequence2SequenceWithCMAXDataModule
+
+model:
+  _target_: wind_forecast.models.Naive.Naive
+
+system:
+  _target_: wind_forecast.systems.BaseS2SRegressor.BaseS2SRegressor
+
+skip_training: True
+skip_validation: True
+epochs: 1
