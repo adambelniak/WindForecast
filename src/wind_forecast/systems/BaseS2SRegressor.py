@@ -415,7 +415,7 @@ class BaseS2SRegressor(pl.LightningModule):
         rmse_by_step = np.sqrt(np.mean(np.power(np.subtract(series[BatchKeys.PREDICTIONS.value], series[BatchKeys.SYNOP_FUTURE_Y.value]), 2), axis=0))
         mase_by_step = []
         for step in range(predictions.shape[-1]):
-            mase_by_step.append((abs(predictions[:, step] - series[BatchKeys.SYNOP_FUTURE_Y.value][:, step]) /
+            mase_by_step.append((abs(predictions[:, :step+1] - series[BatchKeys.SYNOP_FUTURE_Y.value][:, :step+1]).mean() /
                                  abs(series[BatchKeys.SYNOP_PAST_Y.value][:, :-1] - series[BatchKeys.SYNOP_PAST_Y.value][:, 1:]).mean()).mean())
 
         # for plots

@@ -27,6 +27,10 @@
     {
       "id": "18kg3tja",
       "axis_label": "Spacetimeformer_GFS"
+    },
+    {
+      "id": "2k0or9m9",
+      "axis_label": "Naive"
     }
   ]
 }
