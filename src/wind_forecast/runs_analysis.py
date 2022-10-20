@@ -27,12 +27,12 @@ def run_analysis(config: Config):
         run_summaries.append(wandb_run.summary)
         run_configs.append(wandb_run.config)
 
-    plot_series_comparison(analysis_config.runs, run_summaries, run_configs, config)
+    plot_series_comparison(analysis_config.runs, run_summaries, config)
     plot_rmse_by_step_comparison(analysis_config.runs, run_summaries)
     plot_mase_by_step_comparison(analysis_config.runs, run_summaries)
 
 
-def plot_series_comparison(analysis_config_runs: List, run_summaries: List[Any], run_configs: List[Dict], config: Config):
+def plot_series_comparison(analysis_config_runs: List, run_summaries: List[Any], config: Config):
     truth_series = run_summaries[0]['plot_truth']
     all_dates = run_summaries[0]['plot_all_dates']
     prediction_dates = run_summaries[0]['plot_prediction_dates']

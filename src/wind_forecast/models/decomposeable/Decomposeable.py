@@ -22,6 +22,7 @@ class Decomposeable(LightningModule):
         raise NotImplementedError()
 
 
+# TODO - refactor it - this should be done in datamodule before normalization
 class EMDDecomposeable(Decomposeable):
     def __init__(self, trials: int) -> None:
         super().__init__()
