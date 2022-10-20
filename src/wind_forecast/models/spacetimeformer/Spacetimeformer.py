@@ -69,6 +69,9 @@ class Spacetimeformer(LightningModule):
         self.use_gfs = config.experiment.use_gfs_data
         self.gfs_on_head = config.experiment.gfs_on_head
         self.features_length = len(config.experiment.synop_train_features) + len(config.experiment.synop_periodic_features)
+        if self.config.experiment.stl_decompose:
+            self.features_length *= 3
+            self.features_length += 1  # + 1 for non-decomposed target param
         self.future_sequence_length = config.experiment.future_sequence_length
         assert self.future_sequence_length <= config.experiment.sequence_length
 

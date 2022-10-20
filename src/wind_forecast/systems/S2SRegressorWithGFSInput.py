@@ -104,10 +104,7 @@ class S2SRegressorWithGFSInput(BaseS2SRegressor):
 
         gfs_corr = np.mean(gfs_corrs)
         rmse_by_step = np.sqrt(np.mean(np.power(np.subtract(output_series, labels_series), 2), axis=0))
-        mase_by_step = []
-        for step in range(output_series.shape[-1]):
-            mase_by_step.append((abs(predictions[:, :step] - series[BatchKeys.SYNOP_FUTURE_Y.value][:, :step]).mean() /
-                                 abs(past_truth_series[:, :-1] - past_truth_series[:, 1:]).mean()).mean())
+        mase_by_step = self.get_mase_by_step(series[BatchKeys.SYNOP_PAST_Y.value], predictions)
 
         # for plots
         plot_truth_series = []

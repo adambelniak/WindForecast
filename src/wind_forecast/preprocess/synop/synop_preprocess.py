@@ -1,11 +1,13 @@
 import datetime
 import os
 from typing import Dict, Union, Tuple
+from statsmodels.tsa.seasonal import STL
 
 import numpy as np
 from pathlib import Path
 import pandas as pd
 
+from synop.consts import SYNOP_PERIODIC_FEATURES
 from wind_forecast.util.common_util import NormalizationType
 
 
@@ -40,11 +42,42 @@ def prepare_synop_dataset(synop_file_name: str, features: list, norm=True,
 
     data = data[(data['date'] >= first_date) & (data['date'] < last_date)]
 
+    for feature in SYNOP_PERIODIC_FEATURES:
+        min = feature['min']
+        max = feature['max']
+        column = feature['column'][1]
+        series_to_reduce = data[column]
+        period_argument = ((series_to_reduce - min) / (max - min)).astype(np.float64) * 2 * np.pi
+        data[f'{column}-sin'] = np.sin(period_argument).tolist()
+        data[f'{column}-cos'] = np.cos(period_argument).tolist()
+        data.drop(columns=[column], inplace=True)
+        features = get_feature_names_after_periodic_reduction(features)
     if norm:
         data[features], mean_or_min, std_or_max = get_normalization_values(data[features].values, normalization_type)
         return data, mean_or_min, std_or_max
 
     return data
+
+
+def get_feature_names_after_periodic_reduction(features: list):
+    for feature in SYNOP_PERIODIC_FEATURES:
+        features.remove(feature['column'][1])
+        features.append(f'{feature["column"][1]}-sin')
+        features.append(f'{feature["column"][1]}-cos')
+    return features
+
+
+def decompose_synop_data(synop_data: pd.DataFrame, features: list):
+    for feature in features:
+        series = synop_data[feature]
+        stl = STL(series, seasonal=35, period=24, trend=81, low_pass=25)
+        res = stl.fit(inner_iter=1, outer_iter=10)
+        O, T, S, R = res.observed, res.trend, res.seasonal, res.resid
+        synop_data[f"{feature}_T"] = T
+        synop_data[f"{feature}_S"] = S
+        synop_data[f"{feature}_R"] = R
+        synop_data.drop(columns=[feature], inplace=True)
+    return synop_data
 
 
 def resolve_synop_data(all_synop_data: pd.DataFrame, synop_data_indices: [int], length_of_sequence) -> pd.DataFrame:
@@ -56,34 +89,20 @@ def resolve_synop_data(all_synop_data: pd.DataFrame, synop_data_indices: [int], 
 
 
 def normalize_synop_data_for_training(all_synop_data: pd.DataFrame, synop_data_indices: [int], features: [str],
-                                      length_of_sequence: int,
-                                      normalization_type: NormalizationType = NormalizationType.STANDARD,
-                                      periodic_features: [Dict] = None) -> (pd.DataFrame, [str], Dict, Dict):
+                                      length_of_sequence: int, normalization_type: NormalizationType
+                                      = NormalizationType.STANDARD) -> (pd.DataFrame, [str], Dict, Dict):
     all_relevant_synop_data = resolve_synop_data(all_synop_data, synop_data_indices, length_of_sequence)
-    periodic_features_names = [x['column'][1] for x in periodic_features]
     final_data = pd.DataFrame()
-    synop_feature_names = []
     mean_or_min_to_return = {}
     std_or_max_to_return = {}
     for feature in features:
         series_to_normalize = all_relevant_synop_data[feature]
-        if periodic_features is not None and feature in periodic_features_names:
-            periodic_feature = [f for f in periodic_features if f['column'][1] == feature][0]
-            min = periodic_feature['min']
-            max = periodic_feature['max']
-            period_argument = ((series_to_normalize - min) / (max - min)).astype(np.float64) * 2 * np.pi
-            final_data[f'{feature}-sin'] = np.sin(period_argument).tolist()
-            final_data[f'{feature}-cos'] = np.cos(period_argument).tolist()
-            synop_feature_names.extend([f'{feature}-sin', f'{feature}-cos'])
-            mean_or_min_to_return[feature] = min
-            std_or_max_to_return[feature] = max
-        else:
-            values, mean_or_min, std_or_max = get_normalization_values(series_to_normalize, normalization_type)
-            final_data[feature] = values
-            synop_feature_names.append(feature)
-            mean_or_min_to_return[feature] = mean_or_min
-            std_or_max_to_return[feature] = std_or_max
+
+        values, mean_or_min, std_or_max = get_normalization_values(series_to_normalize, normalization_type)
+        final_data[feature] = values
+        mean_or_min_to_return[feature] = mean_or_min
+        std_or_max_to_return[feature] = std_or_max
 
     rest_of_data = all_relevant_synop_data.drop(features, axis=1)
     return pd.concat([final_data, rest_of_data], axis=1,
-                     join='inner'), synop_feature_names, mean_or_min_to_return, std_or_max_to_return
+                     join='inner'), mean_or_min_to_return, std_or_max_to_return

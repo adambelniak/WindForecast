@@ -27,6 +27,9 @@ class LSTMS2SModel(LightningModule):
         self.gradual_teacher_forcing = config.experiment.gradual_teacher_forcing
         self.dropout = config.experiment.dropout
         self.features_length = len(config.experiment.synop_train_features) + len(config.experiment.synop_periodic_features)
+        if self.config.experiment.stl_decompose:
+            self.features_length *= 3
+            self.features_length += 1  # + 1 for non-decomposed target param
         self.use_gfs = config.experiment.use_gfs_data
         self.gfs_on_head = config.experiment.gfs_on_head
         self.time2vec_embedding_factor = config.experiment.time2vec_embedding_factor

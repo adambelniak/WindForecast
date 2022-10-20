@@ -19,6 +19,10 @@ class HybridLSTMS2SModel(LSTMS2SModel):
         self.synop_features_length = len(config.experiment.synop_train_features) + len(
             config.experiment.synop_periodic_features)
 
+        if self.config.experiment.stl_decompose:
+            self.synop_features_length *= 3
+            self.synop_features_length += 1  # + 1 for non-decomposed target param
+
         self.decoder_output_dim = self.synop_features_length
         self.gfs_embed_dim = self.gfs_params_len
 

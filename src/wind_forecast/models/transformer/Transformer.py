@@ -49,6 +49,9 @@ class TransformerEncoderBaseProps(LightningModule):
         self.use_time2vec = config.experiment.use_time2vec and config.experiment.with_dates_inputs
         self.use_value2vec = config.experiment.use_value2vec and self.value2vec_embedding_factor > 0
         self.synop_features_length = len(config.experiment.synop_train_features) + len(config.experiment.synop_periodic_features)
+        if self.config.experiment.stl_decompose:
+            self.synop_features_length *= 3
+            self.synop_features_length += 1  # + 1 for non-decomposed target param
 
         if not self.use_value2vec:
             self.value2vec_embedding_factor = 0

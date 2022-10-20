@@ -98,6 +98,9 @@ class Nbeatsx(pl.LightningModule):
         self.use_time2vec = config.experiment.use_time2vec and config.experiment.with_dates_inputs
         self.use_value2vec = config.experiment.use_value2vec
         self.synop_features_length = len(config.experiment.synop_train_features) + len(config.experiment.synop_periodic_features)
+        if self.config.experiment.stl_decompose:
+            self.synop_features_length *= 3
+            self.synop_features_length += 1  # + 1 for non-decomposed target param
 
         # No static features in our case
         self.x_static_n_hidden, self.x_static_n_inputs = 0, 0
@@ -114,9 +117,6 @@ class Nbeatsx(pl.LightningModule):
         else:
             self.n_insample_t = self.synop_features_length
             self.n_outsample_t = 0
-
-        if self.use_time2vec and self.time2vec_embedding_factor == 0:
-            self.time2vec_embedding_factor = self.features_length
 
         self.dates_dim = self.config.experiment.dates_tensor_size * self.time2vec_embedding_factor if self.use_time2vec \
             else self.config.experiment.dates_tensor_size * 2

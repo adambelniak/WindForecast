@@ -35,6 +35,10 @@
     {
       "id": "3m882jq1",
       "axis_label": "GFS"
+    },
+    {
+      "id": "2bh9h9l9",
+      "axis_label": "Regresja liniowa"
     }
   ]
 }
