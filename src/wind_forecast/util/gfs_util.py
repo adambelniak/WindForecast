@@ -4,6 +4,8 @@ import re
 import sys
 from typing import Union, Dict
 
+from statsmodels.tsa.seasonal import STL
+
 from wind_forecast.loaders.GFSInterpolatedLoader import GFSInterpolatedLoader, Interpolator
 from wind_forecast.util.common_util import NormalizationType
 
@@ -34,14 +36,14 @@ GFS_DATASET_DIR = 'gfs_data' if GFS_DATASET_DIR is None else GFS_DATASET_DIR
 
 class GFSUtil:
     def __init__(self, target_coords: Coords, past_sequence_length: int, future_sequence_length: int,
-                 prediction_offset: int, train_params: list, target_params: list) -> None:
+                 prediction_offset: int, train_params: list) -> None:
         super().__init__()
         self.target_coords = target_coords
         self.past_sequence_length = past_sequence_length
         self.future_sequence_length = future_sequence_length
         self.prediction_offset = prediction_offset
         self.train_params = train_params
-        self.target_params = target_params
+        self.features_names = [f"{f['name']}_{f['level']}" for f in self.train_params]
         self.interpolator = Interpolator(self.target_coords)
         self.gfs_interpolated_loader = GFSInterpolatedLoader(self.target_coords)
 
@@ -78,43 +80,50 @@ class GFSUtil:
             return np.array(new_features), np.array(gfs_values), np.array(new_targets), removed_indices
         return np.array(new_features), np.array(new_targets), removed_indices
 
-    def match_gfs_with_synop_sequence2sequence(self, synop_data: pd.DataFrame, synop_data_indices: list):
+    def match_gfs_with_synop_sequence2sequence(self, synop_data: pd.DataFrame,
+                                               synop_data_indices: list) -> (list, pd.DataFrame, pd.DataFrame):
         new_synop_indices = []
-        gfs_inputs = []
-        gfs_targets = []
+        gfs_data = pd.DataFrame(columns=[*self.features_names, 'date'])
 
         log.info("Matching GFS with synop data")
 
         for index in tqdm(synop_data_indices):
-            dates = synop_data.loc[index:index + self.past_sequence_length - 1]['date']
+            past_dates = synop_data.loc[index:index + self.past_sequence_length - 1]['date']
             future_dates = synop_data.loc[
                            index + self.past_sequence_length + self.prediction_offset
                            :index + self.past_sequence_length + self.prediction_offset + self.future_sequence_length - 1]['date']
+            sequence_dates = pd.concat([past_dates, future_dates])
 
-            if self.train_params is not None and len(self.train_params) > 0:
-                # match GFS params for past sequences
-                next_gfs_values = self.get_next_gfs_values(dates, self.train_params, False)
-                if next_gfs_values is None:
+            gfs_values_for_sequence = []
+            all_values_available = True
+            for sequence_index, date in enumerate(sequence_dates):
+                if len(gfs_data[gfs_data['date'] == date]) > 0:
                     continue
 
-                # match GFS params for future sequences
-                next_gfs_future_values = self.get_next_gfs_values(future_dates, self.train_params, True)
-                if next_gfs_future_values is None:
-                    continue
-                else:
-                    gfs_targets.append(next_gfs_future_values)
-                    gfs_inputs.append(next_gfs_values)
-            else:
-                # match only GFS target param
-                next_gfs_values = self.get_next_gfs_values(future_dates, self.target_params, True)
-                if next_gfs_values is None:
-                    continue
-                else:
-                    gfs_targets.append(next_gfs_values)
+                if len(gfs_values_for_sequence) == 0:
+                    # match GFS params for past sequences
+                    gfs_values_for_past_sequence = self.get_next_gfs_values(past_dates, self.train_params, False)
+                    if gfs_values_for_past_sequence is None:
+                        all_values_available = False
+                        break
 
-            new_synop_indices.append(index)
+                    # match GFS params for future sequences
+                    gfs_values_for_future_sequence = self.get_next_gfs_values(future_dates, self.train_params, True)
+                    if gfs_values_for_future_sequence is None:
+                        all_values_available = False
+                        break
 
-        return new_synop_indices, np.array(gfs_inputs), np.array(gfs_targets)
+                    gfs_values_for_sequence = np.concatenate([gfs_values_for_past_sequence, gfs_values_for_future_sequence], -2)
+
+                gfs_values = gfs_values_for_sequence[sequence_index]
+                gfs_values = np.append(gfs_values, date)
+                absolute_index = synop_data[synop_data['date'] == date].index[0]
+                gfs_data.loc[absolute_index] = gfs_values
+
+            if all_values_available:
+                new_synop_indices.append(index)
+        gfs_data[self.features_names] = gfs_data[self.features_names].astype(float)
+        return new_synop_indices, gfs_data
 
     def get_next_gfs_values(self, dates: [datetime], gfs_params: list, future_dates: bool):
         next_gfs_values = []
@@ -393,14 +402,16 @@ def initialize_GFS_date_keys_for_sequence(date_keys: [str], labels: pd.DataFrame
     return new_list
 
 
-def normalize_gfs_data(gfs_data: np.ndarray, normalization_type: NormalizationType, axes=-1):
+def normalize_gfs_data(gfs_data: pd.DataFrame, normalization_type: NormalizationType):
     if normalization_type == NormalizationType.STANDARD:
-        value = (gfs_data - np.mean(gfs_data, axis=axes)) / np.std(gfs_data, axis=axes)
-        return value
+        data_mean = gfs_data.mean(axis=0)
+        data_std = gfs_data.std(axis=0)
+        return (gfs_data - data_mean) / data_std
 
     else:
-        return (gfs_data - np.min(gfs_data, axis=axes)) / (
-                np.max(gfs_data, axis=axes) - np.min(gfs_data, axis=axes))
+        data_min = gfs_data.min(axis=0)
+        data_max = gfs_data.max(axis=0)
+        return (gfs_data - data_min) / (data_max - data_min)
 
 
 def extend_wind_components(gfs_data: np.ndarray):
@@ -484,6 +495,14 @@ def target_param_to_gfs_name_level(target_param: str):
     }[target_param]
 
 
+def get_gfs_target_param(target_param: str):
+    return {
+            'temperature': 'TMP_HTGL_2',
+            'wind_velocity': 'wind-velocity',
+            'pressure': 'PRES_SFC_0'
+        }[target_param]
+
+
 def add_param_to_train_params(train_params: list, param: str):
     params = train_params
     if param not in list(list(zip(*train_params))[1]):
@@ -504,3 +523,17 @@ def get_forecast_date_and_offset_for_prediction_date(date, prediction_offset: in
     real_prediction_offset = prediction_offset + 5 + hour % 6
     pred_offset = real_prediction_offset // 3 * 3
     return forecast_start_date + timedelta(hours=pred_offset), pred_offset, real_prediction_offset % 3
+
+
+def decompose_gfs_data(gfs_data, features):
+    for feature in features:
+        series = gfs_data[feature]
+        stl = STL(series, seasonal=35, period=24, trend=81, low_pass=25)
+        res = stl.fit(inner_iter=1, outer_iter=10)
+        O, T, S, R = res.observed, res.trend, res.seasonal, res.resid
+        gfs_data[f"{feature}_T"] = T
+        gfs_data[f"{feature}_S"] = S
+        gfs_data[f"{feature}_R"] = R
+        gfs_data.drop(columns=[feature], inplace=True)
+    return gfs_data
+

@@ -124,6 +124,8 @@ class TransformerEncoderGFSBaseProps(TransformerEncoderBaseProps):
         param_names = [x['name'] for x in gfs_params]
         if "V GRD" in param_names and "U GRD" in param_names:
             self.gfs_params_len += 1  # V and U will be expanded into velocity, sin and cos
+        if config.experiment.stl_decompose:
+            self.gfs_params_len = 3 * self.gfs_params_len + 1
 
         if not self.self_output_test:
             self.features_length += self.gfs_params_len

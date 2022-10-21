@@ -111,6 +111,8 @@ class Nbeatsx(pl.LightningModule):
             param_names = [x['name'] for x in gfs_params]
             if "V GRD" in param_names and "U GRD" in param_names:
                 self.gfs_features_length += 1  # V and U will be expanded int velocity, sin and cos
+            if config.experiment.stl_decompose:
+                self.gfs_features_length = 3 * self.gfs_features_length + 1
 
             self.n_insample_t = self.synop_features_length + self.gfs_features_length
             self.n_outsample_t = self.gfs_features_length

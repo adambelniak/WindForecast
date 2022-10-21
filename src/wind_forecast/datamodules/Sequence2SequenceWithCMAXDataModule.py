@@ -41,11 +41,10 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
             return
 
         if self.config.experiment.load_gfs_data:
-            synop_inputs, gfs_past_y, gfs_past_x, gfs_future_y, gfs_future_x = self.prepare_dataset_for_gfs()
-            self.synop_dates = self.synop_data.loc[self.synop_data_indices]['date'].values
-            synop_dataset = Sequence2SequenceWithGFSDataset(self.config, self.synop_data, self.synop_data_indices,
-                                                            self.synop_feature_names, gfs_future_y, gfs_past_y,
-                                                            gfs_future_x, gfs_past_x)
+            self.prepare_dataset_for_gfs()
+            self.synop_dates = self.synop_data.loc[self.data_indices]['date'].values
+            synop_dataset = Sequence2SequenceWithGFSDataset(self.config, self.synop_data, self.gfs_data, self.data_indices,
+                                                            self.synop_feature_names, self.gfs_features_names)
             if self.config.experiment.load_cmax_data:
                 cmax_dataset = CMAXDataset(config=self.config, dates=self.synop_dates, normalize=True,
                                            use_future_values=self.load_future_cmax)
@@ -55,7 +54,7 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
             else:
                 dataset = synop_dataset
         else:
-            synop_dataset = Sequence2SequenceDataset(self.config, self.synop_data, self.synop_data_indices,
+            synop_dataset = Sequence2SequenceDataset(self.config, self.synop_data, self.data_indices,
                                                      self.synop_feature_names)
             if self.config.experiment.load_cmax_data:
                 cmax_dataset = CMAXDataset(config=self.config, dates=self.synop_dates, normalize=True, use_future_values=self.load_future_cmax)

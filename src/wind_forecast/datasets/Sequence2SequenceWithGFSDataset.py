@@ -1,29 +1,31 @@
 from typing import List
 
+import pandas as pd
+import numpy as np
 from wind_forecast.config.register import Config
 from wind_forecast.datasets.BaseDataset import BaseDataset
-from wind_forecast.util.logging import log
+from wind_forecast.util.gfs_util import get_gfs_target_param
 
 
 class Sequence2SequenceWithGFSDataset(BaseDataset):
     'Characterizes a dataset for PyTorch'
 
-    def __init__(self, config: Config, synop_data, synop_data_indices, synop_feature_names: List[str], gfs_future_y,
-                 gfs_past_y, gfs_future_x=None, gfs_past_x=None):
+    def __init__(self, config: Config, synop_data: pd.DataFrame, gfs_data: pd.DataFrame, data_indices: list,
+                 synop_feature_names: List[str], gfs_feature_names: List[str]):
         'Initialization'
         super().__init__()
-        self.train_params = synop_feature_names
+        self.synop_feature_names = synop_feature_names
+        self.gfs_feature_names = gfs_feature_names
         self.target_param = config.experiment.target_parameter
+        self.gfs_target_param = get_gfs_target_param(config.experiment.target_parameter)
+
         self.sequence_length = config.experiment.sequence_length
         self.future_sequence_length = config.experiment.future_sequence_length
         self.prediction_offset = config.experiment.prediction_offset
         self.synop_data = synop_data
-        self.use_all_gfs_params = gfs_future_x is not None and gfs_past_x is not None
+        self.gfs_data = gfs_data
 
-        if self.use_all_gfs_params:
-            self.data = list(zip(synop_data_indices, gfs_past_x, gfs_past_y, gfs_future_x, gfs_future_y))
-        else:
-            self.data = list(zip(synop_data_indices, gfs_future_y))
+        self.data = data_indices
 
     def __len__(self):
         'Denotes the total number of samples'
@@ -31,30 +33,40 @@ class Sequence2SequenceWithGFSDataset(BaseDataset):
 
     def __getitem__(self, index):
         'Generates one sample of data'
-        if self.use_all_gfs_params:
-            synop_index, gfs_past_x, gfs_past_y, gfs_future_x, gfs_future_y = self.data[index]
-        else:
-            synop_index, gfs_future_y = self.data[index]
+        data_index = self.data[index]
 
-        if len(self.synop_data.loc[synop_index:synop_index + self.sequence_length - 1]['date']) < 24:
-            log.info(self.synop_data.loc[synop_index]['date'])
-        synop_past_x = self.synop_data.loc[synop_index:synop_index + self.sequence_length - 1][self.train_params].to_numpy()
+        synop_past_x = self.synop_data.loc[data_index:data_index + self.sequence_length - 1][
+            self.synop_feature_names].to_numpy()
         synop_future_x = self.synop_data.loc[
-                      synop_index + self.sequence_length + self.prediction_offset:synop_index + self.sequence_length + self.prediction_offset + self.future_sequence_length - 1][
-            self.train_params].to_numpy()
+                         data_index + self.sequence_length + self.prediction_offset:data_index + self.sequence_length + self.prediction_offset + self.future_sequence_length - 1][
+            self.synop_feature_names].to_numpy()
+
         synop_y = self.synop_data.loc[
-                      synop_index:synop_index + self.sequence_length + self.prediction_offset + self.future_sequence_length - 1][
+                  data_index:data_index + self.sequence_length + self.prediction_offset + self.future_sequence_length - 1][
             self.target_param].to_numpy()
         synop_past_y = synop_y[:self.sequence_length + self.prediction_offset]
         synop_future_y = synop_y[self.sequence_length + self.prediction_offset
-                                             :synop_index + self.sequence_length + self.prediction_offset + self.future_sequence_length]
-        inputs_dates = self.synop_data.loc[synop_index:synop_index + self.sequence_length - 1]['date']
+                                 :data_index + self.sequence_length + self.prediction_offset + self.future_sequence_length]
+
+        inputs_dates = self.synop_data.loc[data_index:data_index + self.sequence_length - 1]['date'].to_numpy()
         target_dates = self.synop_data.loc[
-                  synop_index + self.sequence_length + self.prediction_offset
-                  :synop_index + self.sequence_length + self.prediction_offset + self.future_sequence_length - 1]['date']
+                       data_index + self.sequence_length + self.prediction_offset
+                       :data_index + self.sequence_length + self.prediction_offset + self.future_sequence_length - 1]['date'].to_numpy()
 
-        if self.use_all_gfs_params:
-            return synop_past_y, synop_past_x, synop_future_y, synop_future_x, gfs_past_x, gfs_past_y,\
-                   gfs_future_x, gfs_future_y, inputs_dates, target_dates
+        gfs_y = self.gfs_data.loc[
+                data_index:data_index + self.sequence_length + self.prediction_offset + self.future_sequence_length - 1][
+            self.gfs_target_param].to_numpy()
+        gfs_y = np.expand_dims(gfs_y, -1)
+        gfs_past_y = gfs_y[:self.sequence_length + self.prediction_offset]
+        gfs_future_y = gfs_y[self.sequence_length + self.prediction_offset
+                             :data_index + self.sequence_length + self.prediction_offset + self.future_sequence_length]
 
-        return synop_past_y, synop_past_x, synop_future_y, synop_future_x, gfs_future_y, inputs_dates, target_dates
+        gfs_past_x = self.gfs_data.loc[data_index:data_index + self.sequence_length - 1][
+            self.gfs_feature_names].to_numpy()
+        gfs_future_x = self.gfs_data.loc[
+                       data_index + self.sequence_length + self.prediction_offset:data_index + self.sequence_length + self.prediction_offset + self.future_sequence_length - 1][
+            self.gfs_feature_names].to_numpy()
+
+        return synop_past_y, synop_past_x, synop_future_y, synop_future_x, gfs_past_x, gfs_past_y, \
+               gfs_future_x, gfs_future_y, inputs_dates, target_dates
+

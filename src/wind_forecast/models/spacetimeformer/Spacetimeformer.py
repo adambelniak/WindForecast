@@ -81,6 +81,8 @@ class Spacetimeformer(LightningModule):
             param_names = [x['name'] for x in gfs_params]
             if "V GRD" in param_names and "U GRD" in param_names:
                 gfs_params_len += 1  # V and U will be expanded into velocity, sin and cos
+            if config.experiment.stl_decompose:
+                gfs_params_len = 3 * gfs_params_len + 1
             self.features_length += gfs_params_len
 
         self.transformer_encoder_layers_num = config.experiment.transformer_encoder_layers

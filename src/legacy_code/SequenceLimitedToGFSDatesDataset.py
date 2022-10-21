@@ -4,7 +4,7 @@ from tqdm import tqdm
 from gfs_archive_0_25.gfs_processor.Coords import Coords
 from wind_forecast.config.register import Config
 from wind_forecast.datasets.BaseDataset import BaseDataset
-from wind_forecast.preprocess.synop.synop_preprocess import normalize_synop_data_for_training
+from wind_forecast.util.df_util import normalize_data_for_training
 from wind_forecast.util.gfs_util import add_param_to_train_params, target_param_to_gfs_name_level, GFSUtil
 
 
@@ -36,7 +36,7 @@ class SequenceLimitedToGFSDatesDataset(BaseDataset):
         if normalize_synop:
             # data was not normalized, so take all frames which will be used, compute std and mean and normalize data
             self.synop_data, self.synop_feature_names, synop_feature_1, synop_feature_2 = \
-                normalize_synop_data_for_training(self.synop_data,
+                normalize_data_for_training(self.synop_data,
                                                   synop_data_indices,
                                                   feature_names,
                                                   self.sequence_length + self.prediction_offset,

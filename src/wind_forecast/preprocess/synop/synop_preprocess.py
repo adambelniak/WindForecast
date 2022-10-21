@@ -1,10 +1,9 @@
 import datetime
 import os
-from typing import Dict, Union, Tuple
-from statsmodels.tsa.seasonal import STL
+from pathlib import Path
+from typing import Union, Tuple
 
 import numpy as np
-from pathlib import Path
 import pandas as pd
 
 from synop.consts import SYNOP_PERIODIC_FEATURES
@@ -51,7 +50,7 @@ def prepare_synop_dataset(synop_file_name: str, features: list, norm=True,
         data[f'{column}-sin'] = np.sin(period_argument).tolist()
         data[f'{column}-cos'] = np.cos(period_argument).tolist()
         data.drop(columns=[column], inplace=True)
-        features = get_feature_names_after_periodic_reduction(features)
+        features = modify_feature_names_after_periodic_reduction(features)
     if norm:
         data[features], mean_or_min, std_or_max = get_normalization_values(data[features].values, normalization_type)
         return data, mean_or_min, std_or_max
@@ -59,50 +58,10 @@ def prepare_synop_dataset(synop_file_name: str, features: list, norm=True,
     return data
 
 
-def get_feature_names_after_periodic_reduction(features: list):
+def modify_feature_names_after_periodic_reduction(features: list):
+    new_features = features
     for feature in SYNOP_PERIODIC_FEATURES:
-        features.remove(feature['column'][1])
-        features.append(f'{feature["column"][1]}-sin')
-        features.append(f'{feature["column"][1]}-cos')
-    return features
-
-
-def decompose_synop_data(synop_data: pd.DataFrame, features: list):
-    for feature in features:
-        series = synop_data[feature]
-        stl = STL(series, seasonal=35, period=24, trend=81, low_pass=25)
-        res = stl.fit(inner_iter=1, outer_iter=10)
-        O, T, S, R = res.observed, res.trend, res.seasonal, res.resid
-        synop_data[f"{feature}_T"] = T
-        synop_data[f"{feature}_S"] = S
-        synop_data[f"{feature}_R"] = R
-        synop_data.drop(columns=[feature], inplace=True)
-    return synop_data
-
-
-def resolve_synop_data(all_synop_data: pd.DataFrame, synop_data_indices: [int], length_of_sequence) -> pd.DataFrame:
-    # Bear in mind that synop_data_indices are indices of FIRST synop in the sequence. Not all synop data exist in synop_data_indices because of that fact.
-    all_indices = set(
-        [item for sublist in [[index + frame for frame in range(0, length_of_sequence)] for index in synop_data_indices]
-         for item in sublist])
-    return all_synop_data.take(list(all_indices))
-
-
-def normalize_synop_data_for_training(all_synop_data: pd.DataFrame, synop_data_indices: [int], features: [str],
-                                      length_of_sequence: int, normalization_type: NormalizationType
-                                      = NormalizationType.STANDARD) -> (pd.DataFrame, [str], Dict, Dict):
-    all_relevant_synop_data = resolve_synop_data(all_synop_data, synop_data_indices, length_of_sequence)
-    final_data = pd.DataFrame()
-    mean_or_min_to_return = {}
-    std_or_max_to_return = {}
-    for feature in features:
-        series_to_normalize = all_relevant_synop_data[feature]
-
-        values, mean_or_min, std_or_max = get_normalization_values(series_to_normalize, normalization_type)
-        final_data[feature] = values
-        mean_or_min_to_return[feature] = mean_or_min
-        std_or_max_to_return[feature] = std_or_max
-
-    rest_of_data = all_relevant_synop_data.drop(features, axis=1)
-    return pd.concat([final_data, rest_of_data], axis=1,
-                     join='inner'), mean_or_min_to_return, std_or_max_to_return
+        new_features.remove(feature['column'][1])
+        new_features.append(f'{feature["column"][1]}-sin')
+        new_features.append(f'{feature["column"][1]}-cos')
+    return new_features

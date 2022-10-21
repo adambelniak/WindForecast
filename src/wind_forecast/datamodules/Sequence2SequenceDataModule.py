@@ -1,8 +1,6 @@
-import math
 from itertools import chain
 from typing import Optional, Tuple, List
 
-import numpy as np
 import pandas as pd
 from torch.utils.data import DataLoader
 from torch.utils.data.dataloader import default_collate
@@ -16,11 +14,12 @@ from wind_forecast.consts import SYNOP_DATASETS_DIRECTORY
 from wind_forecast.datamodules.SplittableDataModule import SplittableDataModule
 from wind_forecast.datasets.Sequence2SequenceDataset import Sequence2SequenceDataset
 from wind_forecast.datasets.Sequence2SequenceWithGFSDataset import Sequence2SequenceWithGFSDataset
-from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset, normalize_synop_data_for_training, \
-    decompose_synop_data, get_feature_names_after_periodic_reduction
+from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset, \
+    modify_feature_names_after_periodic_reduction
 from wind_forecast.util.config import process_config
-from wind_forecast.util.gfs_util import add_param_to_train_params, target_param_to_gfs_name_level, normalize_gfs_data, \
-    GFSUtil, extend_wind_components
+from wind_forecast.util.df_util import normalize_data_for_training, decompose_data
+from wind_forecast.util.gfs_util import add_param_to_train_params, \
+    GFSUtil, extend_wind_components, decompose_gfs_data, get_gfs_target_param
 from wind_forecast.util.logging import log
 from wind_forecast.util.synop_util import get_correct_dates_for_sequence
 
@@ -51,24 +50,21 @@ class Sequence2SequenceDataModule(SplittableDataModule):
         coords = config.experiment.target_coords
         self.target_coords = Coords(coords[0], coords[0], coords[1], coords[1])
 
-        self.gfs_train_params = process_config(config.experiment.train_parameters_config_file).params
-        self.gfs_target_params = self.gfs_train_params
+        self.gfs_features_params = process_config(config.experiment.train_parameters_config_file).params
+        self.gfs_features_names = [f"{f['name']}_{f['level']}" for f in self.gfs_features_params]
+        self.gfs_wind_parameters = ["V GRD_HTGL_10", "U GRD_HTGL_10"]
 
-        self.gfs_target_param_indices = [[{'name': param['name'], 'level': param['level']}
-                                          for param in self.gfs_train_params].index(param)
-                                         for param in target_param_to_gfs_name_level(self.target_param)]
+        self.gfs_target_param = get_gfs_target_param(self.target_param)
 
-        self.gfs_wind_components_indices = [[{'name': param['name'], 'level': param['level']}
-                                             for param in self.gfs_train_params].index(param)
-                                            for param in target_param_to_gfs_name_level('wind_direction')]
         self.gfs_util = GFSUtil(self.target_coords, self.sequence_length, self.future_sequence_length,
-                                self.prediction_offset, self.gfs_train_params, self.gfs_target_params)
+                                self.prediction_offset, self.gfs_features_params)
 
         self.periodic_features = config.experiment.synop_periodic_features
         self.uses_future_sequences = True
 
         self.synop_data = ...
-        self.synop_data_indices = ...
+        self.gfs_data = ...
+        self.data_indices = ...
         self.synop_mean = ...
         self.synop_std = ...
         self.synop_dates = ...
@@ -91,10 +87,10 @@ class Sequence2SequenceDataModule(SplittableDataModule):
 
         self.after_synop_loaded()
 
-        self.synop_feature_names = get_feature_names_after_periodic_reduction(self.synop_feature_names)
+        self.synop_feature_names = modify_feature_names_after_periodic_reduction(self.synop_feature_names)
 
         # Get indices which correspond to 'dates' - 'dates' are the ones, which start a proper sequence without breaks
-        self.synop_data_indices = self.synop_data[self.synop_data["date"].isin(self.synop_dates)].index
+        self.data_indices = self.synop_data[self.synop_data["date"].isin(self.synop_dates)].index
 
         if self.config.experiment.stl_decompose:
             self.synop_decompose()
@@ -102,11 +98,11 @@ class Sequence2SequenceDataModule(SplittableDataModule):
         else:
             # do not normalize periodic features
             features_to_normalize = [name for name in self.synop_feature_names if name not in
-                                     get_feature_names_after_periodic_reduction(SYNOP_PERIODIC_FEATURES)]
+                                     modify_feature_names_after_periodic_reduction([f['column'][1] for f in SYNOP_PERIODIC_FEATURES])]
 
         # data was not normalized, so take all frames which will be used, compute std and mean and normalize data
-        self.synop_data, mean, std = normalize_synop_data_for_training(
-            self.synop_data, self.synop_data_indices, features_to_normalize,
+        self.synop_data, mean, std = normalize_data_for_training(
+            self.synop_data, self.data_indices, features_to_normalize,
             self.sequence_length + self.prediction_offset + self.future_sequence_length,
             self.normalization_type)
 
@@ -128,14 +124,13 @@ class Sequence2SequenceDataModule(SplittableDataModule):
             return
 
         if self.config.experiment.load_gfs_data:
-            synop_inputs, gfs_past_y, gfs_past_x, gfs_future_y, gfs_future_x = self.prepare_dataset_for_gfs()
+            self.prepare_dataset_for_gfs()
 
-            dataset = Sequence2SequenceWithGFSDataset(self.config, self.synop_data, self.synop_data_indices,
-                                                      self.synop_feature_names, gfs_future_y, gfs_past_y,
-                                                      gfs_future_x, gfs_past_x)
+            dataset = Sequence2SequenceWithGFSDataset(self.config, self.synop_data, self.gfs_data, self.data_indices,
+                                                      self.synop_feature_names, self.gfs_features_names)
 
         else:
-            dataset = Sequence2SequenceDataset(self.config, self.synop_data, self.synop_data_indices,
+            dataset = Sequence2SequenceDataset(self.config, self.synop_data, self.data_indices,
                                                self.synop_feature_names)
 
         if len(dataset) == 0:
@@ -146,62 +141,30 @@ class Sequence2SequenceDataModule(SplittableDataModule):
         self.split_dataset(self.config, dataset, self.sequence_length)
 
     def prepare_dataset_for_gfs(self):
-        log.info("Preparing the dataset")
+        log.info("Preparing the GFS dataset")
         # match GFS and synop sequences
-        self.synop_data_indices, gfs_past_x, gfs_future_x = self.gfs_util.match_gfs_with_synop_sequence2sequence(
+        self.data_indices, self.gfs_data = self.gfs_util.match_gfs_with_synop_sequence2sequence(
             self.synop_data,
-            self.synop_data_indices)
+            self.data_indices)
 
-        # save target data
-        gfs_future_y = gfs_future_x[:, :, self.gfs_target_param_indices]
-        gfs_past_y = gfs_past_x[:, :, self.gfs_target_param_indices]
+        if all([f in self.gfs_features_names for f in self.gfs_wind_parameters]):
+            self.gfs_data = self.prepare_gfs_data_with_wind_components(self.gfs_data)
 
-        # normalize GFS parameters data
-        param_names = [x['name'] for x in self.gfs_train_params]
-        if "V GRD" in param_names and "U GRD" in param_names:
-            gfs_past_x = self.prepare_gfs_data_with_wind_components(gfs_past_x)
-            gfs_future_x = self.prepare_gfs_data_with_wind_components(gfs_future_x)
+        if self.config.experiment.stl_decompose:
+            self.gfs_decompose()
+            features_to_normalize = self.gfs_features_names
         else:
-            gfs_past_x = normalize_gfs_data(gfs_past_x, self.normalization_type, (0, 1))
-            gfs_future_x = normalize_gfs_data(gfs_future_x, self.normalization_type, (0, 1))
+            # do not normalize periodic features
+            features_to_normalize = [name for name in self.gfs_features_names if name not in ["wind-sin", "wind-cos"]]
+
+        # normalize GFS parameters data]
+        self.gfs_data, _, _ = normalize_data_for_training(self.gfs_data, self.data_indices, features_to_normalize,
+                                                    self.sequence_length + self.prediction_offset + self.future_sequence_length,
+                                                    self.normalization_type)
 
         if self.target_param == "wind_direction":
-            # set sin and cos components as targets, do not normalize them
-            gfs_future_y = np.apply_along_axis(
-                lambda velocity: [-velocity[1] / (math.sqrt(velocity[0] ** 2 + velocity[1] ** 2)),
-                                  -velocity[0] / (math.sqrt(velocity[0] ** 2 + velocity[1] ** 2))], -1,
-                gfs_future_y)
-            gfs_past_y = np.apply_along_axis(
-                lambda velocity: [-velocity[1] / (math.sqrt(velocity[0] ** 2 + velocity[1] ** 2)),
-                                  -velocity[0] / (math.sqrt(velocity[0] ** 2 + velocity[1] ** 2))], -1,
-                gfs_past_y)
-        else:
-            if self.target_param == "wind_velocity":
-                # handle target wind_velocity forecast by GFS
-                # velocity[0] is V GRD (northward), velocity[1] is U GRD (eastward)
-                gfs_future_y = np.apply_along_axis(lambda velocity: [math.sqrt(velocity[0] ** 2 + velocity[1] ** 2)],
-                                                   -1,
-                                                   gfs_future_y)
-                gfs_past_y = np.apply_along_axis(lambda velocity: [math.sqrt(velocity[0] ** 2 + velocity[1] ** 2)], -1,
-                                                 gfs_past_y)
-
-            elif self.target_param == "temperature":
-                K_TO_C = 273.15
-                gfs_future_y -= K_TO_C
-                gfs_past_y -= K_TO_C
-            elif self.target_param == "pressure":
-                gfs_future_y /= 100
-                gfs_past_y /= 100
-
-            gfs_future_y = (gfs_future_y - self.synop_mean) / self.synop_std
-            gfs_past_y = (gfs_past_y - self.synop_mean) / self.synop_std
-
-        assert len(self.synop_data_indices) == len(
-            gfs_future_x), f"len(all_gfs_target_data) should be {len(self.synop_data_indices)} but was {len(gfs_future_x)}"
-
-        assert len(self.synop_data_indices) == len(
-            gfs_past_x), f"len(all_gfs_input_data) should be {len(self.synop_data_indices)} but was {len(gfs_past_x)}"
-        return self.synop_data_indices, gfs_past_y, gfs_past_x, gfs_future_y, gfs_future_x
+            # TODO handle this case - as for now we do not use this parameter as target
+            pass
 
     def resolve_all_synop_data(self):
         synop_inputs = []
@@ -211,7 +174,7 @@ class Sequence2SequenceDataModule(SplittableDataModule):
         # all_targets and dates - dates are needed for matching the labels against GFS dates
         all_targets_and_labels = pd.concat([synop_data_dates, self.synop_data[train_params]], axis=1)
 
-        for index in tqdm(self.synop_data_indices):
+        for index in tqdm(self.data_indices):
             synop_inputs.append(
                 self.synop_data.iloc[index:index + self.sequence_length][[*train_params, 'date']])
             all_synop_targets.append(all_targets_and_labels.iloc[
@@ -219,12 +182,16 @@ class Sequence2SequenceDataModule(SplittableDataModule):
 
         return synop_inputs, all_synop_targets
 
-    def prepare_gfs_data_with_wind_components(self, gfs_data: np.ndarray):
-        gfs_data = np.delete(gfs_data, self.gfs_wind_components_indices, -1)
-        velocity, sin, cos = extend_wind_components(gfs_data[:, :, self.gfs_wind_components_indices])
-        gfs_data = normalize_gfs_data(np.concatenate([gfs_data, np.expand_dims(velocity, -1)], -1),
-                                      self.normalization_type, (0, 1))
-        gfs_data = np.concatenate([gfs_data, np.expand_dims(sin, -1), np.expand_dims(cos, -1)], -1)
+    def prepare_gfs_data_with_wind_components(self, gfs_data: pd.DataFrame):
+        gfs_wind_data = gfs_data[self.gfs_wind_parameters]
+        gfs_data.drop(columns=self.gfs_wind_parameters, inplace=True)
+        velocity, sin, cos = extend_wind_components(gfs_wind_data.values)
+        gfs_data["wind-velocity"] = velocity
+        gfs_data["wind-sin"] = sin
+        gfs_data["wind-cos"] = cos
+        self.gfs_features_names.remove(self.gfs_wind_parameters[0])
+        self.gfs_features_names.remove(self.gfs_wind_parameters[1])
+        self.gfs_features_names.extend(["wind-velocity", "wind-sin", "wind-cos"])
         return gfs_data
 
     def train_dataloader(self):
@@ -276,8 +243,17 @@ class Sequence2SequenceDataModule(SplittableDataModule):
 
     def synop_decompose(self):
         target_param_series = self.synop_data[self.target_param]
-        self.synop_data = decompose_synop_data(self.synop_data, self.synop_feature_names)
+        self.synop_data = decompose_data(self.synop_data, self.synop_feature_names)
         self.synop_data[self.target_param] = target_param_series
         self.synop_feature_names = list(
             chain.from_iterable((f"{feature}_T", f"{feature}_S", f"{feature}_R") for feature in self.synop_feature_names))
         self.synop_feature_names.append(self.target_param)
+
+    def gfs_decompose(self):
+        target_param_series = self.gfs_data[self.gfs_target_param]
+        self.gfs_data = decompose_gfs_data(self.gfs_data, self.gfs_features_names)
+        self.gfs_data[self.gfs_target_param] = target_param_series
+        self.gfs_features_names = list(
+            chain.from_iterable(
+                (f"{feature}_T", f"{feature}_S", f"{feature}_R") for feature in self.gfs_features_names))
+        self.gfs_features_names.append(self.gfs_target_param)
