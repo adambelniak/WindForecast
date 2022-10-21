@@ -55,7 +55,7 @@ class S2SRegressorWithGFSInput(BaseS2SRegressor):
         gfs_targets = batch[BatchKeys.GFS_FUTURE_Y.value]
 
         return {BatchKeys.SYNOP_FUTURE_Y.value: batch[BatchKeys.SYNOP_FUTURE_Y.value].float().squeeze(),
-                'output': outputs.squeeze(),
+                BatchKeys.PREDICTIONS.value: outputs.squeeze(),
                 BatchKeys.SYNOP_PAST_Y.value: batch[BatchKeys.SYNOP_PAST_Y.value].float().squeeze()[:],
                 BatchKeys.DATES_PAST.value: dates_inputs,
                 BatchKeys.DATES_FUTURE.value: dates_targets,
@@ -84,28 +84,19 @@ class S2SRegressorWithGFSInput(BaseS2SRegressor):
         self.test_results = metrics_and_plot_results
 
     def get_metrics_and_plot_results(self, step: int, outputs: List[Any]) -> Dict:
+        series = self.get_series_from_outputs(outputs)
+        predictions = series[BatchKeys.PREDICTIONS.value]
+
         if self.cfg.experiment.batch_size > 1:
-            output_series = [item.cpu() for sublist in [x['output'] for x in outputs] for item in sublist]
-            labels_series = [item.cpu() for sublist in [x[BatchKeys.SYNOP_FUTURE_Y.value] for x in outputs] for item in
-                             sublist]
             gfs_targets = [item.cpu() for sublist in [x[BatchKeys.GFS_FUTURE_Y.value] for x in outputs] for item in
                            sublist]
-            past_truth_series = [item.cpu() for sublist in [x[BatchKeys.SYNOP_PAST_Y.value] for x in outputs] for item
-                                 in sublist]
-            inputs_dates = [item for sublist in [x[BatchKeys.DATES_PAST.value] for x in outputs] for item in sublist]
-            labels_dates = [item for sublist in [x[BatchKeys.DATES_FUTURE.value] for x in outputs] for item in sublist]
         else:
-            output_series = [item.cpu() for item in [x['output'] for x in outputs]]
-            labels_series = [item.cpu() for item in [x[BatchKeys.SYNOP_FUTURE_Y.value] for x in outputs]]
             gfs_targets = [item.cpu() for item in [x[BatchKeys.GFS_FUTURE_Y.value] for x in outputs]]
-            past_truth_series = [item.cpu() for item in [x[BatchKeys.SYNOP_PAST_Y.value] for x in outputs]]
-            # mistery - why there are 1-element tuples?
-            inputs_dates = [item[0] for item in [x[BatchKeys.DATES_PAST.value] for x in outputs]]
-            labels_dates = [item[0] for item in [x[BatchKeys.DATES_FUTURE.value] for x in outputs]]
-        output_series = np.asarray([np.asarray(el) for el in output_series])
-        labels_series = np.asarray([np.asarray(el) for el in labels_series])
+
+        output_series = np.asarray([np.asarray(el) for el in predictions])
+        labels_series = np.asarray([np.asarray(el) for el in series[BatchKeys.SYNOP_FUTURE_Y.value]])
         gfs_targets = np.asarray([np.asarray(el) for el in gfs_targets])
-        past_truth_series = np.asarray([np.asarray(el) for el in past_truth_series])
+        past_truth_series = np.asarray([np.asarray(el) for el in series[BatchKeys.SYNOP_PAST_Y.value]])
 
         gfs_corrs = []
         for index, _ in enumerate(gfs_targets):
@@ -113,10 +104,7 @@ class S2SRegressorWithGFSInput(BaseS2SRegressor):
 
         gfs_corr = np.mean(gfs_corrs)
         rmse_by_step = np.sqrt(np.mean(np.power(np.subtract(output_series, labels_series), 2), axis=0))
-        mase_by_step = []
-        for step in range(output_series.shape[-1]):
-            mase_by_step.append((abs(output_series[:, step] - labels_series[:, step]) /
-                                 abs(past_truth_series[:, :-1] - past_truth_series[:, 1:]).mean()).mean())
+        mase_by_step = self.get_mase_by_step(series[BatchKeys.SYNOP_PAST_Y.value], predictions)
 
         # for plots
         plot_truth_series = []
@@ -126,8 +114,8 @@ class S2SRegressorWithGFSInput(BaseS2SRegressor):
         plot_prediction_dates = []
         for index in np.random.choice(np.arange(len(output_series)),
                                       min(40, len(output_series)), replace=False):
-            sample_all_dates = [pd.to_datetime(pd.Timestamp(d)) for d in inputs_dates[index]]
-            sample_prediction_dates = [pd.to_datetime(pd.Timestamp(d)) for d in labels_dates[index]]
+            sample_all_dates = [pd.to_datetime(pd.Timestamp(d)) for d in series[BatchKeys.DATES_PAST.value][index]]
+            sample_prediction_dates = [pd.to_datetime(pd.Timestamp(d)) for d in series[BatchKeys.DATES_FUTURE.value][index]]
             sample_all_dates.extend(sample_prediction_dates)
 
             plot_all_dates.append(sample_all_dates)

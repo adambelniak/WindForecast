@@ -122,6 +122,8 @@ class ExperimentSettings:
 
     with_dates_inputs: bool = True
 
+    stl_decompose: bool = False
+
     # ----------------------------------------------------------------------------------------------
     # Experiment specific settings
     # ----------------------------------------------------------------------------------------------
@@ -278,7 +280,7 @@ class ExperimentSettings:
 
     use_time2vec: bool = True
 
-    use_value2vec: bool = True
+    use_value2vec: bool = False
 
     # ----------------------------------------------------------------------------------------------
     # Other settings

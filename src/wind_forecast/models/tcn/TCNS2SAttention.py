@@ -28,7 +28,7 @@ class TCNS2SAttention(TCNS2S):
         tcn_layers = []
         in_channels = self.config.experiment.tcn_channels[-1]
 
-        for i in range(self.num_levels):
+        for i in range(self.num_layers):
             dilation_size = 2 ** (self.num_layers - i)
             out_channels = self.tcn_channels[-(i + 2)] if i < self.num_layers - 1 else self.embed_dim
             tcn_layers += [TemporalBlockWithAttention(self.config.experiment.transformer_attention_heads,

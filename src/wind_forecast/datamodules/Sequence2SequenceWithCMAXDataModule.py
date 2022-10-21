@@ -1,18 +1,18 @@
 from typing import Optional, Tuple, List
+
+import numpy as np
 import torch
 from torch.utils.data.dataloader import default_collate
-import numpy as np
+
 from wind_forecast.config.register import Config
-from wind_forecast.consts import SYNOP_DATASETS_DIRECTORY, BatchKeys
+from wind_forecast.consts import BatchKeys
 from wind_forecast.datamodules.Sequence2SequenceDataModule import Sequence2SequenceDataModule
 from wind_forecast.datasets.CMAXDataset import CMAXDataset
 from wind_forecast.datasets.ConcatDatasets import ConcatDatasets
 from wind_forecast.datasets.Sequence2SequenceDataset import Sequence2SequenceDataset
 from wind_forecast.datasets.Sequence2SequenceWithGFSDataset import Sequence2SequenceWithGFSDataset
-from wind_forecast.preprocess.synop.synop_preprocess import normalize_synop_data_for_training, prepare_synop_dataset
 from wind_forecast.util.cmax_util import get_available_cmax_hours, \
     initialize_synop_dates_for_sequence_with_cmax, CMAX_MIN, CMAX_MAX
-from wind_forecast.util.logging import log
 
 
 class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
@@ -22,23 +22,8 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
         self.cmax_from_year = config.experiment.cmax_from_year
         self.cmax_to_year = config.experiment.cmax_to_year
         self.cmax_available_ids = ...
-        self.synop_dates = ...
 
-    def prepare_data(self, *args, **kwargs):
-        self.load_from_disk(self.config)
-
-        if self.initialized:
-            return
-        self.synop_data = prepare_synop_dataset(self.synop_file,
-                                                list(list(zip(*self.train_params))[1]),
-                                                dataset_dir=SYNOP_DATASETS_DIRECTORY,
-                                                from_year=self.synop_from_year,
-                                                to_year=self.synop_to_year,
-                                                norm=False)
-
-        if self.config.debug_mode:
-            self.synop_data = self.synop_data.head(self.sequence_length * 20)
-
+    def after_synop_loaded(self):
         self.cmax_available_ids = get_available_cmax_hours(from_year=self.cmax_from_year, to_year=self.cmax_to_year)
 
         self.synop_dates = initialize_synop_dates_for_sequence_with_cmax(self.cmax_available_ids,
@@ -47,26 +32,7 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
                                                                          self.future_sequence_length,
                                                                          self.prediction_offset,
                                                                          self.load_future_cmax)
-
         self.synop_data = self.synop_data.reset_index()
-
-        # Get indices which correspond to 'dates' - 'dates' are the ones, which start a proper sequence without breaks
-        self.synop_data_indices = self.synop_data[self.synop_data["date"].isin(self.synop_dates)].index
-
-        assert len(self.synop_dates) == len(self.synop_data_indices)
-
-        # data was not normalized, so take all frames which will be used, compute std and mean and normalize data
-        self.synop_data, self.synop_feature_names, synop_mean, synop_std = normalize_synop_data_for_training(
-            self.synop_data, self.synop_data_indices,
-            self.feature_names,
-            self.sequence_length + self.prediction_offset + self.future_sequence_length,
-            self.normalization_type,
-            self.periodic_features)
-
-        self.synop_mean = synop_mean[self.target_param]
-        self.synop_std = synop_std[self.target_param]
-        log.info(f"Synop mean: {synop_mean[self.target_param]}")
-        log.info(f"Synop std: {synop_std[self.target_param]}")
 
     def setup(self, stage: Optional[str] = None):
         if self.initialized:
@@ -75,11 +41,10 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
             return
 
         if self.config.experiment.load_gfs_data:
-            synop_inputs, gfs_past_y, gfs_past_x, gfs_future_y, gfs_future_x = self.prepare_dataset_for_gfs()
-            self.synop_dates = self.synop_data.loc[self.synop_data_indices]['date'].values
-            synop_dataset = Sequence2SequenceWithGFSDataset(self.config, self.synop_data, self.synop_data_indices,
-                                                            self.synop_feature_names, gfs_future_y, gfs_past_y,
-                                                            gfs_future_x, gfs_past_x)
+            self.prepare_dataset_for_gfs()
+            self.synop_dates = self.synop_data.loc[self.data_indices]['date'].values
+            synop_dataset = Sequence2SequenceWithGFSDataset(self.config, self.synop_data, self.gfs_data, self.data_indices,
+                                                            self.synop_feature_names, self.gfs_features_names)
             if self.config.experiment.load_cmax_data:
                 cmax_dataset = CMAXDataset(config=self.config, dates=self.synop_dates, normalize=True,
                                            use_future_values=self.load_future_cmax)
@@ -89,7 +54,7 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
             else:
                 dataset = synop_dataset
         else:
-            synop_dataset = Sequence2SequenceDataset(self.config, self.synop_data, self.synop_data_indices,
+            synop_dataset = Sequence2SequenceDataset(self.config, self.synop_data, self.data_indices,
                                                      self.synop_feature_names)
             if self.config.experiment.load_cmax_data:
                 cmax_dataset = CMAXDataset(config=self.config, dates=self.synop_dates, normalize=True, use_future_values=self.load_future_cmax)

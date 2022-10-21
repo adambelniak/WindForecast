@@ -69,6 +69,9 @@ class Spacetimeformer(LightningModule):
         self.use_gfs = config.experiment.use_gfs_data
         self.gfs_on_head = config.experiment.gfs_on_head
         self.features_length = len(config.experiment.synop_train_features) + len(config.experiment.synop_periodic_features)
+        if self.config.experiment.stl_decompose:
+            self.features_length *= 3
+            self.features_length += 1  # + 1 for non-decomposed target param
         self.future_sequence_length = config.experiment.future_sequence_length
         assert self.future_sequence_length <= config.experiment.sequence_length
 
@@ -78,6 +81,8 @@ class Spacetimeformer(LightningModule):
             param_names = [x['name'] for x in gfs_params]
             if "V GRD" in param_names and "U GRD" in param_names:
                 gfs_params_len += 1  # V and U will be expanded into velocity, sin and cos
+            if config.experiment.stl_decompose:
+                gfs_params_len = 3 * gfs_params_len + 1
             self.features_length += gfs_params_len
 
         self.transformer_encoder_layers_num = config.experiment.transformer_encoder_layers
@@ -261,11 +266,15 @@ class Spacetimeformer(LightningModule):
         synop_inputs = batch[BatchKeys.SYNOP_PAST_X.value].float()
         if self.use_gfs:
             gfs_inputs = batch[BatchKeys.GFS_PAST_X.value].float()
+            gfs_future = batch[BatchKeys.GFS_FUTURE_X.value].float()
+            inputs = torch.cat([synop_inputs, gfs_inputs], -1)
+            targets = torch.zeros((synop_inputs.shape[0], self.future_sequence_length, synop_inputs.shape[2])).to(inputs.device)
+            targets = torch.cat([targets, gfs_future], -1)
+        else:
+            inputs = synop_inputs
+            targets = torch.zeros((inputs.shape[0], self.future_sequence_length, inputs.shape[2])).to(inputs.device)
 
-        inputs = torch.cat([synop_inputs, gfs_inputs], -1) if self.use_gfs else synop_inputs
-
-        # zero values for decoder inpur
-        targets = torch.zeros((inputs.shape[0], self.future_sequence_length, inputs.shape[2])).to(inputs.device)
+        # zero values for decoder input synop, but real values for gfs forecast
         dates = batch[BatchKeys.DATES_TENSORS.value]
 
         # embed context sequence

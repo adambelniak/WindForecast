@@ -59,7 +59,8 @@ class SplittableDataModule(LightningDataModule):
                f"_{str(exp.cmax_scaling_factor)}" \
                f"_{str(exp.load_future_cmax)}" \
                f"_{str(self.uses_future_sequences)}" \
-               f"_{str(config.debug_mode)}"
+               f"_{str(config.debug_mode)}" \
+               f"_{str(config.experiment.stl_decompose)}"
 
         return name + f"_{stage}"
 

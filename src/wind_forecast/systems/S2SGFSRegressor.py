@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import copy
-import math
 from typing import List, Dict, Any
 
 import torch
@@ -61,11 +59,11 @@ class S2SGFSRegressor(BaseS2SRegressor):
         self.test_mase(outputs.squeeze(), targets.float().squeeze(), synop_past_targets)
 
         return {BatchKeys.SYNOP_FUTURE_Y.value: targets,
-                'output': outputs,
+                BatchKeys.PREDICTIONS.value: outputs.squeeze(),
                 BatchKeys.SYNOP_PAST_Y.value: synop_past_targets[:, :],
                 BatchKeys.DATES_PAST.value: dates_inputs,
                 BatchKeys.DATES_FUTURE.value: dates_targets,
-                BatchKeys.GFS_FUTURE_Y.value: outputs}
+                BatchKeys.GFS_FUTURE_Y.value: outputs.squeeze()}
 
     def test_epoch_end(self, outputs: List[Any]) -> None:
         """
@@ -78,34 +76,12 @@ class S2SGFSRegressor(BaseS2SRegressor):
         """
         step = self.current_epoch + 1 if not self.trainer.sanity_checking else self.current_epoch  # type: ignore
 
-        metrics = {
-            'epoch': float(step),
-            'test_rmse': math.sqrt(float(self.test_mse.compute().item())),
-            'test_mae': float(self.test_mae.compute().item()),
-            'test_mase': float(self.test_mase.compute())
-        }
+        metrics_and_plot_results = self.get_metrics_and_plot_results(step, outputs)
 
         self.test_mse.reset()
         self.test_mae.reset()
         self.test_mase.reset()
 
-        # save results to view
-        labels = [item for sublist in [x[BatchKeys.SYNOP_FUTURE_Y.value] for x in outputs] for item in sublist]
+        self.test_results = metrics_and_plot_results
 
-        out = [item for sublist in [x['output'] for x in outputs] for item in sublist]
-
-        inputs = [item for sublist in [x[BatchKeys.SYNOP_PAST_Y.value] for x in outputs] for item in sublist]
-
-        gfs_targets = [item for sublist in [x[BatchKeys.GFS_FUTURE_Y.value] for x in outputs] for item in sublist]
-
-        inputs_dates = [item for sublist in [x[BatchKeys.DATES_PAST.value] for x in outputs] for item in sublist]
-        labels_dates = [item for sublist in [x[BatchKeys.DATES_FUTURE.value] for x in outputs] for item in sublist]
-
-        self.test_results = {'labels': copy.deepcopy(labels),
-                             'output': copy.deepcopy(out),
-                             'inputs': copy.deepcopy(inputs),
-                             'inputs_dates': copy.deepcopy(inputs_dates),
-                             'targets_dates': copy.deepcopy(labels_dates),
-                             'gfs_targets': copy.deepcopy(gfs_targets)}
-
-        self.logger.log_metrics(metrics, step=step)
+        self.logger.log_metrics(metrics_and_plot_results, step=step)

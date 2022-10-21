@@ -1,7 +1,7 @@
 import os
 import requests
-import rdams_client as rc
-from own_logger import logger
+import gfs_archive_0_25.gfs_processor.rdams_client as rc
+from gfs_archive_0_25.gfs_processor.own_logger import logger
 
 BASE_URL = 'https://rda.ucar.edu/json_apps/'
 USE_NETRC = False

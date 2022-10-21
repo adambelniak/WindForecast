@@ -28,12 +28,13 @@ class TCNEncoderS2S(EMDDecomposeable):
         self.kernel_size = config.experiment.tcn_kernel_size
 
         self.features_length = len(config.experiment.synop_train_features) + len(config.experiment.synop_periodic_features)
+        if self.config.experiment.stl_decompose:
+            self.features_length *= 3
+            self.features_length += 1  # + 1 for non-decomposed target param
         self.time2vec_embedding_factor = config.experiment.time2vec_embedding_factor
         self.value2vec_embedding_factor = config.experiment.value2vec_embedding_factor
         self.use_time2vec = config.experiment.use_time2vec and config.experiment.with_dates_inputs
         self.use_value2vec = config.experiment.use_value2vec and self.value2vec_embedding_factor > 0
-
-        self.features_length = len(config.experiment.synop_train_features) + len(config.experiment.synop_periodic_features)
 
         if not self.use_value2vec:
             self.value2vec_embedding_factor = 0
@@ -44,6 +45,8 @@ class TCNEncoderS2S(EMDDecomposeable):
             param_names = [x['name'] for x in gfs_params]
             if "V GRD" in param_names and "U GRD" in param_names:
                 self.gfs_params_len += 1  # V and U will be expanded int velocity, sin and cos
+            if config.experiment.stl_decompose:
+                self.gfs_params_len = 3 * self.gfs_params_len + 1
             self.features_length += self.gfs_params_len
 
         if self.use_time2vec and self.time2vec_embedding_factor == 0:

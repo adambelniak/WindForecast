@@ -5,7 +5,7 @@ defaults:
   - schema_experiment
 
 _tags_:
-  - SPACETIMEFORMER
+  - NAIVE
 
 resume_checkpoint: ~
 
@@ -13,12 +13,11 @@ datamodule:
   _target_: wind_forecast.datamodules.Sequence2SequenceWithCMAXDataModule.Sequence2SequenceWithCMAXDataModule
 
 model:
-  _target_: wind_forecast.models.spacetimeformer.Spacetimeformer.Spacetimeformer
+  _target_: wind_forecast.models.Naive.Naive
 
 system:
   _target_: wind_forecast.systems.BaseS2SRegressor.BaseS2SRegressor
 
-use_gfs_data: False
-transformer_ff_dim: 100
-transformer_encoder_layers: 4
-transformer_decoder_layers: 4
+skip_training: True
+skip_validation: True
+epochs: 1

@@ -43,13 +43,10 @@ from util.util import prep_zeros_if_needed
 AUTO_STATION_CSV_COLUMNS = ['station_code', 'param_code', 'date', 'value']
 
 
-def download_list_of_station(dir=None):
+def download_list_of_station(output_dir: str):
     file_name = 'wykaz_stacji.csv'
 
-    if dir is None:
-        out_file = os.path.join(Path(__file__).parent, 'wykaz_stacji.csv')
-    else:
-        out_file = os.path.join(dir, 'wykaz_stacji.csv')
+    out_file = os.path.join(output_dir, 'wykaz_stacji.csv')
 
     if not os.path.isfile(out_file):
         url = 'https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/dane_meteorologiczne/' + file_name
@@ -59,8 +56,8 @@ def download_list_of_station(dir=None):
         opened_file.close()
 
 
-def resolve_synop_localisation_name(station_code: str, dir=None):
-    loc_data = pd.read_csv(os.path.join(dir if dir is not None else Path(__file__).parent, 'wykaz_stacji.csv'),
+def resolve_synop_localisation_name(station_code: str, station_list_dir: str):
+    loc_data = pd.read_csv(os.path.join(station_list_dir, 'wykaz_stacji.csv'),
                            encoding="latin-1",
                            names=['meteo_code', 'station_name', 'short_meteo_code'], dtype='str')
 
@@ -113,33 +110,33 @@ def get_auto_station_data(year: str, month: str, output_dir: str):
                 outfile.write(chunk)
 
 
-def extract_tar_files(tar_dir: str, target_dir):
+def extract_tar_files(tar_dir: str, target_dir: str):
     for file in os.listdir(tar_dir):
         tar = tarfile.open(os.path.join(tar_dir, file))
         tar.extractall(target_dir)
         tar.close()
         os.remove(os.path.join(tar_dir, file))
 
-def extract_zip_files(zip_dir: str, target_dir):
+def extract_zip_files(zip_dir: str, target_dir: str):
     for file in os.listdir(zip_dir):
         with ZipFile(os.path.join(zip_dir, file), 'r') as zip:
             zip.extractall(path=target_dir)
         os.remove(os.path.join(zip_dir, file))
 
 
-def read_synop_data(columns, dir='synop_data'):
+def read_synop_data(columns: list, csv_location: str):
     station_data = pd.DataFrame(columns=list(list(zip(*columns))[1]))
 
-    for filepath in glob.iglob(rf'{dir}/*.csv', recursive=True):
+    for filepath in glob.iglob(rf'{csv_location}/*.csv', recursive=True):
         synop_data = pd.read_csv(filepath, encoding="ISO-8859-1", header=None)
         required_data = synop_data[list(list(zip(*columns))[0])]
         station_data[list(list(zip(*columns))[1])] = required_data
     return station_data
 
 
-def read_auto_station_data(dir: str, station_code: str):
+def read_auto_station_data(csv_location: str, station_code: str):
     data = pd.DataFrame(columns=AUTO_STATION_CSV_COLUMNS)
-    for filepath in glob.iglob(rf'{dir}/*.csv', recursive=True):
+    for filepath in glob.iglob(rf'{csv_location}/*.csv', recursive=True):
         station_data = pd.read_csv(filepath, encoding="ISO-8859-1", sep=';', index_col=False, dtype='str',
                                    names=AUTO_STATION_CSV_COLUMNS)
         required_data = station_data.loc[station_data['station_code'] == station_code]
@@ -176,37 +173,34 @@ def plot_box_all_data(localisation_code: str, localisation_name: str, dir='synop
     plt.show()
 
 
-def process_synop_data(from_year: int, until_year: int, localisation_code: str, localisation_name: str,
-                       input_dir=os.path.join(Path(__file__).parent, 'synop_data'),
-                       output_dir=os.path.join(Path(__file__).parent, 'synop_data'), columns=None):
-    columns = consts.SYNOP_FEATURES if columns is None else columns
-    station_data = pd.DataFrame(columns=list(list(zip(*columns))[1]))
+def process_synop_data(from_year: int, until_year: int, localisation_code: str, localisation_name: str, working_dir: str):
+    synop_data_dir = os.path.join(working_dir, 'synop_data')
+    station_data = pd.DataFrame(columns=list(list(zip(*consts.SYNOP_FEATURES))[1]))
     localisation_code = localisation_code.strip()
 
     for year in tqdm.tqdm(range(from_year, until_year + 1)):
-        get_synop_data(localisation_code, str(year), os.path.join(input_dir, str(year), 'download'))
-        extract_zip_files(os.path.join(input_dir, str(year), 'download'), os.path.join(input_dir, str(year)))
-        processed_data = read_synop_data(columns, os.path.join(input_dir, str(year)))
+        get_synop_data(localisation_code, str(year), os.path.join(synop_data_dir, str(year), 'download'))
+        extract_zip_files(os.path.join(synop_data_dir, str(year), 'download'), os.path.join(synop_data_dir, str(year)))
+        processed_data = read_synop_data(consts.SYNOP_FEATURES, os.path.join(synop_data_dir, str(year)))
         station_data = pd.concat([station_data, processed_data])
-    station_data.to_csv(os.path.join(output_dir, f"{localisation_name}_{localisation_code}_data.csv"), index=False)
+    station_data.to_csv(os.path.join(synop_data_dir, f"{localisation_name}_{localisation_code}_data.csv"), index=False)
 
 
-def process_auto_station_data(from_year: int, until_year: int, localisation_code: str, localisation_name: str,
-                              input_dir=os.path.join(Path(__file__).parent, 'auto_station_data'),
-                              output_dir=os.path.join(Path(__file__).parent, 'auto_station_data')):
+def process_auto_station_data(from_year: int, until_year: int, localisation_code: str, localisation_name: str, working_dir: str):
+    auto_station_dir = os.path.join(working_dir, 'auto_station_data')
     station_data = pd.DataFrame(columns=AUTO_STATION_CSV_COLUMNS)
     localisation_code = localisation_code.strip()
 
     for year in tqdm.tqdm(range(from_year, until_year + 1)):
         for month in range(1, 13):
             str_month = prep_zeros_if_needed(str(month), 1)
-            if not os.path.exists(os.path.join(input_dir, str(year), str_month)) or len(
-                    os.listdir(os.path.join(input_dir, str(year), str_month))) == 0:
-                get_auto_station_data(str(year), str_month, os.path.join(input_dir, str(year), str_month, 'download'))
-                extract_tar_files(os.path.join(input_dir, str(year), str_month, 'download'),
-                                  os.path.join(input_dir, str(year), str_month))
+            if not os.path.exists(os.path.join(auto_station_dir, str(year), str_month)) or len(
+                    os.listdir(os.path.join(auto_station_dir, str(year), str_month))) == 0:
+                get_auto_station_data(str(year), str_month, os.path.join(auto_station_dir, str(year), str_month, 'download'))
+                extract_tar_files(os.path.join(auto_station_dir, str(year), str_month, 'download'),
+                                  os.path.join(auto_station_dir, str(year), str_month))
 
-            processed_data = read_auto_station_data(os.path.join(input_dir, str(year), str_month), localisation_code)
+            processed_data = read_auto_station_data(os.path.join(auto_station_dir, str(year), str_month), localisation_code)
             station_data = pd.concat([station_data, processed_data])
 
     final_df = pd.DataFrame(columns=['date'])
@@ -225,12 +219,12 @@ def process_auto_station_data(from_year: int, until_year: int, localisation_code
     final_df.rename(columns={'index': 'date'}, inplace=True)
     final_df['date'] = pd.to_datetime(final_df['date'])
 
-    final_df.to_csv(os.path.join(output_dir, f"{localisation_name}_{localisation_code}_data.csv"), index=False)
+    final_df.to_csv(os.path.join(auto_station_dir, f"{localisation_name}_{localisation_code}_data.csv"), index=False)
 
 
-def merge_synop_data_with_auto_station_data(localisation_name: str, localisation_code: str,
-                                            synop_data_dir = os.path.join(Path(__file__).parent, 'synop_data'),
-                                            auto_station_data_dir = os.path.join(os.path.join(Path(__file__).parent, 'auto_station_data'))):
+def merge_synop_data_with_auto_station_data(localisation_name: str, localisation_code: str, working_dir: str):
+    synop_data_dir = os.path.join(working_dir, 'synop_data')
+    auto_station_data_dir = os.path.join(working_dir, 'auto_station_data')
     synop_df = pd.read_csv(os.path.join(synop_data_dir, f"{localisation_name}_{localisation_code}_data.csv"))
     auto_station_df = pd.read_csv(os.path.join(auto_station_data_dir, f"{localisation_name}_{localisation_code}_data.csv"))
 
@@ -270,7 +264,7 @@ def add_hourly_wind_velocity(synop_df: pd.DataFrame, auto_station_df: pd.DataFra
     synop_df[synop_param] = values
 
 
-def add_hourly_direction(synop_df, auto_station_df):
+def add_hourly_direction(synop_df: pd.DataFrame, auto_station_df: pd.DataFrame):
     copy_auto_station_df = pd.DataFrame(auto_station_df)
     copy_synop_date = pd.DataFrame(synop_df)
     auto_station_wind_data = np.array(auto_station_df[consts.AUTO_WIND_DIRECTION[1]].tolist())
@@ -311,8 +305,7 @@ def add_hourly_direction(synop_df, auto_station_df):
 def main():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--dir', help='Working directory', default=None)
-    parser.add_argument('--out', help='Directory where to save synop files', default='synop_data')
+    parser.add_argument('--working_dir', help='Working directory', default=Path(__file__).parent)
     parser.add_argument('--station_code',
                         help='Localisation code for which to get data from stations.'
                              'Codes can be found at https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/dane_meteorologiczne/wykaz_stacji.csv',
@@ -324,22 +317,20 @@ def main():
     parser.add_argument('--start_year', help='Start date for fetching data', type=int, default=2001)
     parser.add_argument('--end_year', help='End date for fetching data', type=int, default=2021)
 
-    parser.add_argument('--plot_box_year', help='Year fow which create box plot for each month', type=int, default=2019)
-
     args = parser.parse_args()
     station_code = args.station_code
     localisation_name = args.localisation_name
 
-    download_list_of_station(args.dir)
+    download_list_of_station(args.working_dir)
 
     if localisation_name is None:
-        localisation_name = resolve_synop_localisation_name(station_code, args.dir)
+        localisation_name = resolve_synop_localisation_name(station_code, args.working_dir)
 
-    process_synop_data(args.start_year, args.end_year, station_code, localisation_name)
+    process_synop_data(args.start_year, args.end_year, station_code, localisation_name, args.working_dir)
 
-    process_auto_station_data(args.start_year, args.end_year, station_code, localisation_name)
+    process_auto_station_data(args.start_year, args.end_year, station_code, localisation_name, args.working_dir)
 
-    merge_synop_data_with_auto_station_data(localisation_name, args.station_code)
+    merge_synop_data_with_auto_station_data(localisation_name, args.station_code, args.working_dir)
 
 
 if __name__ == "__main__":

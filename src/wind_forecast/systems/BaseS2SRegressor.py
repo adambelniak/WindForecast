@@ -379,7 +379,7 @@ class BaseS2SRegressor(pl.LightningModule):
         dates_targets = batch[BatchKeys.DATES_FUTURE.value]
 
         return {BatchKeys.SYNOP_FUTURE_Y.value: targets,
-                'output': outputs.squeeze(),
+                BatchKeys.PREDICTIONS.value: outputs.squeeze(),
                 BatchKeys.SYNOP_PAST_Y.value: past_targets[:],
                 BatchKeys.SYNOP_PAST_X.value: synop_inputs[:, :, self.target_param_index] if self.cfg.experiment.batch_size > 1
                 else synop_inputs[:, self.target_param_index],
@@ -409,44 +409,28 @@ class BaseS2SRegressor(pl.LightningModule):
         self.test_results = metrics_and_plot_results
 
     def get_metrics_and_plot_results(self, step: int, outputs: List[Any]) -> Dict:
-        if self.cfg.experiment.batch_size > 1:
-            output_series = [item.cpu() for sublist in [x['output'] for x in outputs] for item in sublist]
-            labels_series = [item.cpu() for sublist in [x[BatchKeys.SYNOP_FUTURE_Y.value] for x in outputs] for item in sublist]
-            past_truth_series = [item.cpu() for sublist in [x[BatchKeys.SYNOP_PAST_Y.value] for x in outputs] for item in sublist]
-            inputs_dates = [item for sublist in [x[BatchKeys.DATES_PAST.value] for x in outputs] for item in sublist]
-            labels_dates = [item for sublist in [x[BatchKeys.DATES_FUTURE.value] for x in outputs] for item in sublist]
-        else:
-            output_series = [item.cpu() for item in [x['output'] for x in outputs]]
-            labels_series = [item.cpu() for item in [x[BatchKeys.SYNOP_FUTURE_Y.value] for x in outputs]]
-            past_truth_series = [item.cpu() for item in [x[BatchKeys.SYNOP_PAST_Y.value] for x in outputs]]
-            # mistery - why there are 1-element tuples?
-            inputs_dates = [item[0] for item in [x[BatchKeys.DATES_PAST.value] for x in outputs]]
-            labels_dates = [item[0] for item in [x[BatchKeys.DATES_FUTURE.value] for x in outputs]]
-        output_series = np.asarray([np.asarray(el) for el in output_series])
-        labels_series = np.asarray([np.asarray(el) for el in labels_series])
-        past_truth_series = np.asarray([np.asarray(el) for el in past_truth_series])
+        series = self.get_series_from_outputs(outputs)
 
-        rmse_by_step = np.sqrt(np.mean(np.power(np.subtract(output_series, labels_series), 2), axis=0))
-        mase_by_step = []
-        for index, step in enumerate(output_series.shape[-1]):
-            mase_by_step.append(MASE().loss(output_series[:,index], labels_series[:, index], past_truth_series[:, index]))
+        predictions = series[BatchKeys.PREDICTIONS.value]
+        rmse_by_step = np.sqrt(np.mean(np.power(np.subtract(series[BatchKeys.PREDICTIONS.value], series[BatchKeys.SYNOP_FUTURE_Y.value]), 2), axis=0))
+        mase_by_step = self.get_mase_by_step(series[BatchKeys.SYNOP_PAST_Y.value], predictions)
 
         # for plots
         plot_truth_series = []
         plot_prediction_series = []
         plot_all_dates = []
         plot_prediction_dates = []
-        for index in np.random.choice(np.arange(len(output_series)),
-                                      min(40, len(output_series)), replace=False):
-            sample_all_dates = [pd.to_datetime(pd.Timestamp(d)) for d in inputs_dates[index]]
-            sample_prediction_dates = [pd.to_datetime(pd.Timestamp(d)) for d in labels_dates[index]]
+        for index in np.random.choice(np.arange(len(predictions)),
+                                      min(40, len(predictions)), replace=False):
+            sample_all_dates = [pd.to_datetime(pd.Timestamp(d)) for d in series[BatchKeys.DATES_PAST.value][index]]
+            sample_prediction_dates = [pd.to_datetime(pd.Timestamp(d)) for d in series[BatchKeys.DATES_FUTURE.value][index]]
             sample_all_dates.extend(sample_prediction_dates)
 
             plot_all_dates.append(sample_all_dates)
             plot_prediction_dates.append(sample_prediction_dates)
 
-            plot_prediction_series.append(output_series[index])
-            plot_truth_series.append(np.concatenate([past_truth_series[index], labels_series[index]], 0).tolist())
+            plot_prediction_series.append(predictions[index])
+            plot_truth_series.append(np.concatenate([series[BatchKeys.SYNOP_PAST_Y.value][index], series[BatchKeys.SYNOP_FUTURE_Y.value][index]], 0).tolist())
 
         return {
             'epoch': float(step),
@@ -460,3 +444,37 @@ class BaseS2SRegressor(pl.LightningModule):
             'plot_all_dates': plot_all_dates,
             'plot_prediction_dates': plot_prediction_dates
         }
+
+    def get_series_from_outputs(self, outputs: List[Any]) -> Dict:
+        if self.cfg.experiment.batch_size > 1:
+            prediction_series = [item.cpu() for sublist in [x[BatchKeys.PREDICTIONS.value] for x in outputs] for item in sublist]
+            synop_future_y_series = [item.cpu() for sublist in [x[BatchKeys.SYNOP_FUTURE_Y.value] for x in outputs] for item in sublist]
+            synop_past_y_series = [item.cpu() for sublist in [x[BatchKeys.SYNOP_PAST_Y.value] for x in outputs] for item in sublist]
+            past_dates = [item for sublist in [x[BatchKeys.DATES_PAST.value] for x in outputs] for item in sublist]
+            future_dates = [item for sublist in [x[BatchKeys.DATES_FUTURE.value] for x in outputs] for item in sublist]
+        else:
+            prediction_series = [item.cpu() for item in [x[BatchKeys.PREDICTIONS.value] for x in outputs]]
+            synop_future_y_series = [item.cpu() for item in [x[BatchKeys.SYNOP_FUTURE_Y.value] for x in outputs]]
+            synop_past_y_series = [item.cpu() for item in [x[BatchKeys.SYNOP_PAST_Y.value] for x in outputs]]
+            # mistery - why there are 1-element tuples?
+            past_dates = [item[0] for item in [x[BatchKeys.DATES_PAST.value] for x in outputs]]
+            future_dates = [item[0] for item in [x[BatchKeys.DATES_FUTURE.value] for x in outputs]]
+        prediction_series = np.asarray([np.asarray(el) for el in prediction_series])
+        synop_future_y_series = np.asarray([np.asarray(el) for el in synop_future_y_series])
+        synop_past_y_series = np.asarray([np.asarray(el) for el in synop_past_y_series])
+
+        return {
+            BatchKeys.PREDICTIONS.value: prediction_series,
+            BatchKeys.SYNOP_FUTURE_Y.value: synop_future_y_series,
+            BatchKeys.SYNOP_PAST_Y.value: synop_past_y_series,
+            BatchKeys.DATES_PAST.value: past_dates,
+            BatchKeys.DATES_FUTURE.value: future_dates
+        }
+
+    def get_mase_by_step(self, truth_series, prediction_series):
+        mase_by_step = []
+        for step in range(prediction_series.shape[-1]):
+            mase_by_step.append(
+                (abs(prediction_series[:, :step + 1] - truth_series[:, :step + 1]).mean() /
+                 abs(truth_series[:, :-1] - truth_series[:, 1:]).mean()).mean())
+        return mase_by_step

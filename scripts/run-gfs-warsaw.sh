@@ -32,65 +32,65 @@ experiment.epochs=20 experiment.num_workers=16 experiment.sequence_length=48
 
 #LSTM
 python -m wind_forecast.main experiment=hybrid_lstm_s2s_gfs optim=adam experiment.target_parameter=temperature \
-experiment.dropout=0.03 optim.base_lr=0.0003 experiment.lstm_hidden_state=256 experiment.lstm_num_layers=2 \
-experiment.use_time2vec=False experiment.use_value2vec=True experiment.value2vec_embedding_factor=1 \
-experiment.regressor_head_dims=[64,128,32] experiment.epochs=20 experiment.num_workers=16
+experiment.dropout=0.2 optim.base_lr=0.0002 experiment.lstm_hidden_state=512 experiment.lstm_num_layers=4 \
+experiment.use_time2vec=False experiment.use_value2vec=False \
+experiment.regressor_head_dims=[32] experiment.epochs=20 experiment.num_workers=16
 
 python -m wind_forecast.main experiment=hybrid_lstm_s2s_gfs optim=adam experiment.target_parameter=temperature \
-experiment.dropout=0.03 optim.base_lr=0.0003 experiment.lstm_hidden_state=256 experiment.lstm_num_layers=2 \
-experiment.use_time2vec=False experiment.use_value2vec=True experiment.value2vec_embedding_factor=1 \
-experiment.regressor_head_dims=[64,128,32] experiment.epochs=20 experiment.num_workers=16 experiment.sequence_length=48
+experiment.dropout=0.2 optim.base_lr=0.0002 experiment.lstm_hidden_state=512 experiment.lstm_num_layers=4 \
+experiment.use_time2vec=False experiment.use_value2vec=False \
+experiment.regressor_head_dims=[32] experiment.epochs=20 experiment.num_workers=16 experiment.sequence_length=48
 
 python -m wind_forecast.main experiment=hybrid_lstm_s2s_gfs optim=adam experiment.target_parameter=wind_velocity \
-experiment.dropout=0.03 optim.base_lr=0.0003 experiment.lstm_hidden_state=256 experiment.lstm_num_layers=2 \
-experiment.use_time2vec=False experiment.use_value2vec=True experiment.value2vec_embedding_factor=1 \
-experiment.regressor_head_dims=[64,128,32] experiment.epochs=20 experiment.num_workers=16
+experiment.dropout=0.2 optim.base_lr=0.0002 experiment.lstm_hidden_state=512 experiment.lstm_num_layers=4 \
+experiment.use_time2vec=False experiment.use_value2vec=False \
+experiment.regressor_head_dims=[32] experiment.epochs=20 experiment.num_workers=16
 
 python -m wind_forecast.main experiment=hybrid_lstm_s2s_gfs optim=adam experiment.target_parameter=wind_velocity \
-experiment.dropout=0.03 optim.base_lr=0.0003 experiment.lstm_hidden_state=256 experiment.lstm_num_layers=2 \
-experiment.use_time2vec=False experiment.use_value2vec=True experiment.value2vec_embedding_factor=1 \
-experiment.regressor_head_dims=[64,128,32] experiment.epochs=20 experiment.num_workers=16 experiment.sequence_length=48
+experiment.dropout=0.2 optim.base_lr=0.0002 experiment.lstm_hidden_state=512 experiment.lstm_num_layers=4 \
+experiment.use_time2vec=False experiment.use_value2vec=False \
+experiment.regressor_head_dims=[32] experiment.epochs=20 experiment.num_workers=16 experiment.sequence_length=48
 
 python -m wind_forecast.main experiment=hybrid_lstm_s2s_gfs optim=adam experiment.target_parameter=pressure \
-experiment.dropout=0.03 optim.base_lr=0.0003 experiment.lstm_hidden_state=256 experiment.lstm_num_layers=2 \
-experiment.use_time2vec=False experiment.use_value2vec=True experiment.value2vec_embedding_factor=1 \
-experiment.regressor_head_dims=[64,128,32] experiment.epochs=20 experiment.num_workers=16
+experiment.dropout=0.2 optim.base_lr=0.0002 experiment.lstm_hidden_state=512 experiment.lstm_num_layers=4 \
+experiment.use_time2vec=False experiment.use_value2vec=False \
+experiment.regressor_head_dims=[32] experiment.epochs=20 experiment.num_workers=16
 
 python -m wind_forecast.main experiment=hybrid_lstm_s2s_gfs optim=adam experiment.target_parameter=pressure \
-experiment.dropout=0.03 optim.base_lr=0.0003 experiment.lstm_hidden_state=256 experiment.lstm_num_layers=2 \
-experiment.use_time2vec=False experiment.use_value2vec=True experiment.value2vec_embedding_factor=1 \
-experiment.regressor_head_dims=[64,128,32] experiment.epochs=20 experiment.num_workers=16 experiment.sequence_length=48
+experiment.dropout=0.2 optim.base_lr=0.0002 experiment.lstm_hidden_state=512 experiment.lstm_num_layers=4 \
+experiment.use_time2vec=False experiment.use_value2vec=False \
+experiment.regressor_head_dims=[32] experiment.epochs=20 experiment.num_workers=16 experiment.sequence_length=48
 
 #BiLSTM
 python -m wind_forecast.main experiment=hybrid_bi_lstm_s2s_gfs optim=adam experiment.target_parameter=temperature \
-experiment.dropout=0.2 optim.base_lr=0.0003 experiment.lstm_hidden_state=256 experiment.lstm_num_layers=4 \
-experiment.use_time2vec=False experiment.use_value2vec=True experiment.value2vec_embedding_factor=2 \
-experiment.regressor_head_dims=[64,32] experiment.epochs=20 experiment.num_workers=16
+experiment.dropout=0.7 optim.base_lr=0.00045 experiment.lstm_hidden_state=256 experiment.lstm_num_layers=2 \
+experiment.use_time2vec=False experiment.use_value2vec=False \
+experiment.regressor_head_dims=[128,128,64] experiment.epochs=20 experiment.num_workers=16
 
 python -m wind_forecast.main experiment=hybrid_bi_lstm_s2s_gfs optim=adam experiment.target_parameter=temperature \
-experiment.dropout=0.2 optim.base_lr=0.0003 experiment.lstm_hidden_state=256 experiment.lstm_num_layers=4 \
-experiment.use_time2vec=False experiment.use_value2vec=True experiment.value2vec_embedding_factor=2 \
-experiment.regressor_head_dims=[64,32] experiment.epochs=20 experiment.num_workers=16 experiment.sequence_length=48
+experiment.dropout=0.7 optim.base_lr=0.00045 experiment.lstm_hidden_state=256 experiment.lstm_num_layers=2 \
+experiment.use_time2vec=False experiment.use_value2vec=False \
+experiment.regressor_head_dims=[128,128,64] experiment.epochs=20 experiment.num_workers=16 experiment.sequence_length=48
 
 python -m wind_forecast.main experiment=hybrid_bi_lstm_s2s_gfs optim=adam experiment.target_parameter=wind_velocity \
-experiment.dropout=0.2 optim.base_lr=0.0003 experiment.lstm_hidden_state=256 experiment.lstm_num_layers=4 \
-experiment.use_time2vec=False experiment.use_value2vec=True experiment.value2vec_embedding_factor=2 \
-experiment.regressor_head_dims=[64,32] experiment.epochs=20 experiment.num_workers=16
+experiment.dropout=0.7 optim.base_lr=0.00045 experiment.lstm_hidden_state=256 experiment.lstm_num_layers=2 \
+experiment.use_time2vec=False experiment.use_value2vec=False \
+experiment.regressor_head_dims=[128,128,64] experiment.epochs=20 experiment.num_workers=16
 
 python -m wind_forecast.main experiment=hybrid_bi_lstm_s2s_gfs optim=adam experiment.target_parameter=wind_velocity \
-experiment.dropout=0.2 optim.base_lr=0.0003 experiment.lstm_hidden_state=256 experiment.lstm_num_layers=4 \
-experiment.use_time2vec=False experiment.use_value2vec=True experiment.value2vec_embedding_factor=2 \
-experiment.regressor_head_dims=[64,32] experiment.epochs=20 experiment.num_workers=16 experiment.sequence_length=48
+experiment.dropout=0.7 optim.base_lr=0.00045 experiment.lstm_hidden_state=256 experiment.lstm_num_layers=2 \
+experiment.use_time2vec=False experiment.use_value2vec=False \
+experiment.regressor_head_dims=[128,128,64] experiment.epochs=20 experiment.num_workers=16 experiment.sequence_length=48
 
 python -m wind_forecast.main experiment=hybrid_bi_lstm_s2s_gfs optim=adam experiment.target_parameter=pressure \
-experiment.dropout=0.2 optim.base_lr=0.0003 experiment.lstm_hidden_state=256 experiment.lstm_num_layers=4 \
-experiment.use_time2vec=False experiment.use_value2vec=True experiment.value2vec_embedding_factor=2 \
-experiment.regressor_head_dims=[64,32] experiment.epochs=20 experiment.num_workers=16
+experiment.dropout=0.7 optim.base_lr=0.00045 experiment.lstm_hidden_state=256 experiment.lstm_num_layers=2 \
+experiment.use_time2vec=False experiment.use_value2vec=False \
+experiment.regressor_head_dims=[128,128,64] experiment.epochs=20 experiment.num_workers=16
 
 python -m wind_forecast.main experiment=hybrid_bi_lstm_s2s_gfs optim=adam experiment.target_parameter=pressure \
-experiment.dropout=0.2 optim.base_lr=0.0003 experiment.lstm_hidden_state=256 experiment.lstm_num_layers=4 \
-experiment.use_time2vec=False experiment.use_value2vec=True experiment.value2vec_embedding_factor=2 \
-experiment.regressor_head_dims=[64,32] experiment.epochs=20 experiment.num_workers=16 experiment.sequence_length=48
+experiment.dropout=0.7 optim.base_lr=0.00045 experiment.lstm_hidden_state=256 experiment.lstm_num_layers=2 \
+experiment.use_time2vec=False experiment.use_value2vec=False \
+experiment.regressor_head_dims=[128,128,64] experiment.epochs=20 experiment.num_workers=16 experiment.sequence_length=48
 
 #TCN Encoder
 python -m wind_forecast.main experiment=tcn_encoder_s2s_gfs optim=adam experiment.target_parameter=temperature \
@@ -220,42 +220,39 @@ experiment.regressor_head_dims=[64,32] experiment.epochs=20 experiment.num_worke
 
 # Transformer
 python -m wind_forecast.main experiment=hybrid_transformer_gfs optim=adam experiment.target_parameter=temperature \
-experiment.dropout=0.03 optim.base_lr=0.000002 experiment.teacher_forcing_epoch_num=0 experiment.transformer_ff_dim=256 \
-experiment.transformer_encoder_layers=2 experiment.transformer_decoder_layers=2 \
-experiment.use_time2vec=True experiment.use_value2vec=True experiment.value2vec_embedding_factor=15 \
-experiment.time2vec_embedding_factor=20 experiment.regressor_head_dims=[32] experiment.epochs=40 experiment.num_workers=16
+experiment.dropout=0.42 optim.base_lr=0.0007 experiment.teacher_forcing_epoch_num=40 experiment.transformer_ff_dim=128 \
+experiment.transformer_encoder_layers=6 experiment.transformer_decoder_layers=4 \
+experiment.use_time2vec=False experiment.use_value2vec=False experiment.regressor_head_dims=[64,128,32] experiment.epochs=80 \
+experiment.num_workers=16
 
 python -m wind_forecast.main experiment=hybrid_transformer_gfs optim=adam experiment.target_parameter=temperature \
-experiment.dropout=0.03 optim.base_lr=0.000002 experiment.teacher_forcing_epoch_num=0 experiment.transformer_ff_dim=256 \
-experiment.transformer_encoder_layers=2 experiment.transformer_decoder_layers=2 \
-experiment.use_time2vec=True experiment.use_value2vec=True experiment.value2vec_embedding_factor=15 \
-experiment.time2vec_embedding_factor=20 experiment.regressor_head_dims=[32] experiment.epochs=40 \
+experiment.dropout=0.42 optim.base_lr=0.0007 experiment.teacher_forcing_epoch_num=40 experiment.transformer_ff_dim=128 \
+experiment.transformer_encoder_layers=6 experiment.transformer_decoder_layers=4 \
+experiment.use_time2vec=False experiment.use_value2vec=False experiment.regressor_head_dims=[64,128,32] experiment.epochs=80 \
 experiment.num_workers=16 experiment.sequence_length=48
 
 python -m wind_forecast.main experiment=hybrid_transformer_gfs optim=adam experiment.target_parameter=wind_velocity \
-experiment.dropout=0.03 optim.base_lr=0.000002 experiment.teacher_forcing_epoch_num=0 experiment.transformer_ff_dim=256 \
-experiment.transformer_encoder_layers=2 experiment.transformer_decoder_layers=2 \
-experiment.use_time2vec=True experiment.use_value2vec=True experiment.value2vec_embedding_factor=15 \
-experiment.time2vec_embedding_factor=20 experiment.regressor_head_dims=[32] experiment.epochs=40 experiment.num_workers=16
+experiment.dropout=0.42 optim.base_lr=0.0007 experiment.teacher_forcing_epoch_num=40 experiment.transformer_ff_dim=128 \
+experiment.transformer_encoder_layers=6 experiment.transformer_decoder_layers=4 \
+experiment.use_time2vec=False experiment.use_value2vec=False experiment.regressor_head_dims=[64,128,32] experiment.epochs=80 \
+experiment.num_workers=16
 
 python -m wind_forecast.main experiment=hybrid_transformer_gfs optim=adam experiment.target_parameter=wind_velocity \
-experiment.dropout=0.03 optim.base_lr=0.000002 experiment.teacher_forcing_epoch_num=0 experiment.transformer_ff_dim=256 \
-experiment.transformer_encoder_layers=2 experiment.transformer_decoder_layers=2 \
-experiment.use_time2vec=True experiment.use_value2vec=True experiment.value2vec_embedding_factor=15 \
-experiment.time2vec_embedding_factor=20 experiment.regressor_head_dims=[32] experiment.epochs=40 \
+experiment.dropout=0.42 optim.base_lr=0.0007 experiment.teacher_forcing_epoch_num=40 experiment.transformer_ff_dim=128 \
+experiment.transformer_encoder_layers=6 experiment.transformer_decoder_layers=4 \
+experiment.use_time2vec=False experiment.use_value2vec=False experiment.regressor_head_dims=[64,128,32] experiment.epochs=80 \
 experiment.num_workers=16 experiment.sequence_length=48
 
 python -m wind_forecast.main experiment=hybrid_transformer_gfs optim=adam experiment.target_parameter=pressure \
-experiment.dropout=0.03 optim.base_lr=0.000002 experiment.teacher_forcing_epoch_num=0 experiment.transformer_ff_dim=256 \
-experiment.transformer_encoder_layers=2 experiment.transformer_decoder_layers=2 \
-experiment.use_time2vec=True experiment.use_value2vec=True experiment.value2vec_embedding_factor=15 \
-experiment.time2vec_embedding_factor=20 experiment.regressor_head_dims=[32] experiment.epochs=40 experiment.num_workers=16
+experiment.dropout=0.42 optim.base_lr=0.0007 experiment.teacher_forcing_epoch_num=40 experiment.transformer_ff_dim=128 \
+experiment.transformer_encoder_layers=6 experiment.transformer_decoder_layers=4 \
+experiment.use_time2vec=False experiment.use_value2vec=False experiment.regressor_head_dims=[64,128,32] experiment.epochs=80 \
+experiment.num_workers=16
 
 python -m wind_forecast.main experiment=hybrid_transformer_gfs optim=adam experiment.target_parameter=pressure \
-experiment.dropout=0.03 optim.base_lr=0.000002 experiment.teacher_forcing_epoch_num=0 experiment.transformer_ff_dim=256 \
-experiment.transformer_encoder_layers=2 experiment.transformer_decoder_layers=2 \
-experiment.use_time2vec=True experiment.use_value2vec=True experiment.value2vec_embedding_factor=15 \
-experiment.time2vec_embedding_factor=20 experiment.regressor_head_dims=[32] experiment.epochs=40 \
+experiment.dropout=0.42 optim.base_lr=0.0007 experiment.teacher_forcing_epoch_num=40 experiment.transformer_ff_dim=128 \
+experiment.transformer_encoder_layers=6 experiment.transformer_decoder_layers=4 \
+experiment.use_time2vec=False experiment.use_value2vec=False experiment.regressor_head_dims=[64,128,32] experiment.epochs=80 \
 experiment.num_workers=16 experiment.sequence_length=48
 
 #Spacetimeformer

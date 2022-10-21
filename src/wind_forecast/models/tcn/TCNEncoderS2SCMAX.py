@@ -2,7 +2,6 @@ import math
 from typing import Dict
 
 import torch
-import torch.nn as nn
 
 from wind_forecast.config.register import Config
 from wind_forecast.consts import BatchKeys

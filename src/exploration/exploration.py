@@ -7,11 +7,12 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from tqdm import tqdm
+from statsmodels.tsa.stattools import adfuller
 
 from gfs_archive_0_25.gfs_processor.own_logger import get_logger
 from gfs_archive_0_25.utils import prep_zeros_if_needed
 from wind_forecast.consts import SYNOP_DATASETS_DIRECTORY
-from synop.consts import SYNOP_FEATURES
+from synop.consts import SYNOP_TRAIN_FEATURES
 from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset
 from wind_forecast.util.gfs_util import GFS_DATASET_DIR, get_available_numpy_files
 
@@ -143,9 +144,9 @@ def explore_gfs_correlations():
 def explore_synop_correlations(data: pd.DataFrame, features: (int, str), localisation_name: str):
     if os.path.exists(os.path.join(Path(__file__).parent, f"synop_{localisation_name}_heatmap.png")):
         return
-    data = data[list(list(zip(*features))[1])]
+    data = data[list(list(zip(*features))[2])]
     plt.figure(figsize=(20, 10))
-    sns.heatmap(data.corr(), annot=True)
+    sns.heatmap(data.corr(), annot=True, annot_kws={"fontsize":12})
     plt.savefig(os.path.join(Path(__file__).parent, f"synop_{localisation_name}_heatmap.png"), dpi=200)
     plt.show()
     plt.close()
@@ -155,24 +156,48 @@ def explore_synop_patterns(data: pd.DataFrame, features: (int, str), localisatio
     features_with_nans = []
     for feature in features:
         plot_dir = os.path.join('plots-synop', localisation_name, feature[1])
-        values = data[feature[1]].to_numpy()
+        values = data[feature[2]].to_numpy()
         if np.isnan(np.sum(values)):
-            features_with_nans.append(feature[1])
-        sns.boxplot(x=values).set_title(f"{feature[1]}")
+            features_with_nans.append(feature[2])
+        sns.boxplot(x=values).set_title(f"{feature[2]}")
         os.makedirs(plot_dir, exist_ok=True)
         plt.savefig(os.path.join(plot_dir, 'plot-box.png'))
         plt.close()
-        sns.lineplot(data=data[['date', feature[1]]], x='date', y=feature[1])
+
+        stationarity_test = adfuller(values)
+        print(f"Stationarity test for {feature[1]}")
+        print('ADF Statistic: %f' % stationarity_test[0])
+        print('p-value: %f' % stationarity_test[1])
+        print('Critical Values:')
+        for key, value in stationarity_test[4].items():
+            print('\t%s: %.3f' % (key, value))
+
+        _, ax = plt.subplots(figsize=(30, 15))
+        ax.set_xlabel('Data', fontsize=22)
+        ax.set_ylabel(feature[2], fontsize=22)
+        ax.tick_params(axis='both', which='major', labelsize=20)
+        sns.lineplot(ax=ax, data=data[['date', feature[2]]], x='date', y=feature[2])
         os.makedirs(plot_dir, exist_ok=True)
         plt.savefig(os.path.join(plot_dir, 'plot-line.png'))
         plt.close()
+
+        data2 = data.iloc[2000:2600]
+        _, ax = plt.subplots(figsize=(30, 15))
+        ax.set_xlabel('Data', fontsize=22)
+        ax.set_ylabel(feature[2], fontsize=22)
+        ax.tick_params(axis='both', which='major', labelsize=20)
+        sns.lineplot(ax=ax, data=data2[['date', feature[2]]], x='date', y=feature[2])
+        os.makedirs(plot_dir, exist_ok=True)
+        plt.savefig(os.path.join(plot_dir, 'plot-line2.png'))
+        plt.close()
+
     if len(features_with_nans):
         logger = get_logger(os.path.join("explore_results", 'logs.log'))
         logger.info(f"Nans in features:\n {[f'{feature}, ' for feature in features_with_nans]}")
 
 
 def explore_synop(synop_file):
-    relevant_features = [f for f in SYNOP_FEATURES if f[1] not in ['year', 'month', 'day', 'hour']]
+    relevant_features = [f for f in SYNOP_TRAIN_FEATURES if f[1] not in ['year', 'month', 'day', 'hour']]
     if not os.path.exists(synop_file):
         raise Exception(f"CSV file with synop data does not exist at path {synop_file}.")
 
@@ -180,6 +205,7 @@ def explore_synop(synop_file):
                                  dataset_dir=SYNOP_DATASETS_DIRECTORY, from_year=2016, to_year=2022)
 
     data["date"] = pd.to_datetime(data[['year', 'month', 'day', 'hour']])
+    data = data.rename(columns=dict(zip([f[1] for f in SYNOP_TRAIN_FEATURES], [f[2] for f in SYNOP_TRAIN_FEATURES])))
     explore_synop_correlations(data, relevant_features, os.path.basename(synop_file))
     explore_synop_patterns(data, relevant_features, os.path.basename(synop_file))
 

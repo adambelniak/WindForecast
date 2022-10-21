@@ -27,6 +27,9 @@ class LSTMS2SModel(LightningModule):
         self.gradual_teacher_forcing = config.experiment.gradual_teacher_forcing
         self.dropout = config.experiment.dropout
         self.features_length = len(config.experiment.synop_train_features) + len(config.experiment.synop_periodic_features)
+        if self.config.experiment.stl_decompose:
+            self.features_length *= 3
+            self.features_length += 1  # + 1 for non-decomposed target param
         self.use_gfs = config.experiment.use_gfs_data
         self.gfs_on_head = config.experiment.gfs_on_head
         self.time2vec_embedding_factor = config.experiment.time2vec_embedding_factor
@@ -43,6 +46,8 @@ class LSTMS2SModel(LightningModule):
             param_names = [x['name'] for x in gfs_params]
             if "V GRD" in param_names and "U GRD" in param_names:
                 self.gfs_params_len += 1  # V and U will be expanded int velocity, sin and cos
+            if config.experiment.stl_decompose:
+                self.gfs_params_len = 3 * self.gfs_params_len + 1
             self.features_length += self.gfs_params_len
 
         if self.use_time2vec and self.time2vec_embedding_factor == 0:

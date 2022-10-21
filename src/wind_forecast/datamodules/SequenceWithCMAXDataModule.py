@@ -9,9 +9,10 @@ from wind_forecast.datasets.CMAXDataset import CMAXDataset
 from wind_forecast.datasets.ConcatDatasets import ConcatDatasets
 from wind_forecast.datasets.SequenceDataset import SequenceDataset
 from wind_forecast.datasets.SequenceWithGFSDataset import SequenceWithGFSDataset
-from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset, normalize_synop_data_for_training
+from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset
 from wind_forecast.util.cmax_util import get_available_cmax_hours, \
     initialize_synop_dates_for_sequence_with_cmax
+from wind_forecast.util.df_util import normalize_data_for_training
 from wind_forecast.util.logging import log
 
 
@@ -47,7 +48,7 @@ class SequenceWithCMAXDataModule(SequenceDataModule):
         # Get indices which correspond to 'dates' - 'dates' are the ones, which start a proper sequence without breaks
         self.synop_data_indices = self.synop_data[self.synop_data["date"].isin(self.synop_dates)].index
         # data was not normalized, so take all frames which will be used, compute std and mean and normalize data
-        self.synop_data, self.synop_feature_names, synop_mean, synop_std = normalize_synop_data_for_training(
+        self.synop_data, self.synop_feature_names, synop_mean, synop_std = normalize_data_for_training(
             self.synop_data, self.synop_data_indices,
             self.feature_names,
             self.sequence_length + self.prediction_offset,

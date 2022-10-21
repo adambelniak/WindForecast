@@ -3,31 +3,43 @@ Initially, we used subsetting GUI at https://rda.ucar.edu/datasets/ds084.1/index
 We switched to a python client to automize the process: https://github.com/NCAR/rda-apps-clients/tree/master/src/python
 When using the python client, base on their README and our txt/GFSControlFileTemplate.txt
 
-<b>Right now scripts might use hard-coded paths in several places, so if you want to reuse them you may need to modify the source code. To be fixed.</b>
-
 The source code of our flow is placed in gfs_processor module.
 There are 3 main files:
 
 #### 1. rda_request_sender.py
 Prepares the request body adhering to RDA API (see https://github.com/NCAR/rda-apps-clients/tree/main/src/python) and sends it.  
 Requests are prepared based on `--input_file` parameter. You can request for one-point coordinate or a spatial region by switching `-bulk` flag.  
-An example of input file: gfs_processor/gfs_params.json. `hours_type` needs to be specified, see help for `--hours_type` CLI argument.
+An example of input file: [gfs_processor/gfs_params.json](https://github.com/MBelniak/WindForecast/blob/master/src/gfs_archive_0_25/gfs_processor/gfs_params.json). `hours_type` needs to be specified, see help for `--hours_type` CLI argument.
 Before being sent, requests metadata is saved in `csv/req_list.csv`. The metadata consists of e.g. request id and request status.
 
 RDA API is limited to 10 requests at a time, so this tool uses scheduler to check frequently if it can send another request if an old one has been purged.
 
-That's an example of how we use rda_request_sender.py:
+That's an example of how we use rda_request_sender.py (run from src directory):
 ```
-python rda_request_sender.py -bulk --nlat=55.5 --slat=55.25 --elon=13 --wlon=13.25 --input_file=input_files/gfs_params.json --forecast_end=120
+python -m gfs_archive_0_25.gfs_processor.rda_request_sender -bulk --nlat=55.5 --slat=55.25 --elon=13 --wlon=13.25 --input_file=input_files/gfs_params.json --forecast_end=120
+# or for a certain city, use a file like [city_geo_test.csv](src/gfs_archive_0_25/city_coordinates/city_geo_test.csv) and pass a relative path to it:
+python -m gfs_archive_0_25.gfs_processor.rda_request_sender --coordinate_path=gfs_archive_0_25/city_coordinates/coordinates_to_fetch.csv
+# or provide a list of city names and meteo codes. They will be resolved using geopy
+python -m gfs_archive_0_25.gfs_processor.rda_request_sender -fetch_city_coordinates --city_list=gfs_archive_0_25/city_coordinates/city_list.csv
 ```
 
 #### 2. rda_downloader.py
 Checks the statuses of requests and downloads the ones that are ready. Then, it untars downloaded files. It uses a scheduler, so it checks every 60 minutes if there are new requests ready.
+```
+python -m gfs_archive_0_25.gfs_processor.rda_downloader.py -purge
+# -purge will send a request to RDA server to purge the files after their downloaded. It's useful to make space for next requests.
+```
+
 
 #### 3. rda_netCDF_files_processor.py
 This script is responsible for processing netCDF4 files (coming from point 2.) to either .csv or .npy format for further, easier manipulation.
 We use .npy, because later we process them into pickle files, which aggregate forecast from multiple dates.
 Each output file consist of one parameter forecast for one time frame.
+
+For default .npy format:
+```
+python -m gfs_archive_0_25.gfs_processor.rda_netCDF_files_processor
+```
 
 #### 4. convert_gfs_files.py
 Scans GFS_DATASET_DIR for .npy files and for each offset between 3 and 39 and each parameter creates a .pkl file.  
