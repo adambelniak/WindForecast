@@ -4,9 +4,11 @@
 Trying to predict the most exact temperature, wind speed etc. for hours and days ahead
 using LSTM, BiLSTM, TCN, Transformer, Spacetimeformer, NBEATSx. and some data analysis tools.
 
+<b> Note: work is being performed in [MBelniak fork](https://github.com/MBelniak/WindForecast)<b>
+
 ## :card_index: Datasets
 
-There are 3 different dataset available. Based on experiment settings neural network uses datasets 1., 1. & 2. or 1. & 2. & 3.
+There are 3 different datasets used in this project. Based on experiment settings neural network uses datasets 1., 1. & 2. or 1. & 2. & 3.
 1. Synop reports from ground stations [https://danepubliczne.imgw.pl/](https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/dane_meteorologiczne/terminowe/synop/)
     - Multiple parameters are fetched and used, see [src/synop/consts.py](https://github.com/MBelniak/WindForecast/blob/master/src/synop/consts.py#L51)
     - wind velocity, direction and gusts are fetched from [https://danepubliczne.imgw.pl/datastore](https://danepubliczne.imgw.pl/datastore) for higher time and value resolution
@@ -14,7 +16,9 @@ There are 3 different dataset available. Based on experiment settings neural net
     - Multiple parameters are used, see [src/wind_forecast/config/train_parameters/CommonGFSConfig.json](https://github.com/MBelniak/WindForecast/blob/master/src/wind_forecast/config/train_parameters/CommonGFSConfig.json)
 3. Maximum Reflectivity images (CMAX) [https://danepubliczne.imgw.pl/datastore](https://danepubliczne.imgw.pl/datastore)
 
-The flow of getting GFS archive data is described in gfs-archive-0-25 module. Synop data is fetched in [src/synop/fetch_synop_data.py](https://github.com/MBelniak/WindForecast/blob/master/src/synop/fetch_synop_data.py). CMAX data is fetched in [src/radar/fetch_radar_CMAX.py](https://github.com/MBelniak/WindForecast/blob/master/src/radar/fetch_radar_CMAX.py)
+The flow of getting GFS archive data is described in [gfs-archive-0-25](https://github.com/MBelniak/WindForecast/tree/master/src/gfs_archive_0_25) module.
+Synop data is fetched in [src/synop/fetch_synop_data.py](https://github.com/MBelniak/WindForecast/blob/master/src/synop/fetch_synop_data.py).
+CMAX data is fetched in [src/radar/fetch_radar_CMAX.py](https://github.com/MBelniak/WindForecast/blob/master/src/radar/fetch_radar_CMAX.py) and processed in [radar/preprocess_cmax.py](https://github.com/MBelniak/WindForecast/blob/master/src/radar/preprocess_cmax.py)
 
 ## :computer: Key technologies
   - [Pytorch](https://pytorch.org/) for creating models
@@ -52,6 +56,7 @@ There are several scopes in which an experiment can be configured. For tips on c
 
 ## :running: Running
 Obtaining datasets is described in [synop readme](src/synop/README.md), [GFS readme](src/gfs_archive_0_25/README.md) and [CMAX readme](src/radar/README.md).
+
 Prepared synop data (csv file) should be placed in src/data/synop directory. There are already some files ready. Prepared GFS and CMAX datasets should be placed in a `pkl` directory placed in a directory pointed via GFS_DATASET_DIR and CMAX_DATASET_DIR environment variables.
 
 <b>First, create conda environment<b>
@@ -75,7 +80,7 @@ RUN_MODE variable from `.env` file switches run mode. Do not specify in order to
 ```
 RUN_MODE=debug # Disables W&B logging and loads only a small part of datasets in order to start and perform the training process faster
 
-RUN_MODE=tune # Disables W&B logging and performs tuning process
+RUN_MODE=tune # Performs tuning process. See [tune](https://github.com/MBelniak/WindForecast/tree/master/src/wind_forecast/config/tune) for examplary tune configs.
 
 RUN_MODE=tune_debug # Joins the two above
 ```
@@ -84,8 +89,8 @@ RUN_MODE=tune_debug # Joins the two above
 Add the following to `.env` to enable logging to W&B:
 ```
 RESULTS_DIR=<relative to repo root, target dir for logs, checkpoints etc.>
-WANDB_ENTITY=<your username>
-WANDB_PROJECT=<your project name>
+WANDB_ENTITY=<your w&b username>
+WANDB_PROJECT=<your w&b project name>
 ```
 
 ### Troubleshooting and tips
