@@ -24,8 +24,35 @@ class Sequence2SequenceWithGFSDataset(BaseDataset):
         self.prediction_offset = config.experiment.prediction_offset
         self.synop_data = synop_data
         self.gfs_data = gfs_data
+        self.data = np.arange(len(data_indices))
 
-        self.data = data_indices
+        self.synop_past_x = [self.synop_data.loc[data_index:data_index + self.sequence_length - 1][
+            self.synop_feature_names].to_numpy() for data_index in data_indices]
+        self.synop_future_x = [self.synop_data.loc[
+                         data_index + self.sequence_length + self.prediction_offset:data_index + self.sequence_length + self.prediction_offset + self.future_sequence_length - 1][
+            self.synop_feature_names].to_numpy() for data_index in data_indices]
+        self.synop_y = [self.synop_data.loc[
+                  data_index:data_index + self.sequence_length + self.prediction_offset + self.future_sequence_length - 1][
+            self.target_param].to_numpy() for data_index in data_indices]
+        self.synop_past_y = [element[:self.sequence_length] for element in self.synop_y]
+        self.synop_future_y = [element[self.sequence_length + self.prediction_offset
+                                       :self.sequence_length + self.prediction_offset + self.future_sequence_length] for element in self.synop_y]
+
+        self.inputs_dates = [self.synop_data.loc[data_index:data_index + self.sequence_length - 1]['date'].to_numpy() for data_index in data_indices]
+        self.target_dates = [self.synop_data.loc[data_index + self.sequence_length + self.prediction_offset
+                                                 :data_index + self.sequence_length + self.prediction_offset + self.future_sequence_length - 1]
+                             ['date'].to_numpy() for data_index in data_indices]
+
+        self.gfs_past_y = [self.gfs_data.loc[data_index:data_index + self.sequence_length - 1][self.gfs_target_param]
+                               .to_numpy() for data_index in data_indices]
+        self.gfs_future_y = [self.gfs_data.loc[data_index + self.sequence_length + self.prediction_offset
+                             :data_index + self.sequence_length + self.prediction_offset + self.future_sequence_length - 1][
+            self.gfs_target_param].to_numpy() for data_index in data_indices]
+        self.gfs_past_x = [self.gfs_data.loc[data_index:data_index + self.sequence_length - 1][
+            self.gfs_feature_names].to_numpy() for data_index in data_indices]
+        self.gfs_future_x = [self.gfs_data.loc[
+                       data_index + self.sequence_length + self.prediction_offset:data_index + self.sequence_length + self.prediction_offset + self.future_sequence_length - 1][
+            self.gfs_feature_names].to_numpy() for data_index in data_indices]
 
     def __len__(self):
         'Denotes the total number of samples'
@@ -33,39 +60,20 @@ class Sequence2SequenceWithGFSDataset(BaseDataset):
 
     def __getitem__(self, index):
         'Generates one sample of data'
-        data_index = self.data[index]
+        synop_past_x = self.synop_past_x[index]
+        synop_future_x = self.synop_future_x[index]
 
-        synop_past_x = self.synop_data.loc[data_index:data_index + self.sequence_length - 1][
-            self.synop_feature_names].to_numpy()
-        synop_future_x = self.synop_data.loc[
-                         data_index + self.sequence_length + self.prediction_offset:data_index + self.sequence_length + self.prediction_offset + self.future_sequence_length - 1][
-            self.synop_feature_names].to_numpy()
+        synop_past_y = self.synop_past_y[index]
+        synop_future_y = self.synop_future_y[index]
 
-        synop_y = self.synop_data.loc[
-                  data_index:data_index + self.sequence_length + self.prediction_offset + self.future_sequence_length - 1][
-            self.target_param].to_numpy()
-        synop_past_y = synop_y[:self.sequence_length + self.prediction_offset]
-        synop_future_y = synop_y[self.sequence_length + self.prediction_offset
-                                 :data_index + self.sequence_length + self.prediction_offset + self.future_sequence_length]
+        inputs_dates = self.inputs_dates[index]
+        target_dates = self.target_dates[index]
 
-        inputs_dates = self.synop_data.loc[data_index:data_index + self.sequence_length - 1]['date'].to_numpy()
-        target_dates = self.synop_data.loc[
-                       data_index + self.sequence_length + self.prediction_offset
-                       :data_index + self.sequence_length + self.prediction_offset + self.future_sequence_length - 1]['date'].to_numpy()
+        gfs_past_y = np.expand_dims(self.gfs_past_y[index], -1)
+        gfs_future_y = np.expand_dims(self.gfs_future_y[index], -1)
 
-        gfs_y = self.gfs_data.loc[
-                data_index:data_index + self.sequence_length + self.prediction_offset + self.future_sequence_length - 1][
-            self.gfs_target_param].to_numpy()
-        gfs_y = np.expand_dims(gfs_y, -1)
-        gfs_past_y = gfs_y[:self.sequence_length + self.prediction_offset]
-        gfs_future_y = gfs_y[self.sequence_length + self.prediction_offset
-                             :data_index + self.sequence_length + self.prediction_offset + self.future_sequence_length]
-
-        gfs_past_x = self.gfs_data.loc[data_index:data_index + self.sequence_length - 1][
-            self.gfs_feature_names].to_numpy()
-        gfs_future_x = self.gfs_data.loc[
-                       data_index + self.sequence_length + self.prediction_offset:data_index + self.sequence_length + self.prediction_offset + self.future_sequence_length - 1][
-            self.gfs_feature_names].to_numpy()
+        gfs_past_x = self.gfs_past_x[index]
+        gfs_future_x = self.gfs_future_x[index]
 
         return synop_past_y, synop_past_x, synop_future_y, synop_future_x, gfs_past_x, gfs_past_y, \
                gfs_future_x, gfs_future_y, inputs_dates, target_dates
