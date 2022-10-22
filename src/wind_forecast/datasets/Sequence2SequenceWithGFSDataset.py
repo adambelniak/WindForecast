@@ -44,9 +44,9 @@ class Sequence2SequenceWithGFSDataset(BaseDataset):
         synop_y = self.synop_data.loc[
                   data_index:data_index + self.sequence_length + self.prediction_offset + self.future_sequence_length - 1][
             self.target_param].to_numpy()
-        synop_past_y = synop_y[:self.sequence_length + self.prediction_offset]
+        synop_past_y = synop_y[:self.sequence_length]
         synop_future_y = synop_y[self.sequence_length + self.prediction_offset
-                                 :data_index + self.sequence_length + self.prediction_offset + self.future_sequence_length]
+                                 :self.sequence_length + self.prediction_offset + self.future_sequence_length]
 
         inputs_dates = self.synop_data.loc[data_index:data_index + self.sequence_length - 1]['date'].to_numpy()
         target_dates = self.synop_data.loc[
@@ -56,10 +56,11 @@ class Sequence2SequenceWithGFSDataset(BaseDataset):
         gfs_y = self.gfs_data.loc[
                 data_index:data_index + self.sequence_length + self.prediction_offset + self.future_sequence_length - 1][
             self.gfs_target_param].to_numpy()
-        gfs_y = np.expand_dims(gfs_y, -1)
-        gfs_past_y = gfs_y[:self.sequence_length + self.prediction_offset]
-        gfs_future_y = gfs_y[self.sequence_length + self.prediction_offset
-                             :data_index + self.sequence_length + self.prediction_offset + self.future_sequence_length]
+
+        gfs_past_y = np.expand_dims(self.gfs_data.loc[data_index:data_index + self.sequence_length - 1][self.gfs_target_param].to_numpy(), -1)
+        gfs_future_y = np.expand_dims(self.gfs_data.loc[data_index + self.sequence_length + self.prediction_offset
+                                      :data_index + self.sequence_length + self.prediction_offset + self.future_sequence_length - 1]
+                                      [self.gfs_target_param].to_numpy(), -1)
 
         gfs_past_x = self.gfs_data.loc[data_index:data_index + self.sequence_length - 1][
             self.gfs_feature_names].to_numpy()
