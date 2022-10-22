@@ -53,10 +53,6 @@ class Sequence2SequenceWithGFSDataset(BaseDataset):
                        data_index + self.sequence_length + self.prediction_offset
                        :data_index + self.sequence_length + self.prediction_offset + self.future_sequence_length - 1]['date'].to_numpy()
 
-        gfs_y = self.gfs_data.loc[
-                data_index:data_index + self.sequence_length + self.prediction_offset + self.future_sequence_length - 1][
-            self.gfs_target_param].to_numpy()
-
         gfs_past_y = np.expand_dims(self.gfs_data.loc[data_index:data_index + self.sequence_length - 1][self.gfs_target_param].to_numpy(), -1)
         gfs_future_y = np.expand_dims(self.gfs_data.loc[data_index + self.sequence_length + self.prediction_offset
                                       :data_index + self.sequence_length + self.prediction_offset + self.future_sequence_length - 1]

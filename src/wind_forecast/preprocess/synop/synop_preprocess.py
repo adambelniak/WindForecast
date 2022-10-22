@@ -47,8 +47,8 @@ def prepare_synop_dataset(synop_file_name: str, features: list, norm=True,
         column = feature['column'][1]
         series_to_reduce = data[column]
         period_argument = ((series_to_reduce - min) / (max - min)).astype(np.float64) * 2 * np.pi
-        data[f'{column}-sin'] = np.sin(period_argument).tolist()
-        data[f'{column}-cos'] = np.cos(period_argument).tolist()
+        data.insert(data.columns.get_loc(column), f'{column}-cos', np.cos(period_argument).tolist())
+        data.insert(data.columns.get_loc(column), f'{column}-sin', np.sin(period_argument).tolist())
         data.drop(columns=[column], inplace=True)
         features = modify_feature_names_after_periodic_reduction(features)
     if norm:
@@ -61,7 +61,8 @@ def prepare_synop_dataset(synop_file_name: str, features: list, norm=True,
 def modify_feature_names_after_periodic_reduction(features: list):
     new_features = features
     for feature in SYNOP_PERIODIC_FEATURES:
+        index = new_features.index(feature['column'][1])
+        new_features.insert(index, f'{feature["column"][1]}-cos')
+        new_features.insert(index, f'{feature["column"][1]}-sin')
         new_features.remove(feature['column'][1])
-        new_features.append(f'{feature["column"][1]}-sin')
-        new_features.append(f'{feature["column"][1]}-cos')
     return new_features
