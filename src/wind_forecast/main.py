@@ -16,21 +16,28 @@ from wandb.sdk.wandb_run import Run
 from wind_forecast.config.register import Config, register_configs, get_tags
 from wind_forecast.runs_analysis import run_analysis
 from wind_forecast.util.callbacks import CustomCheckpointer, get_resume_checkpoint
+from wind_forecast.util.gfs_util import get_gfs_target_param
 from wind_forecast.util.logging import log
 from wind_forecast.util.plots import plot_results
 from wind_forecast.util.rundir import setup_rundir
 
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
-def log_dataset_metrics(datamodule: LightningDataModule, logger: LightningLoggerBase):
+def log_dataset_metrics(datamodule: LightningDataModule, logger: LightningLoggerBase, config: Config):
     metrics = {
         'train_dataset_length': len(datamodule.dataset_train),
         'val_dataset_length': len(datamodule.dataset_val),
         'test_dataset_length': len(datamodule.dataset_test)
     }
 
-    mean = datamodule.dataset_test.mean
-    std = datamodule.dataset_test.std
+    mean = datamodule.dataset_test.dataset.mean
+    std = datamodule.dataset_test.dataset.std
+
+    if hasattr(datamodule.dataset_test.dataset, 'gfs_mean') and hasattr(datamodule.dataset_test.dataset, 'gfs_std'):
+        gfs_mean = datamodule.dataset_test.dataset.gfs_mean
+        gfs_std = datamodule.dataset_test.dataset.gfs_std
+        metrics["target_mean_gfs"] = gfs_mean[get_gfs_target_param(config.experiment.target_parameter)]
+        metrics["target_std_gfs"] = gfs_std[get_gfs_target_param(config.experiment.target_parameter)]
 
     if mean is not None:
         if type(mean) == list:
@@ -221,13 +228,18 @@ def run_training(cfg):
     if not cfg.experiment.skip_test:
         trainer.test(system, datamodule=datamodule)
 
-        mean = datamodule.dataset_test.mean
-        std = datamodule.dataset_test.std
+        mean = datamodule.dataset_test.dataset.mean
+        std = datamodule.dataset_test.dataset.std
+        gfs_mean = None
+        gfs_std = None
+        if hasattr(datamodule.dataset_test.dataset, 'gfs_mean') and hasattr(datamodule.dataset_test.dataset, 'gfs_std'):
+            gfs_mean = datamodule.dataset_test.dataset.gfs_mean
+            gfs_std = datamodule.dataset_test.dataset.gfs_std
 
         if cfg.experiment.view_test_result:
-            plot_results(system, cfg, mean, std)
+            plot_results(system, cfg, mean, std, gfs_mean, gfs_std)
 
-    log_dataset_metrics(datamodule, wandb_logger)
+    log_dataset_metrics(datamodule, wandb_logger, cfg)
 
     if trainer.interrupted:  # type: ignore
         log.info(f'[bold red]>>> Training interrupted.')

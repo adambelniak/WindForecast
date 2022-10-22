@@ -11,7 +11,7 @@ class Sequence2SequenceWithGFSDataset(BaseDataset):
     'Characterizes a dataset for PyTorch'
 
     def __init__(self, config: Config, synop_data: pd.DataFrame, gfs_data: pd.DataFrame, data_indices: list,
-                 synop_feature_names: List[str], gfs_feature_names: List[str]):
+                 synop_feature_names: List[str], gfs_feature_names: List[str], gfs_mean, gfs_std):
         'Initialization'
         super().__init__()
         self.synop_feature_names = synop_feature_names
@@ -24,6 +24,8 @@ class Sequence2SequenceWithGFSDataset(BaseDataset):
         self.prediction_offset = config.experiment.prediction_offset
         self.synop_data = synop_data
         self.gfs_data = gfs_data
+        self.gfs_mean = gfs_mean
+        self.gfs_std = gfs_std
 
         self.data = data_indices
 

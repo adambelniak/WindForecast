@@ -1,11 +1,15 @@
+import os
 from itertools import chain
+from pathlib import Path
 from typing import Optional, Tuple, List
 
 import pandas as pd
+import numpy as np
 from torch.utils.data import DataLoader
 from torch.utils.data.dataloader import default_collate
 from tqdm import tqdm
-
+import matplotlib.pyplot as plt
+import seaborn as sns
 from gfs_archive_0_25.gfs_processor.Coords import Coords
 from synop.consts import SYNOP_PERIODIC_FEATURES
 from wind_forecast.config.register import Config
@@ -17,7 +21,7 @@ from wind_forecast.datasets.Sequence2SequenceWithGFSDataset import Sequence2Sequ
 from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset, \
     modify_feature_names_after_periodic_reduction
 from wind_forecast.util.config import process_config
-from wind_forecast.util.df_util import normalize_data_for_training, decompose_data
+from wind_forecast.util.df_util import normalize_data_for_training, decompose_data, resolve_indices
 from wind_forecast.util.gfs_util import add_param_to_train_params, \
     GFSUtil, extend_wind_components, decompose_gfs_data, get_gfs_target_param
 from wind_forecast.util.logging import log
@@ -67,12 +71,15 @@ class Sequence2SequenceDataModule(SplittableDataModule):
         self.data_indices = ...
         self.synop_mean = ...
         self.synop_std = ...
+        self.gfs_mean = ...
+        self.gfs_std = ...
         self.synop_dates = ...
 
     def prepare_data(self, *args, **kwargs):
         self.load_from_disk(self.config)
 
         if self.initialized:
+            self.eliminate_gfs_bias()
             return
 
         self.synop_data = prepare_synop_dataset(self.synop_file,
@@ -127,7 +134,7 @@ class Sequence2SequenceDataModule(SplittableDataModule):
             self.prepare_dataset_for_gfs()
 
             dataset = Sequence2SequenceWithGFSDataset(self.config, self.synop_data, self.gfs_data, self.data_indices,
-                                                      self.synop_feature_names, self.gfs_features_names)
+                                                      self.synop_feature_names, self.gfs_features_names, self.gfs_mean, self.gfs_std)
 
         else:
             dataset = Sequence2SequenceDataset(self.config, self.synop_data, self.data_indices,
@@ -139,6 +146,8 @@ class Sequence2SequenceDataModule(SplittableDataModule):
         dataset.set_mean(self.synop_mean)
         dataset.set_std(self.synop_std)
         self.split_dataset(self.config, dataset, self.sequence_length)
+        if self.config.experiment._tags_[0] == 'GFS':
+            self.eliminate_gfs_bias()
 
     def prepare_dataset_for_gfs(self):
         log.info("Preparing the GFS dataset")
@@ -158,7 +167,7 @@ class Sequence2SequenceDataModule(SplittableDataModule):
             features_to_normalize = [name for name in self.gfs_features_names if name not in ["wind-sin", "wind-cos"]]
 
         # normalize GFS parameters data]
-        self.gfs_data, _, _ = normalize_data_for_training(self.gfs_data, self.data_indices, features_to_normalize,
+        self.gfs_data, self.gfs_mean, self.gfs_std = normalize_data_for_training(self.gfs_data, self.data_indices, features_to_normalize,
                                                     self.sequence_length + self.prediction_offset + self.future_sequence_length,
                                                     self.normalization_type)
 
@@ -257,3 +266,35 @@ class Sequence2SequenceDataModule(SplittableDataModule):
             chain.from_iterable(
                 (f"{feature}_T", f"{feature}_S", f"{feature}_R") for feature in self.gfs_features_names))
         self.gfs_features_names.append(self.gfs_target_param)
+
+    def eliminate_gfs_bias(self):
+        # we can check what is the mean GFS error and just add it to target values to improve performance. We assume we know only train data
+        train_indices = [self.dataset_train.dataset.data[index] for index in self.dataset_train.indices]
+        all_gfs_data = resolve_indices(self.dataset_train.dataset.gfs_data, train_indices, self.sequence_length + self.prediction_offset + self.future_sequence_length)
+        targets = all_gfs_data[get_gfs_target_param(self.target_param)].values
+        all_synop_data = resolve_indices(self.dataset_train.dataset.synop_data, train_indices, self.sequence_length + self.prediction_offset + self.future_sequence_length)
+        synop_targets = all_synop_data[self.target_param].values
+
+        real_gfs_targets = targets * self.dataset_train.dataset.gfs_std[get_gfs_target_param(self.target_param)]\
+                           + self.dataset_train.dataset.gfs_mean[get_gfs_target_param(self.target_param)]
+        # modify gfs mean to conform to synop ranges
+        if self.config.experiment.target_parameter == 'temperature':
+            real_gfs_targets -= 273.15
+        elif self.config.experiment.target_parameter == 'pressure':
+            real_gfs_targets /= 100
+        real_diff = (synop_targets * self.dataset_train.dataset.std[0] + self.dataset_train.dataset.mean[0] - real_gfs_targets)
+
+        plt.figure(figsize=(21, 10))
+        plt.tight_layout()
+        sns.displot(real_diff, bins=100, kde=True)
+        plt.ylabel('Liczebność')
+        plt.xlabel('Różnica')
+
+        os.makedirs(os.path.join(Path(__file__).parent, "plots"), exist_ok=True)
+        plt.savefig(os.path.join(Path(__file__).parent, "plots", f"gfs_diff_{self.config.experiment.target_parameter}.png"),
+                    dpi=200, bbox_inches='tight')
+
+        debiased_gfs_targets = real_gfs_targets + real_diff
+        self.dataset_train.dataset.gfs_mean[get_gfs_target_param(self.target_param)] = debiased_gfs_targets.mean()
+        self.dataset_train.dataset.gfs_std[get_gfs_target_param(self.target_param)] = debiased_gfs_targets.std()
+        all_gfs_data[get_gfs_target_param(self.target_param)] = (debiased_gfs_targets - debiased_gfs_targets.mean()) / debiased_gfs_targets.std()

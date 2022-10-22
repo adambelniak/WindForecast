@@ -16,7 +16,7 @@ from pytorch_lightning import LightningDataModule
 from wind_forecast.config.register import Config
 from wind_forecast.consts import PREPARED_DATASETS_DIRECTORY
 from wind_forecast.datamodules.DataModulesCache import DataModulesCache
-from wind_forecast.util.common_util import split_dataset
+from wind_forecast.util.common_util import split_dataset, CustomSubset
 
 
 class SplittableDataModule(LightningDataModule):
@@ -26,9 +26,9 @@ class SplittableDataModule(LightningDataModule):
         self.val_split = config.experiment.val_split
         self.test_split = config.experiment.test_split
         self.dataset_split_mode = config.experiment.dataset_split_mode
-        self.dataset_train = ...
-        self.dataset_val = ...
-        self.dataset_test = ...
+        self.dataset_train: CustomSubset = ...
+        self.dataset_val: CustomSubset = ...
+        self.dataset_test: CustomSubset = ...
         self.uses_future_sequences = False
         self.initialized = False
 

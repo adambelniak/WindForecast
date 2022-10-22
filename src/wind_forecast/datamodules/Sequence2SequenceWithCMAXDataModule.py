@@ -44,7 +44,7 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
             self.prepare_dataset_for_gfs()
             self.synop_dates = self.synop_data.loc[self.data_indices]['date'].values
             synop_dataset = Sequence2SequenceWithGFSDataset(self.config, self.synop_data, self.gfs_data, self.data_indices,
-                                                            self.synop_feature_names, self.gfs_features_names)
+                                                            self.synop_feature_names, self.gfs_features_names, self.gfs_mean, self.gfs_std)
             if self.config.experiment.load_cmax_data:
                 cmax_dataset = CMAXDataset(config=self.config, dates=self.synop_dates, normalize=True,
                                            use_future_values=self.load_future_cmax)
@@ -69,6 +69,8 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
         dataset.set_min([0, CMAX_MIN])
         dataset.set_max([0, CMAX_MAX])
         self.split_dataset(self.config, dataset, self.sequence_length)
+        if self.config.experiment._tags_[0] == 'GFS':
+            self.eliminate_gfs_bias()
 
     def collate_fn(self, x: List[Tuple]):
         if not self.config.experiment.load_cmax_data:

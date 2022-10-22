@@ -1,6 +1,6 @@
 import itertools
 import os
-from typing import Any, List, Dict
+from typing import Any, List
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import wandb
@@ -38,6 +38,7 @@ def plot_series_comparison(analysis_config_runs: List, run_summaries: List[Any],
     prediction_dates = run_summaries[0]['plot_prediction_dates']
     target_mean = run_summaries[0]['target_mean_0']
     target_std = run_summaries[0]['target_std_0']
+
     for series_index in range(len(truth_series)):
         fig, ax = plt.subplots(figsize=(30, 15))
         ax.xaxis.set_major_formatter(mdates.DateFormatter('%m/%d/%Y %H:%M'))
@@ -48,7 +49,13 @@ def plot_series_comparison(analysis_config_runs: List, run_summaries: List[Any],
 
         for index, run in enumerate(run_summaries):
             prediction_series = run['plot_prediction'][series_index]
-            prediction_series = (np.array(prediction_series) * target_std + target_mean).tolist()
+            if analysis_config_runs[index]['axis_label'] == 'GFS':
+                gfs_mean = run['target_mean_gfs']
+                gfs_std = run['target_std_gfs']
+                prediction_series = (np.array(prediction_series) * gfs_std + gfs_mean).tolist()
+
+            else:
+                prediction_series = (np.array(prediction_series) * target_std + target_mean).tolist()
             ax.plot([datetime.strptime(date, '%Y-%m-%dT%H:%M:%S') for date in prediction_dates[series_index]],
                          prediction_series, label=analysis_config_runs[index]['axis_label'], marker=next(marker))
 

@@ -19,8 +19,6 @@ class CustomSubset(Subset):
 
     def __init__(self, dataset: Dataset[T_co], indices: Sequence[int]) -> None:
         super().__init__(dataset, indices)
-        self.mean = dataset.mean
-        self.std = dataset.std
 
 
 def basic_split_randomly(dataset, val_split: float, test_split: float):
