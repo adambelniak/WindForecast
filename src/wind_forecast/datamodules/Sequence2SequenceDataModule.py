@@ -79,7 +79,8 @@ class Sequence2SequenceDataModule(SplittableDataModule):
         self.load_from_disk(self.config)
 
         if self.initialized:
-            self.eliminate_gfs_bias()
+            if self.config.experiment._tags_[0] == 'GFS':
+                self.eliminate_gfs_bias()
             return
 
         self.synop_data = prepare_synop_dataset(self.synop_file,
@@ -284,7 +285,7 @@ class Sequence2SequenceDataModule(SplittableDataModule):
             real_gfs_targets /= 100
         real_diff = (synop_targets * self.dataset_train.dataset.std[0] + self.dataset_train.dataset.mean[0] - real_gfs_targets)
 
-        plt.figure(figsize=(21, 10))
+        plt.figure(figsize=(20, 10))
         plt.tight_layout()
         sns.displot(real_diff, bins=100, kde=True)
         plt.ylabel('Liczebność')
