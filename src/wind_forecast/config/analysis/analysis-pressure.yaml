@@ -2,4 +2,4 @@ defaults:
   - schema_analysis
 
 input_file: analysis-pressure.json
-target_parameter: Ciśnienie
+target_parameter: Ciśnienie [hPa]

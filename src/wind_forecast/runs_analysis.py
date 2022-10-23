@@ -30,6 +30,7 @@ def run_analysis(config: Config):
     plot_series_comparison(analysis_config.runs, run_summaries, config)
     plot_rmse_by_step_comparison(analysis_config.runs, run_summaries)
     plot_mase_by_step_comparison(analysis_config.runs, run_summaries)
+    plot_gfs_corr_comparison()
 
 
 def plot_series_comparison(analysis_config_runs: List, run_summaries: List[Any], config: Config):
@@ -60,8 +61,8 @@ def plot_series_comparison(analysis_config_runs: List, run_summaries: List[Any],
                          prediction_series, label=analysis_config_runs[index]['axis_label'], marker=next(marker))
 
         # Labels hardcoded for now
-        ax.set_ylabel(config.analysis.target_parameter, fontsize=18)
-        ax.set_xlabel('Data', fontsize=18)
+        ax.set_ylabel(config.analysis.target_parameter, fontsize=20)
+        ax.set_xlabel('Data', fontsize=20)
         ax.legend(loc='best', prop={'size': 18})
         ax.tick_params(axis='both', which='major', labelsize=14)
         plt.gcf().autofmt_xdate()
@@ -103,3 +104,35 @@ def plot_mase_by_step_comparison(analysis_config_runs: List, run_summaries: List
     os.makedirs('analysis', exist_ok=True)
     plt.savefig(f'analysis/mase_by_step_comparison.png')
     plt.close()
+
+def plot_gfs_corr_comparison():
+    # for now hardcoded
+    labels = ['N-BEATSx + GFS', 'LSTM + GFS', 'BiLSTM + GFS', "TCN + GFS", "TCNAttention + GFS", "Transformer + GFS",
+              "Spacetimeformer + GFS", "Regresja liniowa"]
+
+    temp_corrs = [0.8212, 0.8231, 0.8217, 0.8451, 0.8657, 0.8423, 0.9891, 0.5502]
+    wind_corrs = [0.5395, 0.5048, 0.4821, 0.4943, 0.6558, 0.5193, 0.8662, 0.2422]
+    pres_corrs = [0.868, 0.8823, 0.8678, 0.8709, 0.9102, 0.8918, 0.9996, 0.1682]
+    x = np.arange(len(labels))
+    width = 0.25  # the width of the bars
+
+    fig, ax = plt.subplots(figsize=(25, 10))
+    rects1 = ax.bar(x - width, temp_corrs, width, label='Temperatura')
+    rects2 = ax.bar(x, wind_corrs, width, label='Prędkość wiatru')
+    rects3 = ax.bar(x + width, pres_corrs, width, label='Ciśnienie')
+
+    # Add some text for labels, title and custom x-axis tick labels, etc.
+    ax.set_ylabel('Korelacja', fontsize=20)
+    plt.tick_params(labelsize=14)
+    plt.xticks(x, labels)
+
+    ax.legend()
+
+    ax.bar_label(rects1, padding=3)
+    ax.bar_label(rects2, padding=3)
+    ax.bar_label(rects3, padding=3)
+
+    os.makedirs('analysis', exist_ok=True)
+    plt.savefig(f'analysis/gfs_corr.png')
+    plt.close()
+

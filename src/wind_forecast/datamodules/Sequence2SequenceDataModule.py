@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Optional, Tuple, List
 
 import pandas as pd
-import numpy as np
 from torch.utils.data import DataLoader
 from torch.utils.data.dataloader import default_collate
 from tqdm import tqdm
