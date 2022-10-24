@@ -380,7 +380,7 @@ class BaseS2SRegressor(pl.LightningModule):
 
         return {BatchKeys.SYNOP_FUTURE_Y.value: targets,
                 BatchKeys.PREDICTIONS.value: outputs.squeeze(),
-                BatchKeys.SYNOP_PAST_Y.value: past_targets[:],
+                BatchKeys.SYNOP_PAST_Y.value: past_targets,
                 BatchKeys.SYNOP_PAST_X.value: synop_inputs[:, :, self.target_param_index] if self.cfg.experiment.batch_size > 1
                 else synop_inputs[:, self.target_param_index],
                 BatchKeys.DATES_PAST.value: dates_inputs,
@@ -413,7 +413,7 @@ class BaseS2SRegressor(pl.LightningModule):
 
         predictions = series[BatchKeys.PREDICTIONS.value]
         rmse_by_step = np.sqrt(np.mean(np.power(np.subtract(series[BatchKeys.PREDICTIONS.value], series[BatchKeys.SYNOP_FUTURE_Y.value]), 2), axis=0))
-        mase_by_step = self.get_mase_by_step(series[BatchKeys.SYNOP_PAST_Y.value], predictions)
+        mase_by_step = self.get_mase_by_step(predictions, series[BatchKeys.SYNOP_FUTURE_Y.value], series[BatchKeys.SYNOP_PAST_Y.value])
 
         # for plots
         plot_truth_series = []
@@ -471,10 +471,10 @@ class BaseS2SRegressor(pl.LightningModule):
             BatchKeys.DATES_FUTURE.value: future_dates
         }
 
-    def get_mase_by_step(self, truth_series, prediction_series):
+    def get_mase_by_step(self, prediction_series, truth_series, past_truth_series):
         mase_by_step = []
         for step in range(prediction_series.shape[-1]):
             mase_by_step.append(
                 (abs(prediction_series[:, :step + 1] - truth_series[:, :step + 1]).mean(axis=-1) /
-                 abs(truth_series[:, :-1] - truth_series[:, 1:]).mean(axis=-1)).mean())
+                 abs(past_truth_series[:, :-1] - past_truth_series[:, 1:]).mean(axis=-1)).mean())
         return mase_by_step
