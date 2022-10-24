@@ -475,6 +475,6 @@ class BaseS2SRegressor(pl.LightningModule):
         mase_by_step = []
         for step in range(prediction_series.shape[-1]):
             mase_by_step.append(
-                (abs(prediction_series[:, :step + 1] - truth_series[:, :step + 1]).mean() /
-                 abs(truth_series[:, :-1] - truth_series[:, 1:]).mean()).mean())
+                (abs(prediction_series[:, :step + 1] - truth_series[:, :step + 1]).mean(axis=-1) /
+                 abs(truth_series[:, :-1] - truth_series[:, 1:]).mean(axis=-1)).mean())
         return mase_by_step
