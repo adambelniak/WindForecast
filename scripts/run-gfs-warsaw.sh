@@ -168,7 +168,7 @@ experiment.use_time2vec=False experiment.use_value2vec=False experiment.regresso
   python -m wind_forecast.main experiment=hybrid_tcn_s2s_gfs_attention optim=adam experiment.target_parameter=wind_velocity \
 experiment.dropout=0.6 optim.base_lr=0.0002 experiment.tcn_kernel_size=3 experiment.tcn_channels=[32,64,64] \
 experiment.use_time2vec=False experiment.use_value2vec=False experiment.regressor_head_dims=[32] \
- experiment.epochs=20 experiment.num_workers=16 experiment.sequence_length=48
+ experiment.epochs=20 experiment.num_workers=16
 
   python -m wind_forecast.main experiment=hybrid_tcn_s2s_gfs_attention optim=adam experiment.target_parameter=wind_velocity \
 experiment.dropout=0.6 optim.base_lr=0.0002 experiment.tcn_kernel_size=3 experiment.tcn_channels=[32,64,64] \
@@ -178,7 +178,7 @@ experiment.use_time2vec=False experiment.use_value2vec=False experiment.regresso
   python -m wind_forecast.main experiment=hybrid_tcn_s2s_gfs_attention optim=adam experiment.target_parameter=pressure \
 experiment.dropout=0.6 optim.base_lr=0.0002 experiment.tcn_kernel_size=3 experiment.tcn_channels=[32,64,64] \
 experiment.use_time2vec=False experiment.use_value2vec=False experiment.regressor_head_dims=[32] \
- experiment.epochs=20 experiment.num_workers=16 experiment.sequence_length=48
+ experiment.epochs=20 experiment.num_workers=16
 
   python -m wind_forecast.main experiment=hybrid_tcn_s2s_gfs_attention optim=adam experiment.target_parameter=pressure \
 experiment.dropout=0.6 optim.base_lr=0.0002 experiment.tcn_kernel_size=3 experiment.tcn_channels=[32,64,64] \
