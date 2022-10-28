@@ -31,7 +31,10 @@ class ExperimentSettings:
     # Path to pretrained artifact. Two formats are supported:
     # - local checkpoints: path to artifact relative from run (results) directory
     # - wandb artifacts: wandb://ENTITY/PROJECT_NAME/ARTIFACT_NAME:VERSION@CHECKPOINT_NAME
-    pretrained_artifact: Optional[str] = 'wandb://mbelniak/wind-forecast-openstack-tune/model-1e6npo9p:v4@model.ckpt'
+    pretrained_artifact: Optional[str] = 'wandb://mbelniak/wind-forecast-openstack/model-1ny66g69:v0@model.ckpt'
+
+    # Same as above but for convolutional encoder for CMAX images
+    pretrained_cmax_encoder: Optional[str] = 'wandb://mbelniak/wind-forecast-openstack-tune/model-1e6npo9p:v4@model.ckpt'
 
     # Enable checkpoint saving
     save_checkpoints: bool = True
@@ -163,6 +166,8 @@ class ExperimentSettings:
     gfs_on_head: bool = True
 
     cmax_projection_dim: int = 0
+
+    use_pretrained_artifact: bool = False
 
     # ----------------------------------------------------------------------------------------------
     # CMAX autoencoder settings

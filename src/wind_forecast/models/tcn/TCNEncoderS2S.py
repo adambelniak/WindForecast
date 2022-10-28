@@ -10,6 +10,7 @@ from wind_forecast.models.value2vec.Value2Vec import Value2Vec
 from wind_forecast.models.tcn.TCNEncoder import TemporalBlock
 from wind_forecast.models.time2vec.Time2Vec import Time2Vec
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
+from wind_forecast.util.common_util import get_pretrained_artifact_path, get_pretrained_state_dict
 from wind_forecast.util.config import process_config
 
 
@@ -73,6 +74,11 @@ class TCNEncoderS2S(EMDDecomposeable):
         if self.use_gfs:
             self.regression_head_features += 1
         self.create_regression_head()
+
+        if config.experiment.use_pretrained_artifact and type(self).__name__ is "TCNEncoderS2S":
+            pretrained_autoencoder_path = get_pretrained_artifact_path(config.experiment.pretrained_artifact)
+            self.load_state_dict(get_pretrained_state_dict(pretrained_autoencoder_path))
+            return
 
     def create_regression_head(self):
         dense_layers = []

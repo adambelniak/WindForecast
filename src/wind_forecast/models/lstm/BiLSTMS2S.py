@@ -7,6 +7,7 @@ from wind_forecast.config.register import Config
 from wind_forecast.consts import BatchKeys
 from wind_forecast.embed.prepare_embeddings import get_embeddings
 from wind_forecast.models.lstm.LSTMS2SModel import LSTMS2SModel
+from wind_forecast.util.common_util import get_pretrained_artifact_path, get_pretrained_state_dict
 
 
 class BiLSTMS2S(LSTMS2SModel):
@@ -20,6 +21,11 @@ class BiLSTMS2S(LSTMS2SModel):
         self.decoder_lstm = nn.LSTM(input_size=self.embed_dim, hidden_size=2 * self.lstm_hidden_state, batch_first=True,
                                     dropout=self.dropout, num_layers=config.experiment.lstm_num_layers,
                                     proj_size=self.embed_dim)
+
+        if config.experiment.use_pretrained_artifact and type(self).__name__ is "BiLSTMS2S":
+            pretrained_autoencoder_path = get_pretrained_artifact_path(config.experiment.pretrained_artifact)
+            self.load_state_dict(get_pretrained_state_dict(pretrained_autoencoder_path))
+            return
 
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
         is_train = stage not in ['test', 'predict', 'validate']

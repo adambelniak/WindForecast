@@ -7,6 +7,7 @@ from pytorch_lightning import LightningModule
 
 from wind_forecast.config.register import Config
 from wind_forecast.consts import BatchKeys
+from wind_forecast.util.common_util import get_pretrained_artifact_path, get_pretrained_state_dict
 from wind_forecast.util.config import process_config
 from .extra_layers import ConvBlock, Normalization, FoldForPred
 from .Encoder import Encoder, EncoderLayer
@@ -220,8 +221,11 @@ class Spacetimeformer(LightningModule):
         dense_layers.append(nn.Linear(in_features=features, out_features=1))
 
         self.regressor_head = nn.Sequential(*dense_layers)
-        # self.reconstructor = nn.Linear(config.experiment.transformer_d_model, recon_dim, bias=True)
-        # self.classifier = nn.Linear(config.experiment.transformer_d_model, out_dim, bias=True)
+
+        if config.experiment.use_pretrained_artifact and type(self).__name__ is "Spacetimeformer":
+            pretrained_autoencoder_path = get_pretrained_artifact_path(config.experiment.pretrained_artifact)
+            self.load_state_dict(get_pretrained_state_dict(pretrained_autoencoder_path))
+            return
 
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
         # We have x as variables and y as target, but spacetimeformer has it the other way round. TODO redo it

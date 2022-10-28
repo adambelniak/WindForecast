@@ -9,6 +9,7 @@ from wind_forecast.models.CMAXAutoencoder import CMAXEncoder, get_pretrained_enc
 from wind_forecast.models.transformer.HybridTransformerWithGFS import HybridTransformerWithGFS
 from wind_forecast.models.transformer.Transformer import PositionalEncoding
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
+from wind_forecast.util.common_util import get_pretrained_artifact_path, get_pretrained_state_dict
 
 
 class HybridTransformerWithGFSCMAX(HybridTransformerWithGFS):
@@ -36,6 +37,11 @@ class HybridTransformerWithGFSCMAX(HybridTransformerWithGFS):
         if self.gfs_on_head:
             self.head_input_dim += 1
         self.create_head()
+
+        if config.experiment.use_pretrained_artifact and type(self).__name__ is "HybridTransformerWithGFSCMAX":
+            pretrained_autoencoder_path = get_pretrained_artifact_path(config.experiment.pretrained_artifact)
+            self.load_state_dict(get_pretrained_state_dict(pretrained_autoencoder_path))
+            return
 
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
         is_train = stage not in ['test', 'predict', 'validate']

@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Sequence
 import os
 import numpy as np
+import torch
 import wandb
 from pytorch_lightning.loggers import WandbLogger
 from torch.utils.data import Subset, random_split, Dataset
@@ -155,6 +156,13 @@ def get_pretrained_artifact_path(pretrained_artifact: str):
         raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), pretrained_artifact)
 
     return pretrained_artifact
+
+
+def get_pretrained_state_dict(pretrained_artifact_path: str):
+    checkpoint = torch.load(pretrained_artifact_path)
+    state_dict = checkpoint['state_dict']
+    state_dict = {k.partition('model.')[2]:state_dict[k] for k in state_dict.keys()}
+    return state_dict
 
 
 class NormalizationType(Enum):

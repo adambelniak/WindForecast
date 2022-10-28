@@ -9,6 +9,7 @@ from wind_forecast.embed.prepare_embeddings import get_embeddings
 from wind_forecast.models.CMAXAutoencoder import CMAXEncoder, get_pretrained_encoder
 from wind_forecast.models.transformer.Transformer import PositionalEncoding, TransformerEncoderGFSBaseProps
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
+from wind_forecast.util.common_util import get_pretrained_artifact_path, get_pretrained_state_dict
 
 
 class TransformerEncoderS2SCMAXWithScaleToDepthWithGFS(TransformerEncoderGFSBaseProps):
@@ -35,6 +36,11 @@ class TransformerEncoderS2SCMAXWithScaleToDepthWithGFS(TransformerEncoderGFSBase
         self.pos_encoder = PositionalEncoding(self.embed_dim, self.dropout)
         self.create_encoder()
         self.create_head()
+
+        if config.experiment.use_pretrained_artifact and type(self).__name__ is "TransformerEncoderS2SCMAXWithScaleToDepthWithGFS":
+            pretrained_autoencoder_path = get_pretrained_artifact_path(config.experiment.pretrained_artifact)
+            self.load_state_dict(get_pretrained_state_dict(pretrained_autoencoder_path))
+            return
 
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
         input_elements, target_elements = get_embeddings(batch, self.config.experiment.with_dates_inputs,

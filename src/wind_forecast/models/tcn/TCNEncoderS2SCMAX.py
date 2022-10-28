@@ -9,6 +9,7 @@ from wind_forecast.embed.prepare_embeddings import get_embeddings
 from wind_forecast.models.CMAXAutoencoder import CMAXEncoder, get_pretrained_encoder
 from wind_forecast.models.tcn.TCNEncoderS2S import TCNEncoderS2S
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
+from wind_forecast.util.common_util import get_pretrained_artifact_path, get_pretrained_state_dict
 
 
 class TCNEncoderS2SCMAX(TCNEncoderS2S):
@@ -33,6 +34,11 @@ class TCNEncoderS2SCMAX(TCNEncoderS2S):
         if self.use_gfs and self.gfs_on_head:
             self.regression_head_features += 1
         self.create_regression_head()
+
+        if config.experiment.use_pretrained_artifact and type(self).__name__ is "TCNEncoderS2SCMAX":
+            pretrained_autoencoder_path = get_pretrained_artifact_path(config.experiment.pretrained_artifact)
+            self.load_state_dict(get_pretrained_state_dict(pretrained_autoencoder_path))
+            return
 
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
         input_elements, target_elements = get_embeddings(batch, self.config.experiment.with_dates_inputs,

@@ -4,17 +4,14 @@ import torch
 from torch.nn import Parameter
 
 from wind_forecast.config.register import Config
-from wind_forecast.util.common_util import get_pretrained_artifact_path
+from wind_forecast.util.common_util import get_pretrained_artifact_path, get_pretrained_state_dict
 import math
 
 
 def get_pretrained_encoder(module: nn.Module, config: Config):
-    pretrained_autoencoder_path = get_pretrained_artifact_path(config.experiment.pretrained_artifact)
-    checkpoint = torch.load(pretrained_autoencoder_path)
-    state_dict = checkpoint['state_dict']
-    state_dict = {k.partition('model.')[2]:state_dict[k] for k in state_dict.keys()}
+    pretrained_autoencoder_path = get_pretrained_artifact_path(config.experiment.pretrained_cmax_encoder)
     pretrained_model = CMAXAutoencoder(config=config)
-    pretrained_model.load_state_dict(state_dict)
+    pretrained_model.load_state_dict(get_pretrained_state_dict(pretrained_autoencoder_path))
     module_state = module.state_dict()
     pretrained_state_dict = pretrained_model.state_dict()
     for name, param in pretrained_state_dict.items():

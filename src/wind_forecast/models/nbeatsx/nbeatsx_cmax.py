@@ -10,6 +10,7 @@ from wind_forecast.models.nbeatsx.nbeatsx import Nbeatsx
 from wind_forecast.models.nbeatsx.nbeatsx_model import NBeatsx
 from wind_forecast.models.value2vec.Value2Vec import Value2Vec
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
+from wind_forecast.util.common_util import get_pretrained_artifact_path, get_pretrained_state_dict
 
 
 class Nbeatsx_CMAX(Nbeatsx):
@@ -36,6 +37,11 @@ class Nbeatsx_CMAX(Nbeatsx):
         block_list = self.create_stacks()
 
         self.model = NBeatsx(t.nn.ModuleList(block_list))
+
+        if config.experiment.use_pretrained_artifact and type(self).__name__ is "Nbeatsx_CMAX":
+            pretrained_autoencoder_path = get_pretrained_artifact_path(config.experiment.pretrained_artifact)
+            self.load_state_dict(get_pretrained_state_dict(pretrained_autoencoder_path))
+            return
 
     def forward(self, batch: Dict[str, t.Tensor], epoch: int, stage=None) -> t.Tensor:
         insample_elements, outsample_elements = self.get_embeddings(batch)

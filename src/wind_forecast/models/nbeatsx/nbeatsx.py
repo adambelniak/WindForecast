@@ -37,6 +37,7 @@ from wind_forecast.models.nbeatsx.nbeatsx_model import NBeatsx, NBeatsBlock, Ide
 from wind_forecast.models.time2vec.Time2Vec import Time2Vec
 from wind_forecast.models.value2vec.Value2Vec import Value2Vec
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
+from wind_forecast.util.common_util import get_pretrained_state_dict, get_pretrained_artifact_path
 from wind_forecast.util.config import process_config
 
 
@@ -69,7 +70,6 @@ class Nbeatsx(pl.LightningModule):
         """
         N-BEATSx model.
         """
-
         self.config = config
         self.activation = config.experiment.nbeats_activation
         self.initialization = 'glorot_normal'
@@ -141,6 +141,11 @@ class Nbeatsx(pl.LightningModule):
         block_list = self.create_stacks()
 
         self.model = NBeatsx(t.nn.ModuleList(block_list))
+
+        if config.experiment.use_pretrained_artifact and type(self).__name__ is "Nbeatsx":
+            pretrained_autoencoder_path = get_pretrained_artifact_path(config.experiment.pretrained_artifact)
+            self.load_state_dict(get_pretrained_state_dict(pretrained_autoencoder_path))
+            return
 
     def create_stacks(self):
         # ------------------------ Model Definition ------------------------#
