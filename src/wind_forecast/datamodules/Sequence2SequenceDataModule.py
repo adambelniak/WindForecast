@@ -297,4 +297,8 @@ class Sequence2SequenceDataModule(SplittableDataModule):
         debiased_gfs_targets = real_gfs_targets + real_diff
         self.dataset_train.dataset.gfs_mean[get_gfs_target_param(self.target_param)] = debiased_gfs_targets.mean()
         self.dataset_train.dataset.gfs_std[get_gfs_target_param(self.target_param)] = debiased_gfs_targets.std()
+        self.dataset_val.dataset.gfs_mean[get_gfs_target_param(self.target_param)] = debiased_gfs_targets.mean()
+        self.dataset_val.dataset.gfs_std[get_gfs_target_param(self.target_param)] = debiased_gfs_targets.std()
+        self.dataset_test.dataset.gfs_mean[get_gfs_target_param(self.target_param)] = debiased_gfs_targets.mean()
+        self.dataset_test.dataset.gfs_std[get_gfs_target_param(self.target_param)] = debiased_gfs_targets.std()
         all_gfs_data[get_gfs_target_param(self.target_param)] = (debiased_gfs_targets - debiased_gfs_targets.mean()) / debiased_gfs_targets.std()

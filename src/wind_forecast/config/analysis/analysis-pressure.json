@@ -1,19 +1,19 @@
 {
   "runs": [
     {
-      "id": "37x84uai",
+      "id": "1kgaspda",
       "axis_label": "N-BEATSx + GFS"
     },
     {
-      "id": "3tmf0elr",
+      "id": "37d1qw62",
       "axis_label": "LSTM + GFS"
     },
     {
-      "id": "xzraq6zv",
+      "id": "37gqn5pu",
       "axis_label": "BiLSTM + GFS"
     },
     {
-      "id": "3inondh4",
+      "id": "7bk5e3eg",
       "axis_label": "TCN + GFS"
     },
     {
@@ -21,11 +21,11 @@
       "axis_label": "TCNAttention + GFS"
     },
     {
-      "id": "69f6rcwq",
+      "id": "2upkj50k",
       "axis_label": "Transformer + GFS"
     },
     {
-      "id": "3nrue6ff",
+      "id": "323454hf",
       "axis_label": "Spacetimeformer + GFS"
     },
     {
@@ -33,11 +33,11 @@
       "axis_label": "Model naiwny"
     },
     {
-      "id": "32283frk",
+      "id": "2wg9qa9m",
       "axis_label": "GFS"
     },
     {
-      "id": "2bh9h9l9",
+      "id": "9lk4da2a",
       "axis_label": "Regresja liniowa"
     }
   ]

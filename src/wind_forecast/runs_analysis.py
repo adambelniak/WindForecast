@@ -110,9 +110,9 @@ def plot_gfs_corr_comparison():
     labels = ['N-BEATSx + GFS', 'LSTM + GFS', 'BiLSTM + GFS', "TCN + GFS", "TCNAttention + GFS", "Transformer + GFS",
               "Spacetimeformer + GFS", "Regresja liniowa"]
 
-    temp_corrs = [0.8212, 0.8231, 0.8217, 0.8451, 0.8657, 0.8423, 0.9891, 0.5502]
-    wind_corrs = [0.5395, 0.5048, 0.4821, 0.4943, 0.6558, 0.5193, 0.8662, 0.2422]
-    pres_corrs = [0.868, 0.8823, 0.8678, 0.8709, 0.9102, 0.8918, 0.9996, 0.1682]
+    temp_corrs = [0.8212, 0.8231, 0.8217, 0.8451, 0.8692, 0.8334, 0.9912, 0.5514]
+    wind_corrs = [0.5395, 0.5048, 0.4821, 0.4943, 0.5669, 0.5898, 0.8279, 0.3707]
+    pres_corrs = [0.868, 0.8823, 0.8678, 0.8709, 0.8533, 0.8662, 0.9488, 0.171]
     x = np.arange(len(labels))
     width = 0.25  # the width of the bars
 
