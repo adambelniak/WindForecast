@@ -38,3 +38,4 @@ plotly
 EMD-signal
 einops
 performer-pytorch
+prophet
