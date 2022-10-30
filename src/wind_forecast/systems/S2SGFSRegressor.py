@@ -50,7 +50,7 @@ class S2SGFSRegressor(BaseS2SRegressor):
         """
         dates_inputs = batch[BatchKeys.DATES_PAST.value]
         dates_targets = batch[BatchKeys.DATES_FUTURE.value]
-        outputs = ((batch[BatchKeys.GFS_FUTURE_Y.value] * 1.851 + 3.361) - 3.413) / 1.871
+        outputs = batch[BatchKeys.GFS_FUTURE_Y.value]
         targets = batch[BatchKeys.SYNOP_FUTURE_Y.value]
         synop_past_targets = batch[BatchKeys.SYNOP_PAST_Y.value]
 
