@@ -16,7 +16,7 @@ def resolve_indices(data: pd.DataFrame, indices: [int], length_of_sequence) -> p
 
 def normalize_data_for_training(data: pd.DataFrame, data_indices: [int], features: [str],
                                       length_of_sequence: int, normalization_type: NormalizationType
-                                      = NormalizationType.STANDARD) -> (pd.DataFrame, [str], Dict, Dict):
+                                      = NormalizationType.STANDARD) -> (pd.DataFrame, Dict, Dict):
     all_relevant_data = resolve_indices(data, data_indices, length_of_sequence)
     final_data = pd.DataFrame()
     mean_or_min_to_return = {}

@@ -16,7 +16,6 @@ from wandb.sdk.wandb_run import Run
 from wind_forecast.config.register import Config, register_configs, get_tags
 from wind_forecast.runs_analysis import run_analysis
 from wind_forecast.util.callbacks import CustomCheckpointer, get_resume_checkpoint
-from wind_forecast.util.gfs_util import get_gfs_target_param
 from wind_forecast.util.logging import log
 from wind_forecast.util.plots import plot_results
 from wind_forecast.util.rundir import setup_rundir
@@ -33,24 +32,30 @@ def log_dataset_metrics(datamodule: LightningDataModule, logger: LightningLogger
     mean = datamodule.dataset_test.dataset.mean
     std = datamodule.dataset_test.dataset.std
 
-    if hasattr(datamodule.dataset_test.dataset, 'gfs_mean') and hasattr(datamodule.dataset_test.dataset, 'gfs_std'):
-        gfs_mean = datamodule.dataset_test.dataset.gfs_mean
-        gfs_std = datamodule.dataset_test.dataset.gfs_std
-        metrics["target_mean_gfs"] = gfs_mean[get_gfs_target_param(config.experiment.target_parameter)]
-        metrics["target_std_gfs"] = gfs_std[get_gfs_target_param(config.experiment.target_parameter)]
-
     if mean is not None:
         if type(mean) == list:
             for index, m in enumerate(mean):
-                metrics[f"target_mean_{str(index)}"] = m
+                if type(m) == dict:
+                    metrics[f"target_mean_{str(index)}"] = m[config.experiment.target_parameter]
+                else:
+                    metrics[f"target_mean_{str(index)}"] = m
         else:
-            metrics['target_mean'] = mean
+            if type(mean) == dict:
+                metrics[f"target_mean"] = mean[config.experiment.target_parameter]
+            else:
+                metrics[f"target_mean"] = mean
     if std is not None:
         if type(std) == list:
             for index, s in enumerate(std):
-                metrics[f"target_std_{str(index)}"] = s
+                if type(s) == dict:
+                    metrics[f"target_std_{str(index)}"] = s[config.experiment.target_parameter]
+                else:
+                    metrics[f"target_std_{str(index)}"] = s
         else:
-            metrics['target_std'] = std
+            if type(std) == dict:
+                metrics[f"target_std"] = std[config.experiment.target_parameter]
+            else:
+                metrics[f"target_std"] = std
 
     logger.log_metrics(metrics)
 
@@ -230,14 +235,9 @@ def run_training(cfg):
 
         mean = datamodule.dataset_test.dataset.mean
         std = datamodule.dataset_test.dataset.std
-        gfs_mean = None
-        gfs_std = None
-        if hasattr(datamodule.dataset_test.dataset, 'gfs_mean') and hasattr(datamodule.dataset_test.dataset, 'gfs_std'):
-            gfs_mean = datamodule.dataset_test.dataset.gfs_mean
-            gfs_std = datamodule.dataset_test.dataset.gfs_std
 
         if cfg.experiment.view_test_result:
-            plot_results(system, cfg, mean, std, gfs_mean, gfs_std)
+            plot_results(system, cfg, mean, std)
 
     log_dataset_metrics(datamodule, wandb_logger, cfg)
 

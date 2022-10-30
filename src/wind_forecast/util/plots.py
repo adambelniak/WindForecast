@@ -7,12 +7,12 @@ import numpy as np
 from wind_forecast.util.gfs_util import get_gfs_target_param
 
 
-def plot_results(system, config: Config, mean, std, gfs_mean, gfs_std):
-    plot_random_series(system, config, mean, std, gfs_mean, gfs_std)
+def plot_results(system, config: Config, mean, std):
+    plot_random_series(system, config, mean, std)
     plot_step_by_step_metric(system)
 
 
-def plot_random_series(system, config: Config, mean, std, gfs_mean, gfs_std):
+def plot_random_series(system, config: Config, mean, std):
     for index in range(len(system.test_results['plot_truth'])):
         fig, ax = plt.subplots()
         plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%m/%d/%Y %H%M'))
@@ -31,14 +31,13 @@ def plot_random_series(system, config: Config, mean, std, gfs_mean, gfs_std):
                 mean = mean[0]
             if type(std) == list:
                 std = std[0]
+            if type(mean) == dict:
+                mean = mean[config.experiment.target_parameter]
+                std = std[config.experiment.target_parameter]
+
             truth_series = (np.array(truth_series) * std + mean).tolist()
             if config.experiment.use_gfs_data:
-                gfs_out_series = np.array(gfs_out_series) * gfs_std[get_gfs_target_param(config.experiment.target_parameter)]\
-                                 + gfs_mean[get_gfs_target_param(config.experiment.target_parameter)]
-                if config.experiment.target_parameter == 'temperature':
-                    gfs_out_series -= 273.15
-                if config.experiment.target_parameter == 'pressure':
-                    gfs_out_series /= 100
+                gfs_out_series = np.array(gfs_out_series) * std + mean
 
                 if config.experiment.differential_forecast:
                     prediction_series = (np.array(prediction_series) * std + gfs_out_series).tolist()

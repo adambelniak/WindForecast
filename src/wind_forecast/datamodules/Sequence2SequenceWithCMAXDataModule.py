@@ -44,7 +44,7 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
             self.prepare_dataset_for_gfs()
             self.synop_dates = self.synop_data.loc[self.data_indices]['date'].values
             synop_dataset = Sequence2SequenceWithGFSDataset(self.config, self.synop_data, self.gfs_data, self.data_indices,
-                                                            self.synop_feature_names, self.gfs_features_names, self.gfs_mean, self.gfs_std)
+                                                            self.synop_feature_names, self.gfs_features_names)
             if self.config.experiment.load_cmax_data:
                 cmax_dataset = CMAXDataset(config=self.config, dates=self.synop_dates, normalize=True,
                                            use_future_values=self.load_future_cmax)
@@ -64,10 +64,15 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
             else:
                 dataset = synop_dataset
 
-        dataset.set_mean([self.synop_mean, 0])
-        dataset.set_std([self.synop_std, 0])
-        dataset.set_min([0, CMAX_MIN])
-        dataset.set_max([0, CMAX_MAX])
+        if self.config.experiment.load_cmax_data:
+            dataset.set_mean([self.synop_mean, 0])
+            dataset.set_std([self.synop_std, 0])
+            dataset.set_min([0, CMAX_MIN])
+            dataset.set_max([0, CMAX_MAX])
+        else:
+            dataset.set_mean(self.synop_mean)
+            dataset.set_std(self.synop_std)
+
         self.split_dataset(self.config, dataset, self.sequence_length)
         if self.config.experiment._tags_[0] == 'GFS':
             self.eliminate_gfs_bias()
@@ -100,14 +105,20 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
             dict_data[BatchKeys.DATES_PAST.value] = all_data[8]
             dict_data[BatchKeys.DATES_FUTURE.value] = all_data[9]
             if self.config.experiment.differential_forecast:
-                gfs_past_y = dict_data[BatchKeys.GFS_PAST_Y.value] * self.dataset_train.std + self.dataset_train.mean
-                gfs_future_y = dict_data[BatchKeys.GFS_FUTURE_Y.value] * self.dataset_train.std + self.dataset_train.mean
-                synop_past_y = dict_data[BatchKeys.SYNOP_PAST_Y.value].unsqueeze(-1) * self.dataset_train.std + self.dataset_train.mean
-                synop_future_y = dict_data[BatchKeys.SYNOP_FUTURE_Y.value].unsqueeze(-1) * self.dataset_train.std + self.dataset_train.mean
+                if self.config.experiment.load_cmax_data:
+                    target_mean = self.dataset_train.dataset.mean[0][self.target_param]
+                    target_std = self.dataset_train.dataset.std[0][self.target_param]
+                else:
+                    target_mean = self.dataset_train.dataset.mean[self.target_param]
+                    target_std = self.dataset_train.dataset.std[self.target_param]
+                gfs_past_y = dict_data[BatchKeys.GFS_PAST_Y.value] * target_std + target_mean
+                gfs_future_y = dict_data[BatchKeys.GFS_FUTURE_Y.value] * target_std + target_mean
+                synop_past_y = dict_data[BatchKeys.SYNOP_PAST_Y.value].unsqueeze(-1) * target_std + target_mean
+                synop_future_y = dict_data[BatchKeys.SYNOP_FUTURE_Y.value].unsqueeze(-1) * target_std + target_mean
                 diff_past = gfs_past_y - synop_past_y
                 diff_future = gfs_future_y - synop_future_y
-                dict_data[BatchKeys.GFS_SYNOP_PAST_DIFF.value] = diff_past / self.dataset_train.std
-                dict_data[BatchKeys.GFS_SYNOP_FUTURE_DIFF.value] = diff_future / self.dataset_train.std
+                dict_data[BatchKeys.GFS_SYNOP_PAST_DIFF.value] = diff_past / target_std
+                dict_data[BatchKeys.GFS_SYNOP_FUTURE_DIFF.value] = diff_future / target_std
 
         else:
             dict_data[BatchKeys.DATES_PAST.value] = all_data[4]

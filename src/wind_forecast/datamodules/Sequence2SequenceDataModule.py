@@ -70,8 +70,6 @@ class Sequence2SequenceDataModule(SplittableDataModule):
         self.data_indices = ...
         self.synop_mean = ...
         self.synop_std = ...
-        self.gfs_mean = ...
-        self.gfs_std = ...
         self.synop_dates = ...
 
     def prepare_data(self, *args, **kwargs):
@@ -108,15 +106,13 @@ class Sequence2SequenceDataModule(SplittableDataModule):
                                      modify_feature_names_after_periodic_reduction([f['column'][1] for f in SYNOP_PERIODIC_FEATURES])]
 
         # data was not normalized, so take all frames which will be used, compute std and mean and normalize data
-        self.synop_data, mean, std = normalize_data_for_training(
+        self.synop_data, self.synop_mean, self.synop_std = normalize_data_for_training(
             self.synop_data, self.data_indices, features_to_normalize,
             self.sequence_length + self.prediction_offset + self.future_sequence_length,
             self.normalization_type)
 
-        self.synop_mean = mean[self.target_param]
-        self.synop_std = std[self.target_param]
-        log.info(f"Synop mean: {self.synop_mean}")
-        log.info(f"Synop std: {self.synop_std}")
+        log.info(f"Synop target mean: {self.synop_mean[self.target_param]}")
+        log.info(f"Synop target std: {self.synop_std[self.target_param]}")
 
     def after_synop_loaded(self):
         self.synop_dates = get_correct_dates_for_sequence(self.synop_data, self.sequence_length, self.future_sequence_length,
@@ -134,7 +130,7 @@ class Sequence2SequenceDataModule(SplittableDataModule):
             self.prepare_dataset_for_gfs()
 
             dataset = Sequence2SequenceWithGFSDataset(self.config, self.synop_data, self.gfs_data, self.data_indices,
-                                                      self.synop_feature_names, self.gfs_features_names, self.gfs_mean, self.gfs_std)
+                                                      self.synop_feature_names, self.gfs_features_names)
 
         else:
             dataset = Sequence2SequenceDataset(self.config, self.synop_data, self.data_indices,
@@ -160,16 +156,25 @@ class Sequence2SequenceDataModule(SplittableDataModule):
             self.gfs_data = self.prepare_gfs_data_with_wind_components(self.gfs_data)
 
         if self.config.experiment.stl_decompose:
-            self.gfs_decompose()
+            self.gfs_features_names = self.gfs_decompose()
             features_to_normalize = self.gfs_features_names
         else:
             # do not normalize periodic features
             features_to_normalize = [name for name in self.gfs_features_names if name not in ["wind-sin", "wind-cos"]]
 
-        # normalize GFS parameters data]
-        self.gfs_data, self.gfs_mean, self.gfs_std = normalize_data_for_training(self.gfs_data, self.data_indices, features_to_normalize,
+        features_to_normalize.remove(self.gfs_target_param)
+
+        # normalize GFS parameters data
+        self.gfs_data, _, _ = normalize_data_for_training(self.gfs_data, self.data_indices, features_to_normalize,
                                                     self.sequence_length + self.prediction_offset + self.future_sequence_length,
                                                     self.normalization_type)
+
+        if self.target_param == 'temperature':
+            self.gfs_data[self.gfs_target_param] = (self.gfs_data[self.gfs_target_param] - 273.15 - self.synop_mean[self.target_param]) / self.synop_std[self.target_param]
+        elif self.target_param == 'pressure':
+            self.gfs_data[self.gfs_target_param] = (self.gfs_data[self.gfs_target_param] / 100 - self.synop_mean[self.target_param]) / self.synop_std[self.target_param]
+        else:
+            self.gfs_data[self.gfs_target_param] = (self.gfs_data[self.gfs_target_param] - self.synop_mean[self.target_param]) / self.synop_std[self.target_param]
 
         if self.target_param == "wind_direction":
             # TODO handle this case - as for now we do not use this parameter as target
@@ -233,17 +238,16 @@ class Sequence2SequenceDataModule(SplittableDataModule):
             dict_data[BatchKeys.DATES_PAST.value] = all_data[8]
             dict_data[BatchKeys.DATES_FUTURE.value] = all_data[9]
             if self.config.experiment.differential_forecast:
-                gfs_past_y = dict_data[BatchKeys.GFS_PAST_Y.value] * self.dataset_train.std + self.dataset_train.mean
-                gfs_future_y = dict_data[
-                                   BatchKeys.GFS_FUTURE_Y.value] * self.dataset_train.std + self.dataset_train.mean
-                synop_past_y = dict_data[BatchKeys.SYNOP_PAST_Y.value].unsqueeze(
-                    -1) * self.dataset_train.std + self.dataset_train.mean
-                synop_future_y = dict_data[BatchKeys.SYNOP_FUTURE_Y.value].unsqueeze(
-                    -1) * self.dataset_train.std + self.dataset_train.mean
+                target_mean = self.dataset_train.dataset.mean[self.target_param]
+                target_std = self.dataset_train.dataset.std[self.target_param]
+                gfs_past_y = dict_data[BatchKeys.GFS_PAST_Y.value] * target_std + target_mean
+                gfs_future_y = dict_data[BatchKeys.GFS_FUTURE_Y.value] * target_std + target_mean
+                synop_past_y = dict_data[BatchKeys.SYNOP_PAST_Y.value].unsqueeze(-1) * target_std + target_mean
+                synop_future_y = dict_data[BatchKeys.SYNOP_FUTURE_Y.value].unsqueeze(-1) * target_std + target_mean
                 diff_past = gfs_past_y - synop_past_y
                 diff_future = gfs_future_y - synop_future_y
-                dict_data[BatchKeys.GFS_SYNOP_PAST_DIFF.value] = diff_past / self.dataset_train.std
-                dict_data[BatchKeys.GFS_SYNOP_FUTURE_DIFF.value] = diff_future / self.dataset_train.std
+                dict_data[BatchKeys.GFS_SYNOP_PAST_DIFF.value] = diff_past / target_std
+                dict_data[BatchKeys.GFS_SYNOP_FUTURE_DIFF.value] = diff_future / target_std
 
         else:
             dict_data[BatchKeys.DATES_PAST.value] = all_data[4]
@@ -262,27 +266,30 @@ class Sequence2SequenceDataModule(SplittableDataModule):
         target_param_series = self.gfs_data[self.gfs_target_param]
         self.gfs_data = decompose_gfs_data(self.gfs_data, self.gfs_features_names)
         self.gfs_data[self.gfs_target_param] = target_param_series
-        self.gfs_features_names = list(
+        new_gfs_features_names = list(
             chain.from_iterable(
                 (f"{feature}_T", f"{feature}_S", f"{feature}_R") for feature in self.gfs_features_names))
-        self.gfs_features_names.append(self.gfs_target_param)
+        new_gfs_features_names.append(self.gfs_target_param)
+        return new_gfs_features_names
 
     def eliminate_gfs_bias(self):
+        if self.config.experiment.load_cmax_data:
+            target_mean = self.dataset_train.dataset.mean[0][self.target_param]
+            target_std = self.dataset_train.dataset.std[0][self.target_param]
+        else:
+            target_mean = self.dataset_train.dataset.mean[self.target_param]
+            target_std = self.dataset_train.dataset.std[self.target_param]
+
         # we can check what is the mean GFS error and just add it to target values to improve performance. We assume we know only train data
         train_indices = [self.dataset_train.dataset.data[index] for index in self.dataset_train.indices]
         all_gfs_data = resolve_indices(self.dataset_train.dataset.gfs_data, train_indices, self.sequence_length + self.prediction_offset + self.future_sequence_length)
-        targets = all_gfs_data[get_gfs_target_param(self.target_param)].values
+        targets = all_gfs_data[self.gfs_target_param].values
         all_synop_data = resolve_indices(self.dataset_train.dataset.synop_data, train_indices, self.sequence_length + self.prediction_offset + self.future_sequence_length)
         synop_targets = all_synop_data[self.target_param].values
 
-        real_gfs_targets = targets * self.dataset_train.dataset.gfs_std[get_gfs_target_param(self.target_param)]\
-                           + self.dataset_train.dataset.gfs_mean[get_gfs_target_param(self.target_param)]
-        # modify gfs mean to conform to synop ranges
-        if self.config.experiment.target_parameter == 'temperature':
-            real_gfs_targets -= 273.15
-        elif self.config.experiment.target_parameter == 'pressure':
-            real_gfs_targets /= 100
-        real_diff = (synop_targets * self.dataset_train.dataset.std[0] + self.dataset_train.dataset.mean[0] - real_gfs_targets)
+        real_gfs_train_targets = targets * target_std + target_mean
+
+        real_diff = (synop_targets * target_std + target_mean - real_gfs_train_targets)
 
         plt.figure(figsize=(20, 10))
         plt.tight_layout()
@@ -294,11 +301,6 @@ class Sequence2SequenceDataModule(SplittableDataModule):
         plt.savefig(os.path.join(Path(__file__).parent, "plots", f"gfs_diff_{self.config.experiment.target_parameter}.png"),
                     dpi=200, bbox_inches='tight')
 
-        debiased_gfs_targets = real_gfs_targets + real_diff
-        self.dataset_train.dataset.gfs_mean[get_gfs_target_param(self.target_param)] = debiased_gfs_targets.mean()
-        self.dataset_train.dataset.gfs_std[get_gfs_target_param(self.target_param)] = debiased_gfs_targets.std()
-        self.dataset_val.dataset.gfs_mean[get_gfs_target_param(self.target_param)] = debiased_gfs_targets.mean()
-        self.dataset_val.dataset.gfs_std[get_gfs_target_param(self.target_param)] = debiased_gfs_targets.std()
-        self.dataset_test.dataset.gfs_mean[get_gfs_target_param(self.target_param)] = debiased_gfs_targets.mean()
-        self.dataset_test.dataset.gfs_std[get_gfs_target_param(self.target_param)] = debiased_gfs_targets.std()
-        all_gfs_data[get_gfs_target_param(self.target_param)] = (debiased_gfs_targets - debiased_gfs_targets.mean()) / debiased_gfs_targets.std()
+        bias = real_diff.mean(axis=0)
+        real_gfs_targets = self.dataset_test.dataset.gfs_data[self.gfs_target_param] * target_std - target_mean
+        self.dataset_test.dataset.gfs_data[self.gfs_target_param] = (real_gfs_targets + bias - target_mean) / target_std
