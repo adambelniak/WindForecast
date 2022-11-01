@@ -302,5 +302,5 @@ class Sequence2SequenceDataModule(SplittableDataModule):
                     dpi=200, bbox_inches='tight')
 
         bias = real_diff.mean(axis=0)
-        real_gfs_targets = self.dataset_test.dataset.gfs_data[self.gfs_target_param] * target_std - target_mean
+        real_gfs_targets = self.dataset_test.dataset.gfs_data[self.gfs_target_param] * target_std + target_mean
         self.dataset_test.dataset.gfs_data[self.gfs_target_param] = (real_gfs_targets + bias - target_mean) / target_std
