@@ -298,3 +298,12 @@ python -m wind_forecast.main experiment=gfs experiment.target_parameter=temperat
 python -m wind_forecast.main experiment=gfs experiment.target_parameter=wind_velocity
 
 python -m wind_forecast.main experiment=gfs experiment.target_parameter=pressure
+
+# linear
+python -m wind_forecast.main experiment=linear experiment.target_parameter=temperature experiment.sequence_length=24 lightning.gpus=0
+python -m wind_forecast.main experiment=linear experiment.target_parameter=wind_velocity experiment.sequence_length=24 lightning.gpus=0
+python -m wind_forecast.main experiment=linear experiment.target_parameter=temperature=pressure experiment.sequence_length=24 lightning.gpus=0
+
+python -m wind_forecast.main experiment=linear experiment.target_parameter=temperature experiment.sequence_length=48 lightning.gpus=0
+python -m wind_forecast.main experiment=linear experiment.target_parameter=wind_velocity experiment.sequence_length=48 lightning.gpus=0
+python -m wind_forecast.main experiment=linear experiment.target_parameter=temperature=pressure experiment.sequence_length=48 lightning.gpus=0
