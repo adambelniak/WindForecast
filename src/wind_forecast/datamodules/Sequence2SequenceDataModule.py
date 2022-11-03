@@ -157,8 +157,7 @@ class Sequence2SequenceDataModule(SplittableDataModule):
 
         if self.config.experiment.stl_decompose:
             self.gfs_features_names = self.gfs_decompose()
-            features_to_normalize = self.gfs_features_names
-            self.gfs_features_names.append(self.gfs_target_param)
+            features_to_normalize = [*self.gfs_features_names]
         else:
             # do not normalize periodic features
             features_to_normalize = [name for name in self.gfs_features_names if name not in ["wind-sin", "wind-cos"]]
