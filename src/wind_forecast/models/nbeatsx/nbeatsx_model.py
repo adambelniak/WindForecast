@@ -342,3 +342,69 @@ class ExogenousBasisTCN(nn.Module):
             forecast = forecast_basis
 
         return backcast, forecast
+
+class ExogenousBasisLSTM(nn.Module):
+    def __init__(self, insample_features: int, outsample_features: int, lstm_num_layers: int, lstm_hidden_state: int,
+                    dropout=0, theta_n_dim=0, forecast_size=0):
+        super().__init__()
+        self.use_exogenous_forecast = outsample_features > 0
+        self.encoder_lstm = nn.LSTM(input_size=insample_features, hidden_size=lstm_hidden_state, batch_first=True,
+                                    dropout=dropout, num_layers=lstm_num_layers,
+                                    proj_size=insample_features - outsample_features)
+
+        if self.use_exogenous_forecast:
+            self.outsample_net = nn.LSTM(input_size=insample_features, hidden_size=lstm_hidden_state,
+                                    batch_first=True,
+                                    dropout=dropout, num_layers=lstm_num_layers,
+                                    proj_size=insample_features - outsample_features)
+        else:
+            # no outsample features, so use generic basis for forecast
+            assert theta_n_dim > 0, "theta_n_dim must be bigger than 0 if no outsample features available"
+            assert forecast_size > 0, "forecast_size must be bigger than 0 if no outsample features available"
+            self.outsample_net = nn.Linear(in_features=insample_features, out_features=forecast_size)
+
+    def transform(self, insample_x_t, outsample_x_t):
+        insample_x_t = insample_x_t.permute(0, 2, 1)
+        outsample_x_t = outsample_x_t.permute(0, 2, 1)
+        backcast_basis, state = self.encoder_lstm(insample_x_t)
+        if self.use_exogenous_forecast:
+            forecast_basis = self.decoder_forward(state, insample_x_t, outsample_x_t)
+        else:
+            forecast_basis = self.outsample_net(outsample_x_t)
+        return backcast_basis.permute(0, 2, 1), forecast_basis.permute(0, 2, 1)
+
+    def decoder_forward(self, state, input_elements, decoder_elements):
+        # inference - pass only predictions to decoder
+        decoder_input = t.cat(
+            [
+                input_elements[:, -1:, :-(decoder_elements.size()[-1])],
+                decoder_elements[:, :1, :]
+            ], -1)
+        pred = None
+        future_seq_len = decoder_elements.size()[-2]
+        for frame in range(future_seq_len):
+            next_pred, state = self.outsample_net(decoder_input, state)
+            pred = t.cat([pred, next_pred[:, -1:, :]], -2) if pred is not None else next_pred[:, -1:, :]
+            if frame < future_seq_len - 1:
+                decoder_input = t.cat(
+                    [
+                        next_pred[:, -1:, :],
+                        decoder_elements[:, (frame + 1):(frame + 2), :]
+                    ], -1)
+        output = pred
+
+        return output
+
+    def forward(self, theta: t.Tensor, insample_x_t: t.Tensor, outsample_x_t: t.Tensor) -> Tuple[t.Tensor, t.Tensor]:
+        if outsample_x_t is not None:
+            backcast_basis, forecast_basis = self.transform(insample_x_t, outsample_x_t)
+            cut_point = forecast_basis.shape[1]
+            backcast = t.einsum('bp,bpt->bt', theta[:, cut_point:], backcast_basis)
+            forecast = t.einsum('bp,bpt->bt', theta[:, :cut_point], forecast_basis)
+        else:
+            cut_point = theta.size(1) // 2
+            backcast_basis, forecast_basis = self.transform(insample_x_t, theta[:, :cut_point])
+            backcast = t.einsum('bp,bpt->bt', theta[:, cut_point:], backcast_basis)
+            forecast = forecast_basis
+
+        return backcast, forecast

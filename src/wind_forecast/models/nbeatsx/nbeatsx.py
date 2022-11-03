@@ -32,7 +32,7 @@ import torch as t
 from wind_forecast.config.register import Config
 from wind_forecast.consts import BatchKeys
 from wind_forecast.models.nbeatsx.nbeatsx_model import ExogenousBasisInterpretable, ExogenousBasisWavenet, \
-    ExogenousBasisTCN, GenericBasis
+    ExogenousBasisTCN, GenericBasis, ExogenousBasisLSTM
 from wind_forecast.models.nbeatsx.nbeatsx_model import NBeatsx, NBeatsBlock, IdentityBasis, TrendBasis, SeasonalityBasis
 from wind_forecast.models.time2vec.Time2Vec import Time2Vec
 from wind_forecast.models.value2vec.Value2Vec import Value2Vec
@@ -242,6 +242,24 @@ class Nbeatsx(pl.LightningModule):
                                                                            self.tcn_channels,
                                                                            dropout_prob=self.dropout,
                                                                            theta_n_dim=2 * self.tcn_channels[-1],
+                                                                           forecast_size=self.future_sequence_length),
+                                                   n_layers=self.n_layers[i],
+                                                   theta_n_hidden=list(self.n_hidden[i]),
+                                                   batch_normalization=batch_normalization_block,
+                                                   dropout_prob=self.dropout,
+                                                   activation=self.activation)
+                    elif self.stack_types[i] == 'exogenous_lstm':
+                        nbeats_block = NBeatsBlock(T=self.past_sequence_length,
+                                                   x_static_n_inputs=self.x_static_n_inputs,
+                                                   x_static_n_hidden=self.x_static_n_hidden,
+                                                   n_insample_t=self.n_insample_t,
+                                                   theta_n_dim=2 * (self.n_insample_t - self.n_outsample_t),
+                                                   basis=ExogenousBasisLSTM(self.n_insample_t,
+                                                                           self.n_outsample_t,
+                                                                           self.config.experiment.lstm_num_layers,
+                                                                           self.config.experiment.lstm_hidden_state,
+                                                                           dropout=self.dropout,
+                                                                           theta_n_dim=2 * (self.n_insample_t - self.n_outsample_t),
                                                                            forecast_size=self.future_sequence_length),
                                                    n_layers=self.n_layers[i],
                                                    theta_n_hidden=list(self.n_hidden[i]),
