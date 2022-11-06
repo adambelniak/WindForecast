@@ -148,7 +148,6 @@ def explore_synop_correlations(data: pd.DataFrame, features: (int, str), localis
     plt.figure(figsize=(20, 10))
     sns.heatmap(data.corr(), annot=True, annot_kws={"fontsize":12})
     plt.savefig(os.path.join(Path(__file__).parent, f"synop_{localisation_name}_heatmap.png"), dpi=200)
-    plt.show()
     plt.close()
 
 
@@ -202,7 +201,7 @@ def explore_synop(synop_file):
         raise Exception(f"CSV file with synop data does not exist at path {synop_file}.")
 
     data = prepare_synop_dataset(synop_file, list(list(zip(*relevant_features))[1]), norm=False,
-                                 dataset_dir=SYNOP_DATASETS_DIRECTORY, from_year=2016, to_year=2022)
+                                 dataset_dir=SYNOP_DATASETS_DIRECTORY, from_year=2016, to_year=2022, decompose_periodic=False)
 
     data["date"] = pd.to_datetime(data[['year', 'month', 'day', 'hour']])
     data = data.rename(columns=dict(zip([f[1] for f in SYNOP_TRAIN_FEATURES], [f[2] for f in SYNOP_TRAIN_FEATURES])))
