@@ -137,5 +137,8 @@ class S2SRegressorWithGFSInput(BaseS2SRegressor):
             'plot_prediction': plot_prediction_series,
             'plot_all_dates': plot_all_dates,
             'plot_prediction_dates': plot_prediction_dates,
-            'plot_gfs_targets': plot_gfs_targets
+            'plot_gfs_targets': plot_gfs_targets,
+            'output_series': output_series,
+            'gfs_targets': gfs_targets,
+            'truth_series': labels_series
         }
