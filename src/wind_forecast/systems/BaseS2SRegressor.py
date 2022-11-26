@@ -117,6 +117,9 @@ class BaseS2SRegressor(pl.LightningModule):
         Union[Optimizer, Tuple[List[Optimizer], List[_LRScheduler]]]
             Single optimizer or a combination of optimizers with learning rate schedulers.
         """
+
+        if self.cfg.optim.optimizer._target_ == 'None':
+            return None
         optimizer: Optimizer = instantiate(
             self.cfg.optim.optimizer,
             params=self.parameters(),
@@ -229,6 +232,10 @@ class BaseS2SRegressor(pl.LightningModule):
         else:
             loss = MASE()
             loss = loss(outputs, targets, past_targets)
+
+        if self.cfg.optim.optimizer._target_ == 'None':
+            return None
+
         return {
             'loss': loss
             # no need to return 'train_mse' here since it is always available as `self.train_mse`
@@ -257,8 +264,9 @@ class BaseS2SRegressor(pl.LightningModule):
         self.train_mase.reset()
 
         # Average additional metrics over all batches
-        for key in outputs[0]:
-            metrics[key] = float(self._reduce(outputs, key).item())
+        if len(outputs) > 0:
+            for key in outputs[0]:
+                metrics[key] = float(self._reduce(outputs, key).item())
 
         self.logger.log_metrics(metrics, step=step)
 
@@ -446,19 +454,23 @@ class BaseS2SRegressor(pl.LightningModule):
         }
 
     def get_series_from_outputs(self, outputs: List[Any]) -> Dict:
-        if self.cfg.experiment.batch_size > 1:
-            prediction_series = [item.cpu() for sublist in [x[BatchKeys.PREDICTIONS.value] for x in outputs] for item in sublist]
-            synop_future_y_series = [item.cpu() for sublist in [x[BatchKeys.SYNOP_FUTURE_Y.value] for x in outputs] for item in sublist]
-            synop_past_y_series = [item.cpu() for sublist in [x[BatchKeys.SYNOP_PAST_Y.value] for x in outputs] for item in sublist]
-            past_dates = [item for sublist in [x[BatchKeys.DATES_PAST.value] for x in outputs] for item in sublist]
-            future_dates = [item for sublist in [x[BatchKeys.DATES_FUTURE.value] for x in outputs] for item in sublist]
-        else:
+        if self.cfg.experiment.batch_size == 1:
             prediction_series = [item.cpu() for item in [x[BatchKeys.PREDICTIONS.value] for x in outputs]]
             synop_future_y_series = [item.cpu() for item in [x[BatchKeys.SYNOP_FUTURE_Y.value] for x in outputs]]
             synop_past_y_series = [item.cpu() for item in [x[BatchKeys.SYNOP_PAST_Y.value] for x in outputs]]
             # mistery - why there are 1-element tuples?
             past_dates = [item[0] for item in [x[BatchKeys.DATES_PAST.value] for x in outputs]]
             future_dates = [item[0] for item in [x[BatchKeys.DATES_FUTURE.value] for x in outputs]]
+        else:
+            prediction_series = [item.cpu() for sublist in [x[BatchKeys.PREDICTIONS.value] for x in outputs] for item in
+                                 sublist]
+            synop_future_y_series = [item.cpu() for sublist in [x[BatchKeys.SYNOP_FUTURE_Y.value] for x in outputs] for
+                                     item in sublist]
+            synop_past_y_series = [item.cpu() for sublist in [x[BatchKeys.SYNOP_PAST_Y.value] for x in outputs] for item
+                                   in sublist]
+            past_dates = [item for sublist in [x[BatchKeys.DATES_PAST.value] for x in outputs] for item in sublist]
+            future_dates = [item for sublist in [x[BatchKeys.DATES_FUTURE.value] for x in outputs] for item in sublist]
+
         prediction_series = np.asarray([np.asarray(el) for el in prediction_series])
         synop_future_y_series = np.asarray([np.asarray(el) for el in synop_future_y_series])
         synop_past_y_series = np.asarray([np.asarray(el) for el in synop_past_y_series])

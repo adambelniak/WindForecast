@@ -6,19 +6,35 @@ from sklearn.linear_model import Ridge
 
 from wind_forecast.config.register import Config
 from wind_forecast.consts import BatchKeys
-
+import numpy as np
 
 class LinearRegression(LightningModule):
     def __init__(self, config: Config) -> None:
         super().__init__()
         self.config = config
         assert config.experiment.use_gfs_data, "Linear regression needs GFS forecasts for modelling"
+        self.regressor = Ridge(max_iter=config.experiment.linear_max_iter,
+                               solver='sag',
+                               alpha=config.experiment.linear_L2_alpha,
+                               tol=1e-6)
+        self.fitted = None
 
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
-        synop_past_observed = batch[BatchKeys.SYNOP_PAST_Y.value].float().numpy()
-        gfs_past_features = batch[BatchKeys.GFS_PAST_X.value].float().numpy()
+        synop_future_observed = batch[BatchKeys.SYNOP_FUTURE_Y.value].float().numpy()
         gfs_future_features = batch[BatchKeys.GFS_FUTURE_X.value].float().numpy()
-        # batch size 1
-        regressor = Ridge().fit(gfs_past_features[0], synop_past_observed[0])
-        return torch.Tensor(regressor.predict(gfs_future_features[0]))
+        synop_future_observed = np.reshape(synop_future_observed, (synop_future_observed.shape[0] * synop_future_observed.shape[1]))
+        gfs_future_features = np.reshape(gfs_future_features, (gfs_future_features.shape[0] * gfs_future_features.shape[1], gfs_future_features.shape[2]))
+
+        if stage in ['fit']:
+            self.fitted = self.regressor.fit(gfs_future_features, synop_future_observed)
+
+        elif self.fitted is None:
+            assert False, "fit stage expected before making predictions"
+
+        predictions = self.fitted.predict(gfs_future_features)
+
+        return torch.Tensor(
+            np.reshape(predictions, (predictions.shape[0] // self.config.experiment.future_sequence_length,
+                                     self.config.experiment.future_sequence_length, 1)))
+
 

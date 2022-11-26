@@ -209,15 +209,15 @@ class Sequence2SequenceDataModule(SplittableDataModule):
         return gfs_data
 
     def train_dataloader(self):
-        return DataLoader(self.dataset_train, batch_size=self.batch_size, shuffle=self.shuffle,
+        return DataLoader(self.dataset_train, batch_size=len(self.dataset_train) if self.batch_size == 0 else self.batch_size, shuffle=self.shuffle,
                           collate_fn=self.collate_fn, num_workers=self.config.experiment.num_workers)
 
     def val_dataloader(self):
-        return DataLoader(self.dataset_val, batch_size=self.batch_size, collate_fn=self.collate_fn,
+        return DataLoader(self.dataset_val, batch_size=len(self.dataset_val) if self.batch_size == 0 else self.batch_size, collate_fn=self.collate_fn,
                           num_workers=self.config.experiment.num_workers)
 
     def test_dataloader(self):
-        return DataLoader(self.dataset_test, batch_size=self.batch_size, collate_fn=self.collate_fn,
+        return DataLoader(self.dataset_test, batch_size=len(self.dataset_test) if self.batch_size == 0 else self.batch_size, collate_fn=self.collate_fn,
                           num_workers=self.config.experiment.num_workers)
 
     def collate_fn(self, x: List[Tuple]):

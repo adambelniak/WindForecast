@@ -1,0 +1,16 @@
+defaults:
+  - schema_tune
+
+params:
+  linear_max_iter:
+    - 1000
+    - 10000
+  linear_L2_alpha:
+    - 0.1
+    - 0.5
+    - 1
+    - 5
+    - 10
+    - 50
+    - 100
+    - 500
