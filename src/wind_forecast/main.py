@@ -67,7 +67,7 @@ def run_tune(cfg: Config):
         for param in cfg.tune.params.keys():
             config_exp[param] = trial.suggest_categorical(param, list(cfg.tune.params[param]))
 
-        if all(tag not in ['ARIMAX', 'SARIMAX'] for tag in cfg.experiment._tags_):
+        if all(tag not in ['ARIMAX', 'SARIMAX', 'LINEAR'] for tag in cfg.experiment._tags_):
             config_exp['dropout'] = trial.suggest_uniform('dropout', 0, 0.8)
             if cfg.experiment.use_value2vec:
                 config_exp['value2vec_embedding_factor'] = trial.suggest_int('value2vec_embedding_factor', 1, 20)
