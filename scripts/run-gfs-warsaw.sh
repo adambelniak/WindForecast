@@ -3,7 +3,7 @@
 python -m wind_forecast.main experiment=nbeatsx_gfs optim=adam experiment.target_parameter=temperature \
 experiment.dropout=0.2 optim.base_lr=0.002 experiment.nbeats_num_blocks=[8,8] experiment.nbeats_num_layers=[8,8] \
 experiment.nbeats_num_hidden=32 experiment.tcn_channels=[32,64] experiment.use_time2vec=False experiment.use_value2vec=False \
-experiment.epochs=20 experiment.num_workers=16
+experiment.epochs=20 experiment.num_workers=16 experiment.resume_checkpoint=wandb://mbelniak/wind-forecast-openstack/model-225mtjos:v0@model.ckpt
 
 python -m wind_forecast.main experiment=nbeatsx_gfs optim=adam experiment.target_parameter=temperature \
 experiment.dropout=0.2 optim.base_lr=0.002 experiment.nbeats_num_blocks=[8,8] experiment.nbeats_num_layers=[8,8] \
@@ -300,10 +300,11 @@ python -m wind_forecast.main experiment=gfs experiment.target_parameter=wind_vel
 python -m wind_forecast.main experiment=gfs experiment.target_parameter=pressure
 
 # linear
-python -m wind_forecast.main experiment=linear experiment.target_parameter=temperature experiment.sequence_length=24 lightning.gpus=0
-python -m wind_forecast.main experiment=linear experiment.target_parameter=wind_velocity experiment.sequence_length=24 lightning.gpus=0
-python -m wind_forecast.main experiment=linear experiment.target_parameter=temperature=pressure experiment.sequence_length=24 lightning.gpus=0
+python -m wind_forecast.main experiment=linear experiment.target_parameter=temperature experiment.sequence_length=24 \
+lightning.gpus=0 experiment.batch_size=0 optim.optimizer._target_=None experiment.linear_max_iter=10000 experiment.linear_L2_alpha=1
 
-python -m wind_forecast.main experiment=linear experiment.target_parameter=temperature experiment.sequence_length=48 lightning.gpus=0
-python -m wind_forecast.main experiment=linear experiment.target_parameter=wind_velocity experiment.sequence_length=48 lightning.gpus=0
-python -m wind_forecast.main experiment=linear experiment.target_parameter=temperature=pressure experiment.sequence_length=48 lightning.gpus=0
+python -m wind_forecast.main experiment=linear experiment.target_parameter=wind_velocity experiment.sequence_length=24 \
+lightning.gpus=0 experiment.batch_size=0 optim.optimizer._target_=None experiment.linear_max_iter=10000 experiment.linear_L2_alpha=1
+
+python -m wind_forecast.main experiment=linear experiment.target_parameter=temperature=pressure experiment.sequence_length=24 \
+lightning.gpus=0 experiment.batch_size=0 optim.optimizer._target_=None experiment.linear_max_iter=10000 experiment.linear_L2_alpha=1
