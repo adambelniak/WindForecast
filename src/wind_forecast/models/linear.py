@@ -13,11 +13,13 @@ class LinearRegression(LightningModule):
         super().__init__()
         self.config = config
         assert config.experiment.use_gfs_data, "Linear regression needs GFS forecasts for modelling"
+        assert config.experiment.batch_size == 0, "Set experiment.batch_size to 0 for LinearRegression model"
+
         self.regressor = Ridge(max_iter=config.experiment.linear_max_iter,
                                solver='sag',
                                alpha=config.experiment.linear_L2_alpha,
                                tol=1e-6)
-        self.fitted = None
+        self.model_fit = None
 
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
         synop_future_observed = batch[BatchKeys.SYNOP_FUTURE_Y.value].float().numpy()
@@ -26,12 +28,12 @@ class LinearRegression(LightningModule):
         gfs_future_features = np.reshape(gfs_future_features, (gfs_future_features.shape[0] * gfs_future_features.shape[1], gfs_future_features.shape[2]))
 
         if stage in ['fit']:
-            self.fitted = self.regressor.fit(gfs_future_features, synop_future_observed)
+            self.model_fit = self.regressor.fit(gfs_future_features, synop_future_observed)
 
-        elif self.fitted is None:
+        elif self.model_fit is None:
             assert False, "fit stage expected before making predictions"
 
-        predictions = self.fitted.predict(gfs_future_features)
+        predictions = self.model_fit.predict(gfs_future_features)
 
         return torch.Tensor(
             np.reshape(predictions, (predictions.shape[0] // self.config.experiment.future_sequence_length,
