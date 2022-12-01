@@ -301,10 +301,20 @@ python -m wind_forecast.main experiment=gfs experiment.target_parameter=pressure
 
 # linear
 python -m wind_forecast.main experiment=linear experiment.target_parameter=temperature experiment.sequence_length=24 \
-lightning.gpus=0 experiment.batch_size=0 optim.optimizer._target_=None experiment.linear_max_iter=10000 experiment.linear_L2_alpha=1
+experiment.skip_validation=True lightning.gpus=0 experiment.batch_size=0 optim.optimizer._target_=None experiment.linear_max_iter=10000 experiment.linear_L2_alpha=1
 
 python -m wind_forecast.main experiment=linear experiment.target_parameter=wind_velocity experiment.sequence_length=24 \
-lightning.gpus=0 experiment.batch_size=0 optim.optimizer._target_=None experiment.linear_max_iter=10000 experiment.linear_L2_alpha=1
+experiment.skip_validation=True lightning.gpus=0 experiment.batch_size=0 optim.optimizer._target_=None experiment.linear_max_iter=10000 experiment.linear_L2_alpha=1
 
 python -m wind_forecast.main experiment=linear experiment.target_parameter=temperature=pressure experiment.sequence_length=24 \
-lightning.gpus=0 experiment.batch_size=0 optim.optimizer._target_=None experiment.linear_max_iter=10000 experiment.linear_L2_alpha=1
+experiment.skip_validation=True lightning.gpus=0 experiment.batch_size=0 optim.optimizer._target_=None experiment.linear_max_iter=10000 experiment.linear_L2_alpha=1
+
+# arimax
+python -m wind_forecast.main experiment=arimax experiment.target_parameter=temperature experiment.sequence_length=24 \
+experiment.skip_validation=True lightning.gpus=0 experiment.batch_size=0 optim.optimizer._target_=None experiment.arima_p=2 experiment.arima_d=1 experiment.arima_q=2
+
+python -m wind_forecast.main experiment=arimax experiment.target_parameter=wind_velocity experiment.sequence_length=24 \
+experiment.skip_validation=True lightning.gpus=0 experiment.batch_size=0 optim.optimizer._target_=None experiment.arima_p=2 experiment.arima_d=1 experiment.arima_q=2
+
+python -m wind_forecast.main experiment=arimax experiment.target_parameter=temperature=pressure experiment.sequence_length=24 \
+experiment.skip_validation=True lightning.gpus=0 experiment.batch_size=0 optim.optimizer._target_=None experiment.arima_p=2 experiment.arima_d=1 experiment.arima_q=2
