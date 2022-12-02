@@ -316,5 +316,5 @@ experiment.skip_validation=True lightning.gpus=0 experiment.batch_size=0 optim.o
 python -m wind_forecast.main experiment=arimax experiment.target_parameter=wind_velocity experiment.sequence_length=24 \
 experiment.skip_validation=True lightning.gpus=0 experiment.batch_size=0 optim.optimizer._target_=None experiment.arima_p=2 experiment.arima_d=1 experiment.arima_q=2
 
-python -m wind_forecast.main experiment=arimax experiment.target_parameter=temperature=pressure experiment.sequence_length=24 \
+python -m wind_forecast.main experiment=arimax experiment.target_parameter=pressure experiment.sequence_length=24 \
 experiment.skip_validation=True lightning.gpus=0 experiment.batch_size=0 optim.optimizer._target_=None experiment.arima_p=2 experiment.arima_d=1 experiment.arima_q=2
