@@ -84,14 +84,15 @@ class GFSUtil:
                                                synop_data_indices: list) -> (list, pd.DataFrame, pd.DataFrame):
         new_synop_indices = []
         gfs_data = pd.DataFrame(columns=[*self.features_names, 'date'])
+        synop_dates_series = synop_data['date']
 
         log.info("Matching GFS with synop data")
 
         for index in tqdm(synop_data_indices):
-            past_dates = synop_data.loc[index:index + self.past_sequence_length - 1]['date']
-            future_dates = synop_data.loc[
-                           index + self.past_sequence_length + self.prediction_offset
-                           :index + self.past_sequence_length + self.prediction_offset + self.future_sequence_length - 1]['date']
+            past_dates = synop_dates_series.loc[index:index + self.past_sequence_length - 1]
+            future_dates = synop_dates_series.loc[
+                               index + self.past_sequence_length + self.prediction_offset
+                               :index + self.past_sequence_length + self.prediction_offset + self.future_sequence_length - 1]
             sequence_dates = pd.concat([past_dates, future_dates])
 
             gfs_values_for_sequence = []
