@@ -36,8 +36,10 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
 
     def setup(self, stage: Optional[str] = None):
         if self.initialized:
+            self.log_dataset_info()
             return
         if self.get_from_cache(stage):
+            self.log_dataset_info()
             return
 
         if self.config.experiment.load_gfs_data:
@@ -74,6 +76,8 @@ class Sequence2SequenceWithCMAXDataModule(Sequence2SequenceDataModule):
             dataset.set_std(self.synop_std)
 
         self.split_dataset(self.config, dataset, self.sequence_length)
+        self.log_dataset_info()
+
         if self.config.experiment._tags_[0] == 'GFS':
             self.eliminate_gfs_bias()
 

@@ -305,3 +305,6 @@ class ExperimentSettings:
     subregion_elon: float = 22
 
     subregion_wlon: float = 20
+
+    # pytorch_forecasting has a bug which calculates scaling in MASE based on future+future sequence instead of past+future sequence
+    rescale_mase: bool = True

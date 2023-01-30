@@ -33,7 +33,7 @@ experiment.epochs=20 experiment.num_workers=16 experiment.sequence_length=48
 python -m wind_forecast.main experiment=lstm_s2s optim=adam experiment.target_parameter=temperature \
 experiment.dropout=0.06 optim.base_lr=0.00005 experiment.lstm_hidden_state=1024 experiment.lstm_num_layers=2 \
 experiment.use_time2vec=False experiment.use_value2vec=False \
-experiment.regressor_head_dims=[64,128,32] experiment.epochs=20 experiment.num_workers=16
+experiment.regressor_head_dims=[64,128,32] experiment.epochs=20 experiment.resume_checkpoint=wandb://mbelniak/wind-forecast-openstack/model-25qu0i7k:v0@model.ckpt
 
 python -m wind_forecast.main experiment=lstm_s2s optim=adam experiment.target_parameter=temperature \
 experiment.dropout=0.06 optim.base_lr=0.00005 experiment.lstm_hidden_state=1024 experiment.lstm_num_layers=2 \

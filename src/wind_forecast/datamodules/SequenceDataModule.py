@@ -52,8 +52,7 @@ class SequenceDataModule(SplittableDataModule):
         coords = config.experiment.target_coords
         self.target_coords = Coords(coords[0], coords[0], coords[1], coords[1])
         self.gfs_util = GFSUtil(self.target_coords, self.sequence_length, 0, self.prediction_offset,
-                                self.gfs_train_params,
-                                self.gfs_target_params)
+                                self.gfs_train_params)
         self.synop_data = ...
         self.synop_data_indices = ...
         self.removed_dataset_indices = []

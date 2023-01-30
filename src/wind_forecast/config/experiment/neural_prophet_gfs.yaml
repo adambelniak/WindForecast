@@ -5,7 +5,7 @@ defaults:
   - schema_experiment
 
 _tags_:
-  - ARIMAX
+  - NEURAL_PROPHET_GFS
 
 resume_checkpoint: ~
 
@@ -13,12 +13,12 @@ datamodule:
   _target_: wind_forecast.datamodules.Sequence2SequenceWithCMAXDataModule.Sequence2SequenceWithCMAXDataModule
 
 model:
-  _target_: wind_forecast.models.Arimax.Arimax
+  _target_: wind_forecast.models.prophet.NeuralProphet.NeuralProphet
 
 system:
   _target_: wind_forecast.systems.S2SRegressorWithGFSInput.S2SRegressorWithGFSInput
 
 use_gfs_data: True
+skip_training: True
 epochs: 1
-batch_size: 0
-shuffle: False
+batch_size: 1

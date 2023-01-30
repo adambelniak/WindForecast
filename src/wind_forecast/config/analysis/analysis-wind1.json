@@ -1,0 +1,32 @@
+{
+  "runs": [
+    {
+      "id": "1fr0jf4a",
+      "axis_label": "LSTM + GFS"
+    },
+    {
+      "id": "mhcp3tvc",
+      "axis_label": "BiLSTM + GFS"
+    },
+    {
+      "id": "2gmoxg7e",
+      "axis_label": "TCN + GFS"
+    },
+    {
+      "id": "2yl4je10",
+      "axis_label": "TCN-Attention + GFS"
+    },
+    {
+      "id": "2yfzbrhg",
+      "axis_label": "Regresja liniowa"
+    },
+    {
+      "id": "1hi7ebds",
+      "axis_label": "ARIMAX + GFS"
+    },
+    {
+      "id": "3pwocqoh",
+      "axis_label": "GFS"
+    }
+  ]
+}

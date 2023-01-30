@@ -76,10 +76,6 @@ class SplittableDataModule(LightningDataModule):
             self.dataset_train, self.dataset_test = datasets
             self.dataset_val = None
 
-        log.info('Dataset train len: ' + str(len(self.dataset_train)))
-        log.info('Dataset val len: ' + ('0' if self.dataset_val is None else str(len(self.dataset_val))))
-        log.info('Dataset test len: ' + str(len(self.dataset_test)))
-
         train_dataset_name = self.get_dataset_name(config, 'fit')
         train_dataset_name_hash = self.hash_string(train_dataset_name)
         val_dataset_name = self.get_dataset_name(config, 'validate')

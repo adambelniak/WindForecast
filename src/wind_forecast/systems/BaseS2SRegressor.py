@@ -1,4 +1,3 @@
-import copy
 import math
 from typing import Union, Tuple, List, Any, Dict
 
@@ -420,6 +419,9 @@ class BaseS2SRegressor(pl.LightningModule):
         series = self.get_series_from_outputs(outputs)
 
         predictions = series[BatchKeys.PREDICTIONS.value]
+        output_series = np.asarray([np.asarray(el) for el in predictions])
+        labels_series = np.asarray([np.asarray(el) for el in series[BatchKeys.SYNOP_FUTURE_Y.value]])
+
         rmse_by_step = np.sqrt(np.mean(np.power(np.subtract(series[BatchKeys.PREDICTIONS.value], series[BatchKeys.SYNOP_FUTURE_Y.value]), 2), axis=0))
         mase_by_step = self.get_mase_by_step(predictions, series[BatchKeys.SYNOP_FUTURE_Y.value], series[BatchKeys.SYNOP_PAST_Y.value])
 
@@ -450,7 +452,9 @@ class BaseS2SRegressor(pl.LightningModule):
             'plot_truth': plot_truth_series,
             'plot_prediction': plot_prediction_series,
             'plot_all_dates': plot_all_dates,
-            'plot_prediction_dates': plot_prediction_dates
+            'plot_prediction_dates': plot_prediction_dates,
+            'output_series': output_series,
+            'truth_series': labels_series
         }
 
     def get_series_from_outputs(self, outputs: List[Any]) -> Dict:
@@ -485,8 +489,11 @@ class BaseS2SRegressor(pl.LightningModule):
 
     def get_mase_by_step(self, prediction_series, truth_series, past_truth_series):
         mase_by_step = []
-        targets = np.concatenate([past_truth_series, truth_series], 1)
-        scaling = abs(targets[:, :-1] - targets[:, 1:]).mean(axis=-1)
+
+        scaling = self.test_mase.calculate_scaling(torch.Tensor(truth_series),
+                                                   torch.ones(truth_series.shape[0], dtype=torch.long) * truth_series.shape[1],
+                                                   torch.Tensor(past_truth_series),
+                                                   torch.ones(past_truth_series.shape[0], dtype=torch.long) * past_truth_series.shape[1]).numpy()
         for step in range(prediction_series.shape[-1]):
             mase_by_step.append(
                 (abs(prediction_series[:, :step + 1] - truth_series[:, :step + 1]).mean(axis=-1) / scaling).mean())

@@ -5,7 +5,12 @@ from wind_forecast.datasets.BaseDataset import BaseDataset
 
 
 class Sequence2SequenceDataset(BaseDataset):
-    'Characterizes a dataset for PyTorch'
+    SYNOP_PAST_Y_INDEX = 0
+    SYNOP_PAST_X_INDEX = 1
+    SYNOP_FUTURE_Y_INDEX = 2
+    SYNOP_FUTURE_X_INDEX = 3
+    DATES_PAST_INDEX = 4
+    DATES_FUTURE_INDEX = 5
 
     def __init__(self, config: Config, synop_data, synop_data_indices, synop_feature_names: List[str]):
         super().__init__()

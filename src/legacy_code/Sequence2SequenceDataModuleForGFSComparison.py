@@ -15,8 +15,10 @@ class Sequence2SequenceDataModuleForGFSComparison(Sequence2SequenceDataModule):
 
     def setup(self, stage: Optional[str] = None):
         if self.initialized:
+            self.log_dataset_info()
             return
         if self.get_from_cache(stage):
+            self.log_dataset_info()
             return
 
         self.prepare_dataset_for_gfs()
@@ -29,3 +31,4 @@ class Sequence2SequenceDataModuleForGFSComparison(Sequence2SequenceDataModule):
         dataset.set_mean(self.synop_mean)
         dataset.set_std(self.synop_std)
         self.split_dataset(self.config, dataset, self.sequence_length)
+        self.log_dataset_info()

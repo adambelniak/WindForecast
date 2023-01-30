@@ -8,7 +8,16 @@ from wind_forecast.util.gfs_util import get_gfs_target_param
 
 
 class Sequence2SequenceWithGFSDataset(BaseDataset):
-    'Characterizes a dataset for PyTorch'
+    SYNOP_PAST_Y_INDEX = 0
+    SYNOP_PAST_X_INDEX = 1
+    SYNOP_FUTURE_Y_INDEX = 2
+    SYNOP_FUTURE_X_INDEX = 3
+    GFS_PAST_X_INDEX = 4
+    GFS_PAST_Y_INDEX = 5
+    GFS_FUTURE_X_INDEX = 6
+    GFS_FUTURE_Y_INDEX = 7
+    DATES_PAST_INDEX = 8
+    DATES_FUTURE_INDEX = 9
 
     def __init__(self, config: Config, synop_data: pd.DataFrame, gfs_data: pd.DataFrame, data_indices: list,
                  synop_feature_names: List[str], gfs_feature_names: List[str]):

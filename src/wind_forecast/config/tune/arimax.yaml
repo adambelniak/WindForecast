@@ -14,4 +14,4 @@ params:
     - 3
 
 trials: 16
-
+shuffle: False

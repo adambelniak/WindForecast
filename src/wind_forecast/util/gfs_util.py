@@ -47,41 +47,42 @@ class GFSUtil:
         self.interpolator = Interpolator(self.target_coords)
         self.gfs_interpolated_loader = GFSInterpolatedLoader(self.target_coords)
 
-    def match_gfs_with_synop_sequence(self, features: Union[list, np.ndarray], targets: list, return_GFS=True):
-        gfs_values = []
-        new_targets = []
-        new_features = []
-        gfs_loader = GFSLoader()
-        removed_indices = []
+    def match_gfs_with_synop_sequence(self, synop_data: pd.DataFrame, synop_data_indices: list) -> (list, pd.DataFrame):
+        new_synop_indices = []
+        gfs_data = pd.DataFrame(columns=[*self.features_names, 'date'])
+        synop_dates_series = synop_data['date']
+
         log.info("Matching GFS with synop data")
 
-        for index, value in tqdm(enumerate(targets)):
-            date = value[0]
-            gfs_date, gfs_offset, mod_offset = get_forecast_date_and_offset_for_prediction_date(date,
-                                                                                                self.prediction_offset)
-            gfs_date_key = gfs_loader.get_date_key(gfs_date)
+        for index in tqdm(synop_data_indices):
+            sequence_dates = synop_dates_series.loc[index:index + self.past_sequence_length - 1]
 
-            # check if there are forecasts available
-            if all(gfs_loader.get_gfs_image(gfs_date_key, param, gfs_offset) is not None for param in
-                   self.train_params):
-                if return_GFS:
-                    val = []
+            gfs_values_for_sequence = []
+            all_values_available = True
+            for sequence_index, date in enumerate(sequence_dates):
+                if len(gfs_data[gfs_data['date'] == date]) > 0:
+                    continue
 
-                    for param in self.train_params:
-                        val.append(self.interpolator(gfs_loader.get_gfs_image(gfs_date_key, param, gfs_offset)))
+                if len(gfs_values_for_sequence) == 0:
+                    # match GFS params for past sequences
+                    gfs_values_for_past_sequence = self.get_next_gfs_values(sequence_dates, self.train_params, False)
+                    if gfs_values_for_past_sequence is None:
+                        all_values_available = False
+                        break
+                    gfs_values_for_sequence = gfs_values_for_past_sequence
 
-                    gfs_values.append(val)
-                new_targets.append(value[1])
-                new_features.append(features[index])
-            else:
-                removed_indices.append(index)
+                gfs_values = gfs_values_for_sequence[sequence_index]
+                gfs_values = np.append(gfs_values, date)
+                absolute_index = synop_data[synop_data['date'] == date].index[0]
+                gfs_data.loc[absolute_index] = gfs_values
 
-        if return_GFS:
-            return np.array(new_features), np.array(gfs_values), np.array(new_targets), removed_indices
-        return np.array(new_features), np.array(new_targets), removed_indices
+            if all_values_available:
+                new_synop_indices.append(index)
+        gfs_data[self.features_names] = gfs_data[self.features_names].astype(float)
+        return new_synop_indices, gfs_data
 
     def match_gfs_with_synop_sequence2sequence(self, synop_data: pd.DataFrame,
-                                               synop_data_indices: list) -> (list, pd.DataFrame, pd.DataFrame):
+                                               synop_data_indices: list) -> (list, pd.DataFrame):
         new_synop_indices = []
         gfs_data = pd.DataFrame(columns=[*self.features_names, 'date'])
         synop_dates_series = synop_data['date']
@@ -169,6 +170,9 @@ class GFSUtil:
                     break
             elif index == 2:
                 return None
+
+        if len(x_values) < 2:
+            return None
 
         for index, param in enumerate(gfs_params):
             if param['interpolation'] == 'polynomial':

@@ -1,42 +1,39 @@
+import errno
 import math
+import os
 from enum import Enum
 from pathlib import Path
-from typing import Sequence
-import os
+from typing import Sequence, Tuple
+
 import numpy as np
 import torch
 import wandb
-from pytorch_lightning.loggers import WandbLogger
-from torch.utils.data import Subset, random_split, Dataset
+from torch.utils.data import Subset, random_split
 from torch.utils.data.dataset import T_co
 from tqdm import tqdm
 from wandb.sdk.wandb_run import Run
-import errno
 
+from wind_forecast.datasets.BaseDataset import BaseDataset
 from wind_forecast.util.logging import log
 
 
 class CustomSubset(Subset):
+    dataset: BaseDataset
 
-    def __init__(self, dataset: Dataset[T_co], indices: Sequence[int]) -> None:
+    def __init__(self, dataset: BaseDataset, indices: Sequence[int]) -> None:
         super().__init__(dataset, indices)
 
 
-def basic_split_randomly(dataset, val_split: float, test_split: float):
+def basic_split_randomly(dataset, val_split: float, test_split: float) -> Tuple[CustomSubset, ...]:
     length = len(dataset)
-    train_dataset, test_dataset = random_split(dataset, [length - (int(length * test_split)), int(length * test_split)])
-    if val_split == 0:
-        return train_dataset, test_dataset
-    length = len(train_dataset)
-    train_dataset, val_dataset = random_split(dataset, [length - (int(length * val_split)), int(length * val_split)])
-    return train_dataset, val_dataset, test_dataset
+    test_length = int(length * test_split)
+    val_length = int((length - test_length) * val_split)
+    train_length = length - val_length - test_length
+    return tuple(random_split(dataset, [train_length, val_length, test_length]))
 
 
-def sequence_aware_split_randomly(dataset, val_split: float, test_split: float, chunk_length: int,
-                                  sequence_length: int):
-    if test_split == 0:
-        return dataset
-
+def sequence_aware_split_randomly(dataset: BaseDataset, val_split: float, test_split: float, chunk_length: int,
+                                  sequence_length: int) -> Tuple[CustomSubset, ...]:
     def do_random_choice(train_indexes, test_indexes, test_indexes_to_choose_from, choice_length):
         index = np.random.choice(test_indexes_to_choose_from)
 
@@ -96,8 +93,8 @@ def sequence_aware_split_randomly(dataset, val_split: float, test_split: float, 
     return CustomSubset(dataset, train_indexes), CustomSubset(dataset, val_indexes), CustomSubset(dataset, test_indexes)
 
 
-def split_dataset(dataset, val_split=0, test_split=0.2, chunk_length=20, split_mode: str = 'random',
-                  sequence_length=None):
+def split_dataset(dataset, val_split=0.2, test_split=0.2, chunk_length=20, split_mode: str = 'random',
+                  sequence_length=None) -> Tuple[CustomSubset, ...]:
     if split_mode == 'random':
         """ Splits dataset in a random manner and ensures, that for sequential processing
             there will be no frames from a training dataset in a validation dataset by choosing chunk_length consecutive samples
@@ -161,7 +158,7 @@ def get_pretrained_artifact_path(pretrained_artifact: str):
 def get_pretrained_state_dict(pretrained_artifact_path: str):
     checkpoint = torch.load(pretrained_artifact_path)
     state_dict = checkpoint['state_dict']
-    state_dict = {k.partition('model.')[2]:state_dict[k] for k in state_dict.keys()}
+    state_dict = {k.partition('model.')[2]: state_dict[k] for k in state_dict.keys()}
     return state_dict
 
 

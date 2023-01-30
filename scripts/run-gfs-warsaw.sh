@@ -306,7 +306,7 @@ experiment.skip_validation=True lightning.gpus=0 experiment.batch_size=0 optim.o
 python -m wind_forecast.main experiment=linear experiment.target_parameter=wind_velocity experiment.sequence_length=24 \
 experiment.skip_validation=True lightning.gpus=0 experiment.batch_size=0 optim.optimizer._target_=None experiment.linear_max_iter=10000 experiment.linear_L2_alpha=1
 
-python -m wind_forecast.main experiment=linear experiment.target_parameter=temperature=pressure experiment.sequence_length=24 \
+python -m wind_forecast.main experiment=linear experiment.target_parameter=pressure experiment.sequence_length=24 \
 experiment.skip_validation=True lightning.gpus=0 experiment.batch_size=0 optim.optimizer._target_=None experiment.linear_max_iter=10000 experiment.linear_L2_alpha=1
 
 # arimax

@@ -22,3 +22,4 @@ use_gfs_data: False
 skip_training: True
 epochs: 1
 batch_size: 1
+shuffle: False

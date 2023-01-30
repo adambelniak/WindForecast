@@ -3,12 +3,13 @@ from itertools import chain
 from pathlib import Path
 from typing import Optional, Tuple, List
 
+import matplotlib.pyplot as plt
 import pandas as pd
+import seaborn as sns
 from torch.utils.data import DataLoader
 from torch.utils.data.dataloader import default_collate
 from tqdm import tqdm
-import matplotlib.pyplot as plt
-import seaborn as sns
+
 from gfs_archive_0_25.gfs_processor.Coords import Coords
 from synop.consts import SYNOP_PERIODIC_FEATURES
 from wind_forecast.config.register import Config
@@ -122,8 +123,10 @@ class Sequence2SequenceDataModule(SplittableDataModule):
 
     def setup(self, stage: Optional[str] = None):
         if self.initialized:
+            self.log_dataset_info()
             return
         if self.get_from_cache(stage):
+            self.log_dataset_info()
             return
 
         if self.config.experiment.load_gfs_data:
@@ -142,6 +145,8 @@ class Sequence2SequenceDataModule(SplittableDataModule):
         dataset.set_mean(self.synop_mean)
         dataset.set_std(self.synop_std)
         self.split_dataset(self.config, dataset, self.sequence_length)
+        self.log_dataset_info()
+
         if self.config.experiment._tags_[0] == 'GFS':
             self.eliminate_gfs_bias()
 
@@ -224,19 +229,19 @@ class Sequence2SequenceDataModule(SplittableDataModule):
         variables, dates = [item[:-2] for item in x], [item[-2:] for item in x]
         all_data = [*default_collate(variables), *list(zip(*dates))]
         dict_data = {
-            BatchKeys.SYNOP_PAST_Y.value: all_data[0],
-            BatchKeys.SYNOP_PAST_X.value: all_data[1],
-            BatchKeys.SYNOP_FUTURE_Y.value: all_data[2],
-            BatchKeys.SYNOP_FUTURE_X.value: all_data[3]
+            BatchKeys.SYNOP_PAST_Y.value: all_data[self.dataset_train.dataset.SYNOP_PAST_Y_INDEX],
+            BatchKeys.SYNOP_PAST_X.value: all_data[self.dataset_train.dataset.SYNOP_PAST_X_INDEX],
+            BatchKeys.SYNOP_FUTURE_Y.value: all_data[self.dataset_train.dataset.SYNOP_FUTURE_Y_INDEX],
+            BatchKeys.SYNOP_FUTURE_X.value: all_data[self.dataset_train.dataset.SYNOP_FUTURE_X_INDEX]
         }
 
         if self.config.experiment.load_gfs_data:
-            dict_data[BatchKeys.GFS_PAST_X.value] = all_data[4]
-            dict_data[BatchKeys.GFS_PAST_Y.value] = all_data[5]
-            dict_data[BatchKeys.GFS_FUTURE_X.value] = all_data[6]
-            dict_data[BatchKeys.GFS_FUTURE_Y.value] = all_data[7]
-            dict_data[BatchKeys.DATES_PAST.value] = all_data[8]
-            dict_data[BatchKeys.DATES_FUTURE.value] = all_data[9]
+            dict_data[BatchKeys.GFS_PAST_X.value] = all_data[self.dataset_train.dataset.GFS_PAST_X_INDEX]
+            dict_data[BatchKeys.GFS_PAST_Y.value] = all_data[self.dataset_train.dataset.GFS_PAST_Y_INDEX]
+            dict_data[BatchKeys.GFS_FUTURE_X.value] = all_data[self.dataset_train.dataset.GFS_FUTURE_X_INDEX]
+            dict_data[BatchKeys.GFS_FUTURE_Y.value] = all_data[self.dataset_train.dataset.GFS_FUTURE_Y_INDEX]
+            dict_data[BatchKeys.DATES_PAST.value] = all_data[self.dataset_train.dataset.DATES_PAST_INDEX]
+            dict_data[BatchKeys.DATES_FUTURE.value] = all_data[self.dataset_train.dataset.DATES_FUTURE_INDEX]
             if self.config.experiment.differential_forecast:
                 target_mean = self.dataset_train.dataset.mean[self.target_param]
                 target_std = self.dataset_train.dataset.std[self.target_param]
@@ -250,8 +255,8 @@ class Sequence2SequenceDataModule(SplittableDataModule):
                 dict_data[BatchKeys.GFS_SYNOP_FUTURE_DIFF.value] = diff_future / target_std
 
         else:
-            dict_data[BatchKeys.DATES_PAST.value] = all_data[4]
-            dict_data[BatchKeys.DATES_FUTURE.value] = all_data[5]
+            dict_data[BatchKeys.DATES_PAST.value] = all_data[self.dataset_train.dataset.DATES_PAST_INDEX]
+            dict_data[BatchKeys.DATES_FUTURE.value] = all_data[self.dataset_train.dataset.DATES_FUTURE_INDEX]
         return dict_data
 
     def synop_decompose(self):
@@ -304,3 +309,21 @@ class Sequence2SequenceDataModule(SplittableDataModule):
         bias = real_diff.mean(axis=0)
         real_gfs_targets = self.dataset_test.dataset.gfs_data[self.gfs_target_param] * target_std + target_mean
         self.dataset_test.dataset.gfs_data[self.gfs_target_param] = (real_gfs_targets + bias - target_mean) / target_std
+
+    def log_dataset_info(self):
+        log.info('Dataset train len: ' + str(len(self.dataset_train)))
+        log.info('Dataset val len: ' + ('0' if self.dataset_val is None else str(len(self.dataset_val))))
+        log.info('Dataset test len: ' + str(len(self.dataset_test)))
+
+        log.info('Dataset train first date: ' +
+                 str(self.dataset_train.dataset[self.dataset_train.indices[0]][self.dataset_train.dataset.DATES_PAST_INDEX][0]))
+        log.info('Dataset train last date: ' +
+                 str(self.dataset_train.dataset[self.dataset_train.indices[-1]][self.dataset_train.dataset.DATES_PAST_INDEX][-1]))
+        log.info('Dataset val first date: ' +
+                 str(self.dataset_val.dataset[self.dataset_val.indices[0]][self.dataset_val.dataset.DATES_PAST_INDEX][0]))
+        log.info('Dataset val last date: ' +
+                 str(self.dataset_val.dataset[self.dataset_val.indices[-1]][self.dataset_val.dataset.DATES_PAST_INDEX][-1]))
+        log.info('Dataset test first date: ' +
+                 str(self.dataset_test.dataset[self.dataset_test.indices[0]][self.dataset_test.dataset.DATES_PAST_INDEX][0]))
+        log.info('Dataset test last date: ' +
+                 str(self.dataset_test.dataset[self.dataset_test.indices[-1]][self.dataset_test.dataset.DATES_PAST_INDEX][-1]))

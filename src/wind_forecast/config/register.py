@@ -30,7 +30,7 @@ class Config:
         {'lightning': 'default'},
         {'optim': 'adam'},
         {'tune': 'sarimax'},
-        {'analysis': 'analysis-temperature'},
+        {'analysis': 'analysis-temperature-full'},
         {'override hydra/job_logging': 'rich'},
         {'override hydra/hydra_logging': 'rich'},
     ])
