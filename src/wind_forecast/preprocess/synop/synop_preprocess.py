@@ -35,6 +35,12 @@ def prepare_synop_dataset(synop_file_name: str, features: list, norm=True,
 
     data = pd.read_csv(synop_file_path, usecols=features + ['year', 'month', 'day', 'hour'])
     data = data.dropna()
+    if synop_file_name == 'WARSZAWA-OKECIE_352200375_data.csv':
+        incorrect_gusts = data[data[GUST_COLUMN[1]] >= 22]
+        incorrect_gusts = incorrect_gusts[incorrect_gusts[VELOCITY_COLUMN[1]] < 2]
+        for index in incorrect_gusts.index:
+            data.loc[index][GUST_COLUMN[1]] = data.loc[index-1][GUST_COLUMN[1]]
+
     features_to_check_for_zero_series = [feature for feature in features if feature in [
         VISIBILITY[1],
         DIRECTION_COLUMN[1],

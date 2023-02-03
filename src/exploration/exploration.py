@@ -1,5 +1,4 @@
 import argparse
-import re
 from pathlib import Path
 from typing import Tuple, List
 
@@ -15,7 +14,6 @@ from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
 
 from gfs_archive_0_25.gfs_processor.Coords import Coords
 from gfs_archive_0_25.gfs_processor.own_logger import get_logger
-from gfs_archive_0_25.utils import prep_zeros_if_needed
 from wind_forecast.consts import SYNOP_DATASETS_DIRECTORY
 from synop.consts import SYNOP_TRAIN_FEATURES, TEMPERATURE, VELOCITY_COLUMN, PRESSURE, DIRECTION_COLUMN
 from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset
@@ -253,13 +251,13 @@ def explore_synop_patterns(data: pd.DataFrame, features: (int, str), localisatio
         plt.savefig(os.path.join(plot_dir, 'plot-box.png'))
         plt.close()
         #
-        # stationarity_test = adfuller(values)
-        # print(f"Stationarity test for {feature[1]}")
-        # print('ADF Statistic: %f' % stationarity_test[0])
-        # print('p-value: %f' % stationarity_test[1])
-        # print('Critical Values:')
-        # for key, value in stationarity_test[4].items():
-        #     print('\t%s: %.3f' % (key, value))
+        stationarity_test = adfuller(values)
+        print(f"Stationarity test for {feature[1]}")
+        print('ADF Statistic: %f' % stationarity_test[0])
+        print('p-value: %f' % stationarity_test[1])
+        print('Critical Values:')
+        for key, value in stationarity_test[4].items():
+            print('\t%s: %.3f' % (key, value))
 
         _, ax = plt.subplots(figsize=(30, 15))
         ax.set_xlabel('Data', fontsize=38)
@@ -281,9 +279,6 @@ def explore_synop_patterns(data: pd.DataFrame, features: (int, str), localisatio
         os.makedirs(plot_dir, exist_ok=True)
         plt.savefig(os.path.join(plot_dir, 'plot-line2.png'))
         plt.close()
-
-        for index, value in data[data[feature[2]] >= 30].iterrows():
-            logger.info(f"Value for date {value['date']}: {value[feature[2]]}")
 
     if len(features_with_nans):
         logger.info(f"Nans in features:\n {[f'{feature}, ' for feature in features_with_nans]}")
@@ -393,10 +388,10 @@ def main():
         all_synop_data = resolve_indices(synop_data, data_indices, 48)
         gfs_data, feature_names = prepare_gfs_data_with_wind_components(gfs_data, gfs_util.features_names)
 
-        # explore_data_for_each_gfs_param(gfs_data, feature_names)
-        # explore_gfs_correlations()
+        explore_data_for_each_gfs_param(gfs_data, feature_names)
+        explore_gfs_correlations()
         explore_gfs_bias(all_synop_data, gfs_data)
-    # explore_synop(args.synop_csv)
+    explore_synop(args.synop_csv)
 
 
 if __name__ == "__main__":
