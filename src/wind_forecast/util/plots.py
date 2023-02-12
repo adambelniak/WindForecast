@@ -1,6 +1,8 @@
 import os
 
 import wandb
+
+from synop.consts import LOWER_CLOUDS, CLOUD_COVER, CLOUD_COVER_MAX
 from wind_forecast.config.register import Config
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
@@ -14,6 +16,9 @@ def plot_results(system, config: Config, mean, std):
 
 
 def rescale_series(config: Config, series, mean, std):
+    if config.experiment.target_parameter in [LOWER_CLOUDS[1], CLOUD_COVER[1]]:
+        # These series are already properly scaled
+        return series
     if mean is not None and std is not None:
         # TODO think about a more robust solution
         if type(mean) == list:

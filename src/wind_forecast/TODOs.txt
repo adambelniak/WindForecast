@@ -1,3 +1,5 @@
 maybe better autoencoder for cmax
 wavelet denoising of inputs?
 encoding of current weather, e.g. one hot or some learnable
+check models trained without synop data (only target param)
+check teacher forcing for spacetimeformer and try to improve it overall

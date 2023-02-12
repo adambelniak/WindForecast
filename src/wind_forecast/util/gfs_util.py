@@ -504,7 +504,8 @@ def get_gfs_target_param(target_param: str):
     return {
             'temperature': 'TMP_HTGL_2',
             'wind_velocity': 'wind-velocity',
-            'pressure': 'PRES_SFC_0'
+            'pressure': 'PRES_SFC_0',
+            'lower_clouds': 'T CDC_LCY_0'
         }[target_param]
 
 

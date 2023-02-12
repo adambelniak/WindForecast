@@ -7,7 +7,7 @@ from omegaconf.omegaconf import MISSING
 
 # Experiment settings validation schema & default values
 
-from synop.consts import SYNOP_TRAIN_FEATURES, SYNOP_PERIODIC_FEATURES
+from synop.consts import SYNOP_TRAIN_FEATURES, SYNOP_PERIODIC_FEATURES, TEMPERATURE
 from wind_forecast.util.common_util import NormalizationType
 
 
@@ -134,7 +134,7 @@ class ExperimentSettings:
     # pass alone target on input to see if model is capable of reproducing it
     self_output_test: bool = False
 
-    target_parameter: str = "temperature"
+    target_parameter: str = TEMPERATURE[1]
 
     differential_forecast: bool = False
 
@@ -156,6 +156,11 @@ class ExperimentSettings:
     future_sequence_length: int = 24
 
     target_coords: Any = (52.1831174, 20.9875259)
+
+    # e.g. for clouds - each octant is another class 0-9
+    categorical_experiment: bool = False
+
+    classes: int = 0
 
     # ----------------------------------------------------------------------------------------------
     # Model settings
@@ -280,7 +285,7 @@ class ExperimentSettings:
     # ----------------------------------------------------------------------------------------------
 
     linear_max_iter: int = 1000
-    linear_L2_alpha: float = 50
+    linear_L2_alpha: float = 1
 
     # ----------------------------------------------------------------------------------------------
     # Embedding settings

@@ -80,3 +80,5 @@ SYNOP_PERIODIC_FEATURES = [
         'max': 360
     }
 ]
+
+CLOUD_COVER_MAX = 9

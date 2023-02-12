@@ -225,12 +225,12 @@ def plot_acf_and_pacf(data: pd.DataFrame, feature: Tuple, plot_dir: str):
     logger.info(f"Resulting acf for differenced parameter {feature[1]}: {result_diff_acf}")
     logger.info(f"Resulting pacf for differenced parameter {feature[1]}: {result_diff_pacf}")
 
-    fig = plot_acf(differenced, lags=10, fft=True, title=f"Autokorelacja - {feature[2]}")
+    fig = plot_acf(differenced, lags=10, fft=True, title=f"Autokorelacja - {feature[2]}", alpha=.05, zero=False)
     plt.savefig(os.path.join(plot_dir, 'plot-acf.png'))
     plt.close(fig)
 
-    fig = plot_pacf(differenced, lags=10)
-    plt.savefig(os.path.join(plot_dir, 'plot-pacf.png'), title=f"Częściowa autokorelacja - {feature[2]}")
+    fig = plot_pacf(differenced, lags=10, alpha=.05, title=f"Częściowa autokorelacja - {feature[2]}", zero=False)
+    plt.savefig(os.path.join(plot_dir, 'plot-pacf.png'))
     plt.close(fig)
 
 
@@ -244,29 +244,29 @@ def explore_synop_patterns(data: pd.DataFrame, features: (int, str), localisatio
 
         plot_dir = os.path.join('plots-synop', localisation_name, feature[1])
         values = data[feature[2]].to_numpy()
-        if np.isnan(np.sum(values)):
-            features_with_nans.append(feature[2])
-        sns.boxplot(x=values).set_title(f"{feature[2]}")
-        os.makedirs(plot_dir, exist_ok=True)
-        plt.savefig(os.path.join(plot_dir, 'plot-box.png'))
-        plt.close()
+        # if np.isnan(np.sum(values)):
+        #     features_with_nans.append(feature[2])
+        # sns.boxplot(x=values).set_title(f"{feature[2]}")
+        # os.makedirs(plot_dir, exist_ok=True)
+        # plt.savefig(os.path.join(plot_dir, 'plot-box.png'))
+        # plt.close()
+        # #
+        # stationarity_test = adfuller(values)
+        # print(f"Stationarity test for {feature[1]}")
+        # print('ADF Statistic: %f' % stationarity_test[0])
+        # print('p-value: %f' % stationarity_test[1])
+        # print('Critical Values:')
+        # for key, value in stationarity_test[4].items():
+        #     print('\t%s: %.3f' % (key, value))
         #
-        stationarity_test = adfuller(values)
-        print(f"Stationarity test for {feature[1]}")
-        print('ADF Statistic: %f' % stationarity_test[0])
-        print('p-value: %f' % stationarity_test[1])
-        print('Critical Values:')
-        for key, value in stationarity_test[4].items():
-            print('\t%s: %.3f' % (key, value))
-
-        _, ax = plt.subplots(figsize=(30, 15))
-        ax.set_xlabel('Data', fontsize=38)
-        ax.set_ylabel(feature[2], fontsize=38)
-        ax.tick_params(axis='both', which='major', labelsize=34)
-        sns.lineplot(ax=ax, data=data[['date', feature[2]]], x='date', y=feature[2])
-        os.makedirs(plot_dir, exist_ok=True)
-        plt.savefig(os.path.join(plot_dir, 'plot-line.png'))
-        plt.close()
+        # _, ax = plt.subplots(figsize=(30, 15))
+        # ax.set_xlabel('Data', fontsize=38)
+        # ax.set_ylabel(feature[2], fontsize=38)
+        # ax.tick_params(axis='both', which='major', labelsize=34)
+        # sns.lineplot(ax=ax, data=data[['date', feature[2]]], x='date', y=feature[2])
+        # os.makedirs(plot_dir, exist_ok=True)
+        # plt.savefig(os.path.join(plot_dir, 'plot-line.png'))
+        # plt.close()
 
         plot_acf_and_pacf(data, feature, plot_dir)
 

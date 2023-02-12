@@ -1,8 +1,10 @@
 from typing import Dict
 
+import numpy as np
 import pandas as pd
 from statsmodels.tsa.seasonal import STL
 
+from synop.consts import CLOUD_COVER, LOWER_CLOUDS, CLOUD_COVER_MAX
 from wind_forecast.util.common_util import NormalizationType
 
 
@@ -15,8 +17,8 @@ def resolve_indices(data: pd.DataFrame, indices: [int], length_of_sequence) -> p
 
 
 def normalize_data_for_training(data: pd.DataFrame, data_indices: [int], features: [str],
-                                      length_of_sequence: int, normalization_type: NormalizationType
-                                      = NormalizationType.STANDARD) -> (pd.DataFrame, Dict, Dict):
+                                      length_of_sequence: int,
+                                      normalization_type: NormalizationType = NormalizationType.STANDARD) -> (pd.DataFrame, Dict, Dict):
     all_relevant_data = resolve_indices(data, data_indices, length_of_sequence)
     final_data = pd.DataFrame()
     mean_or_min_to_return = {}
@@ -24,7 +26,12 @@ def normalize_data_for_training(data: pd.DataFrame, data_indices: [int], feature
     for feature in features:
         series_to_normalize = all_relevant_data[feature]
 
-        values, mean_or_min, std_or_max = get_normalization_values(series_to_normalize, normalization_type)
+        if feature in [LOWER_CLOUDS[1], CLOUD_COVER[1]]:
+            mean_or_min = 0
+            std_or_max = CLOUD_COVER_MAX
+            values = np.array(series_to_normalize.values) / std_or_max
+        else:
+            values, mean_or_min, std_or_max = get_normalization_values(series_to_normalize, normalization_type)
         final_data[feature] = values
         mean_or_min_to_return[feature] = mean_or_min
         std_or_max_to_return[feature] = std_or_max

@@ -88,6 +88,8 @@ class Nbeatsx(pl.LightningModule):
         self.n_polynomials = 0
         self.exogenous_n_channels = config.experiment.nbeats_exogenous_n_channels
         self.tcn_channels = config.experiment.tcn_channels
+        self.categorical_experiment = self.config.experiment.categorical_experiment
+        self.classes = self.config.experiment.classes
 
         # Regularization and optimization parameters
         self.batch_normalization = True
@@ -140,7 +142,7 @@ class Nbeatsx(pl.LightningModule):
 
         block_list = self.create_stacks()
 
-        self.model = NBeatsx(t.nn.ModuleList(block_list))
+        self.model = NBeatsx(t.nn.ModuleList(block_list), classes=self.classes)
 
         if config.experiment.use_pretrained_artifact and type(self).__name__ is "Nbeatsx":
             pretrained_autoencoder_path = get_pretrained_artifact_path(config.experiment.pretrained_artifact)
@@ -178,7 +180,8 @@ class Nbeatsx(pl.LightningModule):
                                                    theta_n_hidden=list(self.n_hidden[i]),
                                                    batch_normalization=batch_normalization_block,
                                                    dropout_prob=self.dropout,
-                                                   activation=self.activation)
+                                                   activation=self.activation,
+                                                   classes=self.classes)
                     elif self.stack_types[i] == 'trend':
                         nbeats_block = NBeatsBlock(T=self.past_sequence_length,
                                                    x_static_n_inputs=self.x_static_n_inputs,
@@ -192,7 +195,8 @@ class Nbeatsx(pl.LightningModule):
                                                    theta_n_hidden=list(self.n_hidden[i]),
                                                    batch_normalization=batch_normalization_block,
                                                    dropout_prob=self.dropout,
-                                                   activation=self.activation)
+                                                   activation=self.activation,
+                                                   classes=self.classes)
                     elif self.stack_types[i] == 'identity':
                         nbeats_block = NBeatsBlock(T=self.past_sequence_length,
                                                    x_static_n_inputs=self.x_static_n_inputs,
@@ -205,7 +209,8 @@ class Nbeatsx(pl.LightningModule):
                                                    theta_n_hidden=list(self.n_hidden[i]),
                                                    batch_normalization=batch_normalization_block,
                                                    dropout_prob=self.dropout,
-                                                   activation=self.activation)
+                                                   activation=self.activation,
+                                                   classes=self.classes)
                     elif self.stack_types[i] == 'generic':
                         nbeats_block = NBeatsBlock(T=self.past_sequence_length,
                                                    x_static_n_inputs=self.x_static_n_inputs,
@@ -213,12 +218,14 @@ class Nbeatsx(pl.LightningModule):
                                                    n_insample_t=self.n_insample_t,
                                                    theta_n_dim=self.past_sequence_length + self.future_sequence_length,
                                                    basis=GenericBasis(backcast_size=self.past_sequence_length,
-                                                                      forecast_size=self.future_sequence_length),
+                                                                      forecast_size=self.future_sequence_length,
+                                                                      classes=self.classes),
                                                    n_layers=self.n_layers[i],
                                                    theta_n_hidden=list(self.n_hidden[i]),
                                                    batch_normalization=batch_normalization_block,
                                                    dropout_prob=self.dropout,
-                                                   activation=self.activation)
+                                                   activation=self.activation,
+                                                   classes=self.classes)
                     elif self.stack_types[i] == 'exogenous':
                         nbeats_block = NBeatsBlock(T=self.past_sequence_length,
                                                    x_static_n_inputs=self.x_static_n_inputs,
@@ -230,7 +237,8 @@ class Nbeatsx(pl.LightningModule):
                                                    theta_n_hidden=list(self.n_hidden[i]),
                                                    batch_normalization=batch_normalization_block,
                                                    dropout_prob=self.dropout,
-                                                   activation=self.activation)
+                                                   activation=self.activation,
+                                                   classes=self.classes)
                     elif self.stack_types[i] == 'exogenous_tcn':
                         nbeats_block = NBeatsBlock(T=self.past_sequence_length,
                                                    x_static_n_inputs=self.x_static_n_inputs,
@@ -242,12 +250,14 @@ class Nbeatsx(pl.LightningModule):
                                                                            self.tcn_channels,
                                                                            dropout_prob=self.dropout,
                                                                            theta_n_dim=2 * self.tcn_channels[-1],
-                                                                           forecast_size=self.future_sequence_length),
+                                                                           forecast_size=self.future_sequence_length,
+                                                                           classes=self.classes),
                                                    n_layers=self.n_layers[i],
                                                    theta_n_hidden=list(self.n_hidden[i]),
                                                    batch_normalization=batch_normalization_block,
                                                    dropout_prob=self.dropout,
-                                                   activation=self.activation)
+                                                   activation=self.activation,
+                                                   classes=self.classes)
                     elif self.stack_types[i] == 'exogenous_lstm':
                         nbeats_block = NBeatsBlock(T=self.past_sequence_length,
                                                    x_static_n_inputs=self.x_static_n_inputs,
@@ -265,7 +275,8 @@ class Nbeatsx(pl.LightningModule):
                                                    theta_n_hidden=list(self.n_hidden[i]),
                                                    batch_normalization=batch_normalization_block,
                                                    dropout_prob=self.dropout,
-                                                   activation=self.activation)
+                                                   activation=self.activation,
+                                                   classes=self.classes)
                     elif self.stack_types[i] == 'exogenous_wavenet':
                         nbeats_block = NBeatsBlock(T=self.past_sequence_length,
                                                    x_static_n_inputs=self.x_static_n_inputs,
@@ -277,7 +288,8 @@ class Nbeatsx(pl.LightningModule):
                                                    theta_n_hidden=list(self.n_hidden[i]),
                                                    batch_normalization=batch_normalization_block,
                                                    dropout_prob=self.dropout,
-                                                   activation=self.activation)
+                                                   activation=self.activation,
+                                                   classes=self.classes)
                     else:
                         assert 1 < 0, f'Block type not found!'
                 # Select type of evaluation and apply it to all layers of block
@@ -289,6 +301,8 @@ class Nbeatsx(pl.LightningModule):
     def forward(self, batch: Dict[str, t.Tensor], epoch: int, stage=None) -> t.Tensor:
         insample_elements, outsample_elements = self.get_embeddings(batch)
         synop_past_targets = batch[BatchKeys.SYNOP_PAST_Y.value].float()
+        if self.categorical_experiment:
+            synop_past_targets = t.repeat_interleave(synop_past_targets, self.classes, -1)
 
         # No static features in my case
         return self.model(x_static=t.Tensor([]), insample_y=synop_past_targets,

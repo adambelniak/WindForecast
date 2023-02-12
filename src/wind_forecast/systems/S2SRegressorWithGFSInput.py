@@ -42,12 +42,18 @@ class S2SRegressorWithGFSInput(BaseS2SRegressor):
             targets = batch[BatchKeys.GFS_SYNOP_FUTURE_DIFF.value].float().squeeze()
             past_targets = batch[BatchKeys.GFS_SYNOP_PAST_DIFF.value].float().squeeze()
 
-        self.test_mse(outputs.squeeze(), targets)
-        self.test_mae(outputs.squeeze(), targets)
-        if len(targets.shape) == 1:
-            self.test_mase(outputs.unsqueeze(0), targets.unsqueeze(0), past_targets.unsqueeze(0))
+        if self.categorical_experiment:
+            self.metrics_for_categorical_experiment(outputs, targets, past_targets, 'test')
+
+            targets *= self.classes
+            past_targets *= self.classes
         else:
-            self.test_mase(outputs, targets, past_targets)
+            self.test_mse(outputs, targets)
+            self.test_mae(outputs, targets)
+            if len(targets.shape) == 1:
+                self.test_mase(outputs.unsqueeze(0), targets.unsqueeze(0), past_targets.unsqueeze(0))
+            else:
+                self.test_mase(outputs, targets, past_targets)
 
         dates_inputs = batch[BatchKeys.DATES_PAST.value]
         dates_targets = batch[BatchKeys.DATES_FUTURE.value]
@@ -55,7 +61,7 @@ class S2SRegressorWithGFSInput(BaseS2SRegressor):
         gfs_targets = batch[BatchKeys.GFS_FUTURE_Y.value]
 
         return {BatchKeys.SYNOP_FUTURE_Y.value: batch[BatchKeys.SYNOP_FUTURE_Y.value].float().squeeze(),
-                BatchKeys.PREDICTIONS.value: outputs.squeeze(),
+                BatchKeys.PREDICTIONS.value: outputs.squeeze() if not self.categorical_experiment else torch.argmax(outputs, dim=-1),
                 BatchKeys.SYNOP_PAST_Y.value: batch[BatchKeys.SYNOP_PAST_Y.value].float().squeeze()[:],
                 BatchKeys.DATES_PAST.value: dates_inputs,
                 BatchKeys.DATES_FUTURE.value: dates_targets,

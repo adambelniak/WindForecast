@@ -14,7 +14,7 @@ from torch.optim.lr_scheduler import _LRScheduler
 from torchmetrics.regression.mean_squared_error import MeanSquaredError
 from pytorch_forecasting.metrics import MASE
 from rich import print
-from torch.nn import MSELoss
+from torch.nn import MSELoss, CrossEntropyLoss
 from torch.optim.optimizer import Optimizer
 from wandb.sdk.wandb_run import Run
 
@@ -34,7 +34,13 @@ class BaseS2SRegressor(pl.LightningModule):
 
         self.model: LightningModule = instantiate(self.cfg.experiment.model, self.cfg)
 
-        self.criterion = MSELoss()
+        self.criterion = ...
+        if cfg.optim.loss in ["mse", "rmse"]:
+            self.criterion = MSELoss()
+        elif cfg.optim.loss == "cross":
+            self.criterion = CrossEntropyLoss()
+        else:
+            self.criterion = MSELoss()
 
         # Metrics
         self.train_mse = MeanSquaredError()
@@ -47,6 +53,8 @@ class BaseS2SRegressor(pl.LightningModule):
         self.test_mae = MeanAbsoluteError()
         self.test_mase = MASE()
         self.test_results = []
+        self.categorical_experiment = self.cfg.experiment.categorical_experiment
+        self.classes = self.cfg.experiment.classes
         train_params = self.cfg.experiment.synop_train_features
         target_param = self.cfg.experiment.target_parameter
         all_params = add_param_to_train_params(train_params, target_param)
@@ -181,8 +189,6 @@ class BaseS2SRegressor(pl.LightningModule):
         """
         if self.cfg.optim.loss == 'rmse':
             return torch.sqrt(self.criterion(outputs, targets))
-        elif self.cfg.optim.loss == 'mse':
-            return self.criterion(outputs, targets)
         else:
             return self.criterion(outputs, targets)
 
@@ -218,16 +224,26 @@ class BaseS2SRegressor(pl.LightningModule):
         if self.cfg.experiment.differential_forecast:
             targets = batch[BatchKeys.GFS_SYNOP_FUTURE_DIFF.value].float().squeeze()
             past_targets = batch[BatchKeys.GFS_SYNOP_PAST_DIFF.value].float().squeeze()
+        if self.categorical_experiment:
+            self.metrics_for_categorical_experiment(outputs, targets, past_targets, 'train')
 
-        self.train_mse(outputs, targets)
-        self.train_mae(outputs, targets)
-        if len(targets.shape) == 1:
-            self.train_mase(outputs.unsqueeze(0), targets.unsqueeze(0), past_targets.unsqueeze(0))
+            targets *= self.classes
+            past_targets *= self.classes
         else:
-            self.train_mase(outputs, targets, past_targets)
+            self.train_mse(outputs, targets)
+            self.train_mae(outputs, targets)
+            if len(targets.shape) == 1:
+                self.train_mase(outputs.unsqueeze(0), targets.unsqueeze(0), past_targets.unsqueeze(0))
+            else:
+                self.train_mase(outputs, targets, past_targets)
 
         if self.cfg.optim.loss != 'mase':
-            loss = self.calculate_loss(outputs, targets)
+            torch.use_deterministic_algorithms(False)
+            if self.categorical_experiment:
+                loss = self.calculate_loss(outputs.permute(0, 2, 1), targets.long())
+            else:
+                loss = self.calculate_loss(outputs, targets)
+            torch.use_deterministic_algorithms(True)
         else:
             loss = MASE()
             loss = loss(outputs, targets, past_targets)
@@ -300,12 +316,18 @@ class BaseS2SRegressor(pl.LightningModule):
             targets = batch[BatchKeys.GFS_SYNOP_FUTURE_DIFF.value].float().squeeze()
             past_targets = batch[BatchKeys.GFS_SYNOP_PAST_DIFF.value].float().squeeze()
 
-        self.val_mse(outputs, targets)
-        self.val_mae(outputs, targets)
-        if len(targets.shape) == 1:
-            self.val_mase(outputs.unsqueeze(0), targets.unsqueeze(0), past_targets.unsqueeze(0))
+        if self.categorical_experiment:
+            self.metrics_for_categorical_experiment(outputs, targets, past_targets, "val")
+
+            targets *= self.classes
+            past_targets *= self.classes
         else:
-            self.val_mase(outputs, targets, past_targets)
+            self.val_mse(outputs, targets)
+            self.val_mae(outputs, targets)
+            if len(targets.shape) == 1:
+                self.val_mase(outputs.unsqueeze(0), targets.unsqueeze(0), past_targets.unsqueeze(0))
+            else:
+                self.val_mase(outputs, targets, past_targets)
 
         return {
             # 'additional_metric': ...
@@ -374,19 +396,25 @@ class BaseS2SRegressor(pl.LightningModule):
             targets = batch[BatchKeys.GFS_SYNOP_FUTURE_DIFF.value].float().squeeze()
             past_targets = batch[BatchKeys.GFS_SYNOP_PAST_DIFF.value].float().squeeze()
 
-        self.test_mse(outputs, targets)
-        self.test_mae(outputs, targets)
-        if len(targets.shape) == 1:
-            self.test_mase(outputs.unsqueeze(0), targets.unsqueeze(0), past_targets.unsqueeze(0))
+        if self.categorical_experiment:
+            self.metrics_for_categorical_experiment(outputs, targets, past_targets, 'test')
+
+            targets *= self.classes
+            past_targets *= self.classes
         else:
-            self.test_mase(outputs, targets, past_targets)
+            self.test_mse(outputs, targets)
+            self.test_mae(outputs, targets)
+            if len(targets.shape) == 1:
+                self.test_mase(outputs.unsqueeze(0), targets.unsqueeze(0), past_targets.unsqueeze(0))
+            else:
+                self.test_mase(outputs, targets, past_targets)
 
         synop_inputs = batch[BatchKeys.SYNOP_PAST_X.value]
         dates_inputs = batch[BatchKeys.DATES_PAST.value]
         dates_targets = batch[BatchKeys.DATES_FUTURE.value]
 
         return {BatchKeys.SYNOP_FUTURE_Y.value: targets,
-                BatchKeys.PREDICTIONS.value: outputs.squeeze(),
+                BatchKeys.PREDICTIONS.value: outputs.squeeze() if not self.categorical_experiment else torch.argmax(outputs, dim=-1),
                 BatchKeys.SYNOP_PAST_Y.value: past_targets,
                 BatchKeys.SYNOP_PAST_X.value: synop_inputs[:, :, self.target_param_index] if self.cfg.experiment.batch_size > 1
                 else synop_inputs[:, self.target_param_index],
@@ -498,3 +526,28 @@ class BaseS2SRegressor(pl.LightningModule):
             mase_by_step.append(
                 (abs(prediction_series[:, :step + 1] - truth_series[:, :step + 1]).mean(axis=-1) / scaling).mean())
         return mase_by_step
+
+    def metrics_for_categorical_experiment(self, outputs: torch.Tensor, targets: torch.Tensor, past_targets: torch.Tensor, stage: str):
+        outputs_classes = torch.argmax(outputs, dim=-1) / self.classes
+
+        if stage == 'train':
+            self.train_mse(outputs_classes, targets)
+            self.train_mae(outputs_classes, targets)
+            if len(targets.shape) == 1:
+                self.train_mase(outputs_classes.unsqueeze(0), targets.unsqueeze(0), past_targets.unsqueeze(0))
+            else:
+                self.train_mase(outputs_classes, targets, past_targets)
+        elif stage == 'val':
+            self.val_mse(outputs_classes, targets)
+            self.val_mae(outputs_classes, targets)
+            if len(targets.shape) == 1:
+                self.val_mase(outputs_classes.unsqueeze(0), targets.unsqueeze(0), past_targets.unsqueeze(0))
+            else:
+                self.val_mase(outputs_classes, targets, past_targets)
+        else:
+            self.test_mse(outputs_classes, targets)
+            self.test_mae(outputs_classes, targets)
+            if len(targets.shape) == 1:
+                self.test_mase(outputs_classes.unsqueeze(0), targets.unsqueeze(0), past_targets.unsqueeze(0))
+            else:
+                self.test_mase(outputs_classes, targets, past_targets)
