@@ -227,8 +227,8 @@ class BaseS2SRegressor(pl.LightningModule):
         if self.categorical_experiment:
             self.metrics_for_categorical_experiment(outputs, targets, past_targets, 'train')
 
-            targets *= self.classes
-            past_targets *= self.classes
+            targets *= self.classes - 1
+            past_targets *= self.classes - 1
         else:
             self.train_mse(outputs, targets)
             self.train_mae(outputs, targets)
@@ -319,8 +319,8 @@ class BaseS2SRegressor(pl.LightningModule):
         if self.categorical_experiment:
             self.metrics_for_categorical_experiment(outputs, targets, past_targets, "val")
 
-            targets *= self.classes
-            past_targets *= self.classes
+            targets *= self.classes - 1
+            past_targets *= self.classes - 1
         else:
             self.val_mse(outputs, targets)
             self.val_mae(outputs, targets)
@@ -399,8 +399,8 @@ class BaseS2SRegressor(pl.LightningModule):
         if self.categorical_experiment:
             self.metrics_for_categorical_experiment(outputs, targets, past_targets, 'test')
 
-            targets *= self.classes
-            past_targets *= self.classes
+            targets *= self.classes - 1
+            past_targets *= self.classes - 1
         else:
             self.test_mse(outputs, targets)
             self.test_mae(outputs, targets)
