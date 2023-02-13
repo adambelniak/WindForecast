@@ -60,9 +60,9 @@ class S2SRegressorWithGFSInput(BaseS2SRegressor):
 
         gfs_targets = batch[BatchKeys.GFS_FUTURE_Y.value]
 
-        return {BatchKeys.SYNOP_FUTURE_Y.value: batch[BatchKeys.SYNOP_FUTURE_Y.value].float().squeeze(),
+        return {BatchKeys.SYNOP_FUTURE_Y.value: targets,
                 BatchKeys.PREDICTIONS.value: outputs.squeeze() if not self.categorical_experiment else torch.argmax(outputs, dim=-1),
-                BatchKeys.SYNOP_PAST_Y.value: batch[BatchKeys.SYNOP_PAST_Y.value].float().squeeze()[:],
+                BatchKeys.SYNOP_PAST_Y.value: past_targets,
                 BatchKeys.DATES_PAST.value: dates_inputs,
                 BatchKeys.DATES_FUTURE.value: dates_targets,
                 BatchKeys.GFS_FUTURE_Y.value: gfs_targets.squeeze()
