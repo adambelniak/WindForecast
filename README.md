@@ -54,6 +54,8 @@ There are several scopes in which an experiment can be configured. For tips on c
     - deterministic training, gpus
 4. config.tune - tune config; set of params to check
 
+There are multiple configurations (yaml files) already prepared in [src/wind_forecast/config/experiment](src/wind_forecast/config/experiment), but they all use Sequence2SequenceWithCMAXDataModule, which requires CMAX files (reflectivity images). If you don't use CMAX files, better use Sequence2SequenceDataModule together with use_cmax_data: False and load_cmax_data: False. Sequence2SequenceWithCMAXDataModule is used in my experiments to have equal datasets across all experiments in my thesis.
+
 ## :running: Running
 Obtaining datasets is described in [synop readme](src/synop/README.md), [GFS readme](src/gfs_archive_0_25/README.md) and [CMAX readme](src/radar/README.md).
 
