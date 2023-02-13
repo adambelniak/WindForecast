@@ -65,7 +65,7 @@ class S2SRegressorWithGFSInput(BaseS2SRegressor):
                 BatchKeys.SYNOP_PAST_Y.value: past_targets,
                 BatchKeys.DATES_PAST.value: dates_inputs,
                 BatchKeys.DATES_FUTURE.value: dates_targets,
-                BatchKeys.GFS_FUTURE_Y.value: gfs_targets.squeeze()
+                BatchKeys.GFS_FUTURE_Y.value: gfs_targets.squeeze() if not self.categorical_experiment else gfs_targets.squeeze() * (self.classes - 1)
                 }
 
     def test_epoch_end(self, outputs: List[Any]) -> None:

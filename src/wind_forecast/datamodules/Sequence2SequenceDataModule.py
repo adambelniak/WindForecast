@@ -11,7 +11,7 @@ from torch.utils.data.dataloader import default_collate
 from tqdm import tqdm
 
 from gfs_archive_0_25.gfs_processor.Coords import Coords
-from synop.consts import SYNOP_PERIODIC_FEATURES
+from synop.consts import SYNOP_PERIODIC_FEATURES, TEMPERATURE, PRESSURE, LOWER_CLOUDS, CLOUD_COVER
 from wind_forecast.config.register import Config
 from wind_forecast.consts import BatchKeys
 from wind_forecast.consts import SYNOP_DATASETS_DIRECTORY
@@ -174,10 +174,12 @@ class Sequence2SequenceDataModule(SplittableDataModule):
                                                     self.sequence_length + self.prediction_offset + self.future_sequence_length,
                                                     self.normalization_type)
 
-        if self.target_param == 'temperature':
+        if self.target_param == TEMPERATURE[1]:
             self.gfs_data[self.gfs_target_param] = (self.gfs_data[self.gfs_target_param] - 273.15 - self.synop_mean[self.target_param]) / self.synop_std[self.target_param]
-        elif self.target_param == 'pressure':
+        elif self.target_param == PRESSURE[1]:
             self.gfs_data[self.gfs_target_param] = (self.gfs_data[self.gfs_target_param] / 100 - self.synop_mean[self.target_param]) / self.synop_std[self.target_param]
+        elif self.target_param in [LOWER_CLOUDS[1], CLOUD_COVER[1]]:
+            self.gfs_data[self.gfs_target_param] = self.gfs_data[self.gfs_target_param] / 100
         else:
             self.gfs_data[self.gfs_target_param] = (self.gfs_data[self.gfs_target_param] - self.synop_mean[self.target_param]) / self.synop_std[self.target_param]
 

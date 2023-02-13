@@ -113,7 +113,7 @@ class NBeatsBlock(nn.Module):
                                                                   insample_x_t.size()[1] * insample_x_t.size()[2])], -1))
         if self.classes > 0:
             sizes = theta.size()
-            theta = theta.resize(sizes[0], sizes[1] // self.classes, self.classes)
+            theta = theta.reshape(sizes[0], sizes[1] // self.classes, self.classes)
         backcast, forecast = self.basis(theta, insample_x_t, outsample_x_t)
 
         return backcast, forecast
@@ -186,8 +186,8 @@ class GenericBasis(nn.Module):
 
     def forward(self, theta: t.Tensor, insample_x_t: t.Tensor, outsample_x_t: t.Tensor) -> Tuple[t.Tensor, t.Tensor]:
         if self.classes > 0:
-            backcast = self.backcast_linear(theta.resize(theta.size()[0], theta.size()[1] * theta.size()[2]))
-            forecast = self.forecast_linear(theta.resize(theta.size()[0], theta.size()[1] * theta.size()[2]))
+            backcast = self.backcast_linear(theta.reshape(theta.size()[0], theta.size()[1] * theta.size()[2]))
+            forecast = self.forecast_linear(theta.reshape(theta.size()[0], theta.size()[1] * theta.size()[2]))
         else:
             backcast = self.backcast_linear(theta)
             forecast = self.forecast_linear(theta)
@@ -342,15 +342,15 @@ class ExogenousBasisTCN(nn.Module):
             if self.classes > 0:
                 backcast = t.einsum('bpc,bpt->btc', theta[:, cut_point:], backcast_basis)
                 forecast = t.einsum('bpc,bpt->btc', theta[:, :cut_point], forecast_basis)
-                backcast = backcast.resize(backcast.size()[0], backcast.size()[1] * backcast.size()[2])
-                forecast = forecast.resize(forecast.size()[0], forecast.size()[1] * forecast.size()[2])
+                backcast = backcast.reshape(backcast.size()[0], backcast.size()[1] * backcast.size()[2])
+                forecast = forecast.reshape(forecast.size()[0], forecast.size()[1] * forecast.size()[2])
             else:
                 backcast = t.einsum('bp,bpt->bt', theta[:, cut_point:], backcast_basis)
                 forecast = t.einsum('bp,bpt->bt', theta[:, :cut_point], forecast_basis)
         else:
             cut_point = theta.size(1) // 2
             if self.classes > 0:
-                backcast_basis, forecast_basis = self.transform(insample_x_t, theta.resize(theta.size()[0], theta.size()[1] * theta.size()[2])[:, :cut_point])
+                backcast_basis, forecast_basis = self.transform(insample_x_t, theta.reshape(theta.size()[0], theta.size()[1] * theta.size()[2])[:, :cut_point])
                 backcast = t.einsum('bpc,bpt->btc', theta[:, cut_point:], backcast_basis)
             else:
                 backcast_basis, forecast_basis = self.transform(insample_x_t, theta[:, :cut_point])
