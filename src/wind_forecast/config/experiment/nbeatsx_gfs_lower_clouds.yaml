@@ -26,4 +26,4 @@ use_time2vec: True
 time2vec_embedding_factor: 5
 target_parameter: lower_clouds
 categorical_experiment: True
-classes: 9
+classes: 10
