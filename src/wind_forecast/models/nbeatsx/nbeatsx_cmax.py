@@ -8,7 +8,6 @@ from wind_forecast.consts import BatchKeys
 from wind_forecast.models.CMAXAutoencoder import CMAXEncoder, get_pretrained_encoder
 from wind_forecast.models.nbeatsx.nbeatsx import Nbeatsx
 from wind_forecast.models.nbeatsx.nbeatsx_model import NBeatsx
-from wind_forecast.models.value2vec.Value2Vec import Value2Vec
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
 from wind_forecast.util.common_util import get_pretrained_artifact_path, get_pretrained_state_dict
 
@@ -46,6 +45,8 @@ class Nbeatsx_CMAX(Nbeatsx):
     def forward(self, batch: Dict[str, t.Tensor], epoch: int, stage=None) -> t.Tensor:
         insample_elements, outsample_elements = self.get_embeddings(batch)
         synop_past_targets = batch[BatchKeys.SYNOP_PAST_Y.value].float()
+        if self.categorical_experiment:
+            synop_past_targets = t.repeat_interleave(synop_past_targets, self.classes, -1)
 
         # No static features in my case
         return self.model(x_static=t.Tensor([]), insample_y=synop_past_targets,

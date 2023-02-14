@@ -5,7 +5,7 @@ defaults:
   - schema_experiment
 
 _tags_:
-  - NBEATSx_GFS
+  - NBEATSx_GFS_CMAX
 
 resume_checkpoint: ~
 
@@ -13,7 +13,7 @@ datamodule:
   _target_: wind_forecast.datamodules.Sequence2SequenceWithCMAXDataModule.Sequence2SequenceWithCMAXDataModule
 
 model:
-  _target_: wind_forecast.models.nbeatsx.nbeatsx.Nbeatsx
+  _target_: wind_forecast.models.nbeatsx.nbeatsx_cmax.Nbeatsx_CMAX
 
 system:
   _target_: wind_forecast.systems.S2SRegressorWithGFSInput.S2SRegressorWithGFSInput
@@ -21,8 +21,9 @@ system:
 epochs: 20
 dropout: 0.3
 use_gfs_data: True
-use_value2vec: False
-time2vec_embedding_factor: 5
+load_cmax_data: True
+use_cmax_data: True
+use_pretrained_cmax_autoencoder: True
 target_parameter: lower_clouds
 categorical_experiment: True
 classes: 10
