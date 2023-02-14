@@ -5,6 +5,16 @@ class ConcatDatasets(BaseDataset):
     def __init__(self, *datasets):
         super().__init__()
         self.datasets = datasets
+        self.SYNOP_PAST_Y_INDEX = datasets[0].SYNOP_PAST_Y_INDEX
+        self.SYNOP_PAST_X_INDEX = datasets[0].SYNOP_PAST_X_INDEX
+        self.SYNOP_FUTURE_Y_INDEX = datasets[0].SYNOP_FUTURE_Y_INDEX
+        self.SYNOP_FUTURE_X_INDEX = datasets[0].SYNOP_FUTURE_X_INDEX
+        self.GFS_PAST_X_INDEX = datasets[0].GFS_PAST_X_INDEX
+        self.GFS_PAST_Y_INDEX = datasets[0].GFS_PAST_Y_INDEX
+        self.GFS_FUTURE_X_INDEX = datasets[0].GFS_FUTURE_X_INDEX
+        self.GFS_FUTURE_Y_INDEX = datasets[0].GFS_FUTURE_Y_INDEX
+        self.DATES_PAST_INDEX = datasets[0].DATES_PAST_INDEX
+        self.DATES_FUTURE_INDEX = datasets[0].DATES_FUTURE_INDEX
 
     def set_mean(self, mean):
         assert len(mean) == len(self.datasets)
