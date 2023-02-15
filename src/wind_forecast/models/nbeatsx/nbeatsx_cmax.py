@@ -1,5 +1,4 @@
 import math
-from typing import Dict
 
 import torch as t
 
@@ -35,23 +34,12 @@ class Nbeatsx_CMAX(Nbeatsx):
 
         block_list = self.create_stacks()
 
-        self.model = NBeatsx(t.nn.ModuleList(block_list))
+        self.model = NBeatsx(t.nn.ModuleList(block_list), classes=self.classes)
 
         if config.experiment.use_pretrained_artifact and type(self).__name__ is "Nbeatsx_CMAX":
             pretrained_autoencoder_path = get_pretrained_artifact_path(config.experiment.pretrained_artifact)
             self.load_state_dict(get_pretrained_state_dict(pretrained_autoencoder_path))
             return
-
-    def forward(self, batch: Dict[str, t.Tensor], epoch: int, stage=None) -> t.Tensor:
-        insample_elements, outsample_elements = self.get_embeddings(batch)
-        synop_past_targets = batch[BatchKeys.SYNOP_PAST_Y.value].float()
-        if self.categorical_experiment:
-            synop_past_targets = t.repeat_interleave(synop_past_targets, self.classes, -1)
-
-        # No static features in my case
-        return self.model(x_static=t.Tensor([]), insample_y=synop_past_targets,
-                          insample_x_t=insample_elements.permute(0, 2, 1),
-                          outsample_x_t=outsample_elements.permute(0, 2, 1) if self.use_gfs else None)
 
     def get_embeddings(self, batch):
         with_dates = self.config.experiment.with_dates_inputs
