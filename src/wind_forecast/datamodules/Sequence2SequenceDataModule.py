@@ -317,15 +317,42 @@ class Sequence2SequenceDataModule(SplittableDataModule):
         log.info('Dataset val len: ' + ('0' if self.dataset_val is None else str(len(self.dataset_val))))
         log.info('Dataset test len: ' + str(len(self.dataset_test)))
 
-        log.info('Dataset train first date: ' +
-                 str(self.dataset_train.dataset[self.dataset_train.indices[0]][self.dataset_train.dataset.DATES_PAST_INDEX][0]))
-        log.info('Dataset train last date: ' +
-                 str(self.dataset_train.dataset[self.dataset_train.indices[-1]][self.dataset_train.dataset.DATES_PAST_INDEX][-1]))
-        log.info('Dataset val first date: ' +
-                 str(self.dataset_val.dataset[self.dataset_val.indices[0]][self.dataset_val.dataset.DATES_PAST_INDEX][0]))
-        log.info('Dataset val last date: ' +
-                 str(self.dataset_val.dataset[self.dataset_val.indices[-1]][self.dataset_val.dataset.DATES_PAST_INDEX][-1]))
-        log.info('Dataset test first date: ' +
-                 str(self.dataset_test.dataset[self.dataset_test.indices[0]][self.dataset_test.dataset.DATES_PAST_INDEX][0]))
-        log.info('Dataset test last date: ' +
-                 str(self.dataset_test.dataset[self.dataset_test.indices[-1]][self.dataset_test.dataset.DATES_PAST_INDEX][-1]))
+        if self.config.experiment.load_cmax_data:
+            log.info('Dataset train first date: ' +
+                     str(self.dataset_train.dataset[self.dataset_train.indices[0]][0][
+                             self.dataset_train.dataset.DATES_PAST_INDEX][0]))
+            log.info('Dataset train last date: ' +
+                     str(self.dataset_train.dataset[self.dataset_train.indices[-1]][0][
+                             self.dataset_train.dataset.DATES_PAST_INDEX][-1]))
+            log.info('Dataset val first date: ' +
+                     str(self.dataset_val.dataset[self.dataset_val.indices[0]][0][
+                             self.dataset_val.dataset.DATES_PAST_INDEX][0]))
+            log.info('Dataset val last date: ' +
+                     str(self.dataset_val.dataset[self.dataset_val.indices[-1]][0][
+                             self.dataset_val.dataset.DATES_PAST_INDEX][-1]))
+            log.info('Dataset test first date: ' +
+                     str(self.dataset_test.dataset[self.dataset_test.indices[0]][0][
+                             self.dataset_test.dataset.DATES_PAST_INDEX][0]))
+            log.info('Dataset test last date: ' +
+                     str(self.dataset_test.dataset[self.dataset_test.indices[-1]][0][
+                             self.dataset_test.dataset.DATES_PAST_INDEX][-1]))
+        else:
+            log.info('Dataset train first date: ' +
+                     str(self.dataset_train.dataset[self.dataset_train.indices[0]][
+                             self.dataset_train.dataset.DATES_PAST_INDEX][0]))
+            log.info('Dataset train last date: ' +
+                     str(self.dataset_train.dataset[self.dataset_train.indices[-1]][
+                             self.dataset_train.dataset.DATES_PAST_INDEX][-1]))
+            log.info('Dataset val first date: ' +
+                     str(self.dataset_val.dataset[self.dataset_val.indices[0]][
+                             self.dataset_val.dataset.DATES_PAST_INDEX][0]))
+            log.info('Dataset val last date: ' +
+                     str(self.dataset_val.dataset[self.dataset_val.indices[-1]][
+                             self.dataset_val.dataset.DATES_PAST_INDEX][-1]))
+            log.info('Dataset test first date: ' +
+                     str(self.dataset_test.dataset[self.dataset_test.indices[0]][
+                             self.dataset_test.dataset.DATES_PAST_INDEX][0]))
+            log.info('Dataset test last date: ' +
+                     str(self.dataset_test.dataset[self.dataset_test.indices[-1]][
+                             self.dataset_test.dataset.DATES_PAST_INDEX][-1]))
+
