@@ -528,7 +528,7 @@ class BaseS2SRegressor(pl.LightningModule):
         return mase_by_step
 
     def metrics_for_categorical_experiment(self, outputs: torch.Tensor, targets: torch.Tensor, past_targets: torch.Tensor, stage: str):
-        outputs_classes = torch.argmax(outputs, dim=-1) / self.classes
+        outputs_classes = torch.argmax(outputs, dim=-1) / (self.classes - 1)
 
         if stage == 'train':
             self.train_mse(outputs_classes, targets)
