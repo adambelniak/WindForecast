@@ -8,19 +8,11 @@ from zipfile import ZipFile, BadZipFile
 import requests
 
 from gfs_archive_0_25.utils import prep_zeros_if_needed
+from util.util import check_file_status, download
 
 DATA_URL = "https://danepubliczne.imgw.pl/datastore/getfiledown/Arch/Polrad/Produkty/POLCOMP/COMPO_CMAX_250.comp.cmax"
 CMAX_DATASET_DIR = os.environ['CMAX_DATASET_DIR']
 CMAX_DATASET_DIR = 'data' if CMAX_DATASET_DIR is None else CMAX_DATASET_DIR
-
-
-def check_file_status(filepath):
-    sys.stdout.write('\r')
-    sys.stdout.flush()
-    size = int(os.stat(filepath).st_size)
-    downloaded = size / (1024 * 1024)
-    sys.stdout.write('%.3f MB Downloaded' % downloaded)
-    sys.stdout.flush()
 
 
 def get_zip(date: datetime):
@@ -28,12 +20,7 @@ def get_zip(date: datetime):
     Path(output_dir).mkdir(parents=True, exist_ok=True)
     filename = f"COMPO_CMAX_250.comp.cmax_{date.strftime('%Y-%m-%d')}.zip"
     url = f"{DATA_URL}/{str(date.year)}/{prep_zeros_if_needed(str(date.month), 1)}/{filename}"
-    req = requests.get(url, stream=True)
-    with open(os.path.join(output_dir, filename), 'wb') as outfile:
-        chunk_size = 1048576
-        for chunk in req.iter_content(chunk_size=chunk_size):
-            outfile.write(chunk)
-            check_file_status(os.path.join(output_dir, filename))
+    download(os.path.join(output_dir, filename), url)
 
 
 def extract_zip(date: datetime):

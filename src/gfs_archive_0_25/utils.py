@@ -1,9 +1,9 @@
 import math
 
-from gfs_archive_0_25.gfs_processor.Coords import Coords
+from util.coords import Coords
 
 
-def get_nearest_coords(coords: Coords):
+def get_nearest_coords(coords: Coords) -> Coords:
     lat1 = math.floor(coords.nlat * 4) / 4
     lat2 = math.floor((coords.nlat + 0.25) * 4) / 4
     if lat2 > 90:

@@ -2,10 +2,11 @@ import math
 import os
 import re
 import sys
-from typing import Union, Dict
+from typing import Dict
 
 from statsmodels.tsa.seasonal import STL
 
+from util.coords import Coords, GFS_SPACE
 from wind_forecast.loaders.GFSInterpolatedLoader import GFSInterpolatedLoader, Interpolator
 from wind_forecast.util.common_util import NormalizationType
 
@@ -21,9 +22,7 @@ from tqdm import tqdm
 
 from wind_forecast.loaders.GFSLoader import GFSLoader
 from synop.consts import SYNOP_FEATURES
-from gfs_common.common import GFS_SPACE
 from scipy.interpolate import CubicSpline
-from gfs_archive_0_25.gfs_processor.Coords import Coords
 from wind_forecast.consts import NETCDF_FILE_REGEX, DATE_KEY_REGEX
 from gfs_archive_0_25.utils import get_nearest_coords
 from util.util import prep_zeros_if_needed

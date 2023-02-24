@@ -3,95 +3,94 @@
     {
       "name": "TMP",
       "level": "HTGL_2",
-      "interpolation": "polynomial"
+      "grib_name": "2t",
+      "type_of_level": "heightAboveGround",
+      "grib_level": 2
     },
     {
       "name": "TMP",
       "level": "ISBL_850",
-      "interpolation": "polynomial"
+      "grib_name": "t",
+      "type_of_level": "isobaricInhPa",
+      "grib_level": 850
     },
       {
       "name": "TMP",
       "level": "ISBL_700",
-      "interpolation": "polynomial"
+      "grib_name": "t",
+      "type_of_level": "isobaricInhPa",
+      "grib_level": 700
     },
-        {
+    {
       "name": "DPT",
       "level": "HTGL_2",
-      "interpolation": "polynomial"
+      "grib_name": "2d"
     },
     {
       "name": "T CDC",
       "level": "LCY_0",
-      "interpolation": "polynomial",
-      "min": 0,
-      "max": 100
+      "grib_name": "lcc"
     },
     {
       "name": "T CDC",
       "level": "MCY_0",
-      "interpolation": "polynomial",
-      "min": 0,
-      "max": 100
+      "grib_name": "mcc"
     },
     {
       "name": "T CDC",
       "level": "HCY_0",
-      "interpolation": "polynomial",
-      "min": 0,
-      "max": 100
+      "grib_name": "hcc"
     },
     {
       "name": "V GRD",
       "level": "HTGL_10",
-      "interpolation": "polynomial"
+      "grib_name": "10v"
     },
     {
       "name": "U GRD",
       "level": "HTGL_10",
-      "interpolation": "polynomial"
+      "grib_name": "10u"
     },
     {
       "name": "GUST",
       "level": "SFC_0",
-      "interpolation": "polynomial",
-      "min": 0
+      "grib_name": "gust"
     },
     {
       "name": "PRATE",
       "level": "SFC_0",
-      "interpolation": "polynomial",
-      "min": 0
+      "grib_name": "prate"
     },
     {
       "name": "PRES",
       "level": "SFC_0",
-      "interpolation": "polynomial"
+      "grib_name": "sp",
+      "type_of_level": "surface",
+      "grib_level": 0
     },
     {
       "name": "R H",
       "level": "HTGL_2",
-      "interpolation": "polynomial",
-      "min": 0,
-      "max": 100
+      "grib_name":"2r"
     },
     {
       "name": "R H",
       "level": "ISBL_700",
-      "interpolation": "polynomial",
-      "min": 0,
-      "max": 100
+      "grib_name": "r",
+      "type_of_level": "isobaricInhPa",
+      "grib_level": 700
     },
     {
       "name": "HGT",
       "level": "ISBL_500",
-      "interpolation": "polynomial"
+      "grib_name": "gh",
+      "type_of_level": "isobaricInhPa",
+      "grib_level": 500
     },
     {
         "name": "SNO D",
         "level": "SFC_0",
-        "interpolation": "polynomial",
-        "min": 0
+        "grib_name": "sde"
     }
   ]
 }

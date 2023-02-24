@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 import os
 import csv
 import re
@@ -6,7 +5,7 @@ import datetime
 import argparse
 from os.path import isfile, join
 
-from common_grib import fetch_data_from_grib
+from gfs_archive_0_25.grib_miscellanous.common_grib import fetch_data_from_grib
 GRIB_FILENAME_PATTERN = 'gfs.0p25.(\d{10}).f(\d{3}).grib2.*'
 
 

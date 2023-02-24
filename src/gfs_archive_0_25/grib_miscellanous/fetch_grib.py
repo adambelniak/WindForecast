@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 import calendar
 import os
 import sys
@@ -8,7 +7,7 @@ import time
 
 from past.builtins import raw_input
 from gfs_archive_0_25.utils import prep_zeros_if_needed
-from common_grib import fetch_data_from_grib
+from gfs_archive_0_25.grib_miscellanous.common_grib import fetch_data_from_grib
 
 
 gfs_parameters = [

@@ -8,11 +8,11 @@ import pandas as pd
 import tqdm
 import numpy as np
 
-from gfs_common.common import GFS_PARAMETERS, GFS_SPACE
-from gfs_archive_0_25.gfs_processor.Coords import Coords
 from gfs_archive_0_25.gfs_processor.own_logger import logger
 from gfs_archive_0_25.utils import prep_zeros_if_needed
 from gfs_archive_0_25.gfs_processor.consts import *
+from gfs_common.common import GFS_PARAMETERS
+from util.coords import GFS_SPACE, Coords
 
 OFFSET = 3
 

@@ -2,6 +2,7 @@ import os
 import sys
 from typing import Dict
 
+from gfs_common.common import get_param_key
 from wind_forecast.loaders.Singleton import Singleton
 
 if sys.version_info <= (3, 8, 2):
@@ -28,7 +29,7 @@ class GFSLoader(metaclass=Singleton):
         return datetime.strftime(date, "%Y%m%d%H")
 
     def get_gfs_image(self, date_key: str, gfs_parameter: Dict, from_offset: int):
-        param_key = f"{gfs_parameter['name']}_{gfs_parameter['level']}"
+        param_key = get_param_key(gfs_parameter['name'], gfs_parameter['level'])
         pickle_filename = f"{gfs_parameter['name']}_{gfs_parameter['level']}_{prep_zeros_if_needed(str(from_offset), 2)}"
 
         if param_key not in self.gfs_images or str(from_offset) not in self.gfs_images[param_key]:

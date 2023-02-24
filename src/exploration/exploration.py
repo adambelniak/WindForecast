@@ -12,8 +12,8 @@ from statsmodels.tsa.stattools import acf, pacf
 from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
 
 
-from gfs_archive_0_25.gfs_processor.Coords import Coords
 from gfs_archive_0_25.gfs_processor.own_logger import get_logger
+from util.coords import Coords
 from wind_forecast.consts import SYNOP_DATASETS_DIRECTORY
 from synop.consts import SYNOP_TRAIN_FEATURES, TEMPERATURE, VELOCITY_COLUMN, PRESSURE, DIRECTION_COLUMN
 from wind_forecast.preprocess.synop.synop_preprocess import prepare_synop_dataset

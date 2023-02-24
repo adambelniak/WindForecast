@@ -10,8 +10,8 @@ from torch.utils.data import DataLoader
 from torch.utils.data.dataloader import default_collate
 from tqdm import tqdm
 
-from gfs_archive_0_25.gfs_processor.Coords import Coords
 from synop.consts import SYNOP_PERIODIC_FEATURES, TEMPERATURE, PRESSURE, LOWER_CLOUDS, CLOUD_COVER
+from util.coords import Coords
 from wind_forecast.config.register import Config
 from wind_forecast.consts import BatchKeys
 from wind_forecast.consts import SYNOP_DATASETS_DIRECTORY
