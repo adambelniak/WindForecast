@@ -22,6 +22,7 @@ def process_grib(grib: GribResource, grib_dir: str, target_coords: Coords, outpu
     if os.path.exists(output_file):
         print(f"Skipping grib processing, because file at {output_file} already exists")
         return
+    print(f"Processing grib {grib.get_output_location(grib_dir)}...")
 
     param_config = process_config(os.path.join(Path(__file__).parent, "param_config.json")).params
     data = {}
@@ -59,8 +60,7 @@ def process_future_gribs(init_meta: InitMeta, config: Config):
 
 def process_past_gribs(init_meta, config: Config):
     for init in range(0, (config.past_sequence_length // 6) + 1):
-        init_meta = InitMeta(init_meta.date - timedelta(hours=6), init_meta.init_hour.get_previous())
-
+        init_meta = get_init_meta(init_meta.date - timedelta(hours=6))
         for offset in range(0, 6):
             process_grib(GribResource(init_meta, offset), config.download_path, config.target_coords,
                          config.processing_output_path)
@@ -69,6 +69,12 @@ def process_past_gribs(init_meta, config: Config):
 def process_all_needed_gribs(init_meta: InitMeta, config: Config) -> None:
     process_future_gribs(init_meta, config)
     process_past_gribs(init_meta, config)
+
+
+def save_info(init_meta, processing_output_path):
+    os.makedirs(os.path.join(Path(__file__).parent, processing_output_path), exist_ok=True)
+    with open(os.path.join(Path(__file__).parent, processing_output_path, "available_starting_points.txt"), 'a') as f:
+        f.write(init_meta.get_init_run_string() + "\n")
 
 
 def process_recent_gfs(config: Config) -> bool:
@@ -90,6 +96,8 @@ def process_recent_gfs(config: Config) -> bool:
                 init_meta = get_init_meta(current_date)
                 past_init_meta = get_init_meta(current_date)
                 break
+        if not forecast_available:
+            continue
 
         for init in range(0, (config.past_sequence_length // 6) + 1):
             past_init_meta = InitMeta(past_init_meta.date - timedelta(hours=6), past_init_meta.init_hour.get_previous())
@@ -107,6 +115,7 @@ def process_recent_gfs(config: Config) -> bool:
                 break
 
     if forecast_available:
+        save_info(init_meta, config.processing_output_path)
         process_all_needed_gribs(init_meta, config)
 
     return forecast_available

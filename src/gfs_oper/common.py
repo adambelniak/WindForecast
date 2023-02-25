@@ -1,5 +1,5 @@
 from __future__ import annotations
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import Enum
 
 from util.coords import Coords
@@ -62,3 +62,6 @@ class InitMeta:
 
     def get_init_date_string(self):
         return self.date.strftime('%Y%m%d')
+
+    def get_init_run_string(self):
+        return self.date.strftime('%Y%m%d') + self.init_hour.value

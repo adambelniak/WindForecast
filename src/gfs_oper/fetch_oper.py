@@ -53,6 +53,9 @@ class ResourceUnavailableException(Exception):
         super().__init__(*args)
         self.url = url
 
+    def __str__(self):
+        return f"Resource unavailable at url {self.url}"
+
 
 def get_init_meta(date: datetime) -> InitMeta:
     utc_date = datetime.utcfromtimestamp(datetime.timestamp(date))
@@ -70,7 +73,7 @@ def fetch_future_gribs(init_meta: InitMeta, future_sequence_length: int, output_
 
 def fetch_past_gribs(init_meta, past_sequence_length, output_path) -> None:
     for init in range(0, (past_sequence_length // 6) + 1):
-        init_meta = InitMeta(init_meta.date - timedelta(hours=6), init_meta.init_hour.get_previous())
+        init_meta = get_init_meta(init_meta.date - timedelta(hours=6))
         for offset in range(0, 6):
             GribResource(init_meta, offset).fetch(output_path)
 

@@ -155,3 +155,4 @@ src/datasets
 analysis.json
 src/gfs_oper/download
 src/gfs_oper/processed
+src/synop/oper_data
