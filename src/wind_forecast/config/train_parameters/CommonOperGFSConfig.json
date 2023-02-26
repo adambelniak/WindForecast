@@ -92,12 +92,6 @@
         "level": "SFC_0",
         "interpolation": "polynomial",
         "min": 0
-    },
-    {
-        "name": "ALBDO",
-        "level": "SFC_0",
-        "interpolation": "polynomial",
-        "min": 0
     }
   ]
 }

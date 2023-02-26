@@ -4,8 +4,7 @@ from datetime import datetime
 from typing import Dict, Union
 
 from gfs_archive_0_25.utils import get_nearest_coords
-from gfs_common.common import GFS_SPACE
-from util.coords import Coords
+from util.coords import Coords, GFS_SPACE
 from wind_forecast.loaders.Singleton import Singleton
 from wind_forecast.loaders.GFSLoader import GFSLoader
 import numpy as np

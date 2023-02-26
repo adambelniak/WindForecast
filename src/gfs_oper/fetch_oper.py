@@ -1,5 +1,6 @@
 from __future__ import annotations
 import os
+import re
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -65,15 +66,27 @@ def get_init_meta(date: datetime) -> InitMeta:
         utc_date = utc_date - timedelta(days=1)
     return InitMeta(utc_date, init_hour)
 
+def get_init_meta_for_run(date: datetime, init_hour: InitHour) -> InitMeta:
+    return InitMeta(date, init_hour)
+
+
+def get_init_meta_from_init_string(init_string: str) -> InitMeta:
+    date_matcher = re.match(r'(\d{4})(\d{2})(\d{2}) (\d{2}):00', init_string)
+    date = datetime(year=int(date_matcher.group(1)),
+                    month=int(date_matcher.group(2)),
+                    day=int(date_matcher.group(3)))
+    init_hour = InitHour(prep_zeros_if_needed(date_matcher.group(4), 1))
+    return get_init_meta_for_run(date, init_hour)
+
 
 def fetch_future_gribs(init_meta: InitMeta, future_sequence_length: int, output_path: str) -> None:
     for offset in range(0, future_sequence_length):
         GribResource(init_meta, offset).fetch(output_path)
 
 
-def fetch_past_gribs(init_meta, past_sequence_length, output_path) -> None:
+def fetch_past_gribs(init_meta: InitMeta, past_sequence_length: int, output_path: str) -> None:
     for init in range(0, (past_sequence_length // 6) + 1):
-        init_meta = get_init_meta(init_meta.date - timedelta(hours=6))
+        init_meta = init_meta.get_previous()
         for offset in range(0, 6):
             GribResource(init_meta, offset).fetch(output_path)
 
@@ -95,7 +108,7 @@ def fetch_recent_gfs(config: Config) -> bool:
         forecast_available = grib_resource.is_available()
         if not forecast_available:
             current_date = current_date - timedelta(hours=6)
-            init_meta = get_init_meta(current_date)
+            init_meta = init_meta.get_previous()
             tries += 1
 
     if forecast_available:

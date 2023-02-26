@@ -86,6 +86,11 @@ def fetch_recent_synop(station_code: str, tele_station_code: str) -> pd.DataFram
             pass
         latest_available_starting_point = line
 
+    final_csv = os.path.join(Path(__file__).parent, "oper_data", latest_available_starting_point, "data.csv")
+
+    if os.path.exists(final_csv):
+        return pd.read_csv(final_csv)
+
     date_matcher = re.match(r'(\d{4})(\d{2})(\d{2})(\d{2})', latest_available_starting_point)
     ogimet_url = OGIMET_URL_TEMPLATE.format(station_code, date_matcher.group(1), date_matcher.group(2),
                                             date_matcher.group(3), date_matcher.group(4))
@@ -115,8 +120,8 @@ def fetch_recent_synop(station_code: str, tele_station_code: str) -> pd.DataFram
     df.drop(columns=columns_to_be_dropped, inplace=True)
 
     fill_df_with_telemetric_data(df, tele_station_code)
-    os.makedirs(os.path.join(Path(__file__).parent, "oper_data", latest_available_starting_point), exist_ok=True)
-    df.to_csv(os.path.join(Path(__file__).parent, "oper_data", latest_available_starting_point, "data.csv"))
+    os.makedirs(os.path.dirname(final_csv), exist_ok=True)
+    df.to_csv(final_csv)
     return df
 
 

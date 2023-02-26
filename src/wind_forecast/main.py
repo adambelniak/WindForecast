@@ -26,11 +26,14 @@ def log_dataset_metrics(datamodule: LightningDataModule, logger: LightningLogger
     metrics = {
         'train_dataset_length': len(datamodule.dataset_train),
         'val_dataset_length': len(datamodule.dataset_val),
-        'test_dataset_length': len(datamodule.dataset_test)
+        'test_dataset_length': len(datamodule.dataset_test),
     }
 
     mean = datamodule.dataset_test.dataset.mean
     std = datamodule.dataset_test.dataset.std
+
+    metrics['mean'] = mean
+    metrics['std'] = std
 
     if mean is not None:
         if type(mean) == list:
@@ -59,6 +62,24 @@ def log_dataset_metrics(datamodule: LightningDataModule, logger: LightningLogger
 
     logger.log_metrics(metrics)
 
+
+def init_wandb():
+    WANDB_PROJECT = os.getenv('WANDB_PROJECT')
+    WANDB_ENTITY = os.getenv('WANDB_ENTITY')
+    RUN_NAME = os.getenv('RUN_NAME')
+
+    wandb_logger = WandbLogger(
+        project=WANDB_PROJECT,
+        entity=WANDB_ENTITY,
+        name=RUN_NAME,
+        save_dir=os.getenv('RUN_DIR'),
+        log_model='all' if os.getenv('LOG_MODEL') == 'all' else True if os.getenv('LOG_MODEL') == 'True' else False
+    )
+    wandb.init(project=WANDB_PROJECT,
+               entity=WANDB_ENTITY,
+               name=RUN_NAME)
+
+    return wandb_logger
 
 def run_tune(cfg: Config):
     def objective(trial: optuna.trial.Trial, datamodule: LightningDataModule):
@@ -167,20 +188,8 @@ def run_tune(cfg: Config):
 
 
 def run_training(cfg):
-    WANDB_PROJECT = os.getenv('WANDB_PROJECT')
-    WANDB_ENTITY = os.getenv('WANDB_ENTITY')
     RUN_NAME = os.getenv('RUN_NAME')
-
-    wandb_logger = WandbLogger(
-        project=WANDB_PROJECT,
-        entity=WANDB_ENTITY,
-        name=RUN_NAME,
-        save_dir=os.getenv('RUN_DIR'),
-        log_model='all' if os.getenv('LOG_MODEL') == 'all' else True if os.getenv('LOG_MODEL') == 'True' else False
-    )
-    wandb.init(project=WANDB_PROJECT,
-               entity=WANDB_ENTITY,
-               name=RUN_NAME)
+    wandb_logger = init_wandb()
 
     log.info(f'[bold yellow]\\[init] Run name --> {RUN_NAME}')
 
@@ -245,6 +254,47 @@ def run_training(cfg):
         log.info(f'[bold red]>>> Training interrupted.')
         run.finish(exit_code=255)
 
+def run_predict(cfg: Config):
+    RUN_NAME = os.getenv('RUN_NAME')
+    wandb_logger = init_wandb()
+
+    log.info(f'[bold yellow]\\[init] Run name --> {RUN_NAME}')
+
+    run: Run = wandb_logger.experiment  # type: ignore
+
+    # Setup logging & checkpointing
+    tags = get_tags(cast(DictConfig, cfg))
+    run.tags = tags
+    run.notes = str(cfg.notes)
+    wandb_logger.log_hyperparams(OmegaConf.to_container(cfg, resolve=True))  # type: ignore
+
+    setproctitle.setproctitle(f'{RUN_NAME} ({os.getenv("WANDB_PROJECT")})')  # type: ignore
+
+    log.info(f'\\[init] Loaded config:\n{OmegaConf.to_yaml(cfg, resolve=True)}')
+
+    system: LightningModule = instantiate(cfg.experiment.system, cfg)
+    log.info(f'[bold yellow]\\[init] System architecture:')
+    log.info(system)
+    wandb_logger.log_metrics({
+        'n_params': sum(p.numel() for p in system.model.parameters() if p.requires_grad)
+    })
+    # Prepare data using datamodules
+    datamodule: LightningDataModule = instantiate(cfg.experiment.datamodule, cfg)
+
+    trainer: pl.Trainer = instantiate(
+        cfg.lightning,
+        logger=wandb_logger,
+        limit_val_batches=0 if cfg.experiment.skip_validation else 1
+    )
+
+    trainer.predict(system, datamodule=datamodule)
+
+    mean = datamodule.dataset_test.dataset.mean
+    std = datamodule.dataset_test.dataset.std
+
+    # plot_results(system, cfg, mean, std)
+
+
 @hydra.main(config_path='config', config_name='default')
 def main(cfg: Config):
     RUN_MODE = os.getenv('RUN_MODE', '').lower()
@@ -265,6 +315,8 @@ def main(cfg: Config):
         run_tune(cfg)
     elif RUN_MODE == 'analysis':
         run_analysis(cfg)
+    elif RUN_MODE == 'predict':
+        run_predict(cfg)
     else:
         run_training(cfg)
 

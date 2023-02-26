@@ -33,6 +33,11 @@ class ExperimentSettings:
     # - wandb artifacts: wandb://ENTITY/PROJECT_NAME/ARTIFACT_NAME:VERSION@CHECKPOINT_NAME
     pretrained_artifact: Optional[str] = 'wandb://mbelniak/wind-forecast-openstack/model-1ny66g69:v0@model.ckpt'
 
+    """
+    Id of a run which should be the source of datamodule metadata use for training a pretrained model, e.g. mean and std
+    """
+    prediction_meta_run: Optional[str] = '311c65d9'
+
     # Same as above but for convolutional encoder for CMAX images
     pretrained_cmax_encoder: Optional[str] = 'wandb://mbelniak/wind-forecast-openstack-tune/model-1e6npo9p:v4@model.ckpt'
 
@@ -97,6 +102,10 @@ class ExperimentSettings:
 
     # synop_file: str = "WARSZAWA-OKECIE_375_data.csv"
     synop_file: str = "WARSZAWA-OKECIE_352200375_data.csv"
+
+    synop_station_code: str = "12375"
+
+    tele_station_code: str = "352200375"
 
     synop_from_year: int = 2016
 
@@ -295,7 +304,7 @@ class ExperimentSettings:
 
     value2vec_embedding_factor: int = 5
 
-    use_time2vec: bool = True
+    use_time2vec: bool = False
 
     use_value2vec: bool = False
 

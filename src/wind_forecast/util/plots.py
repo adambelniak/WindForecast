@@ -2,7 +2,7 @@ import os
 
 import wandb
 
-from synop.consts import LOWER_CLOUDS, CLOUD_COVER, CLOUD_COVER_MAX
+from synop.consts import LOWER_CLOUDS, CLOUD_COVER
 from wind_forecast.config.register import Config
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
@@ -13,6 +13,38 @@ def plot_results(system, config: Config, mean, std):
     plot_random_series(system, config, mean, std)
     plot_step_by_step_metric(system)
     plot_scatters(system, config, mean, std)
+
+
+def plot_predict(system, config: Config, mean, std):
+    fig, ax = plt.subplots()
+    plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%m/%d/%Y %H%M'))
+    plt.gca().xaxis.set_major_locator(mdates.HourLocator())
+
+    prediction_series = system.predict_results['prediction']
+    truth_series = system.predict_results['truth_series']
+    prediction_dates = system.predict_results['prediction_dates']
+    all_dates = system.predict_results['all_dates']
+
+    truth_series = rescale_series(config, truth_series, mean, std)
+
+    if config.experiment.use_gfs_data:
+        gfs_out_series = system.test_results['gfs_targets']
+        gfs_out_series = rescale_series(config, gfs_out_series, mean, std)
+
+    prediction_series = rescale_series(config, prediction_series, mean, std)
+
+    ax.plot(prediction_dates, prediction_series, label='prediction')
+
+    if config.experiment.use_gfs_data:
+        ax.plot(prediction_dates, gfs_out_series, label='gfs prediction')
+
+    ax.plot(all_dates, truth_series, label='ground truth')
+    ax.set_xlabel('Date')
+    ax.set_ylabel(config.experiment.target_parameter)
+    ax.legend(loc='best')
+    plt.gcf().autofmt_xdate()
+    wandb.log({'series_chart': ax})
+    plt.close(fig)
 
 
 def rescale_series(config: Config, series, mean, std):

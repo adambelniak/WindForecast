@@ -57,11 +57,25 @@ class InitMeta:
 
     def __init__(self, date: datetime, init_hour: InitHour) -> None:
         super().__init__()
-        self.date = date
+        self.date = datetime(year=date.year, month=date.month, day=date.day)
         self.init_hour = init_hour
 
-    def get_init_date_string(self):
+    def get_init_date_string(self) -> str:
         return self.date.strftime('%Y%m%d')
 
-    def get_init_run_string(self):
-        return self.date.strftime('%Y%m%d') + self.init_hour.value
+    def get_date_string(self) -> str:
+        return self.date.strftime('%Y%m%d') + " " + self.init_hour.value + ":00"
+
+    def get_date_string_for_offset(self, offset: int) -> str:
+        date = datetime(year=self.date.year,
+                        month=self.date.month,
+                        day=self.date.day,
+                        hour=int(self.init_hour.value) + offset)
+        return date.strftime('%Y%m%d %H:00')
+
+    def get_previous(self) -> InitMeta:
+        if self.init_hour.value == InitHour._00z.value:
+            date = self.date - timedelta(days=1)
+        else:
+            date = self.date
+        return InitMeta(date, self.init_hour.get_previous())
