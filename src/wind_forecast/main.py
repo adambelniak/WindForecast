@@ -22,7 +22,7 @@ from wind_forecast.util.rundir import setup_rundir
 
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
-def log_dataset_metrics(datamodule: LightningDataModule, logger: LightningLoggerBase, config: Config):
+def log_dataset_metrics(datamodule: LightningDataModule, run: Run, config: Config):
     metrics = {
         'train_dataset_length': len(datamodule.dataset_train),
         'val_dataset_length': len(datamodule.dataset_val),
@@ -60,7 +60,7 @@ def log_dataset_metrics(datamodule: LightningDataModule, logger: LightningLogger
             else:
                 metrics[f"target_std"] = std
 
-    logger.log_metrics(metrics)
+    run.log(metrics)
 
 
 def init_wandb():
@@ -248,7 +248,7 @@ def run_training(cfg):
         if cfg.experiment.view_test_result:
             plot_results(system, cfg, mean, std)
 
-    log_dataset_metrics(datamodule, wandb_logger, cfg)
+    log_dataset_metrics(datamodule, run, cfg)
 
     if trainer.interrupted:  # type: ignore
         log.info(f'[bold red]>>> Training interrupted.')
