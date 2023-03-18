@@ -31,12 +31,12 @@ class ExperimentSettings:
     # Path to pretrained artifact. Two formats are supported:
     # - local checkpoints: path to artifact relative from run (results) directory
     # - wandb artifacts: wandb://ENTITY/PROJECT_NAME/ARTIFACT_NAME:VERSION@CHECKPOINT_NAME
-    pretrained_artifact: Optional[str] = 'wandb://mbelniak/wind-forecast-openstack/model-1ny66g69:v0@model.ckpt'
+    pretrained_artifact: Optional[str] = 'wandb://mbelniak/wind-forecast-openstack/model-10kb6o2o:v0@model.ckpt'
 
     """
     Id of a run which should be the source of datamodule metadata use for training a pretrained model, e.g. mean and std
     """
-    prediction_meta_run: Optional[str] = '311c65d9'
+    prediction_meta_run: Optional[str] = '10kb6o2o'
 
     # Same as above but for convolutional encoder for CMAX images
     pretrained_cmax_encoder: Optional[str] = 'wandb://mbelniak/wind-forecast-openstack-tune/model-1e6npo9p:v4@model.ckpt'

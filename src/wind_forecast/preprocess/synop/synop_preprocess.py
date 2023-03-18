@@ -1,7 +1,7 @@
 import datetime
 import os
 from pathlib import Path
-from typing import Union, Tuple
+from typing import Union, Tuple, List
 
 import numpy as np
 import pandas as pd
@@ -61,20 +61,25 @@ def prepare_synop_dataset(synop_file_name: str, features: list, norm=True,
     data = data[(data['date'] >= first_date) & (data['date'] < last_date)]
 
     if decompose_periodic:
-        for feature in SYNOP_PERIODIC_FEATURES:
-            min = feature['min']
-            max = feature['max']
-            column = feature['column'][1]
-            series_to_reduce = data[column]
-            period_argument = ((series_to_reduce - min) / (max - min)).astype(np.float64) * 2 * np.pi
-            data.insert(data.columns.get_loc(column), f'{column}-cos', np.cos(period_argument).tolist())
-            data.insert(data.columns.get_loc(column), f'{column}-sin', np.sin(period_argument).tolist())
-            data.drop(columns=[column], inplace=True)
-            features = modify_feature_names_after_periodic_reduction(features)
+        data = decompose_periodic_features(data, features)
     if norm:
         data[features], mean_or_min, std_or_max = get_normalization_values(data[features].values, normalization_type)
         return data, mean_or_min, std_or_max
 
+    return data
+
+
+def decompose_periodic_features(data: pd.DataFrame, all_features: List[str]):
+    for feature in SYNOP_PERIODIC_FEATURES:
+        min = feature['min']
+        max = feature['max']
+        column = feature['column'][1]
+        series_to_reduce = pd.to_numeric(data[column])
+        period_argument = ((series_to_reduce - min) / (max - min)).astype(np.float64) * 2 * np.pi
+        data.insert(data.columns.get_loc(column), f'{column}-cos', np.cos(period_argument).tolist())
+        data.insert(data.columns.get_loc(column), f'{column}-sin', np.sin(period_argument).tolist())
+        data.drop(columns=[column], inplace=True)
+        all_features = modify_feature_names_after_periodic_reduction(all_features)
     return data
 
 

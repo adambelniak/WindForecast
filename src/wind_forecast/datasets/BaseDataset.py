@@ -2,16 +2,6 @@ import torch
 
 
 class BaseDataset(torch.utils.data.Dataset):
-    SYNOP_PAST_Y_INDEX = ...
-    SYNOP_PAST_X_INDEX = ...
-    SYNOP_FUTURE_Y_INDEX = ...
-    SYNOP_FUTURE_X_INDEX = ...
-    GFS_PAST_X_INDEX = ...
-    GFS_PAST_Y_INDEX = ...
-    GFS_FUTURE_X_INDEX = ...
-    GFS_FUTURE_Y_INDEX = ...
-    DATES_PAST_INDEX = ...
-    DATES_FUTURE_INDEX = ...
 
     def __init__(self):
         super().__init__()
@@ -28,3 +18,18 @@ class BaseDataset(torch.utils.data.Dataset):
 
     def set_max(self, max):
         self.max = max
+
+    def get_mean(self):
+        return self.mean
+
+    def get_std(self):
+        return self.std
+
+    def get_min(self):
+        return self.min
+
+    def get_max(self):
+        return self.max
+
+    def get_dataset(self, class_name: str):
+        return self

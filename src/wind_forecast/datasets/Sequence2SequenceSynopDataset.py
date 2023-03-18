@@ -1,38 +1,23 @@
 from typing import List
 
 import pandas as pd
-import numpy as np
+
 from wind_forecast.config.register import Config
 from wind_forecast.datasets.BaseDataset import BaseDataset
-from wind_forecast.util.gfs_util import get_gfs_target_param
 
 
-class Sequence2SequenceWithGFSDataset(BaseDataset):
-    SYNOP_PAST_Y_INDEX = 0
-    SYNOP_PAST_X_INDEX = 1
-    SYNOP_FUTURE_Y_INDEX = 2
-    SYNOP_FUTURE_X_INDEX = 3
-    GFS_PAST_X_INDEX = 4
-    GFS_PAST_Y_INDEX = 5
-    GFS_FUTURE_X_INDEX = 6
-    GFS_FUTURE_Y_INDEX = 7
-    DATES_PAST_INDEX = 8
-    DATES_FUTURE_INDEX = 9
+class Sequence2SequenceSynopDataset(BaseDataset):
 
-    def __init__(self, config: Config, synop_data: pd.DataFrame, gfs_data: pd.DataFrame, data_indices: list,
-                 synop_feature_names: List[str], gfs_feature_names: List[str]):
+    def __init__(self, config: Config, synop_data: pd.DataFrame, data_indices: list, synop_feature_names: List[str]):
         'Initialization'
         super().__init__()
         self.synop_feature_names = synop_feature_names
-        self.gfs_feature_names = gfs_feature_names
         self.target_param = config.experiment.target_parameter
-        self.gfs_target_param = get_gfs_target_param(config.experiment.target_parameter)
 
         self.sequence_length = config.experiment.sequence_length
         self.future_sequence_length = config.experiment.future_sequence_length
         self.prediction_offset = config.experiment.prediction_offset
         self.synop_data = synop_data
-        self.gfs_data = gfs_data
 
         self.data = data_indices
 
@@ -62,17 +47,5 @@ class Sequence2SequenceWithGFSDataset(BaseDataset):
                        data_index + self.sequence_length + self.prediction_offset
                        :data_index + self.sequence_length + self.prediction_offset + self.future_sequence_length - 1]['date'].to_numpy()
 
-        gfs_past_y = np.expand_dims(self.gfs_data.loc[data_index:data_index + self.sequence_length - 1][self.gfs_target_param].to_numpy(), -1)
-        gfs_future_y = np.expand_dims(self.gfs_data.loc[data_index + self.sequence_length + self.prediction_offset
-                                      :data_index + self.sequence_length + self.prediction_offset + self.future_sequence_length - 1]
-                                      [self.gfs_target_param].to_numpy(), -1)
-
-        gfs_past_x = self.gfs_data.loc[data_index:data_index + self.sequence_length - 1][
-            self.gfs_feature_names].to_numpy()
-        gfs_future_x = self.gfs_data.loc[
-                       data_index + self.sequence_length + self.prediction_offset:data_index + self.sequence_length + self.prediction_offset + self.future_sequence_length - 1][
-            self.gfs_feature_names].to_numpy()
-
-        return synop_past_y, synop_past_x, synop_future_y, synop_future_x, gfs_past_x, gfs_past_y, \
-               gfs_future_x, gfs_future_y, inputs_dates, target_dates
+        return synop_past_y, synop_past_x, synop_future_y, synop_future_x, inputs_dates, target_dates
 

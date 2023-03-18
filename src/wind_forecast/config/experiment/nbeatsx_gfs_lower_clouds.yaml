@@ -25,3 +25,6 @@ use_value2vec: False
 target_parameter: lower_clouds
 categorical_experiment: True
 classes: 10
+sequence_length: 3
+future_sequence_length: 3
+train_parameters_config_file: CommonOperGFSConfig.json

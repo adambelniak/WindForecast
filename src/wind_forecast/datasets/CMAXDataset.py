@@ -5,15 +5,14 @@ import numpy as np
 
 from wind_forecast.config.register import Config
 from wind_forecast.datasets.BaseDataset import BaseDataset
-from wind_forecast.util.cmax_util import get_mean_and_std_cmax, get_min_max_cmax, \
-    get_cmax_values_for_sequence, get_cmax_datekey_from_offset, date_from_cmax_date_key
+from wind_forecast.util.cmax_util import  get_cmax_values_for_sequence, get_cmax_datekey_from_offset, date_from_cmax_date_key
 from wind_forecast.util.common_util import NormalizationType
 
 
 class CMAXDataset(BaseDataset):
     'Characterizes a dataset for PyTorch'
 
-    def __init__(self, config: Config, dates, normalize=True, use_future_values=True):
+    def __init__(self, config: Config, dates, cmax_values, normalize=True, use_future_values=True):
         super().__init__()
         self.config = config
         self.dim = config.experiment.cmax_sample_size
@@ -24,25 +23,7 @@ class CMAXDataset(BaseDataset):
         self.data = dates
         self.use_future_values = use_future_values
 
-        self.cmax_values = {}
-
-        if self.normalization_type == NormalizationType.STANDARD:
-            if use_future_values:
-                self.cmax_values, self.mean, self.std = get_mean_and_std_cmax(dates, self.dim,
-                                                                              self.sequence_length,
-                                                                              self.future_sequence_length,
-                                                                              self.prediction_offset)
-            else:
-                self.cmax_values, self.mean, self.std = get_mean_and_std_cmax(dates, self.dim,
-                                                                              self.sequence_length)
-
-        else:
-            if use_future_values:
-                self.cmax_values, self.min, self.max = get_min_max_cmax(dates, self.sequence_length,
-                                                                        self.future_sequence_length,
-                                                                        self.prediction_offset)
-            else:
-                self.cmax_values, self.min, self.max = get_min_max_cmax(dates, self.sequence_length)
+        self.cmax_values = cmax_values
 
         self.normalize = normalize
 

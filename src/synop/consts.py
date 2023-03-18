@@ -26,7 +26,7 @@ AUTO_WIND_DIRECTION = ('B00202A', 'wind_direction')
 AUTO_WIND = ('B00702A', 'wind_velocity')
 AUTO_GUST = ('B00703A', 'wind_gust')
 AUTO_10_MIN_PRECIPITATION = ('B00608S', 'precipitation_10')
-AUTO_HOUR_PRECIPITATION = ('SOOOOME', 'precipitation')
+AUTO_HOUR_PRECIPITATION = ('B00606S', 'precipitation')
 AUTO_HUMIDITY = ('B00802A', 'humidity')
 
 SYNOP_FEATURES = [

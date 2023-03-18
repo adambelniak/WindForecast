@@ -3,7 +3,7 @@ import math
 import pandas as pd
 
 from synop import consts
-from synop.consts import AUTO_HOUR_PRECIPITATION, PRECIPITATION
+from synop.consts import AUTO_HOUR_PRECIPITATION, PRECIPITATION, PRECIPITATION_6H
 
 
 def add_hourly_wind_velocity(auto_station_df: pd.DataFrame, synop_df: pd.DataFrame, auto_station_param: str, synop_param: str):
@@ -88,7 +88,7 @@ def add_hourly_precipitation(auto_station_df: pd.DataFrame, synop_df: pd.DataFra
                 values.append(0)
         else:
             values.append("{:.1f}".format(auto_station_row[AUTO_HOUR_PRECIPITATION[1]].item()))
-
-    synop_df[PRECIPITATION[1]] = values
+    # TODO it should be precipitation
+    synop_df[PRECIPITATION_6H[1]] = values
 
     return synop_df

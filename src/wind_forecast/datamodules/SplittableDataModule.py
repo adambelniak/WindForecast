@@ -3,6 +3,7 @@ import json
 import os
 import sys
 
+from wind_forecast.datasets import BaseDataset
 from wind_forecast.util.logging import log
 
 if sys.version_info <= (3, 8, 2):
@@ -29,6 +30,7 @@ class SplittableDataModule(LightningDataModule):
         self.dataset_train: CustomSubset = ...
         self.dataset_val: CustomSubset = ...
         self.dataset_test: CustomSubset = ...
+        self.dataset_predict: BaseDataset = ...
         self.uses_future_sequences = False
         self.initialized = False
 

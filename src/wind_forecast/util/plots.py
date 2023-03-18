@@ -9,13 +9,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def plot_results(system, config: Config, mean, std):
-    plot_random_series(system, config, mean, std)
+def plot_results(system, config: Config, synop_mean, synop_std, gfs_mean, gfs_std):
+    plot_random_series(system, config, synop_mean, synop_std, gfs_mean, gfs_std)
     plot_step_by_step_metric(system)
-    plot_scatters(system, config, mean, std)
+    plot_scatters(system, config, synop_mean, synop_std, gfs_mean, gfs_std)
 
 
-def plot_predict(system, config: Config, mean, std):
+def plot_predict(system, config: Config, synop_mean, synop_std, gfs_mean, gfs_std):
     fig, ax = plt.subplots()
     plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%m/%d/%Y %H%M'))
     plt.gca().xaxis.set_major_locator(mdates.HourLocator())
@@ -24,21 +24,20 @@ def plot_predict(system, config: Config, mean, std):
     truth_series = system.predict_results['truth_series']
     prediction_dates = system.predict_results['prediction_dates']
     all_dates = system.predict_results['all_dates']
+    past_dates = system.predict_results['past_dates']
 
-    truth_series = rescale_series(config, truth_series, mean, std)
-
-    if config.experiment.use_gfs_data:
-        gfs_out_series = system.test_results['gfs_targets']
-        gfs_out_series = rescale_series(config, gfs_out_series, mean, std)
-
-    prediction_series = rescale_series(config, prediction_series, mean, std)
+    prediction_series = rescale_series(config, prediction_series, synop_mean, synop_std)
 
     ax.plot(prediction_dates, prediction_series, label='prediction')
-
     if config.experiment.use_gfs_data:
-        ax.plot(prediction_dates, gfs_out_series, label='gfs prediction')
+        gfs_out_series = system.predict_results['gfs_targets']
+        gfs_out_series = rescale_series(config, gfs_out_series, gfs_mean, gfs_std)
+        gfs_past_series = system.predict_results['gfs_past']
+        gfs_past_series = rescale_series(config, gfs_past_series, gfs_mean, gfs_std)
+        ax.plot(all_dates, np.concatenate([gfs_past_series, gfs_out_series]), label='gfs prediction')
 
-    ax.plot(all_dates, truth_series, label='ground truth')
+    ax.plot(past_dates, truth_series, label='ground truth')
+
     ax.set_xlabel('Date')
     ax.set_ylabel(config.experiment.target_parameter)
     ax.legend(loc='best')
@@ -67,7 +66,7 @@ def rescale_series(config: Config, series, mean, std):
     return series
 
 
-def plot_random_series(system, config: Config, mean, std):
+def plot_random_series(system, config: Config, synop_mean, synop_std, gfs_mean, gfs_std):
     for index in range(len(system.test_results['plot_truth'])):
         fig, ax = plt.subplots()
         plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%m/%d/%Y %H%M'))
@@ -78,23 +77,17 @@ def plot_random_series(system, config: Config, mean, std):
         prediction_dates = system.test_results['plot_prediction_dates'][index]
         all_dates = system.test_results['plot_all_dates'][index]
 
-        truth_series = rescale_series(config, truth_series, mean, std)
+        truth_series = rescale_series(config, truth_series, synop_mean, synop_std)
+        prediction_series = rescale_series(config, prediction_series, synop_mean, synop_std)
 
         if config.experiment.use_gfs_data:
             gfs_out_series = system.test_results['plot_gfs_targets'][index]
-            gfs_out_series = rescale_series(config, gfs_out_series, mean, std)
-            if config.experiment.differential_forecast:
-                prediction_series = rescale_series(config, prediction_series, gfs_out_series, std)
-            else:
-                prediction_series = rescale_series(config, prediction_series, mean, std)
-        else:
-            prediction_series = rescale_series(config, prediction_series, mean, std)
+            gfs_out_series = rescale_series(config, gfs_out_series, gfs_mean, gfs_std)
 
         ax.plot(prediction_dates, prediction_series, label='prediction')
 
         if config.experiment.use_gfs_data:
             ax.plot(prediction_dates, gfs_out_series, label='gfs prediction')
-
         ax.plot(all_dates, truth_series, label='ground truth')
         ax.set_xlabel('Date')
         ax.set_ylabel(config.experiment.target_parameter)
@@ -113,15 +106,15 @@ def plot_step_by_step_metric(system):
     plt.close()
 
 
-def plot_scatters(system, config: Config, mean, std):
+def plot_scatters(system, config: Config, synop_mean, synop_std, gfs_mean, gfs_std):
     output_series = system.test_results['output_series']
     truth_series = system.test_results['truth_series']
-    output_series = rescale_series(config, output_series, mean, std)
-    truth_series = rescale_series(config, truth_series, mean, std)
+    output_series = rescale_series(config, output_series, synop_mean, synop_std)
+    truth_series = rescale_series(config, truth_series, synop_mean, synop_std)
 
     if config.experiment.use_gfs_data:
         gfs_targets = system.test_results['gfs_targets']
-        gfs_targets = rescale_series(config, gfs_targets, mean, std)
+        gfs_targets = rescale_series(config, gfs_targets, gfs_mean, gfs_std)
 
         plot_scatter(output_series, gfs_targets, "Predykcja modelu", "Predykcja GFS", "scatter_plot_gfs_pred.png")
         plot_scatter(truth_series, gfs_targets, "Wartość rzeczywista", "Predykcja GFS", "scatter_plot_gfs_truth.png")

@@ -10,55 +10,62 @@ from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
 from optuna.integration import PyTorchLightningPruningCallback
 from pytorch_lightning import LightningDataModule, LightningModule
-from pytorch_lightning.loggers import WandbLogger, LightningLoggerBase
+from pytorch_lightning.loggers import WandbLogger
 from wandb.sdk.wandb_run import Run
 
 from wind_forecast.config.register import Config, register_configs, get_tags
+from wind_forecast.datamodules import SplittableDataModule
 from wind_forecast.runs_analysis import run_analysis
 from wind_forecast.util.callbacks import CustomCheckpointer, get_resume_checkpoint
+from wind_forecast.util.common_util import NormalizationType
 from wind_forecast.util.logging import log
-from wind_forecast.util.plots import plot_results
+from wind_forecast.util.plots import plot_results, plot_predict
 from wind_forecast.util.rundir import setup_rundir
 
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
-def log_dataset_metrics(datamodule: LightningDataModule, run: Run, config: Config):
+def log_dataset_metrics(datamodule: SplittableDataModule, run: Run, config: Config):
     metrics = {
         'train_dataset_length': len(datamodule.dataset_train),
         'val_dataset_length': len(datamodule.dataset_val),
         'test_dataset_length': len(datamodule.dataset_test),
     }
 
-    mean = datamodule.dataset_test.dataset.mean
-    std = datamodule.dataset_test.dataset.std
+    if config.experiment.normalization_type == NormalizationType.STANDARD:
+        synop_mean = datamodule.dataset_test.dataset.get_dataset("Sequence2SequenceSynopDataset").mean
+        synop_std = datamodule.dataset_test.dataset.get_dataset("Sequence2SequenceSynopDataset").std
+        metrics['synop_mean'] = synop_mean
+        metrics['synop_std'] = synop_std
 
-    metrics['mean'] = mean
-    metrics['std'] = std
+        if config.experiment.load_gfs_data:
+            gfs_mean = datamodule.dataset_test.dataset.get_dataset("Sequence2SequenceGFSDataset").mean
+            gfs_std = datamodule.dataset_test.dataset.get_dataset("Sequence2SequenceGFSDataset").std
+            metrics['gfs_mean'] = gfs_mean
+            metrics['gfs_std'] = gfs_std
 
-    if mean is not None:
-        if type(mean) == list:
-            for index, m in enumerate(mean):
-                if type(m) == dict:
-                    metrics[f"target_mean_{str(index)}"] = m[config.experiment.target_parameter]
-                else:
-                    metrics[f"target_mean_{str(index)}"] = m
-        else:
-            if type(mean) == dict:
-                metrics[f"target_mean"] = mean[config.experiment.target_parameter]
-            else:
-                metrics[f"target_mean"] = mean
-    if std is not None:
-        if type(std) == list:
-            for index, s in enumerate(std):
-                if type(s) == dict:
-                    metrics[f"target_std_{str(index)}"] = s[config.experiment.target_parameter]
-                else:
-                    metrics[f"target_std_{str(index)}"] = s
-        else:
-            if type(std) == dict:
-                metrics[f"target_std"] = std[config.experiment.target_parameter]
-            else:
-                metrics[f"target_std"] = std
+        if config.experiment.load_cmax_data:
+            cmax_mean = datamodule.dataset_test.dataset.get_dataset("CMAXDataset").mean
+            cmax_std = datamodule.dataset_test.dataset.get_dataset("CMAXDataset").std
+            metrics['cmax_mean'] = cmax_mean
+            metrics['cmax_std'] = cmax_std
+
+    else:
+        synop_min = datamodule.dataset_test.dataset.get_dataset("Sequence2SequenceSynopDataset").min
+        synop_max = datamodule.dataset_test.dataset.get_dataset("Sequence2SequenceSynopDataset").max
+        metrics['synop_min'] = synop_min
+        metrics['synop_max'] = synop_max
+
+        if config.experiment.load_gfs_data:
+            gfs_min = datamodule.dataset_test.dataset.get_dataset("Sequence2SequenceGFSDataset").min
+            gfs_max = datamodule.dataset_test.dataset.get_dataset("Sequence2SequenceGFSDataset").max
+            metrics['gfs_min'] = gfs_min
+            metrics['gfs_max'] = gfs_max
+
+        if config.experiment.load_cmax_data:
+            cmax_min = datamodule.dataset_test.dataset.get_dataset("CMAXDataset").min
+            cmax_max = datamodule.dataset_test.dataset.get_dataset("CMAXDataset").max
+            metrics['cmax_min'] = cmax_min
+            metrics['cmax_max'] = cmax_max
 
     run.log(metrics)
 
@@ -213,7 +220,7 @@ def run_training(cfg):
         'n_params': sum(p.numel() for p in system.model.parameters() if p.requires_grad)
     })
     # Prepare data using datamodules
-    datamodule: LightningDataModule = instantiate(cfg.experiment.datamodule, cfg)
+    datamodule: SplittableDataModule = instantiate(cfg.experiment.datamodule, cfg)
 
     resume_path = get_resume_checkpoint(cfg, wandb_logger)
     if resume_path is not None:
@@ -242,11 +249,15 @@ def run_training(cfg):
     if not cfg.experiment.skip_test:
         trainer.test(system, datamodule=datamodule)
 
-        mean = datamodule.dataset_test.dataset.mean
-        std = datamodule.dataset_test.dataset.std
-
         if cfg.experiment.view_test_result:
-            plot_results(system, cfg, mean, std)
+            synop_mean = datamodule.dataset_test.dataset.get_dataset("Sequence2SequenceSynopDataset").mean
+            synop_std = datamodule.dataset_test.dataset.get_dataset("Sequence2SequenceSynopDataset").std
+            if cfg.experiment.use_gfs_data:
+                gfs_mean = datamodule.dataset_test.dataset.get_dataset("Sequence2SequenceGFSDataset").mean
+                gfs_std = datamodule.dataset_test.dataset.get_dataset("Sequence2SequenceGFSDataset").std
+                plot_results(system, cfg, synop_mean, synop_std, gfs_mean, gfs_std)
+            else:
+                plot_results(system, cfg, synop_mean, synop_std, None, None)
 
     log_dataset_metrics(datamodule, run, cfg)
 
@@ -279,7 +290,7 @@ def run_predict(cfg: Config):
         'n_params': sum(p.numel() for p in system.model.parameters() if p.requires_grad)
     })
     # Prepare data using datamodules
-    datamodule: LightningDataModule = instantiate(cfg.experiment.datamodule, cfg)
+    datamodule: SplittableDataModule = instantiate(cfg.experiment.datamodule, cfg)
 
     trainer: pl.Trainer = instantiate(
         cfg.lightning,
@@ -289,10 +300,14 @@ def run_predict(cfg: Config):
 
     trainer.predict(system, datamodule=datamodule)
 
-    mean = datamodule.dataset_test.dataset.mean
-    std = datamodule.dataset_test.dataset.std
-
-    # plot_results(system, cfg, mean, std)
+    synop_mean = datamodule.dataset_predict.get_dataset("SequenceDataset").mean
+    synop_std = datamodule.dataset_predict.get_dataset("SequenceDataset").std
+    if cfg.experiment.use_gfs_data:
+        gfs_mean = datamodule.dataset_predict.get_dataset("Sequence2SequenceGFSDataset").mean
+        gfs_std = datamodule.dataset_predict.get_dataset("Sequence2SequenceGFSDataset").std
+        plot_predict(system, cfg, synop_mean, synop_std, gfs_mean, gfs_std)
+    else:
+        plot_predict(system, cfg, synop_mean, synop_std, None, None)
 
 
 @hydra.main(config_path='config', config_name='default')

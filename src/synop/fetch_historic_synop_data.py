@@ -13,16 +13,16 @@ import tqdm
 import argparse
 
 import synop.consts as consts
-from synop.tele_util import add_hourly_wind_velocity, add_hourly_direction
+from synop.tele_util import add_hourly_wind_velocity, add_hourly_direction, add_hourly_precipitation
 from util.util import prep_zeros_if_needed
 
 """This code obtains SYNOP data from 'https://danepubliczne.imgw.pl/'.
 
     SYNOP file containing meteorological synoptic data for single localisation and year. 
 
-    Wind data is obtained from https://danepubliczne.imgw.pl/datastore/.
+    Wind data is obtained from https://dane.imgw.pl/datastore/.
     Wind and gusts velocity is obtained by taking an average from 7 observations from HH:30 to HH+1:30 
-    Each file from https://danepubliczne.imgw.pl/datastore/ contains data for one month, one parameter for multiple localisations.
+    Each file contains data for one month, one parameter for multiple localisations.
 
     https://danepubliczne.imgw.pl/data/dane_pomiarowo_obserwacyjne/dane_meteorologiczne/terminowe/synop/s_t_format.txt 
     - under this url the description of SYNOP file format is available. 
@@ -92,17 +92,17 @@ def get_synop_data(localisation_code: str, year: str, output_dir: str):
 
 def get_auto_station_data(year: str, month: str, output_dir: str):
     Path(output_dir).mkdir(parents=True, exist_ok=True)
-    output_file = os.path.join(output_dir, f"Meteo_{year}-{month}.tar")
+    output_file = os.path.join(output_dir, f"Meteo_{year}-{month}.zip")
     if os.path.exists(output_file):
         return
 
-    url = f"https://danepubliczne.imgw.pl/datastore/getfiledown/Arch/Telemetria/Meteo/{year}/Meteo_{year}-{month}.tar"
+    url = f"https://dane.imgw.pl/datastore/getfiledown/Arch/Telemetria/Meteo/{year}/Meteo_{year}-{month}.zip"
     if month in ['01', '02'] and year == '2021':
         url = url.replace('zip', 'ZIP')  # ¯\_(ツ)_/¯
 
     req = requests.get(url, stream=True)
     if req.status_code == 200:
-        print(f"Downloading tar to {output_file}")
+        print(f"Downloading zip to {output_file}")
         with open(output_file, 'wb') as outfile:
             chunk_size = 1048576
             for chunk in req.iter_content(chunk_size=chunk_size):
@@ -196,7 +196,7 @@ def process_auto_station_data(from_year: int, until_year: int, localisation_code
             if not os.path.exists(os.path.join(auto_station_dir, str(year), str_month)) or len(
                     os.listdir(os.path.join(auto_station_dir, str(year), str_month))) == 0:
                 get_auto_station_data(str(year), str_month, os.path.join(auto_station_dir, str(year), str_month, 'download'))
-                extract_tar_files(os.path.join(auto_station_dir, str(year), str_month, 'download'),
+                extract_zip_files(os.path.join(auto_station_dir, str(year), str_month, 'download'),
                                   os.path.join(auto_station_dir, str(year), str_month))
 
             processed_data = read_auto_station_data(os.path.join(auto_station_dir, str(year), str_month), localisation_code)
@@ -227,10 +227,12 @@ def merge_synop_data_with_auto_station_data(localisation_name: str, localisation
     synop_df = pd.read_csv(os.path.join(synop_data_dir, f"{localisation_name}_{localisation_code}_data.csv"))
     auto_station_df = pd.read_csv(os.path.join(auto_station_data_dir, f"{localisation_name}_{localisation_code}_data.csv"))
     auto_station_df['date'] = pd.to_datetime(auto_station_df['date'])
+    synop_df['date'] = pd.to_datetime(synop_df[['year', 'month', 'day', 'hour']])
 
     add_hourly_wind_velocity(auto_station_df, synop_df, consts.AUTO_WIND[1], consts.VELOCITY_COLUMN[1])
     add_hourly_wind_velocity(auto_station_df, synop_df, consts.AUTO_GUST[1], consts.GUST_COLUMN[1])
     add_hourly_direction(auto_station_df, synop_df)
+    add_hourly_precipitation(auto_station_df, synop_df)
     synop_df.to_csv(os.path.join(synop_data_dir, f"{localisation_name}_{localisation_code}_data.csv"), index=False)
 
 

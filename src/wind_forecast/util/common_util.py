@@ -3,13 +3,13 @@ import math
 import os
 from enum import Enum
 from pathlib import Path
-from typing import Sequence, Tuple
+from typing import Sequence, Tuple, List
 
 import numpy as np
 import torch
 import wandb
-from torch.utils.data import Subset, random_split
-from torch.utils.data.dataset import T_co
+from torch.utils.data import Subset, Dataset
+from torch._utils import _accumulate
 from tqdm import tqdm
 from wandb.sdk.wandb_run import Run
 
@@ -22,6 +22,26 @@ class CustomSubset(Subset):
 
     def __init__(self, dataset: BaseDataset, indices: Sequence[int]) -> None:
         super().__init__(dataset, indices)
+
+    def get_mean(self):
+        return self.dataset.get_mean()
+
+    def get_std(self):
+        return self.dataset.get_std()
+
+    def get_min(self):
+        return self.dataset.get_min()
+
+    def get_max(self):
+        return self.dataset.get_max()
+
+
+def random_split(dataset: Dataset, lengths: Sequence[int]) -> List[CustomSubset]:
+    if sum(lengths) != len(dataset):
+        raise ValueError("Sum of input lengths does not equal the length of the input dataset!")
+
+    indices = torch.randperm(sum(lengths), generator=torch.default_generator).tolist()
+    return [CustomSubset(dataset, indices[offset - length : offset]) for offset, length in zip(_accumulate(lengths), lengths)]
 
 
 def basic_split_randomly(dataset, val_split: float, test_split: float) -> Tuple[CustomSubset, ...]:

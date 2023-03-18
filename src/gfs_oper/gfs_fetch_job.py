@@ -36,7 +36,7 @@ def fetch_oper_gfs(config: Config) -> Union[pd.DataFrame, None]:
             df = pd.read_csv(csv_path)
             data = pd.concat([data, df])
 
-    data = data.sort_values(by='date')
+    data = data.sort_values(by='date').reset_index().drop(['index'], axis=1)
     return data
 
 

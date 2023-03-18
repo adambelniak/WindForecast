@@ -1,7 +1,7 @@
 from __future__ import annotations
 import pandas as pd
 import math
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import numpy as np
 import torch
 
@@ -54,9 +54,6 @@ class S2SRegressorWithGFSInput(BaseS2SRegressor):
                 self.test_mase(outputs.unsqueeze(0), targets.unsqueeze(0), past_targets.unsqueeze(0))
             else:
                 self.test_mase(outputs, targets, past_targets)
-
-        dates_inputs = batch[BatchKeys.DATES_PAST.value]
-        dates_targets = batch[BatchKeys.DATES_FUTURE.value]
 
         gfs_targets = batch[BatchKeys.GFS_FUTURE_Y.value]
 
