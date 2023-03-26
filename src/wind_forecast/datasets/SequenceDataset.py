@@ -42,7 +42,7 @@ class SequenceDataset(BaseDataset):
         inputs_dates = self.synop_data.loc[data_index:data_index + self.sequence_length - 1]['date'].to_numpy()
         first_future_date = pd.to_datetime(inputs_dates[-1]) + timedelta(hours=self.prediction_offset)
         target_dates = []
-        for index in range(self.future_sequence_length):
+        for index in range(1, self.future_sequence_length + 1):
             target_dates.append(datetime.strftime(first_future_date + timedelta(hours=index), "%Y-%m-%d %H:%M:%S"))
 
         target_dates = np.array(target_dates)

@@ -10,21 +10,19 @@ _tags_:
 resume_checkpoint: ~
 
 datamodule:
-  _target_: wind_forecast.datamodules.Sequence2SequenceWithCMAXDataModule.Sequence2SequenceWithCMAXDataModule
+  _target_: wind_forecast.datamodules.Sequence2SequenceOperDataModule.Sequence2SequenceOperDataModule
 
 model:
   _target_: wind_forecast.models.nbeatsx.nbeatsx.Nbeatsx
 
 system:
-  _target_: wind_forecast.systems.S2SRegressorWithGFSInput.S2SRegressorWithGFSInput
+  _target_: wind_forecast.systems.prediction.S2SPredictorWithGFSInput.S2SPredictorWithGFSInput
 
-epochs: 20
-dropout: 0.3
 use_gfs_data: True
-use_value2vec: False
-target_parameter: lower_clouds
-categorical_experiment: True
-classes: 10
+target_parameter: temperature
+use_pretrained_artifact: True
+pretrained_artifact: wandb://mbelniak/wind-forecast-openstack/model-9g7zpk36:v0@model.ckpt
 sequence_length: 24
 future_sequence_length: 24
 train_parameters_config_file: CommonOperGFSConfig.json
+prediction_meta_run: 52w3vxxb

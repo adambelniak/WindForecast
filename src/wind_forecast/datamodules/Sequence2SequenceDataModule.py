@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 from torch.utils.data.dataloader import default_collate
 from tqdm import tqdm
 
-from synop.consts import SYNOP_PERIODIC_FEATURES, TEMPERATURE, PRESSURE, LOWER_CLOUDS, CLOUD_COVER
+from synop.consts import SYNOP_PERIODIC_FEATURES, LOWER_CLOUDS, CLOUD_COVER
 from util.coords import Coords
 from wind_forecast.config.register import Config
 from wind_forecast.consts import BatchKeys
@@ -203,8 +203,12 @@ class Sequence2SequenceDataModule(SplittableDataModule):
             self.gfs_data[self.gfs_target_param] = target_data / 100
         else:
             if self.normalization_type == NormalizationType.STANDARD:
+                self.gfs_mean[self.gfs_target_param] = target_data.mean(axis=0)
+                self.gfs_std[self.gfs_target_param] = target_data.std(axis=0)
                 self.gfs_data[self.gfs_target_param] = (target_data - target_data.mean(axis=0)) / target_data.std(axis=0)
             else:
+                self.gfs_min[self.gfs_target_param] = target_data.min(axis=0)
+                self.gfs_max[self.gfs_target_param] = target_data.max(axis=0)
                 self.gfs_data[self.gfs_target_param] = (target_data - target_data.min(axis=0)) / (target_data.max(axis=0) - target_data.min(axis=0))
 
         if self.target_param == "wind_direction":

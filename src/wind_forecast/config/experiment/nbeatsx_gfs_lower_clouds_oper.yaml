@@ -23,8 +23,8 @@ target_parameter: lower_clouds
 categorical_experiment: True
 classes: 10
 use_pretrained_artifact: True
-pretrained_artifact: wandb://mbelniak/wind-forecast-openstack/model-2se7fa48:v0@model.ckpt
-sequence_length: 3
-future_sequence_length: 3
+pretrained_artifact: wandb://mbelniak/wind-forecast-openstack/model-ch6uax6x:v0@model.ckpt
+sequence_length: 24
+future_sequence_length: 24
 train_parameters_config_file: CommonOperGFSConfig.json
-prediction_meta_run: 2se7fa48
+prediction_meta_run: ch6uax6x

@@ -202,7 +202,7 @@ class Sequence2SequenceOperDataModule(SplittableDataModule):
                 self.gfs_max = {key.replace('gfs_max.', ''): v for key, v in gfs_max_dict.items()}
 
     def prepare_gfs(self):
-        gfs_config = GFSConfig(self.config.experiment.sequence_length,
+        gfs_config = GFSConfig(self.config.experiment.sequence_length - 5,
                                self.config.experiment.future_sequence_length + 5,
                                "download", "processed", self.target_coords)
         self.gfs_data = fetch_oper_gfs(gfs_config)
@@ -225,7 +225,7 @@ class Sequence2SequenceOperDataModule(SplittableDataModule):
         target_data = pd.to_numeric(self.gfs_data[self.gfs_target_param])
 
         if self.target_param in [LOWER_CLOUDS[1], CLOUD_COVER[1]]:
-            self.gfs_data[self.gfs_target_param] = target_data / 100
+            self.gfs_data[self.gfs_target_param] = target_data / 100 * (8/9)
         else:
             if self.normalization_type == NormalizationType.STANDARD:
                 self.gfs_data[self.gfs_target_param] = (target_data - self.gfs_mean[self.gfs_target_param]) / \

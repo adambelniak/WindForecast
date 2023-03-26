@@ -69,8 +69,8 @@ class InitMeta:
     def get_date_string_for_offset(self, offset: int) -> str:
         date = datetime(year=self.date.year,
                         month=self.date.month,
-                        day=self.date.day,
-                        hour=int(self.init_hour.value) + offset)
+                        day=self.date.day + (int(self.init_hour.value) + offset) // 24,
+                        hour=(int(self.init_hour.value) + offset) % 24)
         return date.strftime('%Y%m%d %H:00')
 
     def get_previous(self) -> InitMeta:

@@ -1,6 +1,9 @@
 import argparse
 import os
+import time
 from typing import Union
+
+import schedule
 
 from gfs_oper.common import Config
 from gfs_oper.fetch_oper import fetch_recent_gfs, get_init_meta_from_init_string, GribResource
@@ -29,7 +32,7 @@ def fetch_oper_gfs(config: Config) -> Union[pd.DataFrame, None]:
     for init in range(0, (config.past_sequence_length // 6) + 1):
         init_meta = init_meta.get_previous()
 
-        for offset in range(0, 6):
+        for offset in range(0 if init < (config.past_sequence_length // 6) else (6 - config.past_sequence_length % 6), 6):
             grib = GribResource(init_meta, offset)
             csv_path = os.path.join(os.path.dirname(grib.get_output_location(config.processing_output_path)),
                                     f"{str(config.target_coords.nlat)}-{str(config.target_coords.wlon)}-{str(grib.offset)}.csv")
@@ -53,8 +56,14 @@ def main():
     args = parser.parse_args()
     config = Config(args.past_sequence_length, args.future_sequence_length,
                     "download", "processed", Coords(args.lat, args.lat, args.lon, args.lon))
-    data = fetch_oper_gfs(config)
-    print(data)
+    try:
+        job = schedule.every(1).hours.do(lambda: fetch_oper_gfs(config))
+        job.run()
+        while True:
+            schedule.run_pending()
+            time.sleep(60)
+    except Exception as e:
+        print(e)
 
 
 if __name__ == '__main__':

@@ -3,6 +3,7 @@ import os
 import re
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import List
 
 import requests
 
@@ -26,6 +27,7 @@ class GribResource:
     def fetch(self, output_path: str) -> None:
         output_location = self.get_output_location(output_path)
         if os.path.exists(output_location):
+            print(f"Skipping fetching grib, because it already exists at path {output_location}")
             return
         os.makedirs(os.path.dirname(output_location), exist_ok=True)
         if not self.is_available():
@@ -79,21 +81,28 @@ def get_init_meta_from_init_string(init_string: str) -> InitMeta:
     return get_init_meta_for_run(date, init_hour)
 
 
-def fetch_future_gribs(init_meta: InitMeta, future_sequence_length: int, output_path: str) -> None:
+def get_future_gribs(init_meta: InitMeta, future_sequence_length: int) -> List[GribResource]:
+    gribs = []
     for offset in range(0, future_sequence_length):
-        GribResource(init_meta, offset).fetch(output_path)
+        gribs.append(GribResource(init_meta, offset))
+
+    return gribs
 
 
-def fetch_past_gribs(init_meta: InitMeta, past_sequence_length: int, output_path: str) -> None:
+def get_past_gribs(init_meta: InitMeta, past_sequence_length: int) -> List[GribResource]:
+    gribs = []
     for init in range(0, (past_sequence_length // 6) + 1):
         init_meta = init_meta.get_previous()
         for offset in range(0, 6):
-            GribResource(init_meta, offset).fetch(output_path)
+            gribs.append(GribResource(init_meta, offset))
+    return gribs
 
 
-def fetch_all_needed_gribs(init_meta: InitMeta, config: Config):
-    fetch_future_gribs(init_meta, config.future_sequence_length, config.download_path)
-    fetch_past_gribs(init_meta, config.past_sequence_length, config.download_path)
+def remove_old_gribs(download_path: str, skip_gribs: List[GribResource]):
+    for root, dirs, filenames in os.walk(os.path.join(Path(__file__).parent, download_path)):
+        for file in filenames:
+            if os.path.join(root, file) not in [grib.get_output_location(download_path) for grib in skip_gribs]:
+                os.remove(os.path.join(root, file))
 
 
 def fetch_recent_gfs(config: Config) -> bool:
@@ -112,7 +121,13 @@ def fetch_recent_gfs(config: Config) -> bool:
             tries += 1
 
     if forecast_available:
-        fetch_all_needed_gribs(init_meta, config)
+        gribs_to_fetch = [*get_future_gribs(init_meta, config.future_sequence_length),
+                          *get_past_gribs(init_meta, config.past_sequence_length)]
+        remove_old_gribs(config.download_path, gribs_to_fetch)
+
+        for grib in gribs_to_fetch:
+            grib.fetch(config.download_path)
+
 
     return forecast_available
 
