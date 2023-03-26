@@ -212,6 +212,8 @@ class Decoder(nn.Module):
         self,
         val_time_space_emb,
         cross,
+        epoch: int,
+        stage: str,
         self_mask_seq=None,
         cross_mask_seq=None,
         output_cross_attn=False,

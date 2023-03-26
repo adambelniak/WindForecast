@@ -67,8 +67,11 @@ class Spacetimeformer(LightningModule):
         config: Config
     ):
         super().__init__()
+        self.config = config
         self.use_gfs = config.experiment.use_gfs_data
         self.gfs_on_head = config.experiment.gfs_on_head
+        self.teacher_forcing_epoch_num = config.experiment.teacher_forcing_epoch_num
+        self.gradual_teacher_forcing = config.experiment.gradual_teacher_forcing
         self.features_length = len(config.experiment.synop_train_features) + len(config.experiment.synop_periodic_features)
         if config.experiment.stl_decompose:
             self.features_length *= 3
@@ -100,8 +103,8 @@ class Spacetimeformer(LightningModule):
 
         # embeddings. seperate enc/dec in case the variable indices are not aligned
         self.enc_embedding = Embedding(
-            d_input=self.features_length,
-            d_time_features=config.experiment.dates_tensor_size if config.experiment.use_time2vec else self.time_dim,
+            n_x=self.features_length,
+            n_time=config.experiment.dates_tensor_size if config.experiment.use_time2vec else self.time_dim,
             d_model=self.token_dim,
             time_emb_dim=config.experiment.time2vec_embedding_factor,
             value_emb_dim=config.experiment.value2vec_embedding_factor,
@@ -112,8 +115,8 @@ class Spacetimeformer(LightningModule):
             use_position_emb=config.experiment.use_pos_encoding
         )
         self.dec_embedding = Embedding(
-            d_input=self.features_length,
-            d_time_features=config.experiment.dates_tensor_size if config.experiment.use_time2vec else self.time_dim,
+            n_x=self.features_length,
+            n_time=config.experiment.dates_tensor_size if config.experiment.use_time2vec else self.time_dim,
             d_model=self.token_dim,
             time_emb_dim=config.experiment.time2vec_embedding_factor,
             value_emb_dim=config.experiment.value2vec_embedding_factor,
@@ -141,11 +144,11 @@ class Spacetimeformer(LightningModule):
             attn_layers=[
                 EncoderLayer(
                     global_attention=self._attn_switch(
-                        'performer',
+                        config.experiment.spacetimeformer_attention_type,
                         **attn_kwargs,
                     ),
                     local_attention=self._attn_switch(
-                        'performer',
+                        config.experiment.spacetimeformer_attention_type,
                         **attn_kwargs,
                     ),
                     d_model=self.token_dim,
@@ -173,19 +176,19 @@ class Spacetimeformer(LightningModule):
             layers=[
                 DecoderLayer(
                     global_self_attention=self._attn_switch(
-                        'performer',
+                        config.experiment.spacetimeformer_attention_type,
                         **attn_kwargs,
                     ),
                     local_self_attention=self._attn_switch(
-                        'performer',
+                        config.experiment.spacetimeformer_attention_type,
                         **attn_kwargs,
                     ),
                     global_cross_attention=self._attn_switch(
-                        'performer',
+                        config.experiment.spacetimeformer_attention_type,
                         **attn_kwargs,
                     ),
                     local_cross_attention=self._attn_switch(
-                        'performer',
+                        config.experiment.spacetimeformer_attention_type,
                         **attn_kwargs,
                     ),
                     d_model=self.token_dim,
@@ -248,6 +251,8 @@ class Spacetimeformer(LightningModule):
         dec_out, dec_cross_attns = self.decoder(
             val_time_space_emb=dec_vt_emb,
             cross=enc_out,
+            epoch=epoch,
+            stage=stage,
             self_mask_seq=dec_mask_seq,
             cross_mask_seq=enc_dec_mask_seq,
             output_cross_attn=False
@@ -256,8 +261,8 @@ class Spacetimeformer(LightningModule):
         # forecasting predictions
         forecast_out = self.forecaster(dec_out)
 
-        # fold flattened spatiotemporal format back into (batch, length, d_yt)
-        forecast_out = FoldForPred(forecast_out, dy=self.features_length)
+        # fold flattened spatiotemporal format back into (batch, length, nx)
+        forecast_out = FoldForPred(forecast_out, n_x=self.features_length)
         forecast_out = forecast_out[:, self.start_token_len : self.future_sequence_length, :]
 
         if self.use_gfs and self.gfs_on_head:

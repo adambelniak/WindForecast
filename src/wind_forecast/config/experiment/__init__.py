@@ -251,6 +251,9 @@ class ExperimentSettings:
 
     spacetimeformer_intermediate_downsample_convs: int = 0
 
+    # one of 'full', 'performer', 'prob', 'none;
+    spacetimeformer_attention_type: str = 'full'
+
     # ----------------------------------------------------------------------------------------------
     # NBeats settings
     # ----------------------------------------------------------------------------------------------

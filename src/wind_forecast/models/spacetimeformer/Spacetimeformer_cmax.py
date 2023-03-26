@@ -42,8 +42,8 @@ class Spacetimeformer_cmax(Spacetimeformer):
 
         # embeddings. seperate enc/dec in case the variable indices are not aligned
         self.enc_embedding = Embedding(
-            d_input=self.features_length,
-            d_time_features=config.experiment.dates_tensor_size if config.experiment.use_time2vec else self.time_dim,
+            n_x=self.features_length,
+            n_time=config.experiment.dates_tensor_size if config.experiment.use_time2vec else self.time_dim,
             d_model=self.token_dim,
             time_emb_dim=config.experiment.time2vec_embedding_factor,
             value_emb_dim=config.experiment.value2vec_embedding_factor,
@@ -54,8 +54,8 @@ class Spacetimeformer_cmax(Spacetimeformer):
             use_position_emb=config.experiment.use_pos_encoding
         )
         self.dec_embedding = Embedding(
-            d_input=self.features_length,
-            d_time_features=config.experiment.dates_tensor_size if config.experiment.use_time2vec else self.time_dim,
+            n_x=self.features_length,
+            n_time=config.experiment.dates_tensor_size if config.experiment.use_time2vec else self.time_dim,
             d_model=self.token_dim,
             time_emb_dim=config.experiment.time2vec_embedding_factor,
             value_emb_dim=config.experiment.value2vec_embedding_factor,

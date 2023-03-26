@@ -49,7 +49,7 @@ class NBeatsBlock(nn.Module):
     N-BEATS block which takes a basis function as an argument.
     """
 
-    def __init__(self, T: int, x_static_n_inputs: int, x_static_n_hidden: int, n_insample_t: int, theta_n_dim: int,
+    def __init__(self, T: int, x_static_n_inputs: int, x_static_n_hidden: int, n_insample_x: int, theta_n_dim: int,
                  basis: nn.Module, n_layers: int, theta_n_hidden: List[int], batch_normalization: bool,
                  dropout_prob: float, activation: str, classes: int = 0):
         """
@@ -62,9 +62,9 @@ class NBeatsBlock(nn.Module):
         self.classes = classes
 
         if self.classes > 0:
-            theta_n_hidden = [T * self.classes + x_static_n_hidden + T * n_insample_t] + theta_n_hidden
+            theta_n_hidden = [T * self.classes + x_static_n_hidden + T * n_insample_x] + theta_n_hidden
         else:
-            theta_n_hidden = [T + x_static_n_hidden + T * n_insample_t] + theta_n_hidden
+            theta_n_hidden = [T + x_static_n_hidden + T * n_insample_x] + theta_n_hidden
 
         self.x_static_n_inputs = x_static_n_inputs
         self.x_static_n_hidden = x_static_n_hidden

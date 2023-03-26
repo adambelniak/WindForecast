@@ -30,7 +30,7 @@ class Nbeatsx_CMAX(Nbeatsx):
 
         cmax_embed_dim = conv_W * conv_H * out_channels
 
-        self.n_insample_t += cmax_embed_dim
+        self.n_insample_x += cmax_embed_dim
 
         block_list = self.create_stacks()
 

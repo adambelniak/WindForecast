@@ -49,8 +49,8 @@ Both are done separately, then both embeddings are concatenated with original va
 class Embedding(nn.Module):
     def __init__(
         self,
-        d_input,
-        d_time_features,
+        n_x,
+        n_time,
         d_model,
         time_emb_dim=6,
         value_emb_dim=6,
@@ -81,8 +81,8 @@ class Embedding(nn.Module):
         self.method = method
 
         if use_time_embed:
-            time_dim = time_emb_dim * d_time_features
-            self.time_emb = Time2Vec(d_time_features, embed_dim=time_dim)
+            time_dim = time_emb_dim * n_time
+            self.time_emb = Time2Vec(n_time, embed_dim=time_dim)
 
         assert position_emb in ["t2v", "abs"]
         self.max_seq_len = max_seq_len
@@ -99,12 +99,12 @@ class Embedding(nn.Module):
                     num_embeddings=max_seq_len, embedding_dim=d_model
                 )
 
-        y_emb_inp_dim = d_input if self.method == "temporal" else 1
+        y_emb_inp_dim = n_x if self.method == "temporal" else 1
         self.val_emb = TimeDistributed(Value2Vec(y_emb_inp_dim, value_emb_dim), batch_first=True)
 
         if self.method == "spatio-temporal":
-            self.space_emb = nn.Embedding(num_embeddings=d_input, embedding_dim=(value_emb_dim + 1) if use_val_embed else 1)
-            split_length_into = d_input
+            self.space_emb = nn.Embedding(num_embeddings=n_x, embedding_dim=(value_emb_dim + 1) if use_val_embed else 1)
+            split_length_into = n_x
         else:
             split_length_into = 1
 
