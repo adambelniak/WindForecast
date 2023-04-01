@@ -48,13 +48,13 @@ class SequenceWithCMAXDataModule(SequenceDataModule):
         # Get indices which correspond to 'dates' - 'dates' are the ones, which start a proper sequence without breaks
         self.synop_data_indices = self.synop_data[self.synop_data["date"].isin(self.synop_dates)].index
         # data was not normalized, so take all frames which will be used, compute std and mean and normalize data
-        self.synop_data, self.synop_feature_names, synop_mean, synop_std = normalize_data_for_training(
+        self.synop_data, self.synop_mean, self.synop_std, min, max = normalize_data_for_training(
             self.synop_data, self.synop_data_indices,
             self.feature_names,
             self.sequence_length + self.prediction_offset,
             self.normalization_type)
-        log.info(f"Synop mean: {synop_mean[self.target_param]}")
-        log.info(f"Synop std: {synop_std[self.target_param]}")
+        log.info(f"Synop mean: {self.synop_mean[self.target_param]}")
+        log.info(f"Synop std: {self.synop_std[self.target_param]}")
 
     def setup(self, stage: Optional[str] = None):
         if self.get_from_cache(stage):

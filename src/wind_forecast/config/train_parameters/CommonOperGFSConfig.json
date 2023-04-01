@@ -1,0 +1,97 @@
+{
+  "params": [
+    {
+      "name": "TMP",
+      "level": "HTGL_2",
+      "interpolation": "polynomial"
+    },
+    {
+      "name": "TMP",
+      "level": "ISBL_850",
+      "interpolation": "polynomial"
+    },
+      {
+      "name": "TMP",
+      "level": "ISBL_700",
+      "interpolation": "polynomial"
+    },
+        {
+      "name": "DPT",
+      "level": "HTGL_2",
+      "interpolation": "polynomial"
+    },
+    {
+      "name": "T CDC",
+      "level": "LCY_0",
+      "interpolation": "polynomial",
+      "min": 0,
+      "max": 100
+    },
+    {
+      "name": "T CDC",
+      "level": "MCY_0",
+      "interpolation": "polynomial",
+      "min": 0,
+      "max": 100
+    },
+    {
+      "name": "T CDC",
+      "level": "HCY_0",
+      "interpolation": "polynomial",
+      "min": 0,
+      "max": 100
+    },
+    {
+      "name": "V GRD",
+      "level": "HTGL_10",
+      "interpolation": "polynomial"
+    },
+    {
+      "name": "U GRD",
+      "level": "HTGL_10",
+      "interpolation": "polynomial"
+    },
+    {
+      "name": "GUST",
+      "level": "SFC_0",
+      "interpolation": "polynomial",
+      "min": 0
+    },
+    {
+      "name": "PRATE",
+      "level": "SFC_0",
+      "interpolation": "polynomial",
+      "min": 0
+    },
+    {
+      "name": "PRES",
+      "level": "SFC_0",
+      "interpolation": "polynomial"
+    },
+    {
+      "name": "R H",
+      "level": "HTGL_2",
+      "interpolation": "polynomial",
+      "min": 0,
+      "max": 100
+    },
+    {
+      "name": "R H",
+      "level": "ISBL_700",
+      "interpolation": "polynomial",
+      "min": 0,
+      "max": 100
+    },
+    {
+      "name": "HGT",
+      "level": "ISBL_500",
+      "interpolation": "polynomial"
+    },
+    {
+        "name": "SNO D",
+        "level": "SFC_0",
+        "interpolation": "polynomial",
+        "min": 0
+    }
+  ]
+}

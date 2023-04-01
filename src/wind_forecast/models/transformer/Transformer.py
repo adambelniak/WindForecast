@@ -10,6 +10,7 @@ from wind_forecast.embed.prepare_embeddings import get_embeddings
 from wind_forecast.models.value2vec.Value2Vec import Value2Vec
 from wind_forecast.models.time2vec.Time2Vec import Time2Vec
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
+from wind_forecast.util.common_util import get_pretrained_artifact_path, get_pretrained_state_dict
 from wind_forecast.util.config import process_config
 
 
@@ -260,6 +261,11 @@ class TransformerGFSBaseProps(TransformerEncoderGFSBaseProps):
 class Transformer(TransformerBaseProps):
     def __init__(self, config: Config):
         super().__init__(config)
+
+        if config.experiment.use_pretrained_artifact and type(self).__name__ is "Transformer":
+            pretrained_autoencoder_path = get_pretrained_artifact_path(config.experiment.pretrained_artifact)
+            self.load_state_dict(get_pretrained_state_dict(pretrained_autoencoder_path))
+            return
 
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
         is_train = stage not in ['test', 'predict', 'validate']

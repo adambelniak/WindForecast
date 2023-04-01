@@ -119,12 +119,8 @@ def ReverseShiftBeforeWindow(inp: torch.Tensor, windows: int, offset: int = 2):
     return torch.roll(inp, shift_by, dims=1)
 
 
-def Stack(inp: torch.Tensor, dy: int):
-    return rearrange(inp, "batch (dy len) dim -> batch len dy dim", dy=dy)
-
-
-def FoldForPred(inp: torch.Tensor, dy: int) -> torch.Tensor:
-    out = rearrange(inp, "batch (dy len) dim -> dim batch len dy", dy=dy)
+def FoldForPred(inp: torch.Tensor, n_x: int) -> torch.Tensor:
+    out = rearrange(inp, "batch (n_x len) dim -> dim batch len n_x", n_x=n_x)
     out = out.squeeze(0)
     return out
 

@@ -18,7 +18,7 @@ There are 3 different datasets used in this project. Based on experiment setting
 
 The flow of getting GFS archive data is described in [gfs-archive-0-25](https://github.com/MBelniak/WindForecast/tree/master/src/gfs_archive_0_25) module.
 Synop data is fetched in [src/synop/fetch_synop_data.py](https://github.com/MBelniak/WindForecast/blob/master/src/synop/fetch_synop_data.py).
-CMAX data is fetched in [src/radar/fetch_radar_CMAX.py](https://github.com/MBelniak/WindForecast/blob/master/src/radar/fetch_radar_CMAX.py) and processed in [radar/preprocess_cmax.py](https://github.com/MBelniak/WindForecast/blob/master/src/radar/preprocess_cmax.py)
+CMAX data is fetched in [src/radar/fetch_radar_CMAX.py](https://github.com/MBelniak/WindForecast/blob/master/src/radar/fetch_radar_cmax.py) and processed in [radar/preprocess_cmax.py](https://github.com/MBelniak/WindForecast/blob/master/src/radar/preprocess_cmax.py)
 
 ## :computer: Key technologies
   - [Pytorch](https://pytorch.org/) for creating models
@@ -53,6 +53,8 @@ There are several scopes in which an experiment can be configured. For tips on c
 3. config.lightning
     - deterministic training, gpus
 4. config.tune - tune config; set of params to check
+
+There are multiple configurations (yaml files) already prepared in [src/wind_forecast/config/experiment](src/wind_forecast/config/experiment), but they all use Sequence2SequenceWithCMAXDataModule, which requires CMAX files (reflectivity images). If you don't use CMAX files, better use Sequence2SequenceDataModule together with use_cmax_data: False and load_cmax_data: False. Sequence2SequenceWithCMAXDataModule is used in my experiments to have equal datasets across all experiments in my thesis.
 
 ## :running: Running
 Obtaining datasets is described in [synop readme](src/synop/README.md), [GFS readme](src/gfs_archive_0_25/README.md) and [CMAX readme](src/radar/README.md).

@@ -2,6 +2,7 @@ import torch
 
 
 class BaseDataset(torch.utils.data.Dataset):
+
     def __init__(self):
         super().__init__()
         self.mean = self.std = self.min = self.max = None
@@ -17,3 +18,18 @@ class BaseDataset(torch.utils.data.Dataset):
 
     def set_max(self, max):
         self.max = max
+
+    def get_mean(self):
+        return self.mean
+
+    def get_std(self):
+        return self.std
+
+    def get_min(self):
+        return self.min
+
+    def get_max(self):
+        return self.max
+
+    def get_dataset(self, class_name: str):
+        return self

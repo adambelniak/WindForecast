@@ -9,6 +9,7 @@ from wind_forecast.consts import BatchKeys
 from wind_forecast.models.lstm.LSTMS2SModel import LSTMS2SModel
 from wind_forecast.models.value2vec.Value2Vec import Value2Vec
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
+from wind_forecast.util.common_util import get_pretrained_artifact_path, get_pretrained_state_dict
 
 
 class HybridLSTMS2SModel(LSTMS2SModel):
@@ -54,6 +55,11 @@ class HybridLSTMS2SModel(LSTMS2SModel):
         dense_layers.append(nn.Linear(in_features=features, out_features=1))
 
         self.regressor_head = nn.Sequential(*dense_layers)
+
+        if config.experiment.use_pretrained_artifact and type(self).__name__ is "HybridLSTMS2SModel":
+            pretrained_autoencoder_path = get_pretrained_artifact_path(config.experiment.pretrained_artifact)
+            self.load_state_dict(get_pretrained_state_dict(pretrained_autoencoder_path))
+            return
 
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
         is_train = stage not in ['test', 'predict', 'validate']

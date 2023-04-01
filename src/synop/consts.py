@@ -15,6 +15,7 @@ DEW_POINT = (39, "dew_point", "Punkt rosy")
 PRESSURE = (41, 'pressure', "Ciśnienie")
 PRESSURE_AT_SEA_LEVEL = (43, 'pressure_at_sea_level', "Ciśnienie na poziomie morza")
 PRECIPITATION_6H = (48, 'precipitation_6h', "Opad za 6 godzin")
+PRECIPITATION = (48, 'precipitation', "Opad 1 godzine")
 PRECIPITATION_TYPE = (50, 'precipitation_type', "Rodzaj opadu")
 CURRENT_WEATHER = (52, 'current_weather', "Pogoda (kod)")
 LOWER_CLOUDS = (54, 'lower_clouds', "Zachmurzenie niskie")
@@ -24,7 +25,8 @@ AUTO_TEMPERATURE_SURFACE = ('B00305A', 'temperature_surface')
 AUTO_WIND_DIRECTION = ('B00202A', 'wind_direction')
 AUTO_WIND = ('B00702A', 'wind_velocity')
 AUTO_GUST = ('B00703A', 'wind_gust')
-AUTO_10_MIN_PRECIPITATION = ('B00608S', 'precipitation')
+AUTO_10_MIN_PRECIPITATION = ('B00608S', 'precipitation_10')
+AUTO_HOUR_PRECIPITATION = ('B00606S', 'precipitation')
 AUTO_HUMIDITY = ('B00802A', 'humidity')
 
 SYNOP_FEATURES = [
@@ -68,6 +70,7 @@ AUTO_STATION_FEATURES = [
     AUTO_WIND_DIRECTION,
     AUTO_WIND,
     AUTO_GUST,
+    AUTO_HOUR_PRECIPITATION,
     AUTO_10_MIN_PRECIPITATION,
     AUTO_HUMIDITY
 ]
@@ -80,3 +83,5 @@ SYNOP_PERIODIC_FEATURES = [
         'max': 360
     }
 ]
+
+CLOUD_COVER_MAX = 9

@@ -3,6 +3,7 @@ import json
 import os
 import sys
 
+from wind_forecast.datasets import BaseDataset
 from wind_forecast.util.logging import log
 
 if sys.version_info <= (3, 8, 2):
@@ -16,7 +17,7 @@ from pytorch_lightning import LightningDataModule
 from wind_forecast.config.register import Config
 from wind_forecast.consts import PREPARED_DATASETS_DIRECTORY
 from wind_forecast.datamodules.DataModulesCache import DataModulesCache
-from wind_forecast.util.common_util import split_dataset
+from wind_forecast.util.common_util import split_dataset, CustomSubset
 
 
 class SplittableDataModule(LightningDataModule):
@@ -26,9 +27,10 @@ class SplittableDataModule(LightningDataModule):
         self.val_split = config.experiment.val_split
         self.test_split = config.experiment.test_split
         self.dataset_split_mode = config.experiment.dataset_split_mode
-        self.dataset_train = ...
-        self.dataset_val = ...
-        self.dataset_test = ...
+        self.dataset_train: CustomSubset = ...
+        self.dataset_val: CustomSubset = ...
+        self.dataset_test: CustomSubset = ...
+        self.dataset_predict: BaseDataset = ...
         self.uses_future_sequences = False
         self.initialized = False
 
@@ -75,10 +77,6 @@ class SplittableDataModule(LightningDataModule):
         else:
             self.dataset_train, self.dataset_test = datasets
             self.dataset_val = None
-
-        log.info('Dataset train len: ' + str(len(self.dataset_train)))
-        log.info('Dataset val len: ' + ('0' if self.dataset_val is None else str(len(self.dataset_val))))
-        log.info('Dataset test len: ' + str(len(self.dataset_test)))
 
         train_dataset_name = self.get_dataset_name(config, 'fit')
         train_dataset_name_hash = self.hash_string(train_dataset_name)

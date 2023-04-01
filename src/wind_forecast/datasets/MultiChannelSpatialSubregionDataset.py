@@ -2,7 +2,7 @@ from datetime import timedelta
 
 import numpy as np
 
-from gfs_archive_0_25.gfs_processor.Coords import Coords
+from util.coords import Coords
 from wind_forecast.config.register import Config
 from wind_forecast.datasets.BaseDataset import BaseDataset
 from wind_forecast.util.common_util import NormalizationType

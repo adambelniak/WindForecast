@@ -3,11 +3,17 @@ import torch.nn as nn
 from wind_forecast.config.register import Config
 from wind_forecast.models.tcn.TCNEncoder import TemporalBlockWithAttention
 from wind_forecast.models.tcn.TCNS2S import TCNS2S
+from wind_forecast.util.common_util import get_pretrained_artifact_path, get_pretrained_state_dict
 
 
 class TCNS2SAttention(TCNS2S):
     def __init__(self, config: Config):
         super(TCNS2SAttention, self).__init__(config)
+
+        if config.experiment.use_pretrained_artifact and type(self).__name__ is "TCNS2SAttention":
+            pretrained_autoencoder_path = get_pretrained_artifact_path(config.experiment.pretrained_artifact)
+            self.load_state_dict(get_pretrained_state_dict(pretrained_autoencoder_path))
+            return
 
     def create_tcn_encoder(self):
         tcn_layers = []

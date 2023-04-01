@@ -153,3 +153,6 @@ wandb
 auto_station_data
 src/datasets
 analysis.json
+src/gfs_oper/download
+src/gfs_oper/processed
+src/synop/oper_data

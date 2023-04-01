@@ -1,6 +1,26 @@
 {
   "params": [
     {
+      "name": "TMP",
+      "level": "HTGL_2",
+      "interpolation": "polynomial"
+    },
+    {
+      "name": "TMP",
+      "level": "ISBL_850",
+      "interpolation": "polynomial"
+    },
+      {
+      "name": "TMP",
+      "level": "ISBL_700",
+      "interpolation": "polynomial"
+    },
+        {
+      "name": "DPT",
+      "level": "HTGL_2",
+      "interpolation": "polynomial"
+    },
+    {
       "name": "T CDC",
       "level": "LCY_0",
       "interpolation": "polynomial",
@@ -32,14 +52,10 @@
       "interpolation": "polynomial"
     },
     {
-      "name": "TMP",
-      "level": "ISBL_850",
-      "interpolation": "polynomial"
-    },
-    {
-      "name": "TMP",
-      "level": "HTGL_2",
-      "interpolation": "polynomial"
+      "name": "GUST",
+      "level": "SFC_0",
+      "interpolation": "polynomial",
+      "min": 0
     },
     {
       "name": "PRATE",
@@ -67,34 +83,18 @@
       "max": 100
     },
     {
-      "name": "DPT",
-      "level": "HTGL_2",
-      "interpolation": "polynomial"
-    },
-        {
       "name": "HGT",
       "level": "ISBL_500",
       "interpolation": "polynomial"
     },
-        {
-      "name": "TMP",
-      "level": "ISBL_700",
-      "interpolation": "polynomial"
-    },
     {
-      "name": "GUST",
-      "level": "SFC_0",
-      "interpolation": "polynomial",
-      "min": 0
-    },
-    {
-        "name": "ALBDO",
+        "name": "SNO D",
         "level": "SFC_0",
         "interpolation": "polynomial",
         "min": 0
     },
     {
-        "name": "SNO D",
+        "name": "ALBDO",
         "level": "SFC_0",
         "interpolation": "polynomial",
         "min": 0

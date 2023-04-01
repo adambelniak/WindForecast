@@ -6,12 +6,13 @@ import torch.nn as nn
 from wind_forecast.config.register import Config
 from wind_forecast.consts import BatchKeys
 from wind_forecast.models.tcn.TCNEncoder import TemporalBlock
-from wind_forecast.models.tcn.TCNS2S import TCNS2S
+from wind_forecast.models.tcn.TCNEncoderS2S import TCNEncoderS2S
 from wind_forecast.models.value2vec.Value2Vec import Value2Vec
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
+from wind_forecast.util.common_util import get_pretrained_artifact_path, get_pretrained_state_dict
 
 
-class HybridTCNS2S(TCNS2S):
+class HybridTCNS2S(TCNEncoderS2S):
     def __init__(self, config: Config):
         super().__init__(config)
         assert config.experiment.use_gfs_data, "use_gfs_data needs to be true for hybrid model"
@@ -22,6 +23,16 @@ class HybridTCNS2S(TCNS2S):
             self.value_embed_gfs = TimeDistributed(Value2Vec(self.gfs_params_len, self.value2vec_embedding_factor),
                                                    batch_first=True)
         self.create_tcn_decoder()
+        self.regression_head_features = self.embed_dim
+        if self.use_gfs and self.gfs_on_head:
+            self.regression_head_features += 1
+
+        self.create_regression_head()
+
+        if config.experiment.use_pretrained_artifact and type(self).__name__ is "HybridTCNS2S":
+            pretrained_autoencoder_path = get_pretrained_artifact_path(config.experiment.pretrained_artifact)
+            self.load_state_dict(get_pretrained_state_dict(pretrained_autoencoder_path))
+            return
 
     def create_tcn_decoder(self):
         tcn_layers = []

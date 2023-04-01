@@ -9,6 +9,7 @@ from wind_forecast.consts import BatchKeys
 from wind_forecast.models.CMAXAutoencoder import CMAXEncoder, get_pretrained_encoder
 from wind_forecast.models.spacetimeformer.Spacetimeformer import Spacetimeformer
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
+from wind_forecast.util.common_util import get_pretrained_artifact_path, get_pretrained_state_dict
 from .Decoder import Decoder, DecoderLayer
 from .Encoder import Encoder, EncoderLayer
 from .embed import Embedding
@@ -41,8 +42,8 @@ class Spacetimeformer_cmax(Spacetimeformer):
 
         # embeddings. seperate enc/dec in case the variable indices are not aligned
         self.enc_embedding = Embedding(
-            d_input=self.features_length,
-            d_time_features=config.experiment.dates_tensor_size if config.experiment.use_time2vec else self.time_dim,
+            n_x=self.features_length,
+            n_time=config.experiment.dates_tensor_size if config.experiment.use_time2vec else self.time_dim,
             d_model=self.token_dim,
             time_emb_dim=config.experiment.time2vec_embedding_factor,
             value_emb_dim=config.experiment.value2vec_embedding_factor,
@@ -53,8 +54,8 @@ class Spacetimeformer_cmax(Spacetimeformer):
             use_position_emb=config.experiment.use_pos_encoding
         )
         self.dec_embedding = Embedding(
-            d_input=self.features_length,
-            d_time_features=config.experiment.dates_tensor_size if config.experiment.use_time2vec else self.time_dim,
+            n_x=self.features_length,
+            n_time=config.experiment.dates_tensor_size if config.experiment.use_time2vec else self.time_dim,
             d_model=self.token_dim,
             time_emb_dim=config.experiment.time2vec_embedding_factor,
             value_emb_dim=config.experiment.value2vec_embedding_factor,
@@ -161,6 +162,11 @@ class Spacetimeformer_cmax(Spacetimeformer):
         dense_layers.append(nn.Linear(in_features=features, out_features=1))
 
         self.regressor_head = nn.Sequential(*dense_layers)
+
+        if config.experiment.use_pretrained_artifact and type(self).__name__ is "Spacetimeformer_cmax":
+            pretrained_autoencoder_path = get_pretrained_artifact_path(config.experiment.pretrained_artifact)
+            self.load_state_dict(get_pretrained_state_dict(pretrained_autoencoder_path))
+            return
 
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
         is_train = stage not in ['test', 'predict', 'validate']

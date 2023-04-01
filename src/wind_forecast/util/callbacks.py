@@ -5,6 +5,7 @@ import os
 import re
 from pathlib import Path
 from typing import Any, Optional, Dict
+from sys import platform
 
 from pytorch_lightning.utilities.types import _METRIC
 from pytorch_lightning.callbacks import ModelCheckpoint
@@ -67,7 +68,10 @@ def get_resume_checkpoint(cfg: Config, wandb_logger: WandbLogger) -> Optional[st
 
         path = path[len(wandb_prefix):]
         artifact_path, checkpoint_path = path.split('@')
-        artifact_name = artifact_path.split('/')[-1].replace(':', '-')
+        artifact_name = artifact_path.split('/')[-1]
+        if platform == "win32":
+            artifact_name = artifact_name.replace(':', '-')
+
 
         os.makedirs(f'{artifact_root}/{artifact_name}', exist_ok=True)
 

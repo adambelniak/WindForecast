@@ -1,0 +1,5 @@
+defaults:
+  - schema_analysis
+
+input_file: analysis-temperature2.json
+target_parameter: Temperatura, °C

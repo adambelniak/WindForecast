@@ -1,4 +1,3 @@
-import copy
 import math
 from typing import Union, Tuple, List, Any, Dict
 
@@ -15,7 +14,7 @@ from torch.optim.lr_scheduler import _LRScheduler
 from torchmetrics.regression.mean_squared_error import MeanSquaredError
 from pytorch_forecasting.metrics import MASE
 from rich import print
-from torch.nn import MSELoss
+from torch.nn import MSELoss, CrossEntropyLoss
 from torch.optim.optimizer import Optimizer
 from wandb.sdk.wandb_run import Run
 
@@ -35,7 +34,13 @@ class BaseS2SRegressor(pl.LightningModule):
 
         self.model: LightningModule = instantiate(self.cfg.experiment.model, self.cfg)
 
-        self.criterion = MSELoss()
+        self.criterion = ...
+        if cfg.optim.loss in ["mse", "rmse"]:
+            self.criterion = MSELoss()
+        elif cfg.optim.loss == "cross":
+            self.criterion = CrossEntropyLoss()
+        else:
+            self.criterion = MSELoss()
 
         # Metrics
         self.train_mse = MeanSquaredError()
@@ -48,6 +53,8 @@ class BaseS2SRegressor(pl.LightningModule):
         self.test_mae = MeanAbsoluteError()
         self.test_mase = MASE()
         self.test_results = []
+        self.categorical_experiment = self.cfg.experiment.categorical_experiment
+        self.classes = self.cfg.experiment.classes
         train_params = self.cfg.experiment.synop_train_features
         target_param = self.cfg.experiment.target_parameter
         all_params = add_param_to_train_params(train_params, target_param)
@@ -117,6 +124,9 @@ class BaseS2SRegressor(pl.LightningModule):
         Union[Optimizer, Tuple[List[Optimizer], List[_LRScheduler]]]
             Single optimizer or a combination of optimizers with learning rate schedulers.
         """
+
+        if self.cfg.optim.optimizer._target_ == 'None':
+            return None
         optimizer: Optimizer = instantiate(
             self.cfg.optim.optimizer,
             params=self.parameters(),
@@ -179,8 +189,6 @@ class BaseS2SRegressor(pl.LightningModule):
         """
         if self.cfg.optim.loss == 'rmse':
             return torch.sqrt(self.criterion(outputs, targets))
-        elif self.cfg.optim.loss == 'mse':
-            return self.criterion(outputs, targets)
         else:
             return self.criterion(outputs, targets)
 
@@ -216,19 +224,33 @@ class BaseS2SRegressor(pl.LightningModule):
         if self.cfg.experiment.differential_forecast:
             targets = batch[BatchKeys.GFS_SYNOP_FUTURE_DIFF.value].float().squeeze()
             past_targets = batch[BatchKeys.GFS_SYNOP_PAST_DIFF.value].float().squeeze()
+        if self.categorical_experiment:
+            self.metrics_for_categorical_experiment(outputs, targets, past_targets, 'train')
 
-        self.train_mse(outputs, targets)
-        self.train_mae(outputs, targets)
-        if len(targets.shape) == 1:
-            self.train_mase(outputs.unsqueeze(0), targets.unsqueeze(0), past_targets.unsqueeze(0))
+            targets *= self.classes - 1
+            past_targets *= self.classes - 1
         else:
-            self.train_mase(outputs, targets, past_targets)
+            self.train_mse(outputs, targets)
+            self.train_mae(outputs, targets)
+            if len(targets.shape) == 1:
+                self.train_mase(outputs.unsqueeze(0), targets.unsqueeze(0), past_targets.unsqueeze(0))
+            else:
+                self.train_mase(outputs, targets, past_targets)
 
         if self.cfg.optim.loss != 'mase':
-            loss = self.calculate_loss(outputs, targets)
+            torch.use_deterministic_algorithms(False)
+            if self.categorical_experiment:
+                loss = self.calculate_loss(outputs.permute(0, 2, 1), targets.long())
+            else:
+                loss = self.calculate_loss(outputs, targets)
+            torch.use_deterministic_algorithms(True)
         else:
             loss = MASE()
             loss = loss(outputs, targets, past_targets)
+
+        if self.cfg.optim.optimizer._target_ == 'None':
+            return None
+
         return {
             'loss': loss
             # no need to return 'train_mse' here since it is always available as `self.train_mse`
@@ -257,8 +279,9 @@ class BaseS2SRegressor(pl.LightningModule):
         self.train_mase.reset()
 
         # Average additional metrics over all batches
-        for key in outputs[0]:
-            metrics[key] = float(self._reduce(outputs, key).item())
+        if len(outputs) > 0:
+            for key in outputs[0]:
+                metrics[key] = float(self._reduce(outputs, key).item())
 
         self.logger.log_metrics(metrics, step=step)
 
@@ -293,12 +316,18 @@ class BaseS2SRegressor(pl.LightningModule):
             targets = batch[BatchKeys.GFS_SYNOP_FUTURE_DIFF.value].float().squeeze()
             past_targets = batch[BatchKeys.GFS_SYNOP_PAST_DIFF.value].float().squeeze()
 
-        self.val_mse(outputs, targets)
-        self.val_mae(outputs, targets)
-        if len(targets.shape) == 1:
-            self.val_mase(outputs.unsqueeze(0), targets.unsqueeze(0), past_targets.unsqueeze(0))
+        if self.categorical_experiment:
+            self.metrics_for_categorical_experiment(outputs, targets, past_targets, "val")
+
+            targets *= self.classes - 1
+            past_targets *= self.classes - 1
         else:
-            self.val_mase(outputs, targets, past_targets)
+            self.val_mse(outputs, targets)
+            self.val_mae(outputs, targets)
+            if len(targets.shape) == 1:
+                self.val_mase(outputs.unsqueeze(0), targets.unsqueeze(0), past_targets.unsqueeze(0))
+            else:
+                self.val_mase(outputs, targets, past_targets)
 
         return {
             # 'additional_metric': ...
@@ -367,20 +396,26 @@ class BaseS2SRegressor(pl.LightningModule):
             targets = batch[BatchKeys.GFS_SYNOP_FUTURE_DIFF.value].float().squeeze()
             past_targets = batch[BatchKeys.GFS_SYNOP_PAST_DIFF.value].float().squeeze()
 
-        self.test_mse(outputs, targets)
-        self.test_mae(outputs, targets)
-        if len(targets.shape) == 1:
-            self.test_mase(outputs.unsqueeze(0), targets.unsqueeze(0), past_targets.unsqueeze(0))
+        if self.categorical_experiment:
+            self.metrics_for_categorical_experiment(outputs, targets, past_targets, 'test')
+
+            targets *= self.classes - 1
+            past_targets *= self.classes - 1
         else:
-            self.test_mase(outputs, targets, past_targets)
+            self.test_mse(outputs, targets)
+            self.test_mae(outputs, targets)
+            if len(targets.shape) == 1:
+                self.test_mase(outputs.unsqueeze(0), targets.unsqueeze(0), past_targets.unsqueeze(0))
+            else:
+                self.test_mase(outputs, targets, past_targets)
 
         synop_inputs = batch[BatchKeys.SYNOP_PAST_X.value]
         dates_inputs = batch[BatchKeys.DATES_PAST.value]
         dates_targets = batch[BatchKeys.DATES_FUTURE.value]
 
         return {BatchKeys.SYNOP_FUTURE_Y.value: targets,
-                BatchKeys.PREDICTIONS.value: outputs.squeeze(),
-                BatchKeys.SYNOP_PAST_Y.value: past_targets[:],
+                BatchKeys.PREDICTIONS.value: outputs.squeeze() if not self.categorical_experiment else torch.argmax(outputs, dim=-1),
+                BatchKeys.SYNOP_PAST_Y.value: past_targets,
                 BatchKeys.SYNOP_PAST_X.value: synop_inputs[:, :, self.target_param_index] if self.cfg.experiment.batch_size > 1
                 else synop_inputs[:, self.target_param_index],
                 BatchKeys.DATES_PAST.value: dates_inputs,
@@ -412,8 +447,11 @@ class BaseS2SRegressor(pl.LightningModule):
         series = self.get_series_from_outputs(outputs)
 
         predictions = series[BatchKeys.PREDICTIONS.value]
+        output_series = np.asarray([np.asarray(el) for el in predictions])
+        labels_series = np.asarray([np.asarray(el) for el in series[BatchKeys.SYNOP_FUTURE_Y.value]])
+
         rmse_by_step = np.sqrt(np.mean(np.power(np.subtract(series[BatchKeys.PREDICTIONS.value], series[BatchKeys.SYNOP_FUTURE_Y.value]), 2), axis=0))
-        mase_by_step = self.get_mase_by_step(series[BatchKeys.SYNOP_PAST_Y.value], predictions)
+        mase_by_step = self.get_mase_by_step(predictions, series[BatchKeys.SYNOP_FUTURE_Y.value], series[BatchKeys.SYNOP_PAST_Y.value])
 
         # for plots
         plot_truth_series = []
@@ -442,23 +480,29 @@ class BaseS2SRegressor(pl.LightningModule):
             'plot_truth': plot_truth_series,
             'plot_prediction': plot_prediction_series,
             'plot_all_dates': plot_all_dates,
-            'plot_prediction_dates': plot_prediction_dates
+            'plot_prediction_dates': plot_prediction_dates,
+            'output_series': output_series,
+            'truth_series': labels_series
         }
 
     def get_series_from_outputs(self, outputs: List[Any]) -> Dict:
-        if self.cfg.experiment.batch_size > 1:
-            prediction_series = [item.cpu() for sublist in [x[BatchKeys.PREDICTIONS.value] for x in outputs] for item in sublist]
-            synop_future_y_series = [item.cpu() for sublist in [x[BatchKeys.SYNOP_FUTURE_Y.value] for x in outputs] for item in sublist]
-            synop_past_y_series = [item.cpu() for sublist in [x[BatchKeys.SYNOP_PAST_Y.value] for x in outputs] for item in sublist]
-            past_dates = [item for sublist in [x[BatchKeys.DATES_PAST.value] for x in outputs] for item in sublist]
-            future_dates = [item for sublist in [x[BatchKeys.DATES_FUTURE.value] for x in outputs] for item in sublist]
-        else:
+        if self.cfg.experiment.batch_size == 1:
             prediction_series = [item.cpu() for item in [x[BatchKeys.PREDICTIONS.value] for x in outputs]]
             synop_future_y_series = [item.cpu() for item in [x[BatchKeys.SYNOP_FUTURE_Y.value] for x in outputs]]
             synop_past_y_series = [item.cpu() for item in [x[BatchKeys.SYNOP_PAST_Y.value] for x in outputs]]
             # mistery - why there are 1-element tuples?
             past_dates = [item[0] for item in [x[BatchKeys.DATES_PAST.value] for x in outputs]]
             future_dates = [item[0] for item in [x[BatchKeys.DATES_FUTURE.value] for x in outputs]]
+        else:
+            prediction_series = [item.cpu() for sublist in [x[BatchKeys.PREDICTIONS.value] for x in outputs] for item in
+                                 sublist]
+            synop_future_y_series = [item.cpu() for sublist in [x[BatchKeys.SYNOP_FUTURE_Y.value] for x in outputs] for
+                                     item in sublist]
+            synop_past_y_series = [item.cpu() for sublist in [x[BatchKeys.SYNOP_PAST_Y.value] for x in outputs] for item
+                                   in sublist]
+            past_dates = [item for sublist in [x[BatchKeys.DATES_PAST.value] for x in outputs] for item in sublist]
+            future_dates = [item for sublist in [x[BatchKeys.DATES_FUTURE.value] for x in outputs] for item in sublist]
+
         prediction_series = np.asarray([np.asarray(el) for el in prediction_series])
         synop_future_y_series = np.asarray([np.asarray(el) for el in synop_future_y_series])
         synop_past_y_series = np.asarray([np.asarray(el) for el in synop_past_y_series])
@@ -471,10 +515,39 @@ class BaseS2SRegressor(pl.LightningModule):
             BatchKeys.DATES_FUTURE.value: future_dates
         }
 
-    def get_mase_by_step(self, truth_series, prediction_series):
+    def get_mase_by_step(self, prediction_series, truth_series, past_truth_series):
         mase_by_step = []
+
+        scaling = self.test_mase.calculate_scaling(torch.Tensor(truth_series),
+                                                   torch.ones(truth_series.shape[0], dtype=torch.long) * truth_series.shape[1],
+                                                   torch.Tensor(past_truth_series),
+                                                   torch.ones(past_truth_series.shape[0], dtype=torch.long) * past_truth_series.shape[1]).numpy()
         for step in range(prediction_series.shape[-1]):
             mase_by_step.append(
-                (abs(prediction_series[:, :step + 1] - truth_series[:, :step + 1]).mean() /
-                 abs(truth_series[:, :-1] - truth_series[:, 1:]).mean()).mean())
+                (abs(prediction_series[:, :step + 1] - truth_series[:, :step + 1]).mean(axis=-1) / scaling).mean())
         return mase_by_step
+
+    def metrics_for_categorical_experiment(self, outputs: torch.Tensor, targets: torch.Tensor, past_targets: torch.Tensor, stage: str):
+        outputs_classes = torch.argmax(outputs, dim=-1) / (self.classes - 1)
+
+        if stage == 'train':
+            self.train_mse(outputs_classes, targets)
+            self.train_mae(outputs_classes, targets)
+            if len(targets.shape) == 1:
+                self.train_mase(outputs_classes.unsqueeze(0), targets.unsqueeze(0), past_targets.unsqueeze(0))
+            else:
+                self.train_mase(outputs_classes, targets, past_targets)
+        elif stage == 'val':
+            self.val_mse(outputs_classes, targets)
+            self.val_mae(outputs_classes, targets)
+            if len(targets.shape) == 1:
+                self.val_mase(outputs_classes.unsqueeze(0), targets.unsqueeze(0), past_targets.unsqueeze(0))
+            else:
+                self.val_mase(outputs_classes, targets, past_targets)
+        else:
+            self.test_mse(outputs_classes, targets)
+            self.test_mae(outputs_classes, targets)
+            if len(targets.shape) == 1:
+                self.test_mase(outputs_classes.unsqueeze(0), targets.unsqueeze(0), past_targets.unsqueeze(0))
+            else:
+                self.test_mase(outputs_classes, targets, past_targets)

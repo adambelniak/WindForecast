@@ -22,5 +22,4 @@ epochs: 20
 dropout: 0.3
 use_gfs_data: True
 use_value2vec: False
-use_time2vec: True
 time2vec_embedding_factor: 5

@@ -1,0 +1,5 @@
+defaults:
+  - schema_analysis
+
+input_file: analysis-wind1.json
+target_parameter: Prędkość wiatru, m/s

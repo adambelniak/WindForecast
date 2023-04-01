@@ -1,5 +1,4 @@
 import math
-from typing import Dict
 
 import torch as t
 
@@ -8,8 +7,8 @@ from wind_forecast.consts import BatchKeys
 from wind_forecast.models.CMAXAutoencoder import CMAXEncoder, get_pretrained_encoder
 from wind_forecast.models.nbeatsx.nbeatsx import Nbeatsx
 from wind_forecast.models.nbeatsx.nbeatsx_model import NBeatsx
-from wind_forecast.models.value2vec.Value2Vec import Value2Vec
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
+from wind_forecast.util.common_util import get_pretrained_artifact_path, get_pretrained_state_dict
 
 
 class Nbeatsx_CMAX(Nbeatsx):
@@ -31,20 +30,16 @@ class Nbeatsx_CMAX(Nbeatsx):
 
         cmax_embed_dim = conv_W * conv_H * out_channels
 
-        self.n_insample_t += cmax_embed_dim
+        self.n_insample_x += cmax_embed_dim
 
         block_list = self.create_stacks()
 
-        self.model = NBeatsx(t.nn.ModuleList(block_list))
+        self.model = NBeatsx(t.nn.ModuleList(block_list), classes=self.classes)
 
-    def forward(self, batch: Dict[str, t.Tensor], epoch: int, stage=None) -> t.Tensor:
-        insample_elements, outsample_elements = self.get_embeddings(batch)
-        synop_past_targets = batch[BatchKeys.SYNOP_PAST_Y.value].float()
-
-        # No static features in my case
-        return self.model(x_static=t.Tensor([]), insample_y=synop_past_targets,
-                          insample_x_t=insample_elements.permute(0, 2, 1),
-                          outsample_x_t=outsample_elements.permute(0, 2, 1) if self.use_gfs else None)
+        if config.experiment.use_pretrained_artifact and type(self).__name__ is "Nbeatsx_CMAX":
+            pretrained_autoencoder_path = get_pretrained_artifact_path(config.experiment.pretrained_artifact)
+            self.load_state_dict(get_pretrained_state_dict(pretrained_autoencoder_path))
+            return
 
     def get_embeddings(self, batch):
         with_dates = self.config.experiment.with_dates_inputs

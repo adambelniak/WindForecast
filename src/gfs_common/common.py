@@ -1,14 +1,3 @@
-import matplotlib.pyplot as plt
-import numpy as np
-
-from gfs_archive_0_25.gfs_processor.Coords import Coords
-
-POLAND_NLAT = 56
-POLAND_SLAT = 48
-POLAND_WLON = 13
-POLAND_ELON = 26
-GFS_SPACE = Coords(POLAND_NLAT, POLAND_SLAT, POLAND_WLON, POLAND_ELON)
-
 GFS_PARAMETERS = [
     {
         "name": "V GRD",
@@ -345,18 +334,5 @@ GFS_PARAMETERS = [
 ]
 
 
-def plot_history(history):
-    # summarize history for loss
-    plt.plot(history.history['loss'])
-    plt.plot(history.history['val_loss'])
-    plt.title('model loss')
-    plt.ylabel('loss')
-    plt.xlabel('epoch')
-    plt.legend(['train', 'test'], loc='upper left')
-    plt.show()
-
-
-def convert_wind(single_date_series, u_wind_label, v_wind_label):
-    velocity = np.sqrt(single_date_series[u_wind_label] ** 2 + single_date_series[v_wind_label] ** 2)
-
-    return velocity
+def get_param_key(name: str, level: str):
+    return f"{name}_{level}"

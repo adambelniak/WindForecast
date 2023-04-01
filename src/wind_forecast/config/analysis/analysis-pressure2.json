@@ -1,0 +1,28 @@
+{
+  "runs": [
+    {
+      "id": "cs95wfw3",
+      "axis_label": "Transformer + GFS"
+    },
+    {
+      "id": "314yzm16",
+      "axis_label": "Spacetimeformer + GFS"
+    },
+    {
+      "id": "2shz5p3p",
+      "axis_label": "N-BEATSx + GFS"
+    },
+    {
+      "id": "xef4ax6r",
+      "axis_label": "Regresja liniowa"
+    },
+    {
+      "id": "1dp7xsfy",
+      "axis_label": "ARIMAX + GFS"
+    },
+    {
+      "id": "ktrq4g6w",
+      "axis_label": "GFS"
+    }
+  ]
+}

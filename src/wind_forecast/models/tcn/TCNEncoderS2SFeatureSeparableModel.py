@@ -8,6 +8,7 @@ from wind_forecast.consts import BatchKeys
 from wind_forecast.models.tcn.TCNEncoder import TemporalBlock
 from wind_forecast.models.time2vec.Time2Vec import Time2Vec
 from wind_forecast.time_distributed.TimeDistributed import TimeDistributed
+from wind_forecast.util.common_util import get_pretrained_artifact_path, get_pretrained_state_dict
 from wind_forecast.util.config import process_config
 
 
@@ -74,6 +75,11 @@ class TCNEncoderS2SFeatureSeparableModel(LightningModule):
         )
 
         self.linear_time_distributed = TimeDistributed(linear, batch_first=True)
+
+        if config.experiment.use_pretrained_artifact and type(self).__name__ is "TCNEncoderS2SFeatureSeparableModel":
+            pretrained_autoencoder_path = get_pretrained_artifact_path(config.experiment.pretrained_artifact)
+            self.load_state_dict(get_pretrained_state_dict(pretrained_autoencoder_path))
+            return
 
     def forward(self, batch: Dict[str, torch.Tensor], epoch: int, stage=None) -> torch.Tensor:
         synop_inputs = batch[BatchKeys.SYNOP_PAST_X.value].float()

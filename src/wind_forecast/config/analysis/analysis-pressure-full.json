@@ -1,0 +1,48 @@
+{
+  "runs": [
+    {
+      "id": "3d6o3pxy",
+      "axis_label": "LSTM + GFS"
+    },
+    {
+      "id": "32sx3eg3",
+      "axis_label": "BiLSTM + GFS"
+    },
+    {
+      "id": "1qtodbjv",
+      "axis_label": "TCN + GFS"
+    },
+    {
+      "id": "3caw863c",
+      "axis_label": "TCN-Attention + GFS"
+    },
+    {
+      "id": "cs95wfw3",
+      "axis_label": "Transformer + GFS"
+    },
+    {
+      "id": "314yzm16",
+      "axis_label": "Spacetimeformer + GFS"
+    },
+    {
+      "id": "2shz5p3p",
+      "axis_label": "N-BEATSx + GFS"
+    },
+    {
+      "id": "3jy6w2ow",
+      "axis_label": "Model naiwny"
+    },
+    {
+      "id": "xef4ax6r",
+      "axis_label": "Regresja liniowa"
+    },
+    {
+      "id": "1dp7xsfy",
+      "axis_label": "ARIMAX + GFS"
+    },
+    {
+      "id": "3mqpjncm",
+      "axis_label": "GFS"
+    }
+  ]
+}

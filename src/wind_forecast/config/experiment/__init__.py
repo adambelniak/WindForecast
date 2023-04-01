@@ -7,7 +7,7 @@ from omegaconf.omegaconf import MISSING
 
 # Experiment settings validation schema & default values
 
-from synop.consts import SYNOP_TRAIN_FEATURES, SYNOP_PERIODIC_FEATURES
+from synop.consts import SYNOP_TRAIN_FEATURES, SYNOP_PERIODIC_FEATURES, TEMPERATURE
 from wind_forecast.util.common_util import NormalizationType
 
 
@@ -31,7 +31,15 @@ class ExperimentSettings:
     # Path to pretrained artifact. Two formats are supported:
     # - local checkpoints: path to artifact relative from run (results) directory
     # - wandb artifacts: wandb://ENTITY/PROJECT_NAME/ARTIFACT_NAME:VERSION@CHECKPOINT_NAME
-    pretrained_artifact: Optional[str] = 'wandb://mbelniak/wind-forecast-openstack-tune/model-1e6npo9p:v4@model.ckpt'
+    pretrained_artifact: Optional[str] = 'wandb://mbelniak/wind-forecast-openstack/model-10kb6o2o:v0@model.ckpt'
+
+    """
+    Id of a run which should be the source of datamodule metadata use for training a pretrained model, e.g. mean and std
+    """
+    prediction_meta_run: Optional[str] = '10kb6o2o'
+
+    # Same as above but for convolutional encoder for CMAX images
+    pretrained_cmax_encoder: Optional[str] = 'wandb://mbelniak/wind-forecast-openstack-tune/model-1e6npo9p:v4@model.ckpt'
 
     # Enable checkpoint saving
     save_checkpoints: bool = True
@@ -95,6 +103,10 @@ class ExperimentSettings:
     # synop_file: str = "WARSZAWA-OKECIE_375_data.csv"
     synop_file: str = "WARSZAWA-OKECIE_352200375_data.csv"
 
+    synop_station_code: str = "12375"
+
+    tele_station_code: str = "352200375"
+
     synop_from_year: int = 2016
 
     cmax_from_year: int = 2016
@@ -131,7 +143,7 @@ class ExperimentSettings:
     # pass alone target on input to see if model is capable of reproducing it
     self_output_test: bool = False
 
-    target_parameter: str = "temperature"
+    target_parameter: str = TEMPERATURE[1]
 
     differential_forecast: bool = False
 
@@ -154,6 +166,11 @@ class ExperimentSettings:
 
     target_coords: Any = (52.1831174, 20.9875259)
 
+    # e.g. for clouds - each octant is another class 0-9
+    categorical_experiment: bool = False
+
+    classes: int = 0
+
     # ----------------------------------------------------------------------------------------------
     # Model settings
     # ----------------------------------------------------------------------------------------------
@@ -163,6 +180,8 @@ class ExperimentSettings:
     gfs_on_head: bool = True
 
     cmax_projection_dim: int = 0
+
+    use_pretrained_artifact: bool = False
 
     # ----------------------------------------------------------------------------------------------
     # CMAX autoencoder settings
@@ -232,6 +251,9 @@ class ExperimentSettings:
 
     spacetimeformer_intermediate_downsample_convs: int = 0
 
+    # one of 'full', 'performer', 'prob', 'none;
+    spacetimeformer_attention_type: str = 'full'
+
     # ----------------------------------------------------------------------------------------------
     # NBeats settings
     # ----------------------------------------------------------------------------------------------
@@ -271,6 +293,13 @@ class ExperimentSettings:
     sarima_M: int = 24
 
     # ----------------------------------------------------------------------------------------------
+    # Linear settings
+    # ----------------------------------------------------------------------------------------------
+
+    linear_max_iter: int = 1000
+    linear_L2_alpha: float = 1
+
+    # ----------------------------------------------------------------------------------------------
     # Embedding settings
     # ----------------------------------------------------------------------------------------------
 
@@ -278,7 +307,7 @@ class ExperimentSettings:
 
     value2vec_embedding_factor: int = 5
 
-    use_time2vec: bool = True
+    use_time2vec: bool = False
 
     use_value2vec: bool = False
 
@@ -293,3 +322,6 @@ class ExperimentSettings:
     subregion_elon: float = 22
 
     subregion_wlon: float = 20
+
+    # pytorch_forecasting has a bug which calculates scaling in MASE based on future+future sequence instead of past+future sequence
+    rescale_mase: bool = True

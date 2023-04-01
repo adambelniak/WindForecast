@@ -88,17 +88,15 @@ def get_cmax(id):
 
 
 # Also return a dictionary of values to have them all read into the runtime
-def get_mean_and_std_cmax(dates: [pd.Timestamp], dim: (int, int), sequence_length: int,
+def get_mean_and_std_cmax(cmax_loader: CMAXLoader, dates: [pd.Timestamp], dim: (int, int), sequence_length: int,
                           future_sequence_length: int = 0, prediction_offset: int = 0):
     # Bear in mind that date_keys are indices of FIRST frame in the sequence. Not all frames exist in date_keys because of that fact.
     log.info("Calculating std and mean for the CMAX dataset")
     all_ids = set([item for sublist in [[get_cmax_datekey_from_offset(date, offset) for offset in
                                          range(0, sequence_length + future_sequence_length + prediction_offset)] for
-                                        date
-                                        in dates] for item in sublist])
+                                        date in dates] for item in sublist])
     mean, sqr_mean = 0, 0
     denom = len(all_ids) * dim[0] * dim[1] / 4
-    cmax_loader = CMAXLoader()
     for id in tqdm(all_ids):
         values = cmax_loader.get_cmax_image(id)
         mean += np.sum(values) / denom
@@ -106,7 +104,7 @@ def get_mean_and_std_cmax(dates: [pd.Timestamp], dim: (int, int), sequence_lengt
 
     std = math.sqrt(sqr_mean - pow(mean, 2))
 
-    return cmax_loader.get_all_loaded_cmax_images(), mean, std
+    return mean, std
 
 
 def get_cmax_datekey_from_offset(date: pd.Timestamp, offset: int) -> str:
@@ -115,18 +113,17 @@ def get_cmax_datekey_from_offset(date: pd.Timestamp, offset: int) -> str:
     return CMAXLoader.get_date_key(date)
 
 
-def get_min_max_cmax(dates: [pd.Timestamp], sequence_length: int, future_sequence_length: int = 0,
+def get_min_max_cmax(cmax_loader: CMAXLoader, dates: [pd.Timestamp], sequence_length: int, future_sequence_length: int = 0,
                      prediction_offset: int = 0):
     all_ids = set([item for sublist in [[get_cmax_datekey_from_offset(date, offset) for offset in
                                          range(0, sequence_length + future_sequence_length + prediction_offset)] for
                                         date
                                         in dates] for item in sublist])
-    cmax_loader = CMAXLoader()
     log.info("Loading CMAX files into the runtime.")
     for id in tqdm(all_ids):
         values = cmax_loader.get_cmax_image(id)
 
-    return cmax_loader.get_all_loaded_cmax_images(), CMAX_MIN, CMAX_MAX  # We know max and min upfront, let's not waste time :)
+    return CMAX_MIN, CMAX_MAX  # We know max and min upfront, let's not waste time :)
 
 
 def get_cmax_npy_filename(date: datetime):
@@ -154,8 +151,7 @@ def initialize_synop_dates_for_sequence_with_cmax(cmax_IDs: [str], labels: pd.Da
         elif len(labels[labels["date"] == next_date]) > 0:
             # there is no next frame for CMAX, so the sequence is broken. Remove past frames of sequence_length (and future_length if use_future_cmax)
             for frame in range(0, sequence_length + (
-                    0 if not use_future_cmax else prediction_offset + future_seq_length) - (
-                                  1 if cmax_date_key in cmax_IDs else 0)):
+                    0 if not use_future_cmax else prediction_offset + future_seq_length) - (1 if cmax_date_key in cmax_IDs else 0)):
                 hours = timedelta(hours=frame)
                 date_to_remove = date - hours
 
@@ -163,8 +159,7 @@ def initialize_synop_dates_for_sequence_with_cmax(cmax_IDs: [str], labels: pd.Da
                     synop_dates.remove(date_to_remove)
         else:
             # there is no next frame for synop and/or CMAX , so the sequence is broken. Remove past frames of sequence_length AND future_seq_length
-            for frame in range(0, sequence_length + future_seq_length + prediction_offset - (
-            1 if cmax_date_key in cmax_IDs else 0)):
+            for frame in range(0, sequence_length + future_seq_length + prediction_offset - (1 if cmax_date_key in cmax_IDs else 0)):
                 hours = timedelta(hours=frame)
                 date_to_remove = date - hours
                 if date_to_remove in synop_dates:
